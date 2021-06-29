@@ -1,0 +1,80 @@
+% Notes on the writing of the Master Thesis
+% Book: How to Write a Lot, Paul Silvia, 2nd Edition
+% Book: Getting Things Done, David Allen
+%
+%
+% Mögliche Abgrenzung von anderen: Den hybriden Ansatz von SBST mit DSE verwenden, 
+% so wie im Paper von Baars et al.
+%
+% Mögliche weitere Evaluation: Vergleiche die Coverage von generierten Tests zu der 
+% Coverage von manuell geschriebenen Tests von Entwicklern in evaluierten Programmen.
+% 
+
+\documentclass{article}
+% Please do not change this options...
+\usepackage[a4paper, total={6in, 10in}]{geometry}
+\usepackage{graphicx}
+\graphicspath{ {./img/} }
+
+
+\begin{document}
+
+\title{Master Thesis}
+\author{Vsevolod Tymofyeyev}
+\date{\today}
+\maketitle
+
+\tableofcontents
+\section{Introduction}
+%\begin{itemize}
+%    \item Darstellung des Themas der Masterarbeit
+%    \item Begründung/Motivation
+%    \item Relevanz
+%\end{itemize}
+
+
+\section{Background}
+\subsection{Random Testing}
+\subsection{Single-objective Search-based Techniques}
+\subsection{Multi-objective Search-based Techniques}
+\subsection{Dynamic Symbolic Execution}
+
+\section{State of the Art}
+\subsection{Fuzzer for Rust}
+\subsection{Test Generators for Rust}
+
+\section{Search-based Unit Test Generation in Rust}
+\subsection{Testability Transformations}
+\subsection{Instrumentation}
+
+
+\section{Evaluation}
+\subsection{Setup}
+\subsection{Threats to Validity}
+\subsection{Code Coverage Comparison with Manually Written Tests}
+\subsection{Code Coverage Comparison with Other Tools}
+
+
+\section{Conclusion}
+
+\section{Future Work}
+
+\section{Appendix}
+
+
+
+
+%\newpage  % End of first page: you can remove this if you do not need it
+
+%\section{Critical questions}
+%\paragraph{Q1:} Is there a way to define some kind of coverage of the generated scenarios?
+%\paragraph{Q2:} While some real accidents might be somewhat similar to each other, the %abstract police reports written in natural language boost the similarity of those further. How could the generated test scenarios be limited only to unique ones?
+
+% Remember to list at not less than 4 related work, you can list more if you wish
+% If you like you can also use bib files (see below)
+
+
+\bibliographystyle{unsrt}
+\bibliography{bibliography}
+%\nocite*{}
+\end{document}
