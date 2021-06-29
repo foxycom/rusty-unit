@@ -1,0 +1,157 @@
+% Notes on the writing of the Master Thesis
+% Book: How to Write a Lot, Paul Silvia, 2nd Edition
+% Book: Getting Things Done, David Allen
+%
+%
+% Mögliche Abgrenzung von anderen: Den hybriden Ansatz von SBST mit DSE verwenden, 
+% so wie im Paper von Baars et al.
+%
+% Mögliche weitere Evaluation: Vergleiche die Coverage von generierten Tests zu der 
+% Coverage von manuell geschriebenen Tests von Entwicklern in evaluierten Programmen.
+% 
+
+\documentclass{article}
+% Please do not change this options...
+\usepackage[a4paper, total={6in, 10in}]{geometry}
+\usepackage{graphicx}
+\graphicspath{ {./img/} }
+\usepackage{pgfgantt}
+\newcounter{myWeekNum}
+\stepcounter{myWeekNum}
+%
+\newcommand{\myWeek}{\themyWeekNum
+    \stepcounter{myWeekNum}
+    \ifnum\themyWeekNum=53
+         \setcounter{myWeekNum}{1}
+    \else\fi
+}
+
+
+\begin{document}
+\setcounter{myWeekNum}{25}
+\ganttset{%
+calendar week text={\myWeek{}}%
+}
+
+
+\title{Exposé: Irgendwas mit Rust}
+\author{Vsevolod Tymofyeyev}
+\date{\today}
+\maketitle
+
+\section{Einleitung}
+%\begin{itemize}
+%    \item Darstellung des Themas der Masterarbeit
+%    \item Begründung/Motivation
+%    \item Relevanz
+%\end{itemize}
+
+In der Programiersprachenwelt, in der es zwei große Fronten gibt (low-level Sprachen, die auf Kosten von Sicherheit mehr Performanz bieten und high-level Sprachen, die durch bestimmte Konstrukte wie Garbage-Collector Sicherheiten für Programmierer bieten, die jedoch zu Laufzeit-Overhead führen) versucht Rust beides zu verbinden. Die Sprache für Systemprogrammierung verspricht eine ähnlich hohe Performanz wie C++ mit erweiterter Typ- und Speichersicherheit. Invarianten werden zur Kompilierzeit sichergestellt, wodurch Abstraktionen mit keinen Laufzeitkosten verbunden sind (sogenannte Zero-Cost-Abstractions). Diese Symbiose führte dazu, dass die Sprache besonders attraktiv auf Entwickler wirkte, wodurch sie trotz ihres sehr jungen Geschichte bereits seit mehreren Jahren die Beliebtheitsrankings stürmt~\cite{StackOverflow2020}. Selbst Spitzenkonzerne erwägen eine Nutzung oder gar Umschreibung von Teilen ihrer Codebase nach Rust. Laut Microsoft und Google sind 70\% der in ihrer Software in den vergangenen Jahren gefundenen Fehler auf Speicherlecks zurückzuführen, hervorgerufen durch die weitverwendeten unsicheren Sprachen wie C und C++~\cite{Microsoft2019MemoryBugs, RustInAndroid}. Microsoft, SpaceX, Google, Amazon AWS und viele andere Unternehmen fingen bereits an, Rust in ihren Produkten zur erhöhten Sicherheit zu verwenden~\cite{MicrosoftJoinsRust, AmazonLovesRust, RustInAndroid, GoogleRustFoundation}. 
+
+Eine wichtige Hürde einer Umstellung auf Rust ist die steile Lernkurve der Sprache. Sie vermeidet implizites Verhalten, was oft zu Kompilierfehlern und Frustration führen kann. Um die Last von einem Entwickler abzunehmen, können einige Aufgaben automatisiert werden, so zum Beispiel das Erstellen von Unit-Tests. 
+
+Da Rust als stabile Programmiersprache als jung gilt und im Jahr 2015 in der Version 1.0 erschien~\cite{Rust10}, gibt es zum Stand des Schreibens dieser Arbeit nur relativ wenige Optionen für eine automatische Testgenerierung. Diese beschränken sich auf Fuzzer und Generatoren~\cite{cadar2008klee}, die mit LLVM IR arbeiten, welche Rust ebenfalls benutzt. Die dadurch generierten Tests streben eine höhere Coverage an, um möglichst viele Fälle abzudecken. Doch da die Tools auf einem sehr niedrigen Level arbeiten, sind die Tests für den Entwickler bzw. Tester oft unverständlich und nicht nachvollziehbar. 
+
+
+\section{Zielsetzung}
+%\begin{itemize}
+%    \item Ziel der Arbeit und Erkenntnisinteresse herausstellen
+%    \item Ergebnisse skizzieren
+%\end{itemize}
+Das Ziel dieser Masterarbeit ist es, die Effektivität eines such-basierten Ansatzes zur Generierung von Tests in Form vom menschenlesbaren Quellcode zu evaluieren, um die Frage zu beantworten, wie hoch die Testabdeckung von solchen Tests ist (auch im Vergleich zu anderen Ansätzen).
+
+
+\section{Forschungsstand}
+\begin{itemize}
+    \item Stand der aktuellen Forschung
+    \item Zentrale Theorien des Themas
+\end{itemize}
+
+\section{Forschungskonzept}
+\begin{itemize}
+    \item Forschungsfragen
+    \item Hypothesen
+    \item Method + Begründung
+    \item Daten
+    \item Evtl. benötigte Mittel
+\end{itemize}
+
+% Wenn man beispielsweise 40 Seiten schreiben möchte, dann wären 
+% Solution Approach und Evaluation jeweils ~10 Seiten lang. Es ist okay, wenn
+% Introduction dann ungefähr nur 2-3 Seiten lang ist.
+\section{Vorläufige Gliederung}
+\begin{enumerate}
+    \item Introduction
+    \item Background \begin{enumerate}
+        \item Random Testing
+        \item Single-objective Search-based techniques
+        \item Multi-objective Search-based techniques
+        \item Dynamic Symbolic Execution
+    \end{enumerate}
+    \item State of the Art \begin{enumerate}
+        \item Fuzzer for Rust
+        \item Test Generators for Rust
+    \end{enumerate}
+    \item Search-based Unit Test Generation in Rust (1/3 of time) \begin{enumerate}
+        \item Testability Tranformations
+        \item Instrumentation
+        \item ...
+    \end{enumerate}
+    \item Evaluation (1/3 of time) \begin{enumerate} 
+        \item Setup 
+        \item Threats to Validity
+        \item Code Coverage Comparison with Manually Written Tests
+        \item Code Coverage Comparison with Other Tools
+        \item (Number of found Bugs / Mutants?)
+    \end{enumerate}
+    \item Conclusion
+    \item Future Work
+    \item Appendix
+    \item References
+\end{enumerate}
+
+\section{Zeitplan}
+\noindent\resizebox{\textwidth}{!}{
+\begin{ganttchart}[
+    hgrid,
+    vgrid={*6{draw=none}, dotted},
+    time slot format=isodate,
+    y unit chart=1cm,
+    y unit title=1cm,
+    x unit=.1cm]{2021-6-21}{2021-12-24},
+    
+\gantttitlecalendar{month=name, week=25} \\
+
+%\gantttitle{2021}{12} \\
+%\gantttitlelist{25,...,52}{1} \\
+%\ganttgroup{Group 1}{1}{7} \\
+\ganttbar{Literaturrecherche}{2021-6-21}{2021-7-18} \\
+\ganttbar{Konzeptphase}{2021-7-12}{2021-8-1} \\
+\ganttbar{Implementierung}{2021-8-2}{2021-9-12} \\
+\ganttbar{Testen + Evaluation}{2021-9-13}{2021-10-17} \\
+\ganttbar{Schriftliche Ausarbeitung}{2021-10-4}{2021-11-21} \\
+\ganttbar{Korrekturlesen + Nachbessern}{2021-11-22}{2021-11-28} \\
+\ganttbar{Puffer}{2021-11-29}{2021-12-18} \\
+\ganttbar{Abgabe}{2021-12-18}{2021-12-19} \\
+%\ganttlinkedbar{Task 2}{3}{7} \ganttnewline
+%\ganttmilestone{Milestone}{7} \ganttnewline
+%\ganttbar{Final Task}{8}{12}
+%\ganttlink{elem2}{elem3}
+%\ganttlink{elem3}{elem4}
+\end{ganttchart}
+}
+
+%\newpage  % End of first page: you can remove this if you do not need it
+
+%\section{Critical questions}
+%\paragraph{Q1:} Is there a way to define some kind of coverage of the generated scenarios?
+%\paragraph{Q2:} While some real accidents might be somewhat similar to each other, the %abstract police reports written in natural language boost the similarity of those further. How could the generated test scenarios be limited only to unique ones?
+
+% Remember to list at not less than 4 related work, you can list more if you wish
+% If you like you can also use bib files (see below)
+
+
+\bibliographystyle{unsrt}
+\bibliography{bibliography}
+%\nocite*{}
+\end{document}
