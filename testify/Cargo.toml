@@ -1,0 +1,16 @@
+[package]
+name = "testify"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+name = "testify"
+path = "src/lib.rs"
+
+[[bin]]
+name = "testify"
+path = "src/bin/main.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
