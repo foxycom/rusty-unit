@@ -1,21 +1,604 @@
-%% This BibTeX bibliography file was created using BibDesk.
-%% http://bibdesk.sourceforge.net/
+% Encoding: UTF-8
 
-@misc{StackOverflow2020,
-author = {{Stack Overflow}},
-title = {{Stack Overflow Developer Survey 2020}},
-url = {https://insights.stackoverflow.com/survey/2020#technology-most-loved-dreaded-and-wanted-languages-loved},
-urldate = {2021-05-02},
-year = {2020}
+@MastersThesis{,
+  author   = {Goyal, Poonam},
+  title    = {A comparative study of C, Java, C# and Jython},
+  year     = {2014},
+  abstract = {Comparing programming languages is a common topic among programmers and software
+developers. With the recent changes in programming standards and continual upgrades in
+hardware design, many new programming languages are being developed, while existing
+ones are currently going through several enhancements in terms of design and
+implementation. In this research, we present a comparative study of four programming
+languages, C, Java, C#, and Jython, with respect to the following criteria: memory
+consumption, CPU utilization, and execution time. Each test was performed in a
+distributed system using TCP sockets with 1, 2, 4 and 8 clients, and on a symmetric
+multiprocessing system.},
+  comment  = {Der Autor vergleicht die Implementierungen von vier verschiedenen Algorithmen in vier Programmiersprachen auf Performanz, Speicherverbrauch und Ausführungszeit in einem Client-Server Setup mit mehreren Clients. Der Autor kommt zum Ergebnis, dass eine Programmiersprache bestimmten Einfluss auf die Performanz und andere Laufzeit-Eigenschaften hat. 
+
+Future Work: Vergleich auf verschiedenen Plattformen, z. B. Windows vs Linux. },
+  keywords = {rank2},
 }
 
-@misc{Rust10,
+@Article{,
+  author   = {Balasubramanian, Abhiram and Baranowski, Marek S. and Burtsev, Anton and Panda, Aurojit and Rakamari, Zvonimir and Ryzhyk, Leonid},
+  title    = {System Programming in Rust: Beyond Safety},
+  year     = {2017},
+  volume   = {51},
+  number   = {1},
+  issue    = {August 2017},
+  issn     = {0163-5980},
+  doi      = {10.1145/3139645.3139660},
+  url      = {https://doi.org/10.1145/3139645.3139660},
+  comment  = {Die Autoren schlagen Beispielimplementierungen für },
+  keywords = {rank4},
+}
+
+@InProceedings{,
+  author    = {Levy, Amit and Campbell, Bradford and Ghena, Branden and Giffin, Daniel B. and Pannuto, Pat and Dutta, Prabal and Levis, Philip},
+  title     = {Multiprogramming a 64kB Computer Safely and Efficiently},
+  booktitle = {Proceedings of the 26th Symposium on Operating Systems Principles},
+  year      = {2017},
+  isbn      = {9781450350853},
+  pages     = {234-251},
+  doi       = {10.1145/3132747.3132786},
+  url       = {https://doi.org/10.1145/3132747.3132786},
+  keywords  = {rank2},
+}
+
+@InProceedings{,
+  author    = {Evans, Ana Nora and Campbell, Bradford and Soffa, Mary Lou},
+  title     = {Is Rust Used Safely by Software Developers?},
+  booktitle = {2020 IEEE/ACM 42nd International Conference on Software Engineering (ICSE)},
+  year      = {2020},
+  pages     = {246-257},
+  abstract  = {Rust, an emerging programming language with explosive growth,
+provides a robust type system that enables programmers to write
+memory-safe and data-race free code. To allow access to a machine’s
+hardware and to support low-level performance optimizations, a
+second language, Unsafe Rust, is embedded in Rust. It contains
+support for operations that are difficult to statically check, such
+as C-style pointers for access to arbitrary memory locations and
+mutable global variables. When a program uses these features, the
+compiler is unable to statically guarantee the safety properties
+Rust promotes. In this work, we perform a large-scale empirical
+study to explore how software developers are using Unsafe Rust in
+real-world Rust libraries and applications. Our results indicate that
+software engineers use the keyword unsafe in less than 30% of Rust
+libraries, but more than half cannot be entirely statically checked
+by the Rust compiler because of Unsafe Rust hidden somewhere
+in a library’s call chain. We conclude that although the use of the
+keyword unsafe is limited, the propagation of unsafeness offers
+a challenge to the claim of Rust as a memory-safe language. Furthermore, we recommend changes to the Rust compiler and to the
+central Rust repository’s interface to help Rust software developers
+be aware of when their Rust code is unsafe.},
+  comment   = {Die Autoren untersuchen Open-Source Projekte, die in Rust geschrieben wurden und analysieren inwieweit die Entwickler der Projekte die unsicheren Features von Rust verwenden und die Sicherheiten des Compilers umgeben (unsafe code).
+Das Paper zitiert auch mehrere andere Artikel, die auf die Sicherheiten von Rust eingehen und die Sprache mit C und C++ vergleichen.},
+  keywords  = {rank5},
+}
+
+@InProceedings{,
+  author    = {Anderson, Brian and Bergstrom, Lars and Goregaokar, Manish and Matthews, Josh and McAllister, Keegan and Moffitt, Jack and Sapin, Simon},
+  title     = {Engineering the Servo Web Browser Engine Using Rust},
+  booktitle = {Proceedings of the 38th International Conference on Software Engineering Companion},
+  year      = {2016},
+  isbn      = {9781450342056},
+  pages     = {81-89},
+  doi       = {10.1145/2889160.2889229},
+  abstract  = {All modern web browsers --- Internet Explorer, Firefox, Chrome, Opera, and Safari --- have a core rendering engine written in C++. This language choice was made because it affords the systems programmer complete control of the underlying hardware features and memory in use, and it provides a transparent compilation model. Unfortunately, this language is complex (especially to new contributors!), challenging to write correct parallel code in, and highly susceptible to memory safety issues that potentially lead to security holes.Servo is a project started at Mozilla Research to build a new web browser engine that preserves the capabilities of these other browser engines but also both takes advantage of the recent trends in parallel hardware and is more memory-safe. We use a new language, Rust, that provides us a similar level of control of the underlying system to C++ but which statically prevents many memory safety issues and provides direct support for parallelism and concurrency.In this paper, we show how a language with an advanced type system can address many of the most common security issues and software engineering challenges in other browser engines, while still producing code that has the same performance and memory profile. This language is also quite accessible to new open source contributors and employees, even those without a background in C++ or systems programming. We also outline several pitfalls encountered along the way and describe some potential areas for future improvement.},
+  keywords  = {rank5},
+}
+
+@InProceedings{,
+  author    = {Boos, Kevin and Zhong, Lin},
+  title     = {Theseus: A State Spill-Free Operating System},
+  booktitle = {Proceedings of the 9th Workshop on Programming Languages and Operating Systems},
+  year      = {2017},
+  isbn      = {9781450351539},
+  pages     = {29-35},
+  doi       = {10.1145/3144555.3144560},
+  abstract  = {In prior work, we have shown that the underdiagnosed problem of state spill remains a barrier to realizing complex systems that are easy to maintain, evolve, and run reliably. This paper shares our early experience building Theseus from scratch, an OS with the guiding principle of eliminating state spill. Theseus takes inspiration from distributed systems to rethink state management, and leverages Rust language features for maximum safety, code reuse, and efficient isolation. We intend to demonstrate Theseus as a runtime composable OS, in which entities are easily interchangeable and can evolve independently without reconfiguring or rebooting.},
+}
+
+@Article{,
+  author   = {Lin, Yi and Blackburn, Stephen M. and Hosking, Antony L. and Norrish, Michael},
+  title    = {Rust as a Language for High Performance GC Implementation},
+  journal  = {SIGPLAN Not.},
+  year     = {2016},
+  pages    = {89-98},
+  issn     = {0362-1340},
+  doi      = {10.1145/3241624.2926707},
+  abstract = {High performance garbage collectors build upon performance-critical low-level code, typically exhibit multiple levels of concurrency, and are prone to subtle bugs. Implementing, debugging and maintaining such collectors can therefore be extremely challenging. The choice of implementation language is a crucial consideration when building a collector. Typically, the drive for performance and the need for efficient support of low-level memory operations leads to the use of low-level languages like C or C++, which offer little by way of safety and software engineering benefits. This risks undermining the robustness and flexibility of the collector design. Rust's ownership model, lifetime specification, and reference borrowing deliver safety guarantees through a powerful static checker with little runtime overhead. These features make Rust a compelling candidate for a collector implementation language, but they come with restrictions that threaten expressiveness and efficiency. We describe our experience implementing an Immix garbage collector in Rust and C. We discuss the benefits of Rust, the obstacles encountered, and how we overcame them. We show that our Immix implementation has almost identical performance on micro benchmarks, compared to its implementation in C, and outperforms the popular BDW collector on the gcbench micro benchmark. We find that Rust's safety features do not create significant barriers to implementing a high performance collector. Though memory managers are usually considered low-level, our high performance implementation relies on very little unsafe code, with the vast majority of the implementation benefiting from Rust's safety. We see our experience as a compelling proof-of-concept of Rust as an implementation language for high performance garbage collection.},
+  comment  = {Der Artikel beschreibt die Vorteile und Nachteile von Rust gegenüber C.},
+  keywords = {rank5},
+}
+
+@Article{,
+  author = {Gens, David and Schmitt, Simon and Davi, Lucas and Sadeghi, Ahmad-Reza},
+  title  = {K-Miner: Uncovering Memory Corruption in Linux},
+  year   = {2018},
+  doi    = {10.14722/ndss.2018.23326},
+}
+
+@InProceedings{,
+  author    = {Szekeres, László and Payer, Mathias and Wei, Tao and Song, Dawn},
+  title     = {SoK: Eternal War in Memory},
+  booktitle = {2013 IEEE Symposium on Security and Privacy},
+  year      = {2013},
+  pages     = {48-26},
+  doi       = {10.1109/SP.2013.13},
+}
+
+@InProceedings{,
+  author    = {Qin, Boqin and Chen, Yilun and Yu, Zeming and Song, Linhai and Zhang, Yiying},
+  title     = {Understanding Memory and Thread Safety Practices and Issues in Real-World Rust Programs},
+  booktitle = {Proceedings of the 41st ACM SIGPLAN Conference on Programming Language Design and Implementation},
+  year      = {2020},
+  pages     = {763–779},
+  doi       = {10.1145/3385412.3386036},
+  abstract  = {Rust is a young programming language designed for systems software development. It aims to provide safety guarantees like high-level languages and performance efficiency like low-level languages. The core design of Rust is a set of strict safety rules enforced by compile-time checking. To support more low-level controls, Rust allows programmers to bypass these compiler checks to write unsafe code. It is important to understand what safety issues exist in real Rust programs and how Rust safety mechanisms impact programming practices. We performed the first empirical study of Rust by close, manual inspection of 850 unsafe code usages and 170 bugs in five open-source Rust projects, five widely-used Rust libraries, two online security databases, and the Rust standard library. Our study answers three important questions: how and why do programmers write unsafe code, what memory-safety issues real Rust programs have, and what concurrency bugs Rust programmers make. Our study reveals interesting real-world Rust program behaviors and new issues Rust programmers make. Based on our study results, we propose several directions of building Rust bug detectors and built two static bug detectors, both of which revealed previously unknown bugs.},
+  keywords  = {rank5},
+}
+
+@Article{ARDITO2020100635,
+  author   = {Luca Ardito and Luca Barbato and Marco Castelluccio and Riccardo Coppola and Calixte Denizet and Sylvestre Ledru and Michele Valsesia},
+  title    = {rust-code-analysis: A Rust library to analyze and extract maintainability information from source codes},
+  journal  = {SoftwareX},
+  year     = {2020},
+  volume   = {12},
+  pages    = {100635},
+  issn     = {2352-7110},
+  doi      = {https://doi.org/10.1016/j.softx.2020.100635},
+  url      = {https://www.sciencedirect.com/science/article/pii/S2352711020303484},
+  abstract = {The literature proposes many software metrics for evaluating the source code non-functional properties, such as its complexity and maintainability. The literature also proposes several tools to compute those properties on source codes developed with many different software languages. However, the Rust language emergence has not been paired by the community’s effort in developing parsers and tools able to compute metrics for the Rust source code. Also, metrics tools often fall short in providing immediate means of comparing maintainability metrics between different algorithms or coding languages. We hence introduce rust-code-analysis, a Rust library that allows the extraction of a set of eleven maintainability metrics for ten different languages, including Rust. rust-code-analysis, through the Abstract Syntax Tree (AST) of a source file, allows the inspection of the code structure, analyzing source code metrics at different levels of granularity, and finding code syntax errors before compiling time. The tool also offers a command-line interface that allows exporting the results in different formats. The possibility of analyzing source codes written in different programming languages enables simple and systematic comparisons between the metrics produced from different empirical and large-scale analysis sources.},
+  comment  = {Die Autoren präsentieren ein Tool, welches Code in verschiedenen Sprachen analysieren und verschiedene Metriken als Ergebnis zurück geben kann, auch für Rust (z. B. LOC, Code Complexity, usw.). 
+
+Future Work: "For researchers in software engineering, the tool can be
+used to either conduct empirical studies and compare maintainability properties between implementations of the same
+algorithm in different languages or implement different algorithms in the same language."
+
+},
+  keywords = {Algorithm, Software metrics, Software maintainability, Software quality},
+}
+
+@InProceedings{8300883,
+  author    = {Hariprasad, T and Vidhyagaran, G and Seenu, K. and Thirumalai, Chandrasegar},
+  title     = {Software complexity analysis using halstead metrics},
+  booktitle = {2017 International Conference on Trends in Electronics and Informatics (ICEI)},
+  year      = {2017},
+  pages     = {1109-1113},
+  doi       = {10.1109/ICOEI.2017.8300883},
+  keywords  = {rank5},
+}
+
+@MastersThesis{,
+  author      = {Ullrich, Sebastian},
+  title       = {Simple verification of rust programs via functional purification},
+  institution = {Karlsruher Institut f{\"u}r Technologie (KIT)},
+  year        = {2016},
+}
+
+@Unpublished{,
+  author   = {Jiang, Jianfeng and Xu, Hui and Zhou, Yangfan},
+  title    = {RULF: Rust Library Fuzzing via API Dependency Graph Traversal},
+  year     = {2021},
+  keywords = {rank2},
+}
+
+@InProceedings{8471992,
+  author    = {Lindner, Marcus and Aparicius, Jorge and Lindgren, Per},
+  title     = {No Panic! Verification of Rust Programs by Symbolic Execution},
+  booktitle = {2018 IEEE 16th International Conference on Industrial Informatics (INDIN)},
+  year      = {2018},
+  pages     = {108-114},
+  doi       = {10.1109/INDIN.2018.8471992},
+}
+
+@InProceedings{8122569,
+  author    = {Ludwig, Jeremy and Xu, Steven and Webber, Frederick},
+  title     = {Compiling static software metrics for reliability and maintainability from GitHub repositories},
+  booktitle = {2017 IEEE International Conference on Systems, Man, and Cybernetics (SMC)},
+  year      = {2017},
+  pages     = {5-9},
+  doi       = {10.1109/SMC.2017.8122569},
+}
+
+@Article{,
+  author  = {Ardito, Luca and Barbato, Luca and Coppola, Riccardo and Valsesia, Michele},
+  title   = {Evaluation of Rust code verbosity, understandability and complexity},
+  journal = {PeerJ Computer Science},
+  year    = {2021},
+  date    = {2021-02-26},
+  doi     = {10.7717/peerj-cs.406},
+}
+
+@InProceedings{10.1145/2818302.2818306,
+  author    = {Levy, Amit and Andersen, Michael P. and Campbell, Bradford and Culler, David and Dutta, Prabal and Ghena, Branden and Levis, Philip and Pannuto, Pat},
+  title     = {Ownership is Theft: Experiences Building an Embedded OS in Rust},
+  booktitle = {Proceedings of the 8th Workshop on Programming Languages and Operating Systems},
+  year      = {2015},
+  series    = {PLOS '15},
+  publisher = {Association for Computing Machinery},
+  location  = {Monterey, California},
+  isbn      = {9781450339421},
+  pages     = {21–26},
+  doi       = {10.1145/2818302.2818306},
+  url       = {https://doi.org/10.1145/2818302.2818306},
+  abstract  = {Rust, a new systems programming language, provides compile-time memory safety checks to help eliminate runtime bugs that manifest from improper memory management. This feature is advantageous for operating system development, and especially for embedded OS development, where recovery and debugging are particularly challenging. However, embedded platforms are highly event-based, and Rust's memory safety mechanisms largely presume threads. In our experience developing an operating system for embedded systems in Rust, we have found that Rust's ownership model prevents otherwise safe resource sharing common in the embedded domain, conflicts with the reality of hardware resources, and hinders using closures for programming asynchronously. We describe these experiences and how they relate to memory safety as well as illustrate our workarounds that preserve the safety guarantees to the largest extent possible. In addition, we draw from our experience to propose a new language extension to Rust that would enable it to provide better memory safety tools for event-driven platforms.},
+  address   = {New York, NY, USA},
+  keywords  = {linear types, rust, embedded operating systems, ownership},
+  numpages  = {6},
+}
+
+@InProceedings{732680,
+  author        = {Tracey, N. and Clark, J. and Mander, K. and McDermid, J.},
+  title         = {An automated framework for structural test-data generation},
+  booktitle     = {Proceedings 13th IEEE International Conference on Automated Software Engineering (Cat. No.98EX239)},
+  year          = {1998},
+  pages         = {285-288},
+  doi           = {10.1109/ASE.1998.732680},
+  __markedentry = {[a72186:1]},
+  comment       = {Das Paper erklärt verschiedene Branch Distance Funktionen für SBST. },
+}
+
+@InProceedings{6100119,
+  author        = {Baars, Arthur and Harman, Mark and Hassoun, Youssef and Lakhotia, Kiran and McMinn, Phil and Tonella, Paolo and Vos, Tanja},
+  title         = {Symbolic search-based testing},
+  booktitle     = {2011 26th IEEE/ACM International Conference on Automated Software Engineering (ASE 2011)},
+  year          = {2011},
+  pages         = {53-62},
+  doi           = {10.1109/ASE.2011.6100119},
+  __markedentry = {[a72186:1]},
+  comment       = {Das Paper erklärt, wie die Branch Distance Funktion effizienter gestaltet werden kann, um komplizierte verschachtelte If-Konditionen zu erfüllen mit Hilfe von Dynamic Symbolic Execution.},
+}
+
+@Article{Khari2019,
+  author        = {Khari, Manju and Kumar, Prabhat},
+  title         = {An extensive evaluation of search-based software testing: a review},
+  journal       = {Soft Computing},
+  year          = {2019},
+  volume        = {23},
+  number        = {6},
+  month         = {Mar},
+  pages         = {1933-1946},
+  issn          = {1433-7479},
+  doi           = {10.1007/s00500-017-2906-y},
+  url           = {https://doi.org/10.1007/s00500-017-2906-y},
+  __markedentry = {[a72186:1]},
+  abstract      = {In recent years, search-based software testing (SBST) is the active research topic in software testing. SBST is the process of generating test cases that use metaheuristics for optimization of a task in the framework of software testing to solve difficult NP-hard problems. The best fitness results must be found with the heuristic search among many possibilities for a more cost-effective testing process and automate the process of generating test cases. Although search-based test data generation is a field of interest, some challenges remain unknown. The main objective of this survey is to find the main topics and trends in this emerging field of search-based software testing by examining the methods and the literature of software testing. A review of earlier studies of search-based software testing from the year 1996 to 2016 is discussed with the application of metaheuristics for the optimization of software testing.},
+  comment       = {Eine systematische Übersicht über das SBST, die Hierarchie der Algorithmen usw.},
+  day           = {01},
+}
+
+@InProceedings{10.1007/11817963_38,
+  author        = {Sen, Koushik and Agha, Gul},
+  title         = {CUTE and jCUTE: Concolic Unit Testing and Explicit Path Model-Checking Tools},
+  booktitle     = {Computer Aided Verification},
+  year          = {2006},
+  editor        = {Ball, Thomas and Jones, Robert B.},
+  publisher     = {Springer Berlin Heidelberg},
+  isbn          = {978-3-540-37411-4},
+  pages         = {419--423},
+  __markedentry = {[a72186:1]},
+  abstract      = {CUTE, a Concolic Unit Testing Engine for C and Java, is a tool to systematically and automatically test sequential C programs (including pointers) and concurrent Java programs. CUTE combines concrete and symbolic execution in a way that avoids redundant test cases as well as false warnings. The tool also introduces a race-flipping technique to efficiently test and model check concurrent programs with data inputs.},
+  address       = {Berlin, Heidelberg},
+  comment       = {jCUTE SBST Tool für Java und C, welches automatisch jUnit tests generieren und außerdem Probleme bei concurrent Programmen erkennen kann.},
+}
+
+@InProceedings{10.1145/800175.809889,
+  author        = {Davis, Martin D. and Weyuker, Elaine J.},
+  title         = {Pseudo-Oracles for Non-Testable Programs},
+  booktitle     = {Proceedings of the ACM '81 Conference},
+  year          = {1981},
+  series        = {ACM '81},
+  publisher     = {Association for Computing Machinery},
+  isbn          = {0897910494},
+  pages         = {254–257},
+  doi           = {10.1145/800175.809889},
+  url           = {https://doi.org/10.1145/800175.809889},
+  __markedentry = {[a72186:1]},
+  abstract      = {The most commonly used method of validating a program is by testing. The programmer typically runs the program on some test cases, and if and when they run correctly, the program is considered to be correct.We know that many difficult problems are associated with testing. One such problem is that it is a fundamental part of the testing process to require the ability to infer properties of a program by observing the program's behavior on selected inputs. The most common property that one hopes to infer through testing is correctness. But unless the program is run on the entire input domain, there are infinitely many programs which produce the correct output on the selected inputs, but produce incorrect output for some other element of the domain.},
+  address       = {New York, NY, USA},
+  comment       = {Das Paper beschreibt die Pseudo-Orakel für non-testable Programme. Diese werden dadurch realisiert, dass ein SUT von zwei Teams unabhängig implementiert wird (mittels zwei verschiedenen Sprachen) und die Ausgaben dieser beiden Programmen, die nach Spezifikation äquivalent sein sollten, werden verglichen.},
+  numpages      = {4},
+}
+
+@InProceedings{10.1145/1569901.1570127,
+  author        = {McMinn, Phil},
+  title         = {Search-Based Failure Discovery Using Testability Transformations to Generate Pseudo-Oracles},
+  booktitle     = {Proceedings of the 11th Annual Conference on Genetic and Evolutionary Computation},
+  year          = {2009},
+  series        = {GECCO '09},
+  publisher     = {Association for Computing Machinery},
+  location      = {Montreal, Qu\'{e}bec, Canada},
+  isbn          = {9781605583259},
+  pages         = {1689–1696},
+  doi           = {10.1145/1569901.1570127},
+  url           = {https://doi.org/10.1145/1569901.1570127},
+  __markedentry = {[a72186:1]},
+  abstract      = {Testability transformations are source-to-source program transformations that are designed to improve the testability of a program. This paper introduces a novel approach in which transformations are used to improve testability of a program by generating a pseudo-oracle. A pseudo-oracle is an alternative version of a program under test whose output can be compared with the original. Differences in output between the two programs may indicate a fault in the original program. Two transformations are presented. The first can highlight numerical inaccuracies in programs and cumulative roundoff errors, whilst the second may detect the presence of race conditions in multi-threaded code.Once a pseudo-oracle is generated, techniques are applied from the field of search-based testing to automatically find differences in output between the two versions of the program. The results of an experimental study presented in the paper show that both random testing and genetic algorithms are capable of utilizing the pseudo-oracles to automatically find program failures.Using genetic algorithms it is possible to explicitly maximize the discrepancies between the original programs and their pseudo-oracles. This allows for the production of test cases where the observable failure is highly pronounced, enabling the tester to establish the seriousness of the underlying fault.},
+  address       = {New York, NY, USA},
+  comment       = {Das Paper baut auf dem Originalpaper von Davis und Weyuker über Pseudo-Orakel und versucht, solche Pseudo-Orakel automatisch zu generieren, um ein zweites Program zu erstellen, welches die gleichen Outputs haben sollte.},
+  keywords      = {search-based software testing, testability transformation, non-testable program, oracle, program transformation, pseudo-oracle},
+  numpages      = {8},
+}
+
+@InProceedings{528535,
+  author        = {Offutt, A.J.},
+  title         = {A practical system for mutation testing: help for the common programmer},
+  booktitle     = {Proceedings., International Test Conference},
+  year          = {1994},
+  pages         = {824-830},
+  doi           = {10.1109/TEST.1994.528535},
+  __markedentry = {[a72186:1]},
+  comment       = {Grundlagen von Mutation Testing in Unit-Tests.},
+}
+
+@Article{1265732,
+  author        = {Harman, M. and Hu, L. and Hierons, R. and Wegener, J. and Sthamer, H. and Baresel, A. and Roper, M.},
+  title         = {Testability transformation},
+  journal       = {IEEE Transactions on Software Engineering},
+  year          = {2004},
+  volume        = {30},
+  number        = {1},
+  pages         = {3-16},
+  doi           = {10.1109/TSE.2004.1265732},
+  __markedentry = {[a72186:1]},
+  comment       = {Quellcode-zu-Quellcode Transformationen, um bessere Performanz für Testgenerierung zu kriegen. Dabei wird ein SUT unter bestimmten Transformationen zu einem ähnlichen Programm umgewandelt.},
+}
+
+@InProceedings{10.1145/1450058.1450087,
+  author        = {Godefroid, Patrice and Levin, Michael Y. and Molnar, David A.},
+  title         = {Active Property Checking},
+  booktitle     = {Proceedings of the 8th ACM International Conference on Embedded Software},
+  year          = {2008},
+  series        = {EMSOFT '08},
+  publisher     = {Association for Computing Machinery},
+  location      = {Atlanta, GA, USA},
+  isbn          = {9781605584683},
+  pages         = {207–216},
+  doi           = {10.1145/1450058.1450087},
+  url           = {https://doi.org/10.1145/1450058.1450087},
+  __markedentry = {[a72186:1]},
+  abstract      = {Runtime property checking (as implemented in tools like Purify or Valgrind) checks whether a program execution satisfies a property. Active property checking extends runtime checking by checking whether the property is satisfied by all program executions that follow the same program path. This check is performed on a symbolic execution of the given program path using a constraint solver. If the check fails, the constraint solver generates an alternative program input triggering a new program execution that follows the same program path but exhibits a property violation. Combined with systematic dynamic test generation, which attempts to exercise all feasible paths in a program, active property checking defines a new form of dynamic software model checking (program verification). In this paper, we formalize and study active property checking. We show how static and dynamic type checking can be extended with active type checking. Then, we discuss how to implement active property checking efficiently. Finally, we discuss results of experiments with media playing applications on Windows, where active property checking was able to detect several new security-related bugs.},
+  address       = {New York, NY, USA},
+  comment       = {Testability Transformation, um für bestimmte Fehler wie DivisionByZero oder IndexOutOfBounds einen eigenen Branch zu erstellen, wodurch die Suche in bestimmte Richtung gelenkt werden kann.},
+  keywords      = {symbolic execution, security, software testing},
+  numpages      = {10},
+}
+
+@Article{GUO2016204,
+  author        = {Hai-Feng Guo},
+  title         = {A semantic approach for automated test oracle generation},
+  journal       = {Computer Languages, Systems \& Structures},
+  year          = {2016},
+  volume        = {45},
+  pages         = {204-219},
+  issn          = {1477-8424},
+  doi           = {https://doi.org/10.1016/j.cl.2016.01.006},
+  url           = {https://www.sciencedirect.com/science/article/pii/S147784241530021X},
+  __markedentry = {[a72186:1]},
+  abstract      = {This paper presents the design, implementation, and applications of a software testing tool, TAO, which allows users to specify and generate test cases and oracles in a declarative way. Extended from its previous grammar-based test generation tool, TAO provides a declarative notation for defining denotational semantics on each productive grammar rule, such that when a test case is generated, its expected semantics will be evaluated automatically as well, serving as its test oracle. TAO further provides a simple tagging mechanism to embed oracles into test cases for bridging the automation between test case generation and software testing. Two practical case studies are used to illustrate how automated oracle generation can be effectively integrated with grammar-based test generation in different testing scenarios: locating fault-inducing input patterns on Java applications; and Selenium-based automated web testing.},
+  comment       = {Explizite Tags als Orakel für Testgenerierung.},
+  keywords      = {Software testing, Test case generation, Test oracle, Denotational semantics},
+}
+
+@Article{10.1145/3293455,
+  author        = {Arcuri, Andrea},
+  title         = {RESTful API Automated Test Case Generation with EvoMaster},
+  journal       = {ACM Trans. Softw. Eng. Methodol.},
+  year          = {2019},
+  volume        = {28},
+  number        = {1},
+  month         = jan,
+  issn          = {1049-331X},
+  doi           = {10.1145/3293455},
+  url           = {https://doi.org/10.1145/3293455},
+  __markedentry = {[a72186:1]},
+  abstract      = {RESTful APIs are widespread in industry, especially in enterprise applications developed with a microservice architecture. A RESTful web service will provide data via an API over the network using HTTP, possibly interacting with databases and other web services. Testing a RESTful API poses challenges, because inputs/outputs are sequences of HTTP requests/responses to a remote server. Many approaches in the literature do black-box testing, because often the tested API is a remote service whose code is not available. In this article, we consider testing from the point of view of the developers, who have full access to the code that they are writing. Therefore, we propose a fully automated white-box testing approach, where test cases are automatically generated using an evolutionary algorithm. Tests are rewarded based on code coverage and fault-finding metrics. However, REST is not a protocol but rather a set of guidelines on how to design resources accessed over HTTP endpoints. For example, there are guidelines on how related resources should be structured with hierarchical URIs and how the different HTTP verbs should be used to represent well-defined actions on those resources. Test-case generation for RESTful APIs that only rely on white-box information of the source code might not be able to identify how to create prerequisite resources needed before being able to test some of the REST endpoints. Smart sampling techniques that exploit the knowledge of best practices in RESTful API design are needed to generate tests with predefined structures to speed up the search. We implemented our technique in a tool called EvoMaster, which is open source. Experiments on five open-source, yet non-trivial, RESTful services show that our novel technique automatically found 80 real bugs in those applications. However, obtained code coverage is lower than the one achieved by the manually written test suites already existing in those services. Research directions on how to further improve such an approach are therefore discussed, such as the handling of SQL databases.},
+  address       = {New York, NY, USA},
+  articleno     = {3},
+  comment       = {SBST für REST APIs mit Orakel Generierung.},
+  issue_date    = {February 2019},
+  keywords      = {REST, testing, web service, Software engineering},
+  numpages      = {37},
+  publisher     = {Association for Computing Machinery},
+}
+
+@Article{6963470,
+  author        = {Barr, Earl T. and Harman, Mark and McMinn, Phil and Shahbaz, Muzammil and Yoo, Shin},
+  title         = {The Oracle Problem in Software Testing: A Survey},
+  journal       = {IEEE Transactions on Software Engineering},
+  year          = {2015},
+  volume        = {41},
+  number        = {5},
+  pages         = {507-525},
+  doi           = {10.1109/TSE.2014.2372785},
+  __markedentry = {[a72186:1]},
+  comment       = {Beschreibt Arten von Orakel (automatische und manuelle) und wie sie zusammenhängen.},
+}
+
+@InProceedings{5954405,
+  author        = {McMinn, Phil},
+  title         = {Search-Based Software Testing: Past, Present and Future},
+  booktitle     = {2011 IEEE Fourth International Conference on Software Testing, Verification and Validation Workshops},
+  year          = {2011},
+  pages         = {153-163},
+  doi           = {10.1109/ICSTW.2011.100},
+  __markedentry = {[a72186:1]},
+  comment       = {Eine gute Übersicht was SBST überhaupt ist und welche Arten von SBST momentan verbreitet sind: temporal testing, structural testing, functional testing, mit realen Anwendungsbeispielen. },
+  keywords      = {rank5},
+}
+
+@InProceedings{10.1145/1062455.1062530,
+  author        = {Andrews, J. H. and Briand, L. C. and Labiche, Y.},
+  title         = {Is Mutation an Appropriate Tool for Testing Experiments?},
+  booktitle     = {Proceedings of the 27th International Conference on Software Engineering},
+  year          = {2005},
+  series        = {ICSE '05},
+  publisher     = {Association for Computing Machinery},
+  location      = {St. Louis, MO, USA},
+  isbn          = {1581139632},
+  pages         = {402–411},
+  doi           = {10.1145/1062455.1062530},
+  url           = {https://doi.org/10.1145/1062455.1062530},
+  __markedentry = {[a72186:1]},
+  abstract      = {The empirical assessment of test techniques plays an important role in software testing research. One common practice is to instrument faults, either manually or by using mutation operators. The latter allows the systematic, repeatable seeding of large numbers of faults; however, we do not know whether empirical results obtained this way lead to valid, representative conclusions. This paper investigates this important question based on a number of programs with comprehensive pools of test cases and known faults. It is concluded that, based on the data available thus far, the use of mutation operators is yielding trustworthy results (generated mutants are similar to real faults). Mutants appear however to be different from hand-seeded faults that seem to be harder to detect than real faults.},
+  address       = {New York, NY, USA},
+  comment       = {Eine empirische Forschung, die zeigt, dass Test Suites, die gut im Finden von Mutanten sind, sind auch gut im Finden von echten Bugs.},
+  keywords      = {hand-seeded faults, real faults, mutants},
+  numpages      = {10},
+}
+
+@InProceedings{5770604,
+  author        = {Fraser, Gordon and Arcuri, Andrea},
+  title         = {It is Not the Length That Matters, It is How You Control It},
+  booktitle     = {2011 Fourth IEEE International Conference on Software Testing, Verification and Validation},
+  year          = {2011},
+  month         = {March},
+  pages         = {150-159},
+  doi           = {10.1109/ICST.2011.54},
+  __markedentry = {[a72186:1]},
+  abstract      = {The length of test cases is a little investigated topic in search-based test generation for object oriented software, where test cases are sequences of method calls. While intuitively longer tests can achieve higher overall code coverage, there is always the threat of bloat - a complex phenomenon in evolutionary computation, where the length abnormally grows over time. In this paper, we show that bloat indeed also occurs in the context of test generation for object oriented software. We present different techniques to overcome the problem of length bloat, and evaluate all possible combinations of these techniques using different search lengths. Experiments on a set of difficult search targets selected from several open source and industrial projects show that the important choice in search-based testing is not the length of test cases, but how to make sure that this length does not become bloated.},
+  comment       = {Es werden Techniken vorgestellt, um generierte Tests so klein wie möglich zu halten und Bloating zu vermeiden. Außerdem wird die Berechnung und Normalisierung der Branch und Approach Distance erklärt. Zudem werden die Crossover, Selection und Mutation Operatoren anhand von Beispielen erklärt. 
+Insgesamt wird im Paper jeder Schritt der Generierung und Evolution relativ genau erklärt.},
+  issn          = {2159-4848},
+  keywords      = {rank5},
+}
+
+@InProceedings{5477052,
+  author        = {Arcuri, Andrea},
+  title         = {Longer is Better: On the Role of Test Sequence Length in Software Testing},
+  booktitle     = {2010 Third International Conference on Software Testing, Verification and Validation},
+  year          = {2010},
+  month         = {April},
+  pages         = {469-478},
+  doi           = {10.1109/ICST.2010.16},
+  __markedentry = {[a72186:1]},
+  abstract      = {In the presence of an internal state, often it is required a sequence of function calls to test software. In fact, to cover a particular branch of the code, a sequence of previous function calls might be required to put the internal state in the appropriate configuration. Internal states are not only present in object-oriented software, but also in procedural software(e.g., static variables in C programs). In the literature, there are many techniques to test this type of software. However, to our best knowledge, the properties related to choosing the length of these sequences have received only little attention in the literature. In this paper, we analyse the role that the length plays in software testing, in particular branch coverage. We show that on “difficult” software testing benchmarks longer test sequences make their testing trivial. Hence, we argue that the choice of the length of the test sequences is very important in software testing.},
+  comment       = {Arcuri untersucht, dass die Länge der Tests direkt mit der Coverage der Tests korreliert.},
+  issn          = {2159-4848},
+  keywords      = {rank4},
+}
+
+@Article{whitley1994genetic,
+  author        = {Whitley, Darrell},
+  title         = {A genetic algorithm tutorial},
+  journal       = {Statistics and computing},
+  year          = {1994},
+  volume        = {4},
+  number        = {2},
+  pages         = {65--85},
+  __markedentry = {[a72186:1]},
+  comment       = {Einführung in genetische Algorithmen},
+  publisher     = {Springer},
+}
+
+@Article{WHITLEY2001817,
+  author        = {Darrell Whitley},
+  title         = {An overview of evolutionary algorithms: practical issues and common pitfalls},
+  journal       = {Information and Software Technology},
+  year          = {2001},
+  volume        = {43},
+  number        = {14},
+  pages         = {817-831},
+  issn          = {0950-5849},
+  doi           = {https://doi.org/10.1016/S0950-5849(01)00188-4},
+  url           = {https://www.sciencedirect.com/science/article/pii/S0950584901001884},
+  __markedentry = {[a72186:1]},
+  abstract      = {An overview of evolutionary algorithms is presented covering genetic algorithms, evolution strategies, genetic programming and evolutionary programming. The schema theorem is reviewed and critiqued. Gray codes, bit representations and real-valued representations are discussed for parameter optimization problems. Parallel Island models are also reviewed, and the evaluation of evolutionary algorithms is discussed.},
+  comment       = {Eine weiterführende Einführung in die genetischen Algorithmen},
+  keywords      = {Genetic algorithms, Evolution strategies, Genetic programming, Evolutionary programming, Search, Automated programming, Parallel algorithms},
+}
+
+@Article{BUHLER20083144,
+  author        = {Oliver Bühler and Joachim Wegener},
+  title         = {Evolutionary functional testing},
+  journal       = {Computers \& Operations Research},
+  year          = {2008},
+  volume        = {35},
+  number        = {10},
+  pages         = {3144-3160},
+  note          = {Part Special Issue: Search-based Software Engineering},
+  issn          = {0305-0548},
+  doi           = {https://doi.org/10.1016/j.cor.2007.01.015},
+  url           = {https://www.sciencedirect.com/science/article/pii/S0305054807000329},
+  __markedentry = {[a72186:1]},
+  abstract      = {The development and testing of software-based systems is an essential activity for the automotive industry. The 50–70 software-based systems with different complexities and developed by various suppliers are installed in today's premium vehicles, communicating with each other via different bus systems. The integration and testing of systems of this complexity is a very challenging task. The aim of testing is to detect faults in the systems under test and to convey confidence in the correct functioning of the systems if no faults are found during comprehensive testing. Faults not found in the different testing phases could have significant consequences that range from customer dissatisfaction to damage of physical property or, in safety-relevant areas, even to the endangering of human lives. Therefore, the thorough testing of developed systems is essential. Evolutionary testing tries to improve the effectiveness and efficiency of the testing process by transforming testing objectives into search problems, and applying evolutionary computation in order to solve them. The most important class of testing methods is functional testing. However, functional testing is difficult to automate by evolutionary testing. This work will describe how evolutionary testing could be applied to automate functional testing in general and the testing of complex automotive systems in particular. It presents two case studies and shows how evolutionary testing is effective at finding faults in the functional behaviour of these systems. In addition, a quantitative comparison with manual and random test case selection is done for one application.},
+  comment       = {DaimlerChrysler SBST für funktionales Testen der automatischen Einparkhilfe},
+  keywords      = {Software testing, Functional testing, Evolutionary testing, Evolutionary functional testing, Testing process, Automotive systems},
+}
+
+@InProceedings{Shamshiri2015,
+  author        = {Shamshiri, Sina and Just, Rene and Rojas, Jos\'{e} Miguel and Fraser, Gordon and McMinn, Phil and Arcuri, Andrea},
+  title         = {Do Automatically Generated Unit Tests Find Real Faults? An Empirical Study of Effectiveness and Challenges},
+  booktitle     = {International Conference on Automated Software Engineering (ASE 2015)},
+  year          = {2015},
+  publisher     = {ACM},
+  pages         = {201--211},
+  __markedentry = {[a72186:1]},
+  comment       = {Noch zu lesen},
+}
+
+@Article{Fraser2015,
+  author        = {Fraser, Gordon and Arcuri, Andrea and McMinn, Phil},
+  title         = {A Memetic Algorithm for Whole Test Suite Generation},
+  journal       = {Journal of Systems and Software},
+  year          = {2015},
+  volume        = {103},
+  pages         = {311--327},
+  __markedentry = {[a72186:1]},
+  comment       = {Feingranulare Erweiterung der genetischen Algorithme, noch zu lesen},
+  keywords      = {rank4},
+}
+
+@InProceedings{6200103,
+  author        = {Fraser, Gordon and Arcuri, Andrea},
+  title         = {The Seed is Strong: Seeding Strategies in Search-Based Software Testing},
+  booktitle     = {2012 IEEE Fifth International Conference on Software Testing, Verification and Validation},
+  year          = {2012},
+  pages         = {121-130},
+  doi           = {10.1109/ICST.2012.92},
+  __markedentry = {[a72186:1]},
+  comment       = {Das Paper erklärt, wie SBST mit bestimmten Seedingstechniken anstatt von Random Initial Population bessere erzielen könnte.},
+}
+
+@InProceedings{10.1145/1143997.1144316,
+  author        = {Tlili, Marouane and Wappler, Stefan and Sthamer, Harmen},
+  title         = {Improving Evolutionary Real-Time Testing},
+  booktitle     = {Proceedings of the 8th Annual Conference on Genetic and Evolutionary Computation},
+  year          = {2006},
+  series        = {GECCO '06},
+  publisher     = {Association for Computing Machinery},
+  location      = {Seattle, Washington, USA},
+  isbn          = {1595931864},
+  pages         = {1917–1924},
+  doi           = {10.1145/1143997.1144316},
+  url           = {https://doi.org/10.1145/1143997.1144316},
+  __markedentry = {[a72186:1]},
+  abstract      = {Embedded systems are often used in a safety-critical context, e.g. in airborne or vehicle systems. Typically, timing constraints must be satisfied so that real-time embedded systems work properly and safely. Execution time testing involves finding the best and worst case execution times to determine if timing constraints are respected. Evolutionary real-time testing (ERTT) is used to dynamically search for the extreme execution times. It can be shown that ERTT outperforms the traditional methods based on static analysis. However, during the evolutionary search, some parts of the source code are never accessed. Moreover, it turns out that ERTT delivers different extreme execution times in a high number of generations for the same test object, the results are neither reliable nor efficient. We propose a new approach to ERTT which makes use of seeding the evolutionary algorithm with test data achieving a high structural coverage. Using such test data ensures a comprehensive exploration of the search space and leads to rise the confidence in the results. We present also another improvement method based on restricting the range of the input variables in the initial population in order to reduce the search space. Experiments with these approaches demonstrate an increase of reliability in terms of constant extreme execution times and a gain in efficiency in terms of number of generations needed.},
+  address       = {New York, NY, USA},
+  comment       = {DaimlerChrysler versucht in dem Paper, die kritischen Echtzeitsysteme mit Hilfe von SBST zu testen, indem die möglichst schlechte Ausführungszeit gesucht wird.},
+  keywords      = {software tools, software engineering},
+  numpages      = {8},
+}
+
+@Misc{StackOverflow2020,
+  author        = {{Stack Overflow}},
+  title         = {{Stack Overflow Developer Survey 2020}},
+  year          = {2020},
+  url           = {https://insights.stackoverflow.com/survey/2020#technology-most-loved-dreaded-and-wanted-languages-loved},
+  urldate       = {2021-05-02},
+  __markedentry = {[a72186:1]},
+}
+
+@Misc{Rust10,
   author        = {{The Rust Core Team}},
   title         = {Announcing Rust 1.0},
   year          = {2015},
   date          = {2015-05-15},
   url           = {https://blog.rust-lang.org/2015/05/15/Rust-1.0.html},
   urldate       = {2021-06-28},
+  __markedentry = {[a72186:1]},
 }
 
 @InProceedings{cadar2008klee,
@@ -25,30 +608,39 @@ year = {2020}
   year          = {2008},
   volume        = {8},
   pages         = {209--224},
+  __markedentry = {[a72186:1]},
+  groups        = {State of the Art Tools},
 }
-
-
 
 @Misc{Microsoft2019MemoryBugs,
   author   = {Matt Miller},
   title    = {Trends, challenges, and strategic shifts in the software vulnerability mitigation landscape},
   year     = {2019},
-  comment  = {Microfosft's Präsentation über die Anzahl von Speicher-spezifischen Bugs in ihrer Software.},
   date     = {2019-02-07},
-  keywords = {microsoft, memory},
   url      = {https://github.com/Microsoft/MSRC-Security-Research/blob/master/presentations/2019_02_BlueHatIL/2019_01%20-%20BlueHatIL%20-%20Trends%2C%20challenge%2C%20and%20shifts%20in%20software%20vulnerability%20mitigation.pdf},
+  urldate  = {2021-06-28},
+  comment  = {Microfosft's Präsentation über die Anzahl von Speicher-spezifischen Bugs in ihrer Software.},
+  keywords = {microsoft, memory},
 }
-
 
 @Misc{MicrosoftJoinsRust,
   author  = {Nell Shamrell-Harrington},
   title   = {Microsoft joins Rust Foundation},
   year    = {2021},
-  comment = {Microsoft Blog erzählt, dass Microsoft in OSS Rust Foundation eingestiegen ist.},
   date    = {2021-02-08},
   url     = {https://cloudblogs.microsoft.com/opensource/2021/02/08/microsoft-joins-rust-foundation/},
+  urldate = {2021-06-28},
+  comment = {Microsoft Blog erzählt, dass Microsoft in OSS Rust Foundation eingestiegen ist.},
 }
 
+@Misc{FutureOfRust,
+  author  = {Cameron Manavian},
+  title   = {Post-Mozilla Rust: The Future of the Rust Language},
+  year    = {2020},
+  date    = {2020-08-19},
+  url     = {https://medium.com/the-innovation/post-mozilla-rust-the-future-of-the-rust-language-61a5cfb1f615},
+  comment = {The companies that love Rust.},
+}
 
 @Misc{AmazonLovesRust,
   author  = {Matt Asay},
@@ -59,7 +651,6 @@ year = {2020}
   urldate = {2021-06-28},
 }
 
-
 @Misc{RustInAndroid,
   author = {Stoep, Jeff Vander and Hines, Stephen},
   title  = {Rust in the Android platform},
@@ -68,12 +659,29 @@ year = {2020}
   url    = {https://security.googleblog.com/2021/04/rust-in-android-platform.html},
 }
 
-
 @Misc{GoogleRustFoundation,
   author  = {Lars Bergstrom},
   title   = {Google joins the Rust Foundation},
   year    = {2021},
-  comment = {Google über ihre Systeme, die mit Rust geschrieben wurden.},
   date    = {2021-02-08},
   url     = {https://opensource.googleblog.com/2021/02/google-joins-rust-foundation.html},
+  comment = {Google über ihre Systeme, die mit Rust geschrieben wurden.},
+}
+
+@Misc{,
+  author = {Disselkoen, Craig and Ayers, Hudson},
+  title  = {haybale: Symbolic execution of LLVM IR},
+  groups = {State of the Art Tools},
+}
+
+@Misc{,
+  comment = {Der Testgenerator, der LLVM IR verwendet, um darauf mit Hilfe von DSE Tests zu generieren. Außerdem beschreiben die Autoren mehrere Techniken, wie sie Seiteneffekte wie Schreiben oder Lesen in Dateien oder Umgebungsvariablen behandeln.},
+  groups  = {State of the Art Tools},
+}
+
+@Comment{jabref-meta: databaseType:biblatex;}
+
+@Comment{jabref-meta: grouping:
+0 AllEntriesGroup:;
+1 StaticGroup:State of the Art Tools\;0\;1\;0x0000ffff\;\;\;;
 }
