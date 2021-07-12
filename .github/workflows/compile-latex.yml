@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name: Compile latex to pdf
+name: Build LaTeX document
 on: [push]
 jobs:
   build_latex:
@@ -9,6 +9,6 @@ jobs:
       - name: Set up Git repository
         uses: actions/checkout@v2
       - name: Compile LaTeX document
-        uses: xu-cheng/latex-action@v2
+        uses: dante-ev/latex-action@latest
         with:
           root_file: thesis.tex
