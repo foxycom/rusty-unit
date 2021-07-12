@@ -1,5 +1,7 @@
 use testify::algorithm::MOSA;
 use testify::chromosome::{ChromosomeGenerator, Chromosome};
+use clap::{Clap};
+use instrument::instrument;
 
 struct Generator {
 
@@ -28,13 +30,24 @@ impl Chromosome for BitString {
         todo!()
     }
 
-    fn crossover(&self, other: impl Chromosome) -> Self {
+    fn crossover(&self, other: &Self) -> (Self, Self) {
         todo!()
     }
 }
 
+#[derive(Clap)]
+struct CliOpts {
+    #[clap(short, long)]
+    file: String
+}
+
 fn main() {
-    let generator = Generator {};
-    MOSA::new().chromosome_generator(generator).population_size(40).run();
+    //let generator = Generator {};
+    //MOSA::new().chromosome_generator(generator).population_size(40).run();
+    let opts: CliOpts = CliOpts::parse();
+    println!("Instrumenting {}", opts.file);
+
+    instrument(opts.file);
+
 
 }
