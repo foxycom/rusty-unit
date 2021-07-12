@@ -1,9 +1,16 @@
+mod branch;
+
 use std::fs;
 use std::io::Write;
-use syn::{Item, ItemFn, Stmt, Expr, Block, Path, ExprIf, File, ItemStruct, ItemImpl, Ident, ItemUse};
+use syn::{Item, ItemFn, Stmt, Expr, Block, Path, ExprIf, File, ItemStruct,
+          ItemImpl, Ident, ItemUse, ExprBinary, BinOp};
 use quote::ToTokens;
-use syn::visit_mut::{VisitMut, visit_expr_if_mut, visit_item_fn_mut, visit_file_mut};
+use syn::visit_mut::{VisitMut, visit_expr_if_mut, visit_item_fn_mut,
+                     visit_file_mut, visit_expr_binary_mut};
+use crate::branch::{Branch};
 
+const ROOT_BRANCH: &'static str = "root({}, {})";
+const BRANCH: &'static str = "branch({})";
 
 pub fn instrument(file: String) {
     let content = fs::read_to_string(file)
@@ -15,18 +22,7 @@ pub fn instrument(file: String) {
 
     let mut visitor = Visitor::new("trace.txt".to_string());
     visitor.visit_file_mut(&mut ast);
-    /*let items = &ast.items;
-
-    // Gets top level free-standing functions
-    let mut top_fns: Vec<ItemFn> = items.iter().filter_map(|i| {
-        if let Item::Fn(item_fn) = i {
-            Some(item_fn.clone())
-        } else {
-            None
-        }
-    }).collect();
-
-    top_fns.iter_mut().for_each(|f| instrument_fn(f));*/
+    visitor.finalize();
 
     let tokens = ast.to_token_stream();
     let src_code = tokens.to_string();
@@ -42,6 +38,8 @@ fn src_to_file(src: &str, path: String) {
 struct Visitor {
     branch_id: u64,
     trace_file: String,
+    branches: Vec<Branch>,
+    condition: bool
 }
 
 impl Visitor {
@@ -49,28 +47,45 @@ impl Visitor {
         Visitor {
             branch_id: 0,
             trace_file,
+            branches: Vec::new(),
+            condition: false
         }
     }
 
-    fn instrument_branch(&mut self, branch: &mut Block) {
-        println!("Instrumenting branch: {:?}", branch);
+    fn finalize(&self) {
+        let serialized_branches = serde_json::to_string(&self.branches).unwrap();
+        fs::write("branches.json", serialized_branches).unwrap();
+    }
+
+    fn instrument_branch(&mut self, block: &mut Block) {
+        //println!("Instrumenting branch: {:?}", block);
+        self.branch_id += 1;
         let branch_id = self.branch_id;
+        let branch = Branch::Decision(branch_id);
         let trace_stmt: Stmt = syn::parse_quote! {
             TestifyMonitor::trace_branch(#branch_id);
         };
-        self.branch_id += 1;
-        let stmts = &mut branch.stmts;
+        let stmts = &mut block.stmts;
         stmts.insert(0, trace_stmt);
+        self.branches.push(branch);
+    }
+
+    fn instrument_condition(&mut self, cond: &mut Expr) {
+
     }
 
     fn instrument_fn(&mut self, block: &mut Block, ident: &Ident) {
+        self.branch_id += 1;
+        let branch_id = self.branch_id;
+        let branch = Branch::Root(branch_id);
         let name = ident.to_string();
         let trace_stmt = syn::parse_quote! {
-            TestifyMonitor::trace_fn(String::from(#name));
+            TestifyMonitor::trace_fn(String::from(#name), #branch_id);
         };
 
         let stmts = &mut block.stmts;
         stmts.insert(0, trace_stmt);
+        self.branches.push(branch);
     }
 
     fn uses(&mut self) -> Vec<ItemUse> {
@@ -99,11 +114,11 @@ impl Visitor {
                 const TRACE_FILE: &'static str = #trace_file;
 
                 fn trace_branch(id: u64) {
-                    TestifyMonitor::write(format!("b[{}]", id));
+                    TestifyMonitor::write(format!(#BRANCH, id));
                 }
 
-                fn trace_fn(name: String) {
-                    TestifyMonitor::write(format!(">[{}]", name));
+                fn trace_fn(name: String, id: u64) {
+                    TestifyMonitor::write(format!(#ROOT_BRANCH, name, id));
                 }
 
                 fn write(output: String) {
@@ -125,11 +140,38 @@ impl Visitor {
 
 
 impl VisitMut for Visitor {
+    /*fn visit_expr_binary_mut(&mut self, i: &mut ExprBinary) {
+        for it in &mut i.attrs {
+            VisitMut::visit_attribute_mut(self, it);
+        }
+        VisitMut::visit_expr_mut(self, &mut *i.left);
+        VisitMut::visit_bin_op_mut(self, &mut i.op);
+        VisitMut::visit_expr_mut(self, &mut *i.right);
+
+        if self.condition {
+            match i.op {
+                BinOp::Gt(_) => {
+
+                }
+                // TODO also add other binary operations
+                _ => {}
+            }
+        }
+    }*/
+
     // TODO use also other visitors
     fn visit_expr_if_mut(&mut self, i: &mut ExprIf) {
-        VisitMut::visit_block_mut(self, &mut i.then_branch);
-        self.instrument_branch(&mut i.then_branch);
+        for it in &mut i.attrs {
+            VisitMut::visit_attribute_mut(self, it);
+        }
 
+        self.condition = true;
+        VisitMut::visit_expr_mut(self, &mut *i.cond);
+        self.condition = true;
+
+        VisitMut::visit_block_mut(self, &mut i.then_branch);
+
+        self.instrument_branch(&mut i.then_branch);
         if let Some((_, branch)) = &mut i.else_branch {
             VisitMut::visit_expr_mut(self, branch.as_mut());
             if let Expr::Block(expr_block) = branch.as_mut() {
@@ -138,6 +180,8 @@ impl VisitMut for Visitor {
             }
         }
     }
+
+
 
     fn visit_file_mut(&mut self, i: &mut File) {
         for at in &mut i.attrs {
