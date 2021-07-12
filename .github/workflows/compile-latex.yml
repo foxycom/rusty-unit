@@ -1,0 +1,15 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+name: Compile latex to pdf
+on: [push]
+jobs:
+  build_latex:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Git repository
+        uses: actions/checkout@v2
+      - name: Compile LaTeX document
+        uses: xu-cheng/latex-action@v2
+        with:
+          root_file: thesis.tex
