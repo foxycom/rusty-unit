@@ -74,7 +74,7 @@ Davis and Weyuker~\cite{10.1145/800175.809889} haben den Begriff non-testable pr
 
 Das manuelle Erstellen von Pseudoorakeln ist sehr mühselig und ist im Kontext von Testgenerierung für große Projekte nicht lohnenswert. Harman et al.~\cite{1265732} haben das Prinzip der Testability Transformations vorgestellt. Diese sind Quelltext-zu-Quelltext Transformationen, die zum Verbessern der Performanz verschiedener Testgenerierungstechniken führen sollen. McMinn~\cite{10.1145/1569901.1570127} hat diese Idee aufgegriffen und vorgeschlagen, Pseudoorakel für ein gegebenes Programm automatish zu generieren. Er wendet Testability Transformations an, um das originale Programm zu verändern und eine zweite Version zu generieren, die scheinbar gleiche Ausgaben wie die originale haben sollte, es jedoch zu Diskrepanzen kommen kann. Dazu hat er zwei Beispiele aufgeführt: Fließkomma-Arithmetik und Multithreading in Java. Beim Ersteren werden, beispielsweise Additionen zwischen primitiven Fließkommatypen, die nach dem IEEE-Standard etwas ungenau in den hinteren Nachkommastellen sind~\cite{10.1145/103162.103163}, durch Javas BigDecimal vertauscht. Zum Beispiel führt die Berechnung~$0.1 + 0.1 + 0.1$ in Java zum Ergebnis~$0.30000000000000004$, anstatt~$0.3$ (siehe~\cref{lst:java-transformations}).
 
-\begin{lstlisting}[language=Java, caption=Comparing floating-point arithmetic in Java (version 6) using double compared to BigDecimal~\cite{10.1145/1569901.1570127}, label=lst:java-transformations]
+\begin{lstlisting}[language=Java, caption=Comparing floating-point arithmetic in Java using double compared to BigDecimal~\cite{10.1145/1569901.1570127}, label=lst:java-transformations]
 System.out.println(0.1 + 0.1 + 0.1);
 // Ausgabe: 0.30000000000000004
 
@@ -123,12 +123,26 @@ Hier wird die Repräsentation einer Lösung bzw. eines Individuums beschrieben. 
 
 Ein Unit Test ist demnach eine Liste von Statements, die Teile des \ac{SUT} ausführen, um ein gewisses Objective (bzw. Branch) zu erreichen und abzudecken. Jedes Statement ist ein Wert~$v(s_i)$, welcher von einem der fünf folgenden Typen~$\tau(v(s_i))$ sein kann:
 \begin{itemize}
-	\item \textbf{Primitive Statements} repräsentieren numerische Variablen, z. B.~\lstinline{let v = 42}. Der Wert und Typ des Statements werden von der primitiven Variable bestimmt. 
-	\item \textbf{Konstruktor-Statements} generieren neue Instanzen eines gegebenen Structs, z. B.~\lstinline{let s = SomeStruct::new()}. Der Wert und Typ des Statements werden vom Struct bestimmt. Ein Konstruktor kann Parameter haben, denen ebenso der Wert aus dem Set~$\{v(s_k) | 0 \leq k < i\}$ zugewiesen wird.
-	\item \textbf{Attribut-Statements} greifen auf die public member variables von Objekten, z. B.~\lstinline{let b = a.x}. Der Wert und Typ eines Attribut-Statements sind von der member variable abhängig. Die Quelle der member variable, also~\lstinline{a}, muss ebenso Teil des Sets~$\{v(s_k) | 0 \leq k < i\}$ sein. 
-	\item \textbf{Methoden-Statements} führen Methoden auf Objekten aus oder rufen statische Methoden auf, z. B.~\lstinline{let b = a.len()}. Hier wieder, das Quellobjekt und jegliche Parameter der Methode müssen Teil des Sets~$\{v(s_k) | 0 \leq k < i\}$ sein. Der Wert und Typ des Statements werden vom Return-Wert der Methode bestimmt. 
-	\item \textbf{Funktionen-Statements} führen lose bzw. frei stehende Funktionen aus, z. B.~\lstinline{let a = do_something()}. Die möglichen Parameter einer solchen Funktion müssen Teil des Sets~$\{v(s_k) | 0 \leq k < i\}$ sein. Der Wert und Typ des Statements werden vom Return-Wert der Funktion bestimmt. 
+	\item \textbf{Primitive Statements} repräsentieren numerische Variablen, z. B. \lstinline{let v = 42}. Der Wert und Typ des Statements werden von der primitiven Variable bestimmt. 
+	\item \textbf{Konstruktor-Statements} generieren neue Instanzen eines gegebenen Structs, z. B. \lstinline{let s = SomeStruct::new()}. Der Wert und Typ des Statements werden vom Struct bestimmt. Ein Konstruktor kann Parameter haben, denen ebenso der Wert aus dem Set~$\{v(s_k) | 0 \leq k < i\}$ zugewiesen wird.
+	\item \textbf{Attribut-Statements} greifen auf die public member variables von Objekten, z. B. \lstinline{let b = a.x}. Der Wert und Typ eines Attribut-Statements sind von der member variable abhängig. Die Quelle der member variable, also~\lstinline{a}, muss ebenso Teil des Sets~$\{v(s_k) | 0 \leq k < i\}$ sein. 
+	\item \textbf{Methoden-Statements} führen Methoden auf Objekten aus oder rufen statische Methoden auf, z. B. \lstinline{let b = a.len()}. Hier wieder, das Quellobjekt und jegliche Parameter der Methode müssen Teil des Sets~$\{v(s_k) | 0 \leq k < i\}$ sein. Der Wert und Typ des Statements werden vom Return-Wert der Methode bestimmt. 
+	\item \textbf{Funktionen-Statements} führen lose bzw. frei stehende Funktionen aus, z. B. \lstinline{let a = do_something()}. Die möglichen Parameter einer solchen Funktion müssen Teil des Sets~$\{v(s_k) | 0 \leq k < i\}$ sein. Der Wert und Typ des Statements werden vom Return-Wert der Funktion bestimmt. 
 \end{itemize}
+
+Die Sammlung von verfügbaren Structs, deren Konstruktoren, Methoden, Felder und frei stehende Funktionen sind ein sogenannter Test Cluster~\cite{Fraser_2011}. Die Größe einer Test Suite sowie einzelner Tests ist dabei dynamisch und kann sich (fast) beliebig verändern. Da für die meisten generierten Tests keine Testorakel zur Verfügung stehen werden, soll die Größe der Test Suite sowie der einzelnen Tests eine Obergrenze haben (kein Mensch möchte tausende Zeilen lange Tests durchlesen, um am Ende eine passende Assertion zu überlegen).
+
+\subsubsection{Fitness Function}
+Dieser Ansatz wird sich voraussichtlich auf Branch Coverage konzentieren. EvoSuite instrumentiert in der originalen Implementierung Java SUT auf Bytecode-Level und im Bytecode werden alle Loops usw. in die einfachen if-Verzweigungen überführt. Das Ziel ist es, die optimale Lösung zu finden, d. h. eine Test Suite, die möglichst hohe Branch-Coverage hat. Gleichzeitig soll es aber keine andere Testsuite geben, die bei gleicher Branch-Coverage kleiner ist bzw. kleinere Tests enthält. Einige Branches, sogenannte infeasible Branches, können evtl. gar nicht abgedeckt werden, entweder aufgrund der limitierten Repräsentation der Lösung oder weil es keine passenden Inputs existieren. Somit werden solche Tests bevorzugt bei der Evolvierung bevorzugt, die eine höhere Fitness bzgl. der Branch-Coverage haben. Bei zwei Tests mit der gleichen Coverage wird der kürzere bevorzugt. 
+
+Um die Suche voranzutreiben, können verschiedene Heuristiken verwendet werden. \todo{Welche gibt es überhaupt?} Eine der weitverbreitesten ist Branch Distance. McMinn~\cite{McMinn_2004} beschreibt eine Sammlung von Regeln, die rekursiv angewendet werden können, um Distanz bei allen möglichen Prädikaten zu berechnen. Zum Beispiel, bei einem Prädikat~\lstinline{x >= 10} und~\lstinline{x = 5} (während der Ausführung) wird der \lstinline{false} Branch getroffen. Die Distanz zum \lstinline{true} Branch beträge somit~$10 - 5 + k$ mit~$k \geq 1$. Dabei wird jedes Prädikat im \ac{SUT} instrumentiert, um die Distanzen zu anderen Branches während der Ausführung des \ac{SUT} zu tracen. Die Branch-Distanz muss noch normalisiert werden (je nach Werten kann es schnell zu Extremen kommen). Arcuri~\cite{Arcuri_2011} beschreibt in seiner Arbeit, welchen Einfluss die Normalisierung der Branch-Distanz auf die Effektivität einer such-basierten Testgenerierung hat. 
+
+
+\subsubsection{Bloat Control}
+Hier wird beschrieben, wie man verhindern kann, dass die Größe der Test Suite und einzelner Tests ausartet. Fraser und Arcuri~\cite{Fraser_2011} haben ein paar Gedanken dazu. 
+
+\subsubsection{Search Operators}
+Suchoperatoren wie Crossover, Mutation und Random Test Case werden hier beschrieben. Natürlich haben auch Fraser und Arcuri~\cite{Fraser_2011} eine ausführliche Beschreibung der Funktionsweise. 
 
 \section{Evaluation}
 \subsection{Setup}
@@ -143,18 +157,6 @@ Ein Unit Test ist demnach eine Liste von Statements, die Teile des \ac{SUT} ausf
 
 \appendix
 \input{acronyms}
-
-
-
-
-%\newpage  % End of first page: you can remove this if you do not need it
-
-%\section{Critical questions}
-%\paragraph{Q1:} Is there a way to define some kind of coverage of the generated scenarios?
-%\paragraph{Q2:} While some real accidents might be somewhat similar to each other, the %abstract police reports written in natural language boost the similarity of those further. How could the generated test scenarios be limited only to unique ones?
-
-% Remember to list at not less than 4 related work, you can list more if you wish
-% If you like you can also use bib files (see below)
 
 
 \bibliographystyle{unsrt}
