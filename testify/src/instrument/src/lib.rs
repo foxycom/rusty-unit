@@ -10,7 +10,8 @@ use syn::visit_mut::{VisitMut, visit_expr_if_mut, visit_item_fn_mut,
 use crate::branch::{Branch};
 
 const ROOT_BRANCH: &'static str = "root({}, {})";
-const BRANCH: &'static str = "branch({})";
+const BRANCH: &'static str = "branch({}, {}, [{}])";
+const K: u64 = 1;
 
 pub fn instrument(file: String) {
     let content = fs::read_to_string(file)
@@ -57,21 +58,98 @@ impl Visitor {
         fs::write("branches.json", serialized_branches).unwrap();
     }
 
-    fn instrument_branch(&mut self, block: &mut Block) {
-        //println!("Instrumenting branch: {:?}", block);
-        self.branch_id += 1;
-        let branch_id = self.branch_id;
-        let branch = Branch::Decision(branch_id);
-        let trace_stmt: Stmt = syn::parse_quote! {
-            TestifyMonitor::trace_branch(#branch_id);
-        };
-        let stmts = &mut block.stmts;
-        stmts.insert(0, trace_stmt);
-        self.branches.push(branch);
+    fn instrument_if(&mut self, i: &mut ExprIf) {
+        let (true_trace, false_trace) = self.instrument_condition(i);
+
+        self.insert_stmt(&mut i.then_branch, true_trace);
+
+        if let Some((_, branch)) = &mut i.else_branch {
+            VisitMut::visit_expr_mut(self, branch.as_mut());
+            if let Expr::Block(expr_block) = branch.as_mut() {
+                let mut else_branch = &mut expr_block.block;
+                self.insert_stmt(else_branch, false_trace);
+            }
+        }
     }
 
-    fn instrument_condition(&mut self, cond: &mut Expr) {
+    fn insert_stmt(&mut self, block: &mut Block, stmt: Stmt) {
+        let stmts = &mut block.stmts;
+        stmts.insert(0, stmt);
+    }
 
+    fn instrument_condition(&mut self, i: &mut ExprIf) -> (Stmt, Stmt) {
+        self.branch_id += 1;
+        let true_branch_id = self.branch_id;
+        let true_branch = Branch::Decision(true_branch_id);
+
+        self.branch_id += 1;
+        let false_branch_id = self.branch_id;
+        let false_branch = Branch::Decision(false_branch_id);
+
+
+        self.branches.push(true_branch);
+        self.branches.push(false_branch);
+
+        let cond = i.cond.as_mut();
+        let mut true_trace: Stmt;
+        let mut false_trace: Stmt;
+
+        // TODO unary OP
+
+        if let Expr::Binary(expr_binary) = cond {
+            let left = expr_binary.left.as_mut();
+            let right = expr_binary.right.as_mut();
+            match expr_binary.op {
+                BinOp::Gt(_) => {
+                    // left > right
+                    true_trace = syn::parse_quote! {
+                        TestifyMonitor::trace_branch(#true_branch_id, #false_branch_id, (#left - #right) as f64);
+                    };
+                    // left <= right
+                    false_trace = syn::parse_quote! {
+                        TestifyMonitor::trace_branch(#false_branch_id, #true_branch_id, (#right - #left + #K) as f64);
+                    };
+                }
+                BinOp::Ge(_) => {
+                    // left >= right
+                    true_trace = syn::parse_quote! {
+                        TestifyMonitor::trace_branch(#true_branch_id, #false_branch_id, (#left - #right + #K) as f64);
+                    };
+                    // left < right
+                    false_trace = syn::parse_quote! {
+                        TestifyMonitor::trace_branch(#false_branch_id, #true_branch_id, (#right - #left) as f64);
+                    };
+                }
+                BinOp::Lt(_) => {
+                    // left < right
+                    true_trace = syn::parse_quote! {
+                        TestifyMonitor::trace_branch(#true_branch_id, #false_branch_id, (#right - #left) as f64);
+                    };
+                    // left >= right
+                    false_trace = syn::parse_quote! {
+                        TestifyMonitor::trace_branch(#false_branch_id, #true_branch_id, (#left - #right + #K) as f64);
+                    };
+                }
+                BinOp::Le(_) => {
+                    // left <= right
+                    true_trace = syn::parse_quote! {
+                        TestifyMonitor::trace_branch(#true_branch_id, #false_branch_id, (#right - #left + #K) as f64);
+                    };
+                    // left > right
+                    false_trace = syn::parse_quote! {
+                        TestifyMonitor::trace_branch(#false_branch_id, #true_branch_id, (#left - #right) as f64);
+                    };
+                }
+                // TODO all other ops
+                _ => {
+                    unimplemented!();
+                }
+            }
+        } else {
+            unimplemented!();
+        }
+
+        (true_trace, false_trace)
     }
 
     fn instrument_fn(&mut self, block: &mut Block, ident: &Ident) {
@@ -113,8 +191,8 @@ impl Visitor {
             impl TestifyMonitor {
                 const TRACE_FILE: &'static str = #trace_file;
 
-                fn trace_branch(id: u64) {
-                    TestifyMonitor::write(format!(#BRANCH, id));
+                fn trace_branch(visited_branch: u64, other_branch: u64, distance: f64) {
+                    TestifyMonitor::write(format!(#BRANCH, visited_branch, other_branch, distance));
                 }
 
                 fn trace_fn(name: String, id: u64) {
@@ -140,25 +218,6 @@ impl Visitor {
 
 
 impl VisitMut for Visitor {
-    /*fn visit_expr_binary_mut(&mut self, i: &mut ExprBinary) {
-        for it in &mut i.attrs {
-            VisitMut::visit_attribute_mut(self, it);
-        }
-        VisitMut::visit_expr_mut(self, &mut *i.left);
-        VisitMut::visit_bin_op_mut(self, &mut i.op);
-        VisitMut::visit_expr_mut(self, &mut *i.right);
-
-        if self.condition {
-            match i.op {
-                BinOp::Gt(_) => {
-
-                }
-                // TODO also add other binary operations
-                _ => {}
-            }
-        }
-    }*/
-
     // TODO use also other visitors
     fn visit_expr_if_mut(&mut self, i: &mut ExprIf) {
         for it in &mut i.attrs {
@@ -171,14 +230,7 @@ impl VisitMut for Visitor {
 
         VisitMut::visit_block_mut(self, &mut i.then_branch);
 
-        self.instrument_branch(&mut i.then_branch);
-        if let Some((_, branch)) = &mut i.else_branch {
-            VisitMut::visit_expr_mut(self, branch.as_mut());
-            if let Expr::Block(expr_block) = branch.as_mut() {
-                let mut else_branch = &mut expr_block.block;
-                self.instrument_branch(else_branch);
-            }
-        }
+        self.instrument_if(i);
     }
 
 
