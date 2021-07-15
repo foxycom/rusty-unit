@@ -14,3 +14,8 @@ pub fn conditional_add_u64(a: u64, b: u64) -> u64 {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+}

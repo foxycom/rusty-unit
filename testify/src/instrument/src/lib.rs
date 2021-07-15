@@ -1,4 +1,5 @@
-mod branch;
+pub mod branch;
+pub mod util;
 
 use std::fs;
 use std::io::Write;
@@ -8,13 +9,14 @@ use quote::ToTokens;
 use syn::visit_mut::{VisitMut, visit_expr_if_mut, visit_item_fn_mut,
                      visit_file_mut, visit_expr_binary_mut};
 use crate::branch::{Branch};
+use crate::util::instrumented_path;
 
 const ROOT_BRANCH: &'static str = "root({}, {})";
 const BRANCH: &'static str = "branch({}, {}, [{}])";
 const K: u64 = 1;
 
-pub fn instrument(file: String) {
-    let content = fs::read_to_string(file)
+pub fn instrument(path: &str) {
+    let content = fs::read_to_string(path)
         .expect("Could not read the Rust source file");
     let mut ast = syn::parse_file(&content)
         .expect("Could not parse the contents of the Rust source file with syn");
@@ -27,7 +29,7 @@ pub fn instrument(file: String) {
 
     let tokens = ast.to_token_stream();
     let src_code = tokens.to_string();
-    src_to_file(&src_code, "src/examples/additions/src/instrumented-main.rs".into());
+    src_to_file(&src_code, instrumented_path(path));
 }
 
 fn src_to_file(src: &str, path: String) {

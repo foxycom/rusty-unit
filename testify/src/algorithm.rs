@@ -1,51 +1,110 @@
-use crate::chromosome::{ChromosomeGenerator, Chromosome};
+use crate::chromosome::{ChromosomeGenerator, Chromosome, TestCaseGenerator, TestCase};
 use std::rc::Rc;
-use std::collections::VecDeque;
+use std::collections::{VecDeque, HashMap, HashSet};
 use rand::random;
 use std::ops::Deref;
+use instrument::branch::Branch;
+use std::cmp::Ordering;
 
 #[derive(Debug)]
-pub struct MOSA<G> where G: ChromosomeGenerator {
-    population_size: u32,
+pub struct MOSA {
+    population_size: u64,
     mutation_rate: f64,
     selection_rate: f64,
-    chromosome_generator: Option<Box<G>>,
+    chromosome_generator: TestCaseGenerator,
+    branches: Vec<Branch>,
+    generations: u64,
 }
 
-impl<G> MOSA<G> where G: ChromosomeGenerator {
-    pub fn new() -> MOSA<G> {
+impl MOSA {
+    pub fn new(generator: TestCaseGenerator) -> MOSA {
         MOSA {
             population_size: 50,
             mutation_rate: 0.2,
             selection_rate: 0.3,
-            chromosome_generator: None,
+            chromosome_generator: generator,
+            branches: Vec::new(),
+            generations: 100,
         }
     }
 
-    pub fn chromosome_generator(&mut self, generator: G) -> &mut MOSA<G> {
-        self.chromosome_generator = Some(Box::new(generator));
+    pub fn chromosome_generator(&mut self, generator: TestCaseGenerator) -> &mut MOSA {
+        self.chromosome_generator = generator;
         self
     }
 
-    pub fn population_size(&mut self, size: u32) -> &mut MOSA<G> {
+    pub fn generations(&mut self, generations: u64) -> &mut MOSA {
+        self.generations = generations;
+        self
+    }
+
+    pub fn population_size(&mut self, size: u64) -> &mut MOSA {
         self.population_size = size;
         self
     }
 
     pub fn run(&self) {
+        // TODO may be this should be a set
         let mut current_generation = 0;
-        let population = self.generate_random_population();
+        let mut population = self.generate_random_population();
+        let mut archive = self.update_archive(&population);
+        while current_generation < self.generations {
+            let mut offspring = self.generate_offspring(&population);
+            offspring.append(&mut population);
+            let mut fronts = self.preference_sorting(&mut offspring);
+            population.clear();
+            let mut front_index: u64 = 0;
+
+            let mut front = fronts.get_mut(&front_index).unwrap();
+            while population.len() + front.len() < self.population_size as usize {
+                self.crowding_distance_assignment(front);
+                population.append(&mut front);
+                front_index += 1;
+                front = fronts.get_mut(&front_index).unwrap();
+            }
+
+            front.sort_by(|a, b| if a.crowding_distance() < b.crowding_distance() {
+                Ordering::Greater
+            } else {
+                Ordering::Less
+            });
+
+            let rest = &mut front[0..self.population_size as usize - population.len()].to_vec();
+            population.append(rest);
+            archive.append(&mut population);
+            archive = self.update_archive(&archive);
+            current_generation += 1;
+        }
     }
 
-    fn update_archive(&self) -> Vec<Box<G::C>> {
-        unimplemented!()
+    fn update_archive(&self, population: &[TestCase]) -> Vec<TestCase> {
+        let mut archive = Vec::new();
+        for b in &self.branches {
+            let mut best_length = u64::MAX;
+            // TODO this should be set
+            //let mut best_testcases = Vec::new();
+            for t in population {}
+        }
+
+        archive
     }
 
-    fn generate_random_population(&self) -> Vec<Box<G::C>> {
-        let chromosome_generator = self.chromosome_generator.as_ref().expect("Chromosome generator is not set.");
+    fn preference_sorting(&self, population: &mut [TestCase]) -> HashMap<u64, Vec<TestCase>> {
+        todo!()
+    }
+
+    fn crowding_distance_assignment(&self, population: &mut [TestCase]) {
+        todo!()
+    }
+
+    fn generate_offspring(&self, population: &[TestCase]) -> Vec<TestCase> {
+        todo!()
+    }
+
+    fn generate_random_population(&self) -> Vec<TestCase> {
         let mut population = Vec::new();
         for _ in 0..self.population_size {
-            population.push(chromosome_generator.generate());
+            population.push(self.chromosome_generator.generate());
         }
 
         population

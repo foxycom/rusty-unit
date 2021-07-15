@@ -16,4 +16,7 @@ path = "src/bin/main.rs"
 [dependencies]
 clap = "3.0.0-beta.2"
 rand = "0.8.4"
+syn = { version = "1.0.73", features = ["parsing", "printing", "full", "extra-traits", "visit-mut"] }
+quote = "1.0.9"
+proc-macro2 = "1.0.27"
 instrument = {path = "./src/instrument"}

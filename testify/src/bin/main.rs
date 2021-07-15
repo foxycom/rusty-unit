@@ -1,39 +1,8 @@
 use testify::algorithm::MOSA;
-use testify::chromosome::{ChromosomeGenerator, Chromosome};
+use testify::chromosome::{ChromosomeGenerator, Chromosome, TestCaseGenerator};
 use clap::{Clap};
 use instrument::instrument;
-
-struct Generator {
-
-
-}
-
-impl ChromosomeGenerator for Generator {
-    type C = BitString;
-
-    fn generate(&self) -> Box<Self::C> {
-        todo!()
-    }
-}
-
-#[derive(Debug, Clone)]
-struct BitString {
-
-}
-
-impl Chromosome for BitString {
-    fn mutate(&self) -> Self {
-        todo!()
-    }
-
-    fn calculate_fitness(&self) -> f64 {
-        todo!()
-    }
-
-    fn crossover(&self, other: &Self) -> (Self, Self) {
-        todo!()
-    }
-}
+use testify::test_writer;
 
 #[derive(Clap)]
 struct CliOpts {
@@ -42,12 +11,13 @@ struct CliOpts {
 }
 
 fn main() {
-    //let generator = Generator {};
-    //MOSA::new().chromosome_generator(generator).population_size(40).run();
     let opts: CliOpts = CliOpts::parse();
-    println!("Instrumenting {}", opts.file);
 
-    instrument(opts.file);
+    let generator = TestCaseGenerator::new(&opts.file);
+    instrument(&opts.file);
 
+    //MOSA::new(generator).population_size(40).run();
+    let test_case = generator.generate();
+    test_writer::write(&test_case);
 
 }
