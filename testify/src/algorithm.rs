@@ -1,29 +1,28 @@
 use crate::chromosome::{ChromosomeGenerator, Chromosome, TestCaseGenerator, TestCase};
 use std::rc::Rc;
 use std::collections::{VecDeque, HashMap, HashSet};
-use rand::random;
 use std::ops::Deref;
-use instrument::branch::Branch;
+use crate::instr::data::Branch;
 use std::cmp::Ordering;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct MOSA {
     population_size: u64,
     mutation_rate: f64,
     selection_rate: f64,
     chromosome_generator: TestCaseGenerator,
-    branches: Vec<Branch>,
+    branches: Rc<Vec<Branch>>,
     generations: u64,
 }
 
 impl MOSA {
-    pub fn new(generator: TestCaseGenerator) -> MOSA {
+    pub fn new(generator: TestCaseGenerator, branches: Rc<Vec<Branch>>) -> MOSA {
         MOSA {
             population_size: 50,
             mutation_rate: 0.2,
             selection_rate: 0.3,
             chromosome_generator: generator,
-            branches: Vec::new(),
+            branches,
             generations: 100,
         }
     }
@@ -43,7 +42,7 @@ impl MOSA {
         self
     }
 
-    pub fn run(&self) {
+    /*pub fn run(&self) {
         // TODO may be this should be a set
         let mut current_generation = 0;
         let mut population = self.generate_random_population();
@@ -75,18 +74,72 @@ impl MOSA {
             archive = self.update_archive(&archive);
             current_generation += 1;
         }
+    }*/
+
+    pub fn run(&self) {
+        // TODO may be this should be a set
+        let mut current_generation = 0;
+        let mut population = self.generate_random_population();
+        let mut archive = vec![];
+
+        self.update_archive(&mut archive, &population);
+        while current_generation < self.generations {
+            let mut offspring = self.generate_offspring(&population);
+            archive = self.update_archive(&mut archive, &offspring);
+            offspring.append(&mut population);
+
+            let mut fronts = self.preference_sorting(&mut offspring);
+            population.clear();
+
+            for i in 0..fronts.len() {
+                let front = fronts.get(&(i as u64)).unwrap();
+                self.svd(front);
+                for t in front {
+                    population.push(t.clone());
+                    if population.len() == self.population_size as usize {
+                        break;
+                    }
+                }
+
+                if population.len() == self.population_size as usize {
+                    break;
+                }
+            }
+
+            current_generation += 1;
+        }
     }
 
-    fn update_archive(&self, population: &[TestCase]) -> Vec<TestCase> {
-        let mut archive = Vec::new();
-        for b in &self.branches {
-            let mut best_length = u64::MAX;
-            // TODO this should be set
-            //let mut best_testcases = Vec::new();
-            for t in population {}
+    fn test_that_covers<'a>(&self, archive: &'a [TestCase], branch: &Branch) -> Option<&'a TestCase> {
+        archive.iter().filter(|&t| branch.fitness(t) == 0.0).nth(0)
+    }
+
+    fn update_archive(&self, archive: &mut Vec<TestCase>, population: &[TestCase]) -> Vec<TestCase> {
+        for branch in self.branches.as_ref() {
+            let mut best_test_case = None;
+            let mut best_length = usize::MAX;
+            if let Some(test_case) = self.test_that_covers(archive, branch) {
+                best_length = test_case.size();
+                best_test_case = Some(test_case);
+            }
+
+            for test_case in population {
+                let score = branch.fitness(test_case);
+                let length = test_case.size();
+                if score == 0.0 && length <= best_length {
+                    if let Some(best_test_case) = best_test_case {
+                        let i = archive.iter().position(|t| t == best_test_case).unwrap();
+                        archive[i] = test_case.clone();
+                    } else {
+                        archive.push(test_case.clone());
+                    }
+                    best_test_case = Some(test_case);
+                    best_length = length;
+                }
+            }
         }
 
-        archive
+        vec![]
     }
 
     fn preference_sorting(&self, population: &mut [TestCase]) -> HashMap<u64, Vec<TestCase>> {
@@ -108,6 +161,10 @@ impl MOSA {
         }
 
         population
+    }
+
+    fn svd(&self, population: &[TestCase]) {
+        todo!()
     }
 }
 
@@ -157,7 +214,7 @@ impl<C> SimulatedAnnealing<C> where C: Chromosome {
         let mut current = Rc::new(self.initial_chromosome.take().unwrap());
         let mut transformations = 0;
 
-        let mut current_fitness = current.calculate_fitness();
+        let mut current_fitness = current.fitness();
         let mut best = current.clone();
         let mut best_fitness = current_fitness;
 
@@ -165,11 +222,11 @@ impl<C> SimulatedAnnealing<C> where C: Chromosome {
             let neighbour = Rc::new(current.mutate());
             transformations += 1;
 
-            let neighbour_fitness = neighbour.calculate_fitness();
+            let neighbour_fitness = neighbour.fitness();
             let acc_prob = self.acceptance_probability(current_fitness, neighbour_fitness);
-            if acc_prob > random::<f64>() {
+            if acc_prob > fastrand::f64() {
                 current = neighbour.clone();
-                current_fitness = current.calculate_fitness();
+                current_fitness = current.fitness();
 
                 println!("Current: {}, best: {}", current_fitness, best_fitness);
                 if current_fitness < best_fitness {
@@ -299,13 +356,13 @@ impl TemperatureStrategy {
     pub fn init_temperature<C>(&self, start: C) -> (C, f64)
         where C: Chromosome {
         let mut current = start.clone();
-        let initial_fitness = start.calculate_fitness();
-        let mut current_fitness = current.calculate_fitness();
+        let initial_fitness = start.fitness();
+        let mut current_fitness = current.fitness();
         let mut average_energy = 0.0;
 
         for i in 0..100 {
             let next = current.mutate();
-            let next_fitness = next.calculate_fitness();
+            let next_fitness = next.fitness();
             average_energy += (next_fitness - current_fitness).abs();
             current_fitness = next_fitness;
             current = next;

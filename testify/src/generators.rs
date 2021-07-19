@@ -1,0 +1,52 @@
+use syn::{FnArg, Expr, Type, Lit};
+
+#[derive(Debug)]
+pub struct InputGenerator {}
+
+impl InputGenerator {
+    pub fn generate_arg(arg: &FnArg) -> Expr {
+        if let FnArg::Typed(pattern) = arg {
+            return match pattern.ty.as_ref() {
+                Type::Path(path) => {
+                    if path.path.is_ident("u8") {
+                        let random_u64 = fastrand::u8(..);
+                        let lit: Expr = syn::parse_quote! { #random_u64 };
+                        lit
+                    } else {
+                        let lit: Expr = syn::parse_quote! { 0 };
+                        lit
+                    }
+                }
+                _ => {
+                    let lit: Expr = syn::parse_quote! { 0 };
+                    lit
+                }
+            };
+        }
+        let lit: Expr = syn::parse_quote! { 0 };
+        lit
+    }
+
+    pub fn mutate_arg(arg: &Expr) -> Expr {
+        match arg {
+            Expr::Lit(expr_lit) => {
+                let lit = &expr_lit.lit;
+                return match lit {
+                    Lit::Int(int) => {
+                        let n: u8 = int.base10_parse().unwrap();
+                        let res = if fastrand::f64() < 0.5 {n + 5} else {n - 5};
+                        syn::parse_quote! {
+                            #res
+                        }
+                    }
+                    _ => {
+                        unimplemented!()
+                    }
+                };
+            }
+            _ => {
+                unimplemented!()
+            }
+        }
+    }
+}

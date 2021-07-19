@@ -1,9 +1,8 @@
 fn main() {
     println!("Hello, world!");
-    conditional_add_u64(2, 3);
+    conditional_add_u8(2, 3);
 }
-
-pub fn conditional_add_u64(a: u64, b: u64) -> u64 {
+pub fn conditional_add_u8(a: u8, b: u8) -> u8 {
     if a > b {
         b
     } else {
@@ -14,8 +13,5 @@ pub fn conditional_add_u64(a: u64, b: u64) -> u64 {
         }
     }
 }
-
 #[cfg(test)]
-mod tests {
-
-}
+mod tests {}

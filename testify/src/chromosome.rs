@@ -1,18 +1,22 @@
 use std::fmt::{Debug, Display, Formatter, Error};
-use syn::{Stmt, Item, ItemFn};
+use syn::{Stmt, Item, ItemFn, FnArg, PatType, Type, Expr};
 use std::cmp::Ordering;
 use quote::ToTokens;
-use crate::analyze::analyze_src;
-use rand::{random, thread_rng, Rng};
-use crate::data::Target;
 use proc_macro2::{Ident, Span};
+use std::collections::HashMap;
+use crate::generators::InputGenerator;
+use crate::tests::writer::{TestWriter, ModuleRegistrar};
+use crate::tests::runner::TestRunner;
+use crate::instr::data::{Branch};
+use crate::analyze::analyze_src;
+use crate::operators::BasicMutation;
+use std::rc::Rc;
 
-const TEST_FN_NAME: &'static str = "testify_test_target_fn";
 
 pub trait Chromosome: Clone + Debug {
     fn mutate(&self) -> Self;
 
-    fn calculate_fitness(&self) -> f64;
+    fn fitness(&self) -> f64;
 
     fn crossover(&self, other: &Self) -> (Self, Self) where Self: Sized;
 }
@@ -26,42 +30,73 @@ pub trait ChromosomeGenerator {
 
 #[derive(Clone, Debug)]
 pub struct TestCase {
-    target: Target,
+    objective: Branch,
     stmts: Vec<Stmt>,
-    crowding_distance: f64,
+    results: HashMap<u64, f64>,
+    mutation: Rc<BasicMutation>
 }
 
 impl TestCase {
-    pub fn new(target: Target, stmts: Vec<Stmt>) -> Self {
-        TestCase { target, stmts, crowding_distance: 0.0 }
+    pub const TEST_FN_NAME: &'static str = "testify_test_target_fn";
+
+    pub fn new(target: Branch, stmts: Vec<Stmt>, mutation: Rc<BasicMutation>) -> Self {
+        TestCase { objective: target, stmts, results: HashMap::new(), mutation }
     }
 
     pub fn set_crowding_distance(&mut self, crowding_distance: f64) {
         self.crowding_distance = crowding_distance;
     }
-}
 
-impl TestCase {
-    pub fn stmts(&self) -> &Vec<Stmt> {
-        &self.stmts
+    pub fn stmts(&mut self) -> &mut Vec<Stmt> {
+        &mut self.stmts
     }
     pub fn crowding_distance(&self) -> f64 {
         self.crowding_distance
     }
 
-    pub fn target(&self) -> &Target {
-        &self.target
+    pub fn target(&self) -> &Branch {
+        &self.objective
     }
 
     pub fn to_syn(&self) -> Item {
-        let ident = Ident::new(TEST_FN_NAME, Span::call_site());
+        let ident = Ident::new(TestCase::TEST_FN_NAME, Span::call_site());
         let stmts = &self.stmts;
         let test: Item = syn::parse_quote! {
+            #[test]
             fn #ident() {
                 #(#stmts)*
             }
         };
         test
+    }
+
+    pub fn results(&self) -> &HashMap<u64, f64> {
+        &self.results
+    }
+
+    pub fn execute(&self) {
+        // TODO reuse the objects
+        let mut test_writer = TestWriter::new(&self);
+        test_writer.write().unwrap();
+
+        let mut test_registrar = ModuleRegistrar::new(&self.objective);
+        test_registrar.register();
+
+        let test_runner = TestRunner::new();
+        match test_runner.run(&self) {
+            Ok(_) => {
+                println!("Test went ok");
+            }
+            Err(_) => {
+                println!("Test didn't work");
+            }
+        }
+        test_registrar.unregister();
+        test_writer.unwrite().unwrap();
+    }
+
+    pub fn size(&self) -> usize {
+        self.stmts.len()
     }
 }
 
@@ -75,11 +110,10 @@ impl Display for TestCase {
 
 impl Chromosome for TestCase {
     fn mutate(&self) -> Self {
-        println!("Cloning chromosome");
-        self.clone()
+        self.mutation.mutate(&self)
     }
 
-    fn calculate_fitness(&self) -> f64 {
+    fn fitness(&self) -> f64 {
         println!("Calculating fitness");
         10.0
     }
@@ -90,16 +124,16 @@ impl Chromosome for TestCase {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TestCaseGenerator {
-    targets: Vec<Target>,
+    branches: Rc<Vec<Branch>>,
+    mutation: Rc<BasicMutation>
 }
 
 impl TestCaseGenerator {
-    pub fn new(path: &str) -> TestCaseGenerator {
-        let targets = analyze_src(path);
+    pub fn new(path: &str, branches: Rc<Vec<Branch>>, mutation: Rc<BasicMutation>) -> TestCaseGenerator {
         TestCaseGenerator {
-            targets
+            branches, mutation
         }
     }
 }
@@ -108,14 +142,21 @@ impl ChromosomeGenerator for TestCaseGenerator {
     type C = TestCase;
 
     fn generate(&self) -> Self::C {
-        let mut rng = thread_rng();
-        let rand = rng.gen_range((0..self.targets.len()));
-        let target = self.targets.get(rand).unwrap();
-        let ident = &target.target_fn().sig.ident;
+        let rand = fastrand::usize(..self.branches.len());
+        let target = self.branches
+            .get(rand)
+            .cloned()
+            .unwrap();
+        let sig = &target.target_fn().sig;
+
+        let args: Vec<Expr> = sig.inputs.iter().map(InputGenerator::generate_arg).collect();
+
+
+        let ident = &sig.ident;
         let stmt = syn::parse_quote! {
-            #ident();
+            #ident(#(#args),*);
         };
-        TestCase::new(target.clone(), vec![stmt])
+        TestCase::new(target, vec![stmt], self.mutation.clone())
     }
 }
 

@@ -61,7 +61,7 @@ impl Chromosome for Ones {
         self.mutation.apply(self)
     }
 
-    fn calculate_fitness(&self) -> f64 {
+    fn fitness(&self) -> f64 {
         self.ones.len() as f64 - self.ones.iter().fold(0, |acc, &x| acc + x) as f64
     }
 

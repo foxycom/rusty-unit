@@ -1,8 +1,14 @@
+
+#[macro_use]
+extern crate derive_builder;
+
+
 pub mod chromosome;
 pub mod algorithm;
 pub mod selection;
-pub mod test_writer;
 pub mod analyze;
-pub mod data;
 pub mod operators;
+pub mod generators;
+pub mod tests;
+pub mod instr;
 

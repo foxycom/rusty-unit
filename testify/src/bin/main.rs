@@ -1,8 +1,12 @@
 use testify::algorithm::MOSA;
 use testify::chromosome::{ChromosomeGenerator, Chromosome, TestCaseGenerator};
 use clap::{Clap};
-use instrument::instrument;
-use testify::test_writer;
+use testify::tests::writer::{TestWriter, ModuleRegistrar};
+use testify::tests::runner::TestRunner;
+use std::io::Error;
+use testify::instr::instr::Instrumenter;
+use std::rc::Rc;
+use testify::operators::BasicMutation;
 
 #[derive(Clap)]
 struct CliOpts {
@@ -13,11 +17,10 @@ struct CliOpts {
 fn main() {
     let opts: CliOpts = CliOpts::parse();
 
-    let generator = TestCaseGenerator::new(&opts.file);
-    instrument(&opts.file);
-
-    //MOSA::new(generator).population_size(40).run();
-    let test_case = generator.generate();
-    test_writer::write(&test_case);
+    let mut instrumenter = Instrumenter::new();
+    let branches = Rc::new(instrumenter.instrument(&opts.file).to_owned());
+    let mutation = Rc::new(BasicMutation::new(branches.clone()));
+    let mut generator = TestCaseGenerator::new(&opts.file, branches, mutation.clone());
+    MOSA::new(generator, branches.clone()).population_size(40).run();
 
 }
