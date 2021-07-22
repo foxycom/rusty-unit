@@ -5,18 +5,22 @@ use quote::ToTokens;
 use proc_macro2::{Ident, Span};
 use std::collections::HashMap;
 use crate::generators::InputGenerator;
-use crate::tests::writer::{TestWriter, ModuleRegistrar};
-use crate::tests::runner::TestRunner;
+use crate::io::writer::{TestWriter, ModuleRegistrar};
+use crate::io::runner::TestRunner;
 use crate::instr::data::{Branch};
 use crate::analyze::analyze_src;
 use crate::operators::BasicMutation;
 use std::rc::Rc;
+use std::fs;
+use std::hash::{Hash, Hasher};
+use crate::parser::TraceParser;
+use std::cell::RefCell;
 
 
 pub trait Chromosome: Clone + Debug {
     fn mutate(&self) -> Self;
 
-    fn fitness(&self) -> f64;
+    fn fitness(&self, objective: &Branch) -> f64;
 
     fn crossover(&self, other: &Self) -> (Self, Self) where Self: Sized;
 }
@@ -24,34 +28,49 @@ pub trait Chromosome: Clone + Debug {
 pub trait ChromosomeGenerator {
     type C: Chromosome;
 
-    fn generate(&self) -> Self::C;
+    fn generate(&mut self) -> Self::C;
 }
-
 
 #[derive(Clone, Debug)]
 pub struct TestCase {
+    id: u64,
     objective: Branch,
     stmts: Vec<Stmt>,
     results: HashMap<u64, f64>,
-    mutation: Rc<BasicMutation>
+    mutation: BasicMutation,
+}
+
+impl PartialEq for TestCase {
+    fn eq(&self, other: &Self) -> bool {
+        self.stmts == other.stmts && self.objective == other.objective
+    }
+}
+
+impl Eq for TestCase {}
+
+impl Hash for TestCase {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.objective.hash(state);
+        self.stmts.hash(state);
+    }
 }
 
 impl TestCase {
-    pub const TEST_FN_NAME: &'static str = "testify_test_target_fn";
+    pub const TEST_FN_PREFIX: &'static str = "testify";
 
-    pub fn new(target: Branch, stmts: Vec<Stmt>, mutation: Rc<BasicMutation>) -> Self {
-        TestCase { objective: target, stmts, results: HashMap::new(), mutation }
+    pub fn new(id: u64, target: Branch, stmts: Vec<Stmt>, mutation: BasicMutation) -> Self {
+        TestCase {
+            id,
+            objective: target,
+            stmts,
+            results: HashMap::new(),
+            mutation,
+        }
     }
 
-    pub fn set_crowding_distance(&mut self, crowding_distance: f64) {
-        self.crowding_distance = crowding_distance;
-    }
 
     pub fn stmts(&mut self) -> &mut Vec<Stmt> {
         &mut self.stmts
-    }
-    pub fn crowding_distance(&self) -> f64 {
-        self.crowding_distance
     }
 
     pub fn target(&self) -> &Branch {
@@ -59,7 +78,8 @@ impl TestCase {
     }
 
     pub fn to_syn(&self) -> Item {
-        let ident = Ident::new(TestCase::TEST_FN_NAME, Span::call_site());
+        let ident = Ident::new(&format!("{}_{}", TestCase::TEST_FN_PREFIX, self.id),
+                               Span::call_site());
         let stmts = &self.stmts;
         let test: Item = syn::parse_quote! {
             #[test]
@@ -70,33 +90,45 @@ impl TestCase {
         test
     }
 
+    pub fn name(&self) -> String {
+        format!("{}_{}", TestCase::TEST_FN_PREFIX, self.id)
+    }
+
     pub fn results(&self) -> &HashMap<u64, f64> {
         &self.results
     }
 
-    pub fn execute(&self) {
+    pub fn execute(&mut self) {
         // TODO reuse the objects
-        let mut test_writer = TestWriter::new(&self);
-        test_writer.write().unwrap();
-
         let mut test_registrar = ModuleRegistrar::new(&self.objective);
         test_registrar.register();
 
         let test_runner = TestRunner::new();
         match test_runner.run(&self) {
             Ok(_) => {
-                println!("Test went ok");
+                println!("Test {} went ok", self.id);
             }
             Err(_) => {
-                println!("Test didn't work");
+                println!("Test {} failed", self.id);
             }
         }
         test_registrar.unregister();
-        test_writer.unwrite().unwrap();
+
+        // TODO dynamic path
+        self.results = TraceParser::parse("/Users/tim/Documents/master-thesis/testify/src/examples/additions/trace.txt").unwrap();
+        fs::remove_file("/Users/tim/Documents/master-thesis/testify/src/examples/additions/trace.txt").unwrap();
     }
 
     pub fn size(&self) -> usize {
         self.stmts.len()
+    }
+
+    pub fn set_id(&mut self, id: u64) {
+        self.id = id;
+    }
+
+    pub fn id(&self) -> u64 {
+        self.id
     }
 }
 
@@ -113,27 +145,28 @@ impl Chromosome for TestCase {
         self.mutation.mutate(&self)
     }
 
-    fn fitness(&self) -> f64 {
-        println!("Calculating fitness");
-        10.0
+    fn fitness(&self, objective: &Branch) -> f64 {
+        objective.fitness(self)
     }
 
     fn crossover(&self, other: &Self) -> (Self, Self) where Self: Sized {
-        println!("Doing crossover");
         (self.clone(), self.clone())
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct TestCaseGenerator {
-    branches: Rc<Vec<Branch>>,
-    mutation: Rc<BasicMutation>
+    branches: Vec<Branch>,
+    mutation: BasicMutation,
+    test_id: u64
 }
 
 impl TestCaseGenerator {
-    pub fn new(path: &str, branches: Rc<Vec<Branch>>, mutation: Rc<BasicMutation>) -> TestCaseGenerator {
+    pub fn new(branches: Vec<Branch>, mutation: BasicMutation, test_id: u64) -> TestCaseGenerator {
         TestCaseGenerator {
-            branches, mutation
+            branches,
+            mutation,
+            test_id
         }
     }
 }
@@ -141,7 +174,7 @@ impl TestCaseGenerator {
 impl ChromosomeGenerator for TestCaseGenerator {
     type C = TestCase;
 
-    fn generate(&self) -> Self::C {
+    fn generate(&mut self) -> Self::C {
         let rand = fastrand::usize(..self.branches.len());
         let target = self.branches
             .get(rand)
@@ -156,11 +189,15 @@ impl ChromosomeGenerator for TestCaseGenerator {
         let stmt = syn::parse_quote! {
             #ident(#(#args),*);
         };
-        TestCase::new(target, vec![stmt], self.mutation.clone())
+
+        let test_case = TestCase::new(
+            self.test_id,
+            target,
+            vec![stmt],
+            self.mutation.clone());
+        self.test_id += 1;
+        //test_case.execute();
+        test_case
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::chromosome::TestCase;
-}

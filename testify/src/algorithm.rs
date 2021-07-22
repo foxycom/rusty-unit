@@ -4,26 +4,37 @@ use std::collections::{VecDeque, HashMap, HashSet};
 use std::ops::Deref;
 use crate::instr::data::Branch;
 use std::cmp::Ordering;
+use std::option::Option::Some;
+use crate::operators::RankSelection;
+use crate::io::writer::TestWriter;
+use std::cell::RefCell;
+use std::iter::FromIterator;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct MOSA {
     population_size: u64,
     mutation_rate: f64,
     selection_rate: f64,
+    crossover_rate: f64,
     chromosome_generator: TestCaseGenerator,
-    branches: Rc<Vec<Branch>>,
+    objectives: Vec<Branch>,
     generations: u64,
+    rank_selection: RankSelection,
+    test_writer: TestWriter,
 }
 
 impl MOSA {
-    pub fn new(generator: TestCaseGenerator, branches: Rc<Vec<Branch>>) -> MOSA {
+    pub fn new(generator: TestCaseGenerator, rank_selection: RankSelection, branches: Vec<Branch>) -> MOSA {
         MOSA {
             population_size: 50,
             mutation_rate: 0.2,
             selection_rate: 0.3,
+            crossover_rate: 0.7,
             chromosome_generator: generator,
-            branches,
+            objectives: branches,
             generations: 100,
+            rank_selection,
+            test_writer: TestWriter::new(),
         }
     }
 
@@ -42,59 +53,28 @@ impl MOSA {
         self
     }
 
-    /*pub fn run(&self) {
+    pub fn run(&mut self) -> Option<()> {
         // TODO may be this should be a set
         let mut current_generation = 0;
         let mut population = self.generate_random_population();
-        let mut archive = self.update_archive(&population);
+
+        self.test_writer.write(&population);
+        population.iter_mut().for_each(|t| t.execute());
+
+        let mut archive = &mut vec![];
+
+        self.update_archive(archive, &population);
         while current_generation < self.generations {
-            let mut offspring = self.generate_offspring(&population);
-            offspring.append(&mut population);
-            let mut fronts = self.preference_sorting(&mut offspring);
-            population.clear();
-            let mut front_index: u64 = 0;
-
-            let mut front = fronts.get_mut(&front_index).unwrap();
-            while population.len() + front.len() < self.population_size as usize {
-                self.crowding_distance_assignment(front);
-                population.append(&mut front);
-                front_index += 1;
-                front = fronts.get_mut(&front_index).unwrap();
-            }
-
-            front.sort_by(|a, b| if a.crowding_distance() < b.crowding_distance() {
-                Ordering::Greater
-            } else {
-                Ordering::Less
-            });
-
-            let rest = &mut front[0..self.population_size as usize - population.len()].to_vec();
-            population.append(rest);
-            archive.append(&mut population);
-            archive = self.update_archive(&archive);
-            current_generation += 1;
-        }
-    }*/
-
-    pub fn run(&self) {
-        // TODO may be this should be a set
-        let mut current_generation = 0;
-        let mut population = self.generate_random_population();
-        let mut archive = vec![];
-
-        self.update_archive(&mut archive, &population);
-        while current_generation < self.generations {
-            let mut offspring = self.generate_offspring(&population);
-            archive = self.update_archive(&mut archive, &offspring);
+            let mut offspring = self.generate_offspring(&population)?;
+            self.update_archive(&mut archive, &offspring);
             offspring.append(&mut population);
 
-            let mut fronts = self.preference_sorting(&mut offspring);
-            population.clear();
+            let mut fronts = PreferenceSorter::sort(&offspring, &self.objectives);
 
             for i in 0..fronts.len() {
-                let front = fronts.get(&(i as u64)).unwrap();
-                self.svd(front);
-                for t in front {
+                let front = fronts.get(&i).unwrap();
+                let front = SVD::compute(front, &self.objectives)?;
+                for t in &front {
                     population.push(t.clone());
                     if population.len() == self.population_size as usize {
                         break;
@@ -108,17 +88,19 @@ impl MOSA {
 
             current_generation += 1;
         }
+
+        Some(())
     }
 
-    fn test_that_covers<'a>(&self, archive: &'a [TestCase], branch: &Branch) -> Option<&'a TestCase> {
-        archive.iter().filter(|&t| branch.fitness(t) == 0.0).nth(0)
+    fn test_that_covers(&self, archive: &[TestCase], branch: &Branch) -> Option<TestCase> {
+        archive.iter().filter(|&t| branch.fitness(t) == 0.0).nth(0).cloned()
     }
 
-    fn update_archive(&self, archive: &mut Vec<TestCase>, population: &[TestCase]) -> Vec<TestCase> {
-        for branch in self.branches.as_ref() {
+    fn update_archive(&self, archive: &mut Vec<TestCase>, population: &[TestCase]) {
+        for branch in &self.objectives {
             let mut best_test_case = None;
             let mut best_length = usize::MAX;
-            if let Some(test_case) = self.test_that_covers(archive, branch) {
+            if let Some(test_case) = self.test_that_covers(archive, &branch) {
                 best_length = test_case.size();
                 best_test_case = Some(test_case);
             }
@@ -128,43 +110,82 @@ impl MOSA {
                 let length = test_case.size();
                 if score == 0.0 && length <= best_length {
                     if let Some(best_test_case) = best_test_case {
-                        let i = archive.iter().position(|t| t == best_test_case).unwrap();
+                        let i = archive.iter().position(|t| *t == best_test_case).unwrap();
                         archive[i] = test_case.clone();
                     } else {
                         archive.push(test_case.clone());
                     }
-                    best_test_case = Some(test_case);
+                    best_test_case = Some(test_case.clone());
                     best_length = length;
                 }
             }
         }
-
-        vec![]
-    }
-
-    fn preference_sorting(&self, population: &mut [TestCase]) -> HashMap<u64, Vec<TestCase>> {
-        todo!()
     }
 
     fn crowding_distance_assignment(&self, population: &mut [TestCase]) {
         todo!()
     }
 
-    fn generate_offspring(&self, population: &[TestCase]) -> Vec<TestCase> {
-        todo!()
+    fn uncovered_branches(&self, population: &[TestCase]) -> Vec<Branch> {
+        let mut uncovered_branches = vec![];
+        for branch in &self.objectives {
+            let mut covered = false;
+            for individual in population {
+                if individual.fitness(branch) == 0.0 {
+                    covered = true;
+                    break;
+                }
+            }
+
+            if !covered {
+                uncovered_branches.push(branch.clone());
+            }
+        }
+
+        uncovered_branches
     }
 
-    fn generate_random_population(&self) -> Vec<TestCase> {
+
+    fn generate_offspring(&self, population: &[TestCase]) -> Option<Vec<TestCase>> {
+        let mut offspring = vec![];
+        let uncovered_objectives = self.uncovered_branches(population);
+        while offspring.len() < population.len() {
+            let parent_1 = self.rank_selection.select(population)?;
+            let parent_2 = self.rank_selection.select(population)?;
+
+            let child_1: TestCase;
+            let child_2: TestCase;
+
+            if fastrand::f64() < self.crossover_rate {
+                let (a, b) = parent_1.crossover(&parent_2);
+                child_1 = a;
+                child_2 = b;
+            } else {
+                child_1 = parent_1.clone();
+                child_2 = parent_2.clone();
+            }
+
+            let mutated_child_1 = child_1.mutate();
+            let mutated_child_2 = child_2.mutate();
+
+            if population.len() - offspring.len() >= 2 {
+                offspring.push(mutated_child_1);
+                offspring.push(mutated_child_2);
+            } else {
+                offspring.push(if fastrand::f64() < 0.5 { mutated_child_1 } else { mutated_child_2 });
+            }
+        }
+
+        Some(offspring)
+    }
+
+    fn generate_random_population(&mut self) -> Vec<TestCase> {
         let mut population = Vec::new();
         for _ in 0..self.population_size {
             population.push(self.chromosome_generator.generate());
         }
 
         population
-    }
-
-    fn svd(&self, population: &[TestCase]) {
-        todo!()
     }
 }
 
@@ -177,207 +198,195 @@ impl<G, F> Archive<G, F> where G: ChromosomeGenerator, F: Fn(G::C) -> f64 {
     pub fn update_archive(&mut self, population: &Vec<G::C>) {}
 }
 
-pub struct SimulatedAnnealing<C> where C: Chromosome {
-    initial_chromosome: Option<C>,
-    max_transformations: u64,
-    cooling_strategy: CoolingStrategy,
-}
-
-impl<C> SimulatedAnnealing<C> where C: Chromosome {
-    pub fn new(cooling_strategy: CoolingStrategy) -> SimulatedAnnealing<C> {
-        SimulatedAnnealing {
-            initial_chromosome: None,
-            max_transformations: 10,
-            cooling_strategy,
-        }
-    }
-
-    pub fn initial_chromosome(&mut self, chromosome: C) -> &mut Self {
-        self.initial_chromosome = Some(chromosome);
-        self
-    }
-
-    pub fn max_transformations(&mut self, transformations: u64) -> &mut SimulatedAnnealing<C> {
-        self.max_transformations = transformations;
-        self
-    }
-
-    fn acceptance_probability(&self, old_fitness: f64, new_fitness: f64) -> f64 {
-        if new_fitness < old_fitness {
-            1.0
-        } else {
-            (-(new_fitness - old_fitness / self.cooling_strategy.temperature).abs()).exp()
-        }
-    }
-
-    pub fn run(&mut self) -> C {
-        let mut current = Rc::new(self.initial_chromosome.take().unwrap());
-        let mut transformations = 0;
-
-        let mut current_fitness = current.fitness();
-        let mut best = current.clone();
-        let mut best_fitness = current_fitness;
-
-        while transformations < self.max_transformations && self.cooling_strategy.improved_within_last_stages() {
-            let neighbour = Rc::new(current.mutate());
-            transformations += 1;
-
-            let neighbour_fitness = neighbour.fitness();
-            let acc_prob = self.acceptance_probability(current_fitness, neighbour_fitness);
-            if acc_prob > fastrand::f64() {
-                current = neighbour.clone();
-                current_fitness = current.fitness();
-
-                println!("Current: {}, best: {}", current_fitness, best_fitness);
-                if current_fitness < best_fitness {
-                    println!("Better fitness: {}", current_fitness);
-                    best = current.clone();
-                    best_fitness = current_fitness;
-                    self.cooling_strategy.energy_improved();
-                }
-
-                self.cooling_strategy.step(true);
-            } else {
-                self.cooling_strategy.step(false);
-            }
-        }
-        println!("Done");
-
-        (*best).clone()
-
-        /*Rc::try_unwrap(best).unwrap_or_else(|err| {
-            err
-        })*/
-    }
-}
-
-#[derive(Default)]
-pub struct CoolingStrategy {
-    pub degrees_of_freedom: u32,
-    pub energy_history_size: usize,
-    energy_history: VecDeque<bool>,
-    acc_history: VecDeque<bool>,
-    pub n_multiplicative: u32,
-    pub n_max: u32,
-    pub temperature: f64,
-    accepted_n: u32,
-    energy_improved: bool,
-}
-
-impl CoolingStrategy {
-    pub fn new() -> CoolingStrategy {
-        CoolingStrategy {
-            degrees_of_freedom: 10,
-            energy_history_size: 3,
-            energy_history: Default::default(),
-            acc_history: Default::default(),
-            n_multiplicative: 0,
-            n_max: 0,
-            temperature: 0.0,
-            accepted_n: 0,
-            energy_improved: false,
-        }
-    }
-
-    fn improved_within_last_stages(&self) -> bool {
-        if self.energy_history.len() < self.energy_history_size {
-            true
-        } else {
-            self.energy_history.iter().fold(false, |acc, &x| acc || x)
-        }
-    }
-
-    fn reached_equilibrium(&self) -> bool {
-        self.accepted_n >= self.n_multiplicative * self.degrees_of_freedom
-    }
-
-    fn energy_improved(&mut self) {
-        self.energy_improved = true;
-    }
-
-    fn step(&mut self, candidate_accepted: bool) {
-        self.add_accepted_history(candidate_accepted);
-
-        if candidate_accepted && self.reached_equilibrium() {
-            self.decrease_temperature(self.energy_improved);
-            self.energy_improved = false;
-        }
-    }
-
-    fn add_accepted_history(&mut self, candidate_accepted: bool) {
-        self.acc_history.push_back(candidate_accepted);
-        if candidate_accepted {
-            self.accepted_n += 1;
-        }
-
-        if self.acc_history.len() > (self.n_max * self.degrees_of_freedom) as usize {
-            if let Some(flag) = self.acc_history.pop_front() {
-                if flag {
-                    self.accepted_n -= 1;
-                }
-            }
-        }
-    }
-
-
-    fn add_energy_history(&mut self, energy_improved: bool) {
-        self.energy_history.push_back(energy_improved);
-
-        if self.energy_history.len() > self.energy_history_size {
-            self.energy_history.pop_front();
-        }
-    }
-
-    fn decrease_temperature(&mut self, energy_improved: bool) {
-        self.temperature *= 0.9;
-        self.acc_history.clear();
-        self.accepted_n = 0;
-    }
-}
-
 #[derive(Debug)]
-pub struct TemperatureStrategy {
-    p0_range: f64,
-    p0_min: f64,
-    fitness_min: f64,
-    fitness_range: f64,
-}
+pub struct PreferenceSorter {}
 
-impl TemperatureStrategy {
-    pub fn new(p0_range: f64, p0_min: f64, fitness_min: f64, fitness_range: f64) -> TemperatureStrategy {
-        TemperatureStrategy {
-            p0_min,
-            p0_range,
-            fitness_range,
-            fitness_min,
-        }
-    }
+impl PreferenceSorter {
+    pub fn sort(population: &[TestCase], objectives: &[Branch]) -> HashMap<usize, Vec<TestCase>> {
+        let mut fronts = HashMap::new();
+        let mut front_0 = vec![];
+        let mut uncovered_branches = vec![];
 
-    pub fn init_temperature<C>(&self, start: C) -> (C, f64)
-        where C: Chromosome {
-        let mut current = start.clone();
-        let initial_fitness = start.fitness();
-        let mut current_fitness = current.fitness();
-        let mut average_energy = 0.0;
+        for objective in objectives {
+            let mut min_dist = f64::MAX;
+            let mut best_individual: Option<&TestCase> = None;
 
-        for i in 0..100 {
-            let next = current.mutate();
-            let next_fitness = next.fitness();
-            average_energy += (next_fitness - current_fitness).abs();
-            current_fitness = next_fitness;
-            current = next;
+            for individual in population {
+                let dist = individual.fitness(objective);
+                if dist < min_dist {
+                    best_individual = Some(individual);
+                    min_dist = dist;
+                }
+            }
+
+            if min_dist > 0.0 {
+                uncovered_branches.push(objective);
+                if let Some(individual) = best_individual {
+                    front_0.push(individual.clone());
+                }
+            }
         }
 
-        average_energy /= 100.0;
-
-        let p0 = (((initial_fitness - self.fitness_min) * self.p0_range) / self.fitness_range) + self.p0_min;
-        let t0 = -(average_energy / p0.log10());
-
-        (current, t0)
+        fronts.insert(0, Vec::from(front_0.to_owned()));
+        let remaining_population: Vec<&TestCase> = population.iter()
+            .filter(|&i| !front_0.contains(i))
+            .collect();
+        if !remaining_population.is_empty() {
+            let remaining_fronts = FNDS::sort(population, objectives);
+            for i in 0..remaining_fronts.len() {
+                fronts.insert(i + 1, remaining_fronts.get(&i).unwrap().to_owned());
+            }
+        }
+        fronts
     }
 }
 
+struct Pareto {}
 
+impl Pareto {
+    pub fn dominates(t1: &TestCase, t2: &TestCase, objectives: &[Branch]) -> bool {
+        if objectives.iter().any(|m| t2.fitness(m) < t1.fitness(m)) {
+            return false;
+        }
 
+        objectives.iter().any(|m| t1.fitness(m) < t2.fitness(m))
+    }
+}
 
+struct FNDS {}
 
+impl FNDS {
+    pub fn sort(population: &[TestCase], objectives: &[Branch]) -> HashMap<usize, Vec<TestCase>> {
+        let mut fronts: HashMap<usize, Vec<TestCase>> = HashMap::new();
+        let mut S = HashMap::new();
+        let mut n = HashMap::new();
+
+        for p in population {
+            S.insert(p, HashSet::new());
+            n.insert(p, 0u32);
+            for q in population {
+                if Pareto::dominates(p, q, objectives) {
+                    if let Some(dominated_tests) = S.get_mut(p) {
+                        dominated_tests.insert(q.clone());
+                    }
+                } else if Pareto::dominates(q, p, objectives) {
+                    n.entry(p).and_modify(|e| *e += 1).or_insert(0);
+                }
+            }
+
+            if let Some(0) = n.get(p) {
+                // TODO p_rank = 1
+                fronts.entry(0)
+                    .and_modify(|e| e.push(p.clone()))
+                    .or_insert(vec![p.clone()]);
+            }
+        }
+
+        let mut i = 0;
+        while let Some(front) = fronts.get(&i) {
+            if front.is_empty() { break; }
+            let mut Q = HashSet::new();
+            for p in front {
+                if let Some(dominated_tests) = S.get(p) {
+                    for q in dominated_tests {
+                        let e = n.entry(q).and_modify(|e| *e -= 1).or_insert(0);
+                        if *e == 0 {
+                            Q.insert(q.clone());
+                        }
+                    }
+                }
+            }
+            i += 1;
+            fronts.insert(i, Vec::from_iter(Q));
+        }
+
+        fronts.remove(&(fronts.len() - 1));
+
+        fronts
+    }
+
+    pub fn sort2(population: &[TestCase], objectives: &[Branch]) -> HashMap<usize, Vec<TestCase>> {
+        let mut fronts: HashMap<usize, Vec<TestCase>> = HashMap::new();
+        let mut S = HashMap::new();
+        let mut n = HashMap::new();
+
+        for p in population {
+            S.insert(p, vec![]);
+            n.insert(p, 0);
+
+            for q in population {
+                if Pareto::dominates(p, q, objectives) {
+                    S.get_mut(p).unwrap().push(q.clone());
+                } else {
+                    *n.get_mut(p).unwrap() += 1;
+                }
+            }
+
+            if Some(&0) == n.get(p) {
+                match fronts.get_mut(&0) {
+                    Some(front) => front.push(p.clone()),
+                    None => {
+                        fronts.insert(0, vec![p.clone()]);
+                    }
+                }
+            }
+        }
+
+        let mut i = 0;
+        while let Some(front) = fronts.get(&i) {
+            if front.is_empty() { break; }
+            let mut Q = vec![];
+            for p in front {
+                for q in S.get(p).unwrap() {
+                    *n.get_mut(q).unwrap() -= 1;
+                    if let Some(0) = n.get(q) {
+                        Q.push(q.clone());
+                    }
+                }
+            }
+            i += 1;
+            fronts.insert(i, Q);
+        }
+
+        // The last entry is empty
+        fronts.remove(&(fronts.len() - 1));
+        fronts
+    }
+}
+
+pub struct SVD {}
+
+impl SVD {
+    pub fn compute(population: &[TestCase], objectives: &[Branch]) -> Option<Vec<TestCase>> {
+        let mut distances = HashMap::new();
+        for i in 0..population.len() {
+            if let Some(individual) = population.get(i) {
+                distances.insert(individual, 0u64);
+            }
+
+            for j in 0..population.len() {
+                if i == j { continue; }
+
+                let v = SVD::svd(population.get(i)?, population.get(j)?, objectives);
+                if *distances.get(population.get(i)?)? < v {
+                    distances.insert(population.get(i)?, v);
+                }
+            }
+        }
+
+        let mut sorted_population = population.to_owned();
+        sorted_population.sort_by(|a, b| distances.get(a).unwrap().cmp(distances.get(b).unwrap()));
+        Some(sorted_population.to_vec())
+    }
+
+    fn svd(a: &TestCase, b: &TestCase, objectives: &[Branch]) -> u64 {
+        let mut count = 0;
+        for m in objectives {
+            if b.fitness(m) < a.fitness(m) {
+                count += 1;
+            }
+        }
+
+        count
+    }
+}

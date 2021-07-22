@@ -3,6 +3,21 @@ use std::path::PathBuf;
 use std::io;
 use crate::chromosome::TestCase;
 
+pub struct SourceFile<'a> {
+    path: &'a str
+}
+
+impl<'a> SourceFile<'a> {
+    pub fn new(path: &'a str) -> SourceFile<'a> {
+        SourceFile {
+            path
+        }
+    }
+
+    pub fn path(&self) -> &'a str {
+        self.path
+    }
+}
 
 pub mod writer {
     use super::*;
@@ -48,62 +63,76 @@ pub mod writer {
                 Some(0) => Ok(source),
                 Some(2) => Err(io::Error::new(
                     io::ErrorKind::Other,
-                    "Rustfmt parsing errors".to_string()
+                    "Rustfmt parsing errors".to_string(),
                 )),
                 Some(3) => Ok(source),
                 _ => Err(io::Error::new(
                     io::ErrorKind::Other,
-                    "Internal rustfmt error".to_string()
+                    "Internal rustfmt error".to_string(),
                 ))
             }
             Err(_) => Ok(source)
         }
     }
 
-    pub struct TestWriter<'a> {
+    #[derive(Debug)]
+    pub struct TestWriter {
         use_all_star: Item,
-        test_case: &'a TestCase,
+        test_cases: Vec<TestCase>,
         // TODO this is ugly
-        inserting: bool
+        inserting: bool,
+        current_test: usize,
     }
 
-    impl<'a> TestWriter<'a> {
-        pub fn new(test_case: &'a TestCase) -> Self {
+    impl TestWriter {
+        pub fn new() -> Self {
             TestWriter {
                 use_all_star: syn::parse_quote! {
                     use super::*;
                 },
-                test_case,
-                inserting: true
+                test_cases: vec![],
+                inserting: true,
+                current_test: 0,
             }
         }
 
-        pub fn write(&mut self) -> io::Result<()> {
+        pub fn write(&mut self, test_cases: &[TestCase]) -> io::Result<()> {
+            self.test_cases = test_cases.to_vec();
             self.inserting = true;
             self.start()
         }
 
-        pub fn unwrite(&mut self) -> io::Result<()> {
+        pub fn unwrite(&mut self, test_cases: &[TestCase]) -> io::Result<()> {
+            self.test_cases = test_cases.to_vec();
             self.inserting = false;
             self.start()
         }
 
         fn start(&mut self) -> io::Result<()> {
-            let target = self.test_case.target();
-            let path = target.instrumented_file();
+            self.current_test = 0;
 
-            let content = fs::read_to_string(&path)
-                .expect("Could not read the Rust source file");
-            let mut ast = syn::parse_file(&content)
-                .expect("Could not parse the contents of the Rust source file with syn");
+            let targets: Vec<Branch> = self.test_cases
+                .iter()
+                .map(|t| t.target().to_owned())
+                .collect();
 
-            self.visit_file_mut(&mut ast);
+            for target in &targets {
+                let path = target.instrumented_file();
 
-            let tokens = ast.to_token_stream();
-            let src = rustfmt_string(&tokens.to_string()).unwrap();
+                let content = fs::read_to_string(&path)
+                    .expect("Could not read the Rust source file");
+                let mut ast = syn::parse_file(&content)
+                    .expect("Could not parse the contents of the Rust source file with syn");
 
-            let mut file = fs::File::create(path).expect("Could not create output source file");
-            file.write_all(&src.as_bytes()).unwrap();
+                self.visit_file_mut(&mut ast);
+
+                let tokens = ast.to_token_stream();
+                let src = rustfmt_string(&tokens.to_string()).unwrap();
+
+                let mut file = fs::File::create(path).expect("Could not create output source file");
+                file.write_all(&src.as_bytes()).unwrap();
+                self.current_test += 1;
+            }
 
             Ok(())
         }
@@ -115,7 +144,7 @@ pub mod writer {
         }
     }
 
-    impl<'a> VisitMut for TestWriter<'a> {
+    impl VisitMut for TestWriter {
         fn visit_item_mut(&mut self, i: &mut Item) {
             if let Item::Mod(item_mod) = i {
                 let ident = &item_mod.ident;
@@ -126,11 +155,17 @@ pub mod writer {
                         }
 
                         if self.inserting {
-                            items.insert(items.len(), self.test_case.to_syn());
+                            let code = self.test_cases
+                                .get(self.current_test)
+                                .unwrap()
+                                .to_syn();
+
+                            // Insert at the end
+                            items.insert(items.len(), code);
                         } else {
                             items.retain(|i| {
-                                if let Item::Fn(ItemFn{sig, ..}) = i{
-                                    sig.ident.to_string() != TestCase::TEST_FN_NAME
+                                if let Item::Fn(ItemFn { sig, .. }) = i {
+                                    !sig.ident.to_string().starts_with(TestCase::TEST_FN_PREFIX)
                                 } else {
                                     false
                                 }
@@ -199,7 +234,7 @@ pub mod writer {
 
     pub struct ModuleRegistrar<'a> {
         target: &'a Branch,
-        ast: File
+        ast: File,
     }
 
     impl<'a> ModuleRegistrar<'a> {
@@ -212,7 +247,7 @@ pub mod writer {
 
             ModuleRegistrar {
                 target,
-                ast
+                ast,
             }
         }
 
@@ -257,6 +292,7 @@ pub mod runner {
     use super::*;
 
     use std::io::Error;
+    use std::fs;
 
     pub struct TestRunner {}
 
@@ -268,23 +304,22 @@ pub mod runner {
         pub fn run(&self, test_case: &TestCase) -> io::Result<()> {
             let cargo = self.cargo_path()?;
             let mut cmd = Command::new(&*cargo);
-            cmd.stdin(Stdio::piped()).stdout(Stdio::piped());
-            // test --package additions --bin additions tests::test -- --exact
+            let log_file = fs::File::create("out.log")?;
+            cmd.stdin(Stdio::piped()).stdout(Stdio::from(log_file));
 
             // TODO extract package and bin files
             cmd.args(&["test",
                 "--package",
                 "additions",
-                &format!("tests::{}", TestCase::TEST_FN_NAME)])
+                &format!("tests::{}", test_case.name())])
                 .current_dir("/Users/tim/Documents/master-thesis/testify/src/examples/additions");
             match cmd.status() {
-                Ok(status) => {
-                    println!("Test ran: status code {}", status.code().unwrap());
+                Ok(_) => {
+                    println!("Test {}: OK", test_case.name());
                     Ok(())
-                },
+                }
                 Err(e) => Err(e)
             }
-
         }
 
         fn cargo_path(&self) -> io::Result<PathBuf> {
@@ -294,6 +329,5 @@ pub mod runner {
             }
         }
     }
-
 }
 

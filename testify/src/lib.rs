@@ -1,7 +1,8 @@
 
 #[macro_use]
 extern crate derive_builder;
-
+#[macro_use]
+extern crate lazy_static;
 
 pub mod chromosome;
 pub mod algorithm;
@@ -9,6 +10,7 @@ pub mod selection;
 pub mod analyze;
 pub mod operators;
 pub mod generators;
-pub mod tests;
+pub mod io;
 pub mod instr;
+pub mod parser;
 

@@ -5,6 +5,7 @@ use std::rc::Rc;
 use std::mem;
 use crate::generators::InputGenerator;
 use syn::punctuated::Punctuated;
+use crate::algorithm::{PreferenceSorter, SVD};
 
 pub trait Crossover {
     type C: Chromosome;
@@ -18,13 +19,13 @@ pub trait Mutation {
     fn apply(&self, chromosome: &Self::C) -> Self::C;
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone)]
 pub struct BasicMutation {
-    branches: Rc<Vec<Branch>>
+    branches: Vec<Branch>
 }
 
 impl BasicMutation {
-    pub fn new(branches: Rc<Vec<Branch>>) -> BasicMutation {
+    pub fn new(branches: Vec<Branch>) -> BasicMutation {
         BasicMutation {
             branches
         }
@@ -69,5 +70,49 @@ impl BasicMutation {
 
 
         mut_test_case
+    }
+}
+
+#[derive(Debug)]
+pub struct RankSelection {
+    objectives: Vec<Branch>,
+    bias: f64
+}
+
+impl<'a> RankSelection {
+    pub fn new(objectives: Vec<Branch> ) -> RankSelection {
+        RankSelection {
+            objectives,
+            bias: 1.7
+        }
+    }
+
+    fn sort(&self, population: &[TestCase]) -> Vec<TestCase> {
+        let mut sorted = vec![];
+        let mut fronts = PreferenceSorter::sort(population, &self.objectives);
+        fronts.iter_mut().for_each(|(k, v)| *v = SVD::compute(v, &self.objectives).unwrap());
+        for v in fronts.values_mut() {
+            sorted.append(v);
+        }
+        sorted
+    }
+
+    pub fn select(&self, population: &'a [TestCase]) -> Option<TestCase> {
+        let population = self.sort(population);
+        let probabilities: Vec<f64> = (0..population.len()).map(|i| {
+            self.bias - (2.0 * i as f64 * (self.bias - 1.0)) / (population.len() - 1) as f64
+        }).collect();
+
+        let fitness_sum: f64 = probabilities.iter().sum();
+        let pick = fastrand::f64() * fitness_sum;
+        let mut current = 0.0;
+        for i in 0..probabilities.len() {
+            current += probabilities.get(i)?;
+            if current > pick {
+                return population.get(i).cloned();
+            }
+        }
+
+        None
     }
 }

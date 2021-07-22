@@ -1,5 +1,3 @@
-
-
 pub mod util {
     use std::path::Path;
 
@@ -42,7 +40,7 @@ pub mod data {
         id: u64,
         original_file: String,
         target_fn: ItemFn,
-        branch_type: BranchType
+        branch_type: BranchType,
     }
 
     impl Branch {
@@ -60,6 +58,8 @@ pub mod data {
                 .to_string_lossy()
                 .to_string()
         }
+
+        // TODO return fitness as enum with ZERO value
         pub fn fitness(&self, test_case: &TestCase) -> f64 {
             test_case.results().get(&self.id).unwrap_or(&f64::MAX).to_owned()
         }
@@ -79,7 +79,7 @@ pub mod data {
                 id: Default::default(),
                 original_file: Default::default(),
                 target_fn: syn::parse_quote! {fn blank() {}},
-                branch_type: BranchType::Root
+                branch_type: BranchType::Root,
             }
         }
     }
@@ -114,10 +114,9 @@ pub mod instr {
     use super::data::{BranchType, Branch, BranchBuilder};
     use std::borrow::Cow;
 
-
-    const ROOT_BRANCH: &'static str = "root({}, {})";
-    const BRANCH: &'static str = "branch({}, {}, [{}])";
-    const K: u8 = 1;
+    pub const ROOT_BRANCH: &'static str = "root[{}, {}]";
+    pub const BRANCH: &'static str = "branch[{}, {}, {}]";
+    pub const K: u8 = 1;
 
     #[derive(Default)]
     pub struct Instrumenter<'a> {
@@ -125,7 +124,7 @@ pub mod instr {
         branches: Vec<Branch>,
         condition: bool,
         file: Cow<'a, str>,
-        current_fn: Option<ItemFn>
+        current_fn: Option<ItemFn>,
     }
 
     impl<'a> Instrumenter<'a> {
@@ -137,7 +136,7 @@ pub mod instr {
                 branches: Vec::new(),
                 condition: false,
                 file: Default::default(),
-                current_fn: Default::default()
+                current_fn: Default::default(),
             }
         }
 
@@ -295,38 +294,36 @@ pub mod instr {
         fn monitor_struct(&mut self) -> (ItemStruct, ItemImpl) {
             let trace_file = Instrumenter::TRACE_FILE;
             let monitor: ItemStruct = syn::parse_quote! {
-            struct TestifyMonitor {
-
-            }
-        };
+                struct TestifyMonitor {}
+            };
 
             let monitor_impl = syn::parse_quote! {
-            impl TestifyMonitor {
-                const TRACE_FILE: &'static str = #trace_file;
+                impl TestifyMonitor {
+                    const TRACE_FILE: &'static str = #trace_file;
 
-                fn trace_branch(visited_branch: u64, other_branch: u64, distance: f64) {
-                    TestifyMonitor::write(format!(#BRANCH, visited_branch, other_branch, distance));
+                    fn trace_branch(visited_branch: u64, other_branch: u64, distance: f64) {
+                        TestifyMonitor::write(format!(#BRANCH, visited_branch, other_branch, distance));
+                    }
+
+                    fn trace_fn(name: String, id: u64) {
+                        println!("HELLLO");
+                        TestifyMonitor::write(format!(#ROOT_BRANCH, name, id));
+                    }
+
+                    fn write(output: String) {
+                        let trace_file = std::fs::OpenOptions::new()
+                                                .write(true)
+                                                .append(true)
+                                                .create(true)
+
+                                                .open(TestifyMonitor::TRACE_FILE)
+                                                .unwrap();
+                        let mut trace_file = std::io::LineWriter::new(trace_file);
+                        trace_file.write_all(&output.as_bytes()).unwrap();
+                        trace_file.write_all(b"\n").unwrap();
+                    }
                 }
-
-                fn trace_fn(name: String, id: u64) {
-                    println!("HELLLO");
-                    TestifyMonitor::write(format!(#ROOT_BRANCH, name, id));
-                }
-
-                fn write(output: String) {
-                    let trace_file = std::fs::OpenOptions::new()
-                                            .write(true)
-                                            .append(true)
-                                            .create(true)
-
-                                            .open(TestifyMonitor::TRACE_FILE)
-                                            .unwrap();
-                    let mut trace_file = std::io::LineWriter::new(trace_file);
-                    trace_file.write_all(&output.as_bytes()).unwrap();
-                    trace_file.write_all(b"\n").unwrap();
-                }
-            }
-        };
+            };
 
             (monitor, monitor_impl)
         }
@@ -348,7 +345,6 @@ pub mod instr {
 
             self.instrument_if(i);
         }
-
 
 
         fn visit_file_mut(&mut self, i: &mut File) {
@@ -387,6 +383,5 @@ pub mod instr {
             self.instrument_fn(&mut i.block, &i.sig.ident);
             self.current_fn = None;
         }
-
     }
 }
