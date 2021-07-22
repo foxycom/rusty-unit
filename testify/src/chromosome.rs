@@ -8,7 +8,6 @@ use crate::generators::InputGenerator;
 use crate::io::writer::{TestWriter, ModuleRegistrar};
 use crate::io::runner::TestRunner;
 use crate::instr::data::{Branch};
-use crate::analyze::analyze_src;
 use crate::operators::BasicMutation;
 use std::rc::Rc;
 use std::fs;
