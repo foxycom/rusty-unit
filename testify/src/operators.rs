@@ -79,8 +79,8 @@ pub struct RankSelection {
     bias: f64
 }
 
-impl<'a> RankSelection {
-    pub fn new(objectives: Vec<Branch> ) -> RankSelection {
+impl RankSelection {
+    pub fn new(objectives: Vec<Branch>) -> RankSelection {
         RankSelection {
             objectives,
             bias: 1.7
@@ -97,7 +97,7 @@ impl<'a> RankSelection {
         sorted
     }
 
-    pub fn select(&self, population: &'a [TestCase]) -> Option<TestCase> {
+    pub fn select(&self, population: &[TestCase]) -> Option<TestCase> {
         let population = self.sort(population);
         let probabilities: Vec<f64> = (0..population.len()).map(|i| {
             self.bias - (2.0 * i as f64 * (self.bias - 1.0)) / (population.len() - 1) as f64

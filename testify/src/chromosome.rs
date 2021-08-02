@@ -4,9 +4,7 @@ use std::cmp::Ordering;
 use quote::ToTokens;
 use proc_macro2::{Ident, Span};
 use std::collections::HashMap;
-use crate::generators::InputGenerator;
-use crate::io::writer::{TestWriter, ModuleRegistrar};
-use crate::io::runner::TestRunner;
+use crate::generators::{InputGenerator, TestIdGenerator};
 use crate::instr::data::{Branch};
 use crate::operators::BasicMutation;
 use std::rc::Rc;
@@ -30,6 +28,8 @@ pub trait ChromosomeGenerator {
     fn generate(&mut self) -> Self::C;
 }
 
+
+
 #[derive(Clone, Debug)]
 pub struct TestCase {
     id: u64,
@@ -41,7 +41,8 @@ pub struct TestCase {
 
 impl PartialEq for TestCase {
     fn eq(&self, other: &Self) -> bool {
-        self.stmts == other.stmts && self.objective == other.objective
+        /*self.stmts == other.stmts && self.objective == other.objective*/
+        self.id == other.id
     }
 }
 
@@ -49,18 +50,19 @@ impl Eq for TestCase {}
 
 impl Hash for TestCase {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.objective.hash(state);
-        self.stmts.hash(state);
+        self.id.hash(state);
+        /*self.objective.hash(state);
+        self.stmts.hash(state);*/
     }
 }
 
 impl TestCase {
     pub const TEST_FN_PREFIX: &'static str = "testify";
 
-    pub fn new(id: u64, target: Branch, stmts: Vec<Stmt>, mutation: BasicMutation) -> Self {
+    pub fn new(id: u64, objective: Branch, stmts: Vec<Stmt>, mutation: BasicMutation) -> Self {
         TestCase {
             id,
-            objective: target,
+            objective,
             stmts,
             results: HashMap::new(),
             mutation,
@@ -72,7 +74,7 @@ impl TestCase {
         &mut self.stmts
     }
 
-    pub fn target(&self) -> &Branch {
+    pub fn objective(&self) -> &Branch {
         &self.objective
     }
 
@@ -97,27 +99,6 @@ impl TestCase {
         &self.results
     }
 
-    pub fn execute(&mut self) {
-        // TODO reuse the objects
-        let mut test_registrar = ModuleRegistrar::new(&self.objective);
-        test_registrar.register();
-
-        let test_runner = TestRunner::new();
-        match test_runner.run(&self) {
-            Ok(_) => {
-                println!("Test {} went ok", self.id);
-            }
-            Err(_) => {
-                println!("Test {} failed", self.id);
-            }
-        }
-        test_registrar.unregister();
-
-        // TODO dynamic path
-        self.results = TraceParser::parse("/Users/tim/Documents/master-thesis/testify/src/examples/additions/trace.txt").unwrap();
-        fs::remove_file("/Users/tim/Documents/master-thesis/testify/src/examples/additions/trace.txt").unwrap();
-    }
-
     pub fn size(&self) -> usize {
         self.stmts.len()
     }
@@ -128,6 +109,10 @@ impl TestCase {
 
     pub fn id(&self) -> u64 {
         self.id
+    }
+
+    pub fn set_results(&mut self, results: HashMap<u64, f64>) {
+        self.results = results;
     }
 }
 
@@ -141,7 +126,7 @@ impl Display for TestCase {
 
 impl Chromosome for TestCase {
     fn mutate(&self) -> Self {
-        self.mutation.mutate(&self)
+        self.mutation.mutate(self)
     }
 
     fn fitness(&self, objective: &Branch) -> f64 {
@@ -157,11 +142,11 @@ impl Chromosome for TestCase {
 pub struct TestCaseGenerator {
     branches: Vec<Branch>,
     mutation: BasicMutation,
-    test_id: u64
+    test_id: Rc<RefCell<TestIdGenerator>>
 }
 
 impl TestCaseGenerator {
-    pub fn new(branches: Vec<Branch>, mutation: BasicMutation, test_id: u64) -> TestCaseGenerator {
+    pub fn new(branches: Vec<Branch>, mutation: BasicMutation, test_id: Rc<RefCell<TestIdGenerator>>) -> TestCaseGenerator {
         TestCaseGenerator {
             branches,
             mutation,
@@ -189,12 +174,12 @@ impl ChromosomeGenerator for TestCaseGenerator {
             #ident(#(#args),*);
         };
 
+        let test_id = self.test_id.borrow_mut().next_id();
         let test_case = TestCase::new(
-            self.test_id,
+            test_id,
             target,
             vec![stmt],
             self.mutation.clone());
-        self.test_id += 1;
         //test_case.execute();
         test_case
     }

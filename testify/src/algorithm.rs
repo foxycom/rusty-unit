@@ -6,9 +6,11 @@ use crate::instr::data::Branch;
 use std::cmp::Ordering;
 use std::option::Option::Some;
 use crate::operators::RankSelection;
-use crate::io::writer::TestWriter;
 use std::cell::RefCell;
 use std::iter::FromIterator;
+use crate::io::SourceFile;
+use crate::generators::TestIdGenerator;
+use std::collections::hash_map::DefaultHasher;
 
 #[derive(Debug)]
 pub struct MOSA {
@@ -20,11 +22,11 @@ pub struct MOSA {
     objectives: Vec<Branch>,
     generations: u64,
     rank_selection: RankSelection,
-    test_writer: TestWriter,
+    test_id_generator: Rc<RefCell<TestIdGenerator>>,
 }
 
 impl MOSA {
-    pub fn new(generator: TestCaseGenerator, rank_selection: RankSelection, branches: Vec<Branch>) -> MOSA {
+    pub fn new(generator: TestCaseGenerator, rank_selection: RankSelection, branches: Vec<Branch>, test_id_generator: Rc<RefCell<TestIdGenerator>>) -> MOSA {
         MOSA {
             population_size: 50,
             mutation_rate: 0.2,
@@ -34,7 +36,7 @@ impl MOSA {
             objectives: branches,
             generations: 100,
             rank_selection,
-            test_writer: TestWriter::new(),
+            test_id_generator,
         }
     }
 
@@ -53,22 +55,37 @@ impl MOSA {
         self
     }
 
-    pub fn run(&mut self) -> Option<()> {
+    pub fn run(&mut self) -> Option<(Vec<u64>, f64)> {
         // TODO may be this should be a set
         let mut current_generation = 0;
         let mut population = self.generate_random_population();
 
-        self.test_writer.write(&population);
-        population.iter_mut().for_each(|t| t.execute());
+        /*let mut source_lut: HashMap<&SourceFile, Vec<TestCase>> = HashMap::new();
+        for test_case in &population {
+            let source_file = test_case.objective().source_file();
+            source_lut.entry(source_file)
+                .and_modify(|e| e.push(test_case.clone()))
+                .or_insert(vec![test_case.clone()]);
+        }*/
 
+        let mut source_file = SourceFile::new("/Users/tim/Documents/master-thesis/testify/src/examples/additions/src/main.rs");
+        source_file.add_tests(&population);
+        source_file.run_tests(&mut population);
+        source_file.clear_tests();
         let mut archive = &mut vec![];
 
         self.update_archive(archive, &population);
         while current_generation < self.generations {
             let mut offspring = self.generate_offspring(&population)?;
+            source_file.add_tests(&offspring);
+            source_file.run_tests(&mut offspring);
+            source_file.clear_tests();
+
+
             self.update_archive(&mut archive, &offspring);
             offspring.append(&mut population);
 
+            // TODO there is a bug in sort, duplicate ids
             let mut fronts = PreferenceSorter::sort(&offspring, &self.objectives);
 
             for i in 0..fronts.len() {
@@ -89,7 +106,12 @@ impl MOSA {
             current_generation += 1;
         }
 
-        Some(())
+        source_file.add_tests(&population);
+        Some(self.coverage(&population))
+    }
+
+    fn test_ids(&self, tests: &[TestCase]) -> HashSet<u64> {
+        tests.iter().map(TestCase::id).collect()
     }
 
     fn test_that_covers(&self, archive: &[TestCase], branch: &Branch) -> Option<TestCase> {
@@ -124,6 +146,16 @@ impl MOSA {
 
     fn crowding_distance_assignment(&self, population: &mut [TestCase]) {
         todo!()
+    }
+
+    fn coverage(&self, population: &[TestCase]) -> (Vec<u64>, f64) {
+        let uncovered_branches = self.uncovered_branches(population);
+        let uncovered_branch_ids: Vec<u64> = uncovered_branches.iter()
+            .map(|b| b.id())
+            .copied()
+            .collect();
+        let coverage = 1.0 - uncovered_branches.len() as f64 / self.objectives.len() as f64;
+        (uncovered_branch_ids, coverage)
     }
 
     fn uncovered_branches(&self, population: &[TestCase]) -> Vec<Branch> {
@@ -165,8 +197,11 @@ impl MOSA {
                 child_2 = parent_2.clone();
             }
 
-            let mutated_child_1 = child_1.mutate();
-            let mutated_child_2 = child_2.mutate();
+            let mut mutated_child_1 = child_1.mutate();
+            let mut mutated_child_2 = child_2.mutate();
+
+            mutated_child_1.set_id(self.test_id_generator.borrow_mut().next_id());
+            mutated_child_2.set_id(self.test_id_generator.borrow_mut().next_id());
 
             if population.len() - offspring.len() >= 2 {
                 offspring.push(mutated_child_1);
@@ -204,8 +239,9 @@ pub struct PreferenceSorter {}
 impl PreferenceSorter {
     pub fn sort(population: &[TestCase], objectives: &[Branch]) -> HashMap<usize, Vec<TestCase>> {
         let mut fronts = HashMap::new();
-        let mut front_0 = vec![];
+        let mut front_0 = HashSet::new();
         let mut uncovered_branches = vec![];
+
 
         for objective in objectives {
             let mut min_dist = f64::MAX;
@@ -222,22 +258,38 @@ impl PreferenceSorter {
             if min_dist > 0.0 {
                 uncovered_branches.push(objective);
                 if let Some(individual) = best_individual {
-                    front_0.push(individual.clone());
+                    front_0.insert(individual.clone());
                 }
             }
         }
 
-        fronts.insert(0, Vec::from(front_0.to_owned()));
-        let remaining_population: Vec<&TestCase> = population.iter()
+        fronts.insert(0, Vec::from_iter(front_0.to_owned()));
+        let remaining_population: Vec<TestCase> = population.iter()
             .filter(|&i| !front_0.contains(i))
+            .map(|i| i.clone())
             .collect();
         if !remaining_population.is_empty() {
-            let remaining_fronts = FNDS::sort(population, objectives);
+            let remaining_fronts = FNDS::sort(&remaining_population, objectives).unwrap();
             for i in 0..remaining_fronts.len() {
                 fronts.insert(i + 1, remaining_fronts.get(&i).unwrap().to_owned());
             }
         }
         fronts
+    }
+
+    pub fn test_ids(tests: &[TestCase]) -> HashSet<u64> {
+        tests.iter().map(TestCase::id).collect()
+    }
+
+    pub fn ids(fronts: &HashMap<usize, Vec<TestCase>>) -> Vec<u64> {
+        let mut ids = vec![];
+        for (i, front) in fronts.iter() {
+            for test_case in front {
+                ids.push(test_case.id());
+            }
+        }
+
+        ids
     }
 }
 
@@ -256,7 +308,7 @@ impl Pareto {
 struct FNDS {}
 
 impl FNDS {
-    pub fn sort(population: &[TestCase], objectives: &[Branch]) -> HashMap<usize, Vec<TestCase>> {
+    /*pub fn sort(population: &[TestCase], objectives: &[Branch]) -> HashMap<usize, Vec<TestCase>> {
         let mut fronts: HashMap<usize, Vec<TestCase>> = HashMap::new();
         let mut S = HashMap::new();
         let mut n = HashMap::new();
@@ -270,7 +322,7 @@ impl FNDS {
                         dominated_tests.insert(q.clone());
                     }
                 } else if Pareto::dominates(q, p, objectives) {
-                    n.entry(p).and_modify(|e| *e += 1).or_insert(0);
+                    n.entry(p).and_modify(|e| *e += 1).or_insert(1);
                 }
             }
 
@@ -289,9 +341,13 @@ impl FNDS {
             for p in front {
                 if let Some(dominated_tests) = S.get(p) {
                     for q in dominated_tests {
-                        let e = n.entry(q).and_modify(|e| *e -= 1).or_insert(0);
-                        if *e == 0 {
-                            Q.insert(q.clone());
+                        if let Some(e) = n.get_mut(q) {
+                            *e -= 1;
+                            if *e == 0 {
+                                Q.insert(q.clone());
+                            }
+                        } else {
+                            panic!("THis should never happen");
                         }
                     }
                 }
@@ -303,54 +359,58 @@ impl FNDS {
         fronts.remove(&(fronts.len() - 1));
 
         fronts
-    }
+    }*/
 
-    pub fn sort2(population: &[TestCase], objectives: &[Branch]) -> HashMap<usize, Vec<TestCase>> {
-        let mut fronts: HashMap<usize, Vec<TestCase>> = HashMap::new();
+    pub fn sort(population: &[TestCase], objectives: &[Branch]) -> Option<HashMap<usize, Vec<TestCase>>> {
+        let mut front: HashMap<usize, Vec<TestCase>> = HashMap::new();
         let mut S = HashMap::new();
         let mut n = HashMap::new();
+        (0..population.len()).for_each(|i| {
+            let individual = population.get(i).unwrap();
+            S.insert(individual, HashSet::new());
+            n.insert(individual, 0);
+        });
 
-        for p in population {
-            S.insert(p, vec![]);
-            n.insert(p, 0);
+        for i in 0..population.len() {
+            let p = population.get(i)?;
 
-            for q in population {
+            for j in 0..population.len() {
+                if i == j { continue; }
+                let q = population.get(j).unwrap();
                 if Pareto::dominates(p, q, objectives) {
-                    S.get_mut(p).unwrap().push(q.clone());
-                } else {
-                    *n.get_mut(p).unwrap() += 1;
+                    S.get_mut(p).unwrap().insert(q);
+                } else if Pareto::dominates(q, p, objectives) {
+                    let e = n.get_mut(p).unwrap();
+                    *e += 1;
                 }
             }
 
-            if Some(&0) == n.get(p) {
-                match fronts.get_mut(&0) {
-                    Some(front) => front.push(p.clone()),
-                    None => {
-                        fronts.insert(0, vec![p.clone()]);
-                    }
-                }
+            if *n.get(p).unwrap() == 0 {
+                front.entry(0)
+                    .and_modify(|e| e.push(p.clone()))
+                    .or_insert(vec![p.clone()]);
             }
         }
 
         let mut i = 0;
-        while let Some(front) = fronts.get(&i) {
-            if front.is_empty() { break; }
-            let mut Q = vec![];
-            for p in front {
-                for q in S.get(p).unwrap() {
-                    *n.get_mut(q).unwrap() -= 1;
-                    if let Some(0) = n.get(q) {
-                        Q.push(q.clone());
+        while !front.get(&i)?.is_empty() {
+            let mut Q = HashSet::new();
+            for p in front.get(&i).unwrap() {
+                for &q in S.get(p).unwrap() {
+                    let e = n.get_mut(q).unwrap();
+                    *e -= 1;
+                    if *e == 0 {
+                        Q.insert(q);
                     }
                 }
             }
             i += 1;
-            fronts.insert(i, Q);
+
+            let next_front = Q.iter().map(|&x| x.clone()).collect();
+            front.insert(i, next_front);
         }
 
-        // The last entry is empty
-        fronts.remove(&(fronts.len() - 1));
-        fronts
+        Some(front)
     }
 }
 
@@ -360,23 +420,24 @@ impl SVD {
     pub fn compute(population: &[TestCase], objectives: &[Branch]) -> Option<Vec<TestCase>> {
         let mut distances = HashMap::new();
         for i in 0..population.len() {
-            if let Some(individual) = population.get(i) {
-                distances.insert(individual, 0u64);
-            }
+            let a = population.get(i)?;
+            distances.insert(a, 0u64);
 
             for j in 0..population.len() {
                 if i == j { continue; }
 
-                let v = SVD::svd(population.get(i)?, population.get(j)?, objectives);
-                if *distances.get(population.get(i)?)? < v {
-                    distances.insert(population.get(i)?, v);
+                let b = population.get(j)?;
+
+                let v = SVD::svd(a, b, objectives);
+                if *distances.get(a)? < v {
+                    distances.insert(a, v);
                 }
             }
         }
 
         let mut sorted_population = population.to_owned();
         sorted_population.sort_by(|a, b| distances.get(a).unwrap().cmp(distances.get(b).unwrap()));
-        Some(sorted_population.to_vec())
+        Some(sorted_population)
     }
 
     fn svd(a: &TestCase, b: &TestCase, objectives: &[Branch]) -> u64 {

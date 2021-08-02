@@ -1,4 +1,5 @@
 use syn::{FnArg, Expr, Type, Lit};
+use proc_macro2::Ident;
 
 #[derive(Debug)]
 pub struct InputGenerator {}
@@ -34,7 +35,11 @@ impl InputGenerator {
                 return match lit {
                     Lit::Int(int) => {
                         let n: u8 = int.base10_parse().unwrap();
-                        let res = if fastrand::f64() < 0.5 {n + 5} else {n - 5};
+                        let res = if fastrand::f64() < 0.5 {
+                            n.overflowing_add(5).0
+                        } else {
+                            n.overflowing_sub(5).0
+                        };
                         syn::parse_quote! {
                             #res
                         }
@@ -48,5 +53,27 @@ impl InputGenerator {
                 unimplemented!()
             }
         }
+    }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct TestIdGenerator {
+    id: u64,
+}
+
+impl TestIdGenerator {
+    pub fn new() -> TestIdGenerator {
+        TestIdGenerator {
+            id: Default::default()
+        }
+    }
+
+    pub fn next_id(&mut self) -> u64 {
+        self.id += 1;
+        self.id
+    }
+
+    pub fn reset(&mut self) {
+        self.id = Default::default()
     }
 }

@@ -27,38 +27,22 @@ pub mod util {
 
 pub mod data {
     use super::*;
-    use serde::{Serialize, Deserialize};
 
     use syn::ItemFn;
     use crate::instr;
     use std::path;
     use crate::chromosome::TestCase;
+    use crate::io::SourceFile;
 
 
     #[derive(Debug, Clone, Hash, Eq, PartialEq, Builder)]
     pub struct Branch {
         id: u64,
-        original_file: String,
         target_fn: ItemFn,
         branch_type: BranchType,
     }
 
     impl Branch {
-        pub fn original_file(&self) -> &str {
-            &self.original_file
-        }
-        pub fn instrumented_file(&self) -> String {
-            util::instrumented_path(&self.original_file)
-        }
-
-        pub fn instrumented_mod(&self) -> String {
-            path::Path::new(&self.instrumented_file())
-                .file_stem()
-                .unwrap()
-                .to_string_lossy()
-                .to_string()
-        }
-
         // TODO return fitness as enum with ZERO value
         pub fn fitness(&self, test_case: &TestCase) -> f64 {
             test_case.results().get(&self.id).unwrap_or(&f64::MAX).to_owned()
@@ -71,13 +55,17 @@ pub mod data {
         pub fn id(&self) -> &u64 {
             &self.id
         }
+
+
+        pub fn branch_type(&self) -> &BranchType {
+            &self.branch_type
+        }
     }
 
     impl Default for Branch {
         fn default() -> Self {
             Branch {
                 id: Default::default(),
-                original_file: Default::default(),
                 target_fn: syn::parse_quote! {fn blank() {}},
                 branch_type: BranchType::Root,
             }
@@ -85,12 +73,11 @@ pub mod data {
     }
 
     impl Branch {
-        pub fn new(id: u64, original_file: &str, target_fn: ItemFn, branch_type: BranchType) -> Self {
+        pub fn new(id: u64, target_fn: ItemFn, branch_type: BranchType) -> Self {
             Branch {
                 id,
                 target_fn,
                 branch_type,
-                original_file: original_file.to_string(),
             }
         }
     }
@@ -113,6 +100,7 @@ pub mod instr {
     use super::util;
     use super::data::{BranchType, Branch, BranchBuilder};
     use std::borrow::Cow;
+    use crate::io::SourceFile;
 
     pub const ROOT_BRANCH: &'static str = "root[{}, {}]";
     pub const BRANCH: &'static str = "branch[{}, {}, {}]";
@@ -147,7 +135,7 @@ pub mod instr {
             let mut ast = syn::parse_file(&content)
                 .expect("Could not parse the contents of the Rust source file with syn");
 
-            fs::write("ast.txt", format!("{:#?}", ast));
+            fs::write("ast.txt", format!("{:#?}", ast)).unwrap();
 
             self.visit_file_mut(&mut ast);
 
@@ -160,7 +148,7 @@ pub mod instr {
 
         fn src_to_file(&self, src: &str, path: String) {
             let mut file = fs::File::create(path).expect("Could not create output source file");
-            file.write_all(&src.as_bytes());
+            file.write_all(&src.as_bytes()).unwrap();
         }
 
 
@@ -186,9 +174,11 @@ pub mod instr {
         fn create_branch(&mut self, branch_type: BranchType) -> Branch {
             self.branch_id += 1;
 
+            //let source_file = SourceFile::new(self.file.as_ref());
+
             BranchBuilder::default()
                 .id(self.branch_id)
-                .original_file(self.file.to_string())
+                //.source_file(source_file)
                 .target_fn(self.current_fn.as_ref().unwrap().clone())
                 .branch_type(branch_type)
                 .build()
@@ -252,6 +242,18 @@ pub mod instr {
                         TestifyMonitor::trace_branch(#false_branch_id, #true_branch_id, (#left - #right) as f64);
                     };
                     }
+                    BinOp::And(_) => {
+                        true_trace = syn::parse_quote! {println!();};
+                        false_trace = syn::parse_quote! {println!();};
+                    }
+                    BinOp::Eq(_) => {
+                        true_trace = syn::parse_quote! {
+                            TestifyMonitor::trace_branch(#true_branch_id, #false_branch_id, 1.0);
+                        };
+                        false_trace = syn::parse_quote! {
+                            TestifyMonitor::trace_branch(#false_branch_id, #true_branch_id, (#left - #right).abs() as f64);
+                        }
+                    }
                     // TODO all other ops
                     _ => {
                         unimplemented!();
@@ -306,16 +308,13 @@ pub mod instr {
                     }
 
                     fn trace_fn(name: String, id: u64) {
-                        println!("HELLLO");
                         TestifyMonitor::write(format!(#ROOT_BRANCH, name, id));
                     }
 
                     fn write(output: String) {
                         let trace_file = std::fs::OpenOptions::new()
-                                                .write(true)
-                                                .append(true)
                                                 .create(true)
-
+                                                .append(true)
                                                 .open(TestifyMonitor::TRACE_FILE)
                                                 .unwrap();
                         let mut trace_file = std::io::LineWriter::new(trace_file);
@@ -331,7 +330,6 @@ pub mod instr {
 
 
     impl<'a> VisitMut for Instrumenter<'a> {
-        // TODO use also other visitors
         fn visit_expr_if_mut(&mut self, i: &mut ExprIf) {
             for it in &mut i.attrs {
                 VisitMut::visit_attribute_mut(self, it);
