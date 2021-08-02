@@ -54,6 +54,33 @@ impl InputGenerator {
             }
         }
     }
+
+    pub fn mutate_arg_dist(arg: &Expr, dist: f64) -> Expr {
+        match arg {
+            Expr::Lit(expr_lit) => {
+                let lit = &expr_lit.lit;
+                return match lit {
+                    Lit::Int(int) => {
+                        let n: u8 = int.base10_parse().unwrap();
+                        let res = if fastrand::f64() < 0.5 {
+                            n.overflowing_add(dist as u8).0
+                        } else {
+                            n.overflowing_sub(dist as u8).0
+                        };
+                        syn::parse_quote! {
+                            #res
+                        }
+                    }
+                    _ => {
+                        unimplemented!()
+                    }
+                };
+            }
+            _ => {
+                unimplemented!()
+            }
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone)]

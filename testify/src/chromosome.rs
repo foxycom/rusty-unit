@@ -5,8 +5,8 @@ use quote::ToTokens;
 use proc_macro2::{Ident, Span};
 use std::collections::HashMap;
 use crate::generators::{InputGenerator, TestIdGenerator};
-use crate::instr::data::{Branch};
-use crate::operators::BasicMutation;
+use crate::instr::data::{Branch, BranchManager};
+use crate::operators::{BasicMutation, BasicCrossover};
 use std::rc::Rc;
 use std::fs;
 use std::hash::{Hash, Hasher};
@@ -29,14 +29,15 @@ pub trait ChromosomeGenerator {
 }
 
 
-
 #[derive(Clone, Debug)]
 pub struct TestCase {
     id: u64,
-    objective: Branch,
-    stmts: Vec<Stmt>,
+    branch: Branch,
+    stmts: Vec<Statement>,
     results: HashMap<u64, f64>,
     mutation: BasicMutation,
+    crossover: BasicCrossover,
+    branch_manager: Rc<RefCell<BranchManager>>,
 }
 
 impl PartialEq for TestCase {
@@ -59,29 +60,31 @@ impl Hash for TestCase {
 impl TestCase {
     pub const TEST_FN_PREFIX: &'static str = "testify";
 
-    pub fn new(id: u64, objective: Branch, stmts: Vec<Stmt>, mutation: BasicMutation) -> Self {
+    pub fn new(id: u64, branch: Branch, stmts: Vec<Statement>, mutation: BasicMutation, crossover: BasicCrossover, branch_manager: Rc<RefCell<BranchManager>>) -> Self {
         TestCase {
             id,
-            objective,
+            branch,
             stmts,
             results: HashMap::new(),
             mutation,
+            crossover,
+            branch_manager,
         }
     }
 
 
-    pub fn stmts(&mut self) -> &mut Vec<Stmt> {
+    pub fn stmts(&mut self) -> &mut Vec<Statement> {
         &mut self.stmts
     }
 
     pub fn objective(&self) -> &Branch {
-        &self.objective
+        &self.branch
     }
 
     pub fn to_syn(&self) -> Item {
         let ident = Ident::new(&format!("{}_{}", TestCase::TEST_FN_PREFIX, self.id),
                                Span::call_site());
-        let stmts = &self.stmts;
+        let stmts: Vec<Stmt> = self.stmts.iter().map(Statement::to_syn).collect();
         let test: Item = syn::parse_quote! {
             #[test]
             fn #ident() {
@@ -114,6 +117,9 @@ impl TestCase {
     pub fn set_results(&mut self, results: HashMap<u64, f64>) {
         self.results = results;
     }
+    pub fn set_stmts(&mut self, stmts: &[Statement]) {
+        self.stmts = stmts.to_vec();
+    }
 }
 
 impl Display for TestCase {
@@ -134,23 +140,72 @@ impl Chromosome for TestCase {
     }
 
     fn crossover(&self, other: &Self) -> (Self, Self) where Self: Sized {
-        (self.clone(), self.clone())
+        self.crossover.crossover(self, other)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Statement {
+    params: Vec<FnArg>,
+    args: Vec<Expr>,
+    ident: Ident,
+    item_fn: ItemFn,
+}
+
+impl Statement {
+    pub fn new(ident: Ident, item_fn: ItemFn, params: Vec<FnArg>, args: Vec<Expr>) -> Self {
+        Statement { params, args, ident, item_fn }
+    }
+
+    pub fn params(&self) -> &Vec<FnArg> {
+        &self.params
+    }
+    pub fn args(&self) -> &Vec<Expr> {
+        &self.args
+    }
+    pub fn ident(&self) -> &Ident {
+        &self.ident
+    }
+    pub fn item_fn(&self) -> &ItemFn {
+        &self.item_fn
+    }
+
+    pub fn has_params(&self) -> bool {
+        !self.params.is_empty()
+    }
+
+    pub fn set_args(&mut self, args: Vec<Expr>) {
+        self.args = args;
+    }
+
+    pub fn to_syn(&self) -> Stmt {
+        let ident = &self.ident;
+        let args = &self.args;
+
+        syn::parse_quote! {
+            #ident(#(#args),*);
+        }
     }
 }
 
 #[derive(Debug)]
 pub struct TestCaseGenerator {
-    branches: Vec<Branch>,
+    branch_manager: Rc<RefCell<BranchManager>>,
     mutation: BasicMutation,
-    test_id: Rc<RefCell<TestIdGenerator>>
+    crossover: BasicCrossover,
+    test_id: Rc<RefCell<TestIdGenerator>>,
 }
 
 impl TestCaseGenerator {
-    pub fn new(branches: Vec<Branch>, mutation: BasicMutation, test_id: Rc<RefCell<TestIdGenerator>>) -> TestCaseGenerator {
+    pub fn new(branch_manager: Rc<RefCell<BranchManager>>,
+               mutation: BasicMutation,
+               crossover: BasicCrossover,
+               test_id: Rc<RefCell<TestIdGenerator>>) -> TestCaseGenerator {
         TestCaseGenerator {
-            branches,
+            branch_manager,
             mutation,
-            test_id
+            crossover,
+            test_id,
         }
     }
 }
@@ -159,28 +214,19 @@ impl ChromosomeGenerator for TestCaseGenerator {
     type C = TestCase;
 
     fn generate(&mut self) -> Self::C {
-        let rand = fastrand::usize(..self.branches.len());
-        let target = self.branches
-            .get(rand)
-            .cloned()
-            .unwrap();
-        let sig = &target.target_fn().sig;
-
-        let args: Vec<Expr> = sig.inputs.iter().map(InputGenerator::generate_arg).collect();
-
-
-        let ident = &sig.ident;
-        let stmt = syn::parse_quote! {
-            #ident(#(#args),*);
-        };
+        let bm = self.branch_manager.borrow();
+        let (stmt, target) = bm.get_random_stmt();
 
         let test_id = self.test_id.borrow_mut().next_id();
         let test_case = TestCase::new(
             test_id,
             target,
             vec![stmt],
-            self.mutation.clone());
-        //test_case.execute();
+            self.mutation.clone(),
+            self.crossover.clone(),
+            self.branch_manager.clone(),
+        );
+
         test_case
     }
 }

@@ -2,7 +2,7 @@ use std::process::{Command, Stdio, Output, ExitStatus};
 use std::path::{PathBuf, Path};
 use std::{io, fs};
 use crate::chromosome::TestCase;
-use std::io::Write;
+use std::io::{Write, Error};
 use syn::{Item, ItemFn, File};
 use syn::visit_mut::VisitMut;
 use quote::ToTokens;
@@ -45,7 +45,12 @@ impl SourceFile {
             self.runner.run(test);
 
             test.set_results(TraceParser::parse("/Users/tim/Documents/master-thesis/testify/src/examples/additions/trace.txt").unwrap());
-            fs::remove_file("/Users/tim/Documents/master-thesis/testify/src/examples/additions/trace.txt").unwrap();
+            match fs::remove_file("/Users/tim/Documents/master-thesis/testify/src/examples/additions/trace.txt") {
+                Err(err) => {
+                    panic!("There was no trace file: {}", err);
+                }
+                _ => {}
+            }
         }
         self.registrar.unregister();
     }
@@ -285,7 +290,10 @@ impl TestRunner {
         let cargo = self.cargo_path()?;
         let mut cmd = Command::new(&*cargo);
         let log_file = fs::File::create("out.log")?;
-        cmd.stdin(Stdio::piped()).stdout(Stdio::from(log_file));
+        let err_file = fs::File::create("err.log")?;
+        cmd.stdin(Stdio::piped())
+            .stdout(Stdio::from(log_file))
+            .stderr(Stdio::from(err_file));
 
         // TODO extract package and bin files
         cmd.args(&["test",
@@ -295,7 +303,7 @@ impl TestRunner {
             .current_dir("/Users/tim/Documents/master-thesis/testify/src/examples/additions");
         match cmd.status() {
             Ok(_) => {
-                println!("Test {}: OK", test_case.name());
+                //println!("Test {}: OK", test_case.name());
                 Ok(())
             }
             Err(e) => Err(e)

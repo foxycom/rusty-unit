@@ -28,19 +28,111 @@ pub mod util {
 pub mod data {
     use super::*;
 
-    use syn::ItemFn;
+    use syn::{ItemFn, Stmt, FnArg, Expr};
     use crate::instr;
     use std::path;
-    use crate::chromosome::TestCase;
+    use crate::chromosome::{TestCase, Chromosome, Statement};
     use crate::io::SourceFile;
+    use crate::generators::InputGenerator;
+    use proc_macro2::Span;
+    use std::hash::{Hash, Hasher};
+    use std::fmt::{Debug, Formatter};
 
 
-    #[derive(Debug, Clone, Hash, Eq, PartialEq, Builder)]
+    #[derive(Debug, Clone)]
+    pub struct BranchManager {
+        branches: Vec<Branch>,
+        uncovered_branches: Vec<Branch>,
+    }
+
+    impl BranchManager {
+        pub fn new(branches: &[Branch]) -> Self {
+            BranchManager { branches: branches.to_vec(), uncovered_branches: branches.to_vec() }
+        }
+
+        pub fn branches(&self) -> &Vec<Branch> {
+            &self.branches
+        }
+        pub fn uncovered_branches(&self) -> &Vec<Branch> {
+            &self.uncovered_branches
+        }
+
+        pub fn set_branches(&mut self, branches: &[Branch]) {
+            self.branches = branches.to_vec();
+        }
+
+        pub fn set_current_population(&mut self, population: &[TestCase]) {
+            let uncovered_branches = self.compute_uncovered_branches(population);
+            self.uncovered_branches = uncovered_branches;
+        }
+
+        fn compute_uncovered_branches(&self, population: &[TestCase]) -> Vec<Branch> {
+            let mut uncovered_branches = vec![];
+            for branch in &self.branches {
+                let mut covered = false;
+                for individual in population {
+                    if individual.fitness(branch) == 0.0 {
+                        covered = true;
+                        break;
+                    }
+                }
+
+                if !covered {
+                    uncovered_branches.push(branch.clone());
+                }
+            }
+
+            uncovered_branches
+        }
+
+        pub fn get_random_stmt(&self) -> (Statement, Branch) {
+            let i = fastrand::usize((0..self.branches.len()));
+            let branch = self.branches.get(i).unwrap();
+            let target_fn = branch.target_fn();
+            let sig = &target_fn.sig;
+            let params: Vec<FnArg> = sig.inputs.iter().cloned().collect();
+            let args: Vec<Expr> = params.iter().map(InputGenerator::generate_arg).collect();
+
+            (Statement::new(
+                target_fn.sig.ident.clone(),
+                target_fn.clone(),
+                params,
+                args
+            ), branch.clone())
+        }
+    }
+
+    #[derive(Clone, Builder)]
     pub struct Branch {
         id: u64,
         target_fn: ItemFn,
         branch_type: BranchType,
+        span: Span
     }
+
+    impl Debug for Branch {
+        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+            f.write_fmt(format_args!("Branch: {}, line: {}:{}", self.id, self.span.start().line, self.span.start().column))
+        }
+    }
+
+    impl Hash for Branch {
+        fn hash<H: Hasher>(&self, state: &mut H) {
+            self.id.hash(state);
+            self.target_fn.hash(state);
+            self.branch_type.hash(state);
+        }
+    }
+
+    impl PartialEq for Branch {
+        fn eq(&self, other: &Self) -> bool {
+            self.id == other.id
+                && self.target_fn == other.target_fn
+                && self.branch_type == other.branch_type
+        }
+    }
+
+    impl Eq for Branch {}
 
     impl Branch {
         // TODO return fitness as enum with ZERO value
@@ -68,16 +160,18 @@ pub mod data {
                 id: Default::default(),
                 target_fn: syn::parse_quote! {fn blank() {}},
                 branch_type: BranchType::Root,
+                span: Span::call_site()
             }
         }
     }
 
     impl Branch {
-        pub fn new(id: u64, target_fn: ItemFn, branch_type: BranchType) -> Self {
+        pub fn new(id: u64, target_fn: ItemFn, branch_type: BranchType, span: Span) -> Self {
             Branch {
                 id,
                 target_fn,
                 branch_type,
+                span
             }
         }
     }
@@ -101,6 +195,9 @@ pub mod instr {
     use super::data::{BranchType, Branch, BranchBuilder};
     use std::borrow::Cow;
     use crate::io::SourceFile;
+    use syn::Token;
+    use syn::token::Else;
+    use proc_macro2::Span;
 
     pub const ROOT_BRANCH: &'static str = "root[{}, {}]";
     pub const BRANCH: &'static str = "branch[{}, {}, {}]";
@@ -163,6 +260,15 @@ pub mod instr {
                     let mut else_branch = &mut expr_block.block;
                     self.insert_stmt(else_branch, false_trace);
                 }
+            } else {
+                // There was no else branch before, so create an artificial ones
+                let else_expr: Else = syn::parse_quote! {else};
+                let mut block: Block = syn::parse_quote! {{}};
+                self.insert_stmt(&mut block, false_trace);
+                let expr = syn::parse_quote! {
+                    #block
+                };
+                i.else_branch = Some((else_expr, Box::new(expr)));
             }
         }
 
@@ -171,7 +277,7 @@ pub mod instr {
             stmts.insert(0, stmt);
         }
 
-        fn create_branch(&mut self, branch_type: BranchType) -> Branch {
+        fn create_branch(&mut self, branch_type: BranchType, span: Span) -> Branch {
             self.branch_id += 1;
 
             //let source_file = SourceFile::new(self.file.as_ref());
@@ -181,13 +287,15 @@ pub mod instr {
                 //.source_file(source_file)
                 .target_fn(self.current_fn.as_ref().unwrap().clone())
                 .branch_type(branch_type)
+                .span(span)
                 .build()
                 .unwrap()
         }
 
         fn instrument_condition(&mut self, i: &mut ExprIf) -> (Stmt, Stmt) {
-            let true_branch = self.create_branch(BranchType::Decision);
-            let false_branch = self.create_branch(BranchType::Decision);
+            let span = &i.if_token.span;
+            let true_branch = self.create_branch(BranchType::Decision, span.clone());
+            let false_branch = self.create_branch(BranchType::Decision, span.clone());
 
             let true_branch_id = true_branch.id();
             let false_branch_id = false_branch.id();
@@ -243,6 +351,7 @@ pub mod instr {
                     };
                     }
                     BinOp::And(_) => {
+                        // TODO this is useless
                         true_trace = syn::parse_quote! {println!();};
                         false_trace = syn::parse_quote! {println!();};
                     }
@@ -251,7 +360,7 @@ pub mod instr {
                             TestifyMonitor::trace_branch(#true_branch_id, #false_branch_id, 1.0);
                         };
                         false_trace = syn::parse_quote! {
-                            TestifyMonitor::trace_branch(#false_branch_id, #true_branch_id, (#left - #right).abs() as f64);
+                            TestifyMonitor::trace_branch(#false_branch_id, #true_branch_id, ((#left - #right) as f64).abs());
                         }
                     }
                     // TODO all other ops
@@ -268,7 +377,7 @@ pub mod instr {
         }
 
         fn instrument_fn(&mut self, block: &mut Block, ident: &Ident) {
-            let branch = self.create_branch(BranchType::Root);
+            let branch = self.create_branch(BranchType::Root, ident.span());
             let branch_id = branch.id();
 
             let name = ident.to_string();
