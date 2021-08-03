@@ -12,4 +12,5 @@ pub mod generators;
 pub mod io;
 pub mod instr;
 pub mod parser;
+pub mod server;
 

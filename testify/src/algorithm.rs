@@ -12,6 +12,8 @@ use crate::io::SourceFile;
 use crate::generators::TestIdGenerator;
 use std::collections::hash_map::DefaultHasher;
 use pbr::ProgressBar;
+use std::time::Instant;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug)]
 pub struct MOSA {
@@ -37,7 +39,7 @@ impl MOSA {
             generations: 100,
             rank_selection,
             test_id_generator,
-            branch_manager
+            branch_manager,
         }
     }
 
@@ -57,35 +59,67 @@ impl MOSA {
     }
 
     pub fn run(&mut self) -> Option<(Vec<Branch>, f64)> {
+        let mut time = Time::new();
+
         let count = (self.generations + 1) * self.population_size;
         let mut pb = ProgressBar::new(count);
         pb.format("╢▌▌░╟");
 
         let mut current_generation = 0;
-        let mut population = self.generate_random_population();
 
+        time.start("population");
+        let mut population = self.generate_random_population();
+        time.end("population");
+
+        time.start("source_file");
         let mut source_file = SourceFile::new("/Users/tim/Documents/master-thesis/testify/src/examples/additions/src/main.rs");
+        time.end("source_file");
+        time.start("test_write");
         source_file.add_tests(&population);
+        time.end("test_write");
+        time.start("test_run");
         source_file.run_tests(&mut population);
+        time.end("test_run");
+        time.start("test_clear");
         source_file.clear_tests();
+        time.end("test_clear");
 
         pb.add(self.population_size);
         let mut archive = &mut vec![];
 
+        time.start("archive");
         self.update_archive(archive, &population);
+        time.end("archive");
+
         while current_generation < self.generations {
             self.branch_manager.borrow_mut().set_current_population(&population);
-            let mut offspring = self.generate_offspring(&population)?;
-            source_file.add_tests(&offspring);
-            source_file.run_tests(&mut offspring);
-            source_file.clear_tests();
 
+            time.start("population");
+            let mut offspring = self.generate_offspring(&population)?;
+            time.end("population");
+
+            time.start("test_write");
+            source_file.add_tests(&offspring);
+            time.end("test_write");
+            time.start("test_run");
+            source_file.run_tests(&mut offspring);
+            time.end("test_run");
+            time.start("test_clear");
+            source_file.clear_tests();
+            time.end("test_clear");
+
+            time.start("archive");
             self.update_archive(&mut archive, &offspring);
+            time.end("archive");
+
             offspring.append(&mut population);
 
             // TODO there is a bug in sort, duplicate ids
+            time.start("preference_sorting");
             let mut fronts = PreferenceSorter::sort(&offspring, self.branch_manager.borrow().branches());
+            time.end("preference_sorting");
 
+            time.start("fronts");
             for i in 0..fronts.len() {
                 let front = fronts.get(&i).unwrap();
                 let front = SVD::compute(front, self.branch_manager.borrow().branches())?;
@@ -100,12 +134,18 @@ impl MOSA {
                     break;
                 }
             }
+            time.end("fronts");
 
             pb.add(self.population_size);
             current_generation += 1;
         }
 
+        time.start("tests");
         source_file.add_tests(&population);
+        time.end("tests");
+
+        println!("\n{}", time);
+
         Some(self.coverage())
     }
 
@@ -207,6 +247,52 @@ struct Archive<G, F> where G: ChromosomeGenerator, F: Fn(G::C) -> f64 {
 impl<G, F> Archive<G, F> where G: ChromosomeGenerator, F: Fn(G::C) -> f64 {
     pub fn update_archive(&mut self, population: &Vec<G::C>) {}
 }
+
+struct Time {
+    time: HashMap<String, u128>,
+    timers: HashMap<String, Instant>,
+}
+
+impl Display for Time {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let values = self.time.iter()
+            .map(|(k, v)| format!("{} => {}", k, *v as f64 / 1000000000f64))
+            .fold(String::new(), |a, b| format!("{}, {}", a, b));
+
+        f.write_fmt(format_args!("{}", values))
+    }
+}
+
+impl Time {
+    pub fn new() -> Self {
+        Time {
+            time: HashMap::new(),
+            timers: HashMap::new(),
+        }
+    }
+
+    pub fn start(&mut self, name: &str) {
+        let now = Instant::now();
+        self.timers.insert(name.to_owned(), now);
+    }
+
+    pub fn get(&self, name: &str) -> u128 {
+        if let Some(v) = self.time.get(name) {
+            *v
+        } else {
+            0
+        }
+    }
+
+    pub fn end(&mut self, name: &str) {
+        let elapsed = self.timers
+            .get(name)
+            .map(|t| t.elapsed().as_nanos())
+            .unwrap();
+        self.time.entry(name.to_owned()).and_modify(|e| *e += elapsed).or_insert(elapsed);
+    }
+}
+
 
 #[derive(Debug)]
 pub struct PreferenceSorter {}

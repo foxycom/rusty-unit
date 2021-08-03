@@ -20,7 +20,6 @@ pub struct SourceFile {
     registrar: ModuleRegistrar
 }
 
-
 impl SourceFile {
     pub fn new(original_path: &str) -> SourceFile {
         let instrumented_path = instrumented_path(original_path);

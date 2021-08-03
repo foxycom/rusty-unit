@@ -112,7 +112,7 @@ pub mod data {
 
     impl Debug for Branch {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-            f.write_fmt(format_args!("Branch: {}, line: {}:{}", self.id, self.span.start().line, self.span.start().column))
+            f.write_fmt(format_args!("Branch (id: {}, line: {}:{})", self.id, self.span.start().line, self.span.start().column))
         }
     }
 
@@ -381,11 +381,13 @@ pub mod instr {
             let branch_id = branch.id();
 
             let name = ident.to_string();
+
             let trace_stmt = syn::parse_quote! {
                 TestifyMonitor::trace_fn(String::from(#name), #branch_id);
             };
 
             let stmts = &mut block.stmts;
+
             stmts.insert(0, trace_stmt);
             self.branches.push(branch);
         }
