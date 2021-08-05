@@ -1,13 +1,15 @@
 use testify::algorithm::{MOSA, PreferenceSorter};
 use testify::chromosome::{ChromosomeGenerator, Chromosome, TestCaseGenerator};
 use clap::{Clap};
-use std::io::Error;
+use std::io::{Error, Write};
 use testify::instr::instr::Instrumenter;
 use std::rc::Rc;
 use testify::operators::{BasicMutation, RankSelection, BasicCrossover};
 use testify::generators::TestIdGenerator;
 use std::cell::RefCell;
 use testify::instr::data::BranchManager;
+use testify::server::Server;
+use std::time::Duration;
 
 #[derive(Clap)]
 struct CliOpts {

@@ -8,8 +8,8 @@ use syn::File;
 use std::path::Path;
 
 lazy_static! {
-    static ref ROOT_REGEX: Regex = Regex::new(r"root\[.+, (?P<branch_id>\d+)\]").unwrap();
-    static ref DECISION_REGEX: Regex = Regex::new(r"branch\[(?P<branch_id>\d+), (?P<other_branch_id>\d+), (?P<distance>\d+)\]").unwrap();
+    static ref ROOT_REGEX: Regex = Regex::new(r"(?P<test_id>\d+) root\[.+, (?P<branch_id>\d+)\]").unwrap();
+    static ref DECISION_REGEX: Regex = Regex::new(r"(?P<test_id>\d+) branch\[(?P<branch_id>\d+), (?P<other_branch_id>\d+), (?P<distance>\d+)\]").unwrap();
 }
 
 pub struct TraceParser {
@@ -45,10 +45,15 @@ impl TraceParser {
         Ok(io::BufReader::new(file).lines())
     }
 
-    fn parse_line(line: &str) -> Option<TraceData> {
-        return if line.starts_with("root") {
+    pub fn parse_line(line: &str) -> Option<TraceData> {
+        if line.is_empty() {
+            return None;
+        }
+
+        return if line.contains("root") {
             let cap = ROOT_REGEX.captures(line)?;
             Some(TraceData {
+                test_id: cap["test_id"].parse::<u64>().unwrap(),
                 branch_type: BranchType::Root,
                 branch_id: cap["branch_id"].parse::<u64>().unwrap(),
                 other_branch_id: None,
@@ -58,6 +63,7 @@ impl TraceParser {
             let cap = DECISION_REGEX.captures(line)?;
 
             Some(TraceData {
+                test_id: cap["test_id"].parse::<u64>().unwrap(),
                 branch_type: BranchType::Decision,
                 branch_id: cap["branch_id"].parse::<u64>().unwrap(),
                 other_branch_id: cap["other_branch_id"].parse::<u64>().ok(),
@@ -67,11 +73,31 @@ impl TraceParser {
     }
 }
 
-struct TraceData {
+pub struct TraceData {
     branch_type: BranchType,
+    test_id: u64,
     branch_id: u64,
     other_branch_id: Option<u64>,
     distance: Option<f64>
+}
+
+impl TraceData {
+    pub fn branch_type(&self) -> &BranchType {
+        &self.branch_type
+    }
+    pub fn branch_id(&self) -> u64 {
+        self.branch_id
+    }
+    pub fn other_branch_id(&self) -> Option<u64> {
+        self.other_branch_id
+    }
+    pub fn distance(&self) -> Option<f64> {
+        self.distance
+    }
+
+    pub fn test_id(&self) -> u64 {
+        self.test_id
+    }
 }
 
 

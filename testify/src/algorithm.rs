@@ -16,6 +16,7 @@ use std::time::Instant;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Write;
+use crate::server::Server;
 
 #[derive(Debug)]
 pub struct MOSA {
@@ -61,6 +62,9 @@ impl MOSA {
     }
 
     pub fn run(&mut self) -> Option<(Vec<Branch>, f64)> {
+        let mut server = Server::new(42069);
+        server.listen();
+
         let mut time = Time::new();
 
         let count = (self.generations + 1) * self.population_size;
@@ -85,6 +89,13 @@ impl MOSA {
         time.start("test_clear");
         source_file.clear_tests();
         time.end("test_clear");
+
+
+        /*let traces = server.traces().lock().unwrap().clone();
+        for test in &mut population {
+            test.set_results(traces.get(&test.id()).unwrap().clone());
+        }
+        server.traces().lock().unwrap().clear();*/
 
         pb.add(self.population_size);
         let mut archive = &mut vec![];

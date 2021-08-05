@@ -41,7 +41,7 @@ impl SourceFile {
     pub fn run_tests(&mut self, tests: &mut [TestCase]) {
         self.registrar.register();
         self.runner.run();
-        for test in tests {
+        /*for test in tests {
             let file = format!("/Users/tim/Documents/master-thesis/testify/src/examples/additions/trace_{}.txt", test.id());
             test.set_results(TraceParser::parse(&file).unwrap());
             match fs::remove_file(&file) {
@@ -50,17 +50,8 @@ impl SourceFile {
                 }
                 _ => {}
             }
-        }
-        /*for test in tests {
-            test.set_results(TraceParser::parse("/Users/tim/Documents/master-thesis/testify/src/examples/additions/trace.txt").unwrap());
-            match fs::remove_file("/Users/tim/Documents/master-thesis/testify/src/examples/additions/trace.txt") {
-                Err(err) => {
-                    panic!("There was no trace file: {}", err);
-                }
-                _ => {}
-            }
-        }
-*/        self.registrar.unregister();
+        }*/
+        self.registrar.unregister();
     }
 
     /// Removes the generated tests from the module.

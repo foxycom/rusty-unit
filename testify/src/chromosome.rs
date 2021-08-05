@@ -86,7 +86,7 @@ impl TestCase {
                                Span::call_site());
         let id = self.id;
         let set_test_id: Stmt = syn::parse_quote! {
-              LOGGER.with(|l| l.borrow_mut().set_test_id(#id));
+              LOGGER.with(|l| l.borrow_mut().connect(#id));
         };
         let wait: Stmt = syn::parse_quote! {
             LOGGER.with(|l| l.borrow_mut().wait());

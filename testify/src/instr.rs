@@ -199,8 +199,8 @@ pub mod instr {
     use proc_macro2::Span;
     use syn::punctuated::Punctuated;
 
-    pub const ROOT_BRANCH: &'static str = "root[{}, {}]";
-    pub const BRANCH: &'static str = "branch[{}, {}, {}]";
+    pub const ROOT_BRANCH: &'static str = "{} root[{}, {}]||";
+    pub const BRANCH: &'static str = "{} branch[{}, {}, {}]||";
     pub const K: u8 = 1;
 
     #[derive(Default)]
@@ -247,7 +247,6 @@ pub mod instr {
             let mut file = fs::File::create(path).expect("Could not create output source file");
             file.write_all(&src.as_bytes()).unwrap();
         }
-
 
         fn instrument_if(&mut self, i: &mut ExprIf) {
             let (true_trace, false_trace) = self.instrument_condition(i);
@@ -450,7 +449,8 @@ pub mod instr {
             let monitor: ItemStruct = syn::parse_quote! {
                 struct TestifyMonitor {
                     sender: Option<std::sync::mpsc::Sender<TestifyMessage>>,
-                    thread: Option<std::thread::JoinHandle<()>>
+                    thread: Option<std::thread::JoinHandle<()>>,
+                    test_id: u64
                 }
             };
 
@@ -461,44 +461,37 @@ pub mod instr {
                     fn new() -> Self {
                         TestifyMonitor {
                             sender: None,
-                            thread: None
+                            thread: None,
+                            test_id: 0
                         }
                     }
 
-                    fn set_test_id(&mut self, id: u64) {
-                        let file = format!("trace_{}.txt", id);
+                    fn connect(&mut self, test_id: u64) {
+                        self.test_id = test_id;
                         let (tx, rx) = std::sync::mpsc::channel();
-                        let thread_handle = std::thread::spawn(move || {
-                            let trace_file = std::fs::OpenOptions::new()
-                                .create(true)
-                                .append(true)
-                                .open(file)
-                                .unwrap();
-                            let mut trace_file = std::io::LineWriter::new(trace_file);
-                            while let Ok(msg) = rx.recv() {
+                        let mut stream = std::net::TcpStream::connect("127.0.0.1:42069").unwrap();
+                        let thread_handle = std::thread::spawn(move || loop {
+                            if let Ok(msg) = rx.recv() {
                                 match msg {
                                     TestifyMessage::Stop => {
                                         break;
                                     }
                                     TestifyMessage::Line(line) => {
-                                        let mut s = String::new();
-                                        writeln!(s, "{}", line);
-                                        trace_file.write_all(s.as_bytes()).unwrap();
+                                        stream.write(line.as_bytes());
                                     }
                                 }
                             }
                         });
-
                         self.sender = Some(tx);
                         self.thread = Some(thread_handle);
                     }
 
                     fn trace_branch(&self, visited_branch: u64, other_branch: u64, distance: f64) {
-                        self.write(format!(#BRANCH, visited_branch, other_branch, distance));
+                        self.write(format!(#BRANCH, self.test_id, visited_branch, other_branch, distance));
                     }
 
                     fn trace_fn(&self, name: String, id: u64) {
-                        self.write(format!(#ROOT_BRANCH, name, id));
+                        self.write(format!(#ROOT_BRANCH, self.test_id, name, id));
                     }
 
                     fn write(&self, message: String) {
