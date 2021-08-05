@@ -14,6 +14,8 @@ use std::collections::hash_map::DefaultHasher;
 use pbr::ProgressBar;
 use std::time::Instant;
 use std::fmt::{Display, Formatter};
+use std::fs::File;
+use std::io::Write;
 
 #[derive(Debug)]
 pub struct MOSA {
@@ -143,6 +145,19 @@ impl MOSA {
         time.start("tests");
         source_file.add_tests(&population);
         time.end("tests");
+
+
+        let mut tmp_file = File::create("fitness.log").unwrap();
+
+        population.iter().for_each(|t| {
+            let bm = self.branch_manager.borrow();
+            let branches = bm.branches();
+            let fitness = branches.iter()
+                .map(|b| format!("b = {}, f = {}", b.id(), b.fitness(t)))
+                .fold(String::new(), |acc, b| acc + &b.to_string() + ", ");
+            let line = format!("Test {} => ({})\n", t.id(), fitness);
+            tmp_file.write_all(&line.as_bytes());
+        });
 
         println!("\n{}", time);
 

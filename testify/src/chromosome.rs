@@ -84,11 +84,21 @@ impl TestCase {
     pub fn to_syn(&self) -> Item {
         let ident = Ident::new(&format!("{}_{}", TestCase::TEST_FN_PREFIX, self.id),
                                Span::call_site());
+        let id = self.id;
+        let set_test_id: Stmt = syn::parse_quote! {
+              LOGGER.with(|l| l.borrow_mut().set_test_id(#id));
+        };
+        let wait: Stmt = syn::parse_quote! {
+            LOGGER.with(|l| l.borrow_mut().wait());
+        };
+
         let stmts: Vec<Stmt> = self.stmts.iter().map(Statement::to_syn).collect();
         let test: Item = syn::parse_quote! {
             #[test]
             fn #ident() {
+                #set_test_id
                 #(#stmts)*
+                #wait
             }
         };
         test

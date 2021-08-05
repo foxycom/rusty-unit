@@ -186,8 +186,7 @@ pub mod data {
 pub mod instr {
     use std::fs;
     use std::io::Write;
-    use syn::{Item, ItemFn, Stmt, Expr, Block, Path, ExprIf, File, ItemStruct,
-              ItemImpl, Ident, ItemUse, ExprBinary, BinOp};
+    use syn::{Item, ItemFn, Stmt, Expr, Block, Path, ExprIf, File, ItemStruct, ItemImpl, Ident, ItemUse, ExprBinary, BinOp, FnArg, Macro, ItemMacro, ItemExternCrate, ItemEnum};
     use quote::ToTokens;
     use syn::visit_mut::{VisitMut, visit_expr_if_mut, visit_item_fn_mut,
                          visit_file_mut, visit_expr_binary_mut};
@@ -196,8 +195,9 @@ pub mod instr {
     use std::borrow::Cow;
     use crate::io::SourceFile;
     use syn::Token;
-    use syn::token::Else;
+    use syn::token::{Else, Comma};
     use proc_macro2::Span;
+    use syn::punctuated::Punctuated;
 
     pub const ROOT_BRANCH: &'static str = "root[{}, {}]";
     pub const BRANCH: &'static str = "branch[{}, {}, {}]";
@@ -313,41 +313,43 @@ pub mod instr {
                     BinOp::Gt(_) => {
                         // left > right
                         true_trace = syn::parse_quote! {
-                        TestifyMonitor::trace_branch(#true_branch_id, #false_branch_id, (#left - #right) as f64);
+                        LOGGER.lock().unwrap().trace_branch(#true_branch_id, #false_branch_id, (#left - #right) as f64);
+                        LOGGER.with(|l| l.borrow().trace_branch(#true_branch_id, #false_branch_id, (#left - #right) as f64));
                     };
                         // left <= right
                         false_trace = syn::parse_quote! {
-                        TestifyMonitor::trace_branch(#false_branch_id, #true_branch_id, (#right - #left + #K) as f64);
+                        LOGGER.lock().unwrap().trace_branch(#false_branch_id, #true_branch_id, (#right - #left + #K) as f64);
+                        LOGGER.with(|l| l.borrow().trace_branch(#false_branch_id, #true_branch_id, (#right - #left + #K) as f64));
                     };
                     }
                     BinOp::Ge(_) => {
                         // left >= right
                         true_trace = syn::parse_quote! {
-                        TestifyMonitor::trace_branch(#true_branch_id, #false_branch_id, (#left - #right + #K) as f64);
+                        LOGGER.with(|l| l.borrow().trace_branch(#true_branch_id, #false_branch_id, (#left - #right + #K) as f64));
                     };
                         // left < right
                         false_trace = syn::parse_quote! {
-                        TestifyMonitor::trace_branch(#false_branch_id, #true_branch_id, (#right - #left) as f64);
+                        LOGGER.with(|l| l.borrow().trace_branch(#false_branch_id, #true_branch_id, (#right - #left) as f64));
                     };
                     }
                     BinOp::Lt(_) => {
                         // left < right
                         true_trace = syn::parse_quote! {
-                        TestifyMonitor::trace_branch(#true_branch_id, #false_branch_id, (#right - #left) as f64);
+                        LOGGER.with(|l| l.borrow().trace_branch(#true_branch_id, #false_branch_id, (#right - #left) as f64));
                     };
                         // left >= right
                         false_trace = syn::parse_quote! {
-                        TestifyMonitor::trace_branch(#false_branch_id, #true_branch_id, (#left - #right + #K) as f64);
+                        LOGGER.with(|l| l.borrow().trace_branch(#false_branch_id, #true_branch_id, (#left - #right + #K) as f64));
                     };
                     }
                     BinOp::Le(_) => {
                         // left <= right
                         true_trace = syn::parse_quote! {
-                        TestifyMonitor::trace_branch(#true_branch_id, #false_branch_id, (#right - #left + #K) as f64);
+                        LOGGER.with(|l| l.borrow().trace_branch(#true_branch_id, #false_branch_id, (#right - #left + #K) as f64));
                     };
                         // left > right
                         false_trace = syn::parse_quote! {
-                        TestifyMonitor::trace_branch(#false_branch_id, #true_branch_id, (#left - #right) as f64);
+                        LOGGER.with(|l| l.borrow().trace_branch(#false_branch_id, #true_branch_id, (#left - #right) as f64));
                     };
                     }
                     BinOp::And(_) => {
@@ -356,11 +358,12 @@ pub mod instr {
                         false_trace = syn::parse_quote! {println!();};
                     }
                     BinOp::Eq(_) => {
+                        // left == right
                         true_trace = syn::parse_quote! {
-                            TestifyMonitor::trace_branch(#true_branch_id, #false_branch_id, 1.0);
+                            LOGGER.with(|l| l.borrow().trace_branch(#true_branch_id, #false_branch_id, 1.0));
                         };
                         false_trace = syn::parse_quote! {
-                            TestifyMonitor::trace_branch(#false_branch_id, #true_branch_id, ((#left - #right) as f64).abs());
+                            LOGGER.with(|l| l.borrow().trace_branch(#false_branch_id, #true_branch_id, ((#left - #right) as f64).abs()));
                         }
                     }
                     // TODO all other ops
@@ -376,14 +379,16 @@ pub mod instr {
             (true_trace, false_trace)
         }
 
-        fn instrument_fn(&mut self, block: &mut Block, ident: &Ident) {
+        fn instrument_fn(&mut self, item_fn: &mut ItemFn) {
+            let block = &mut item_fn.block;
+            let ident = &item_fn.sig.ident;
             let branch = self.create_branch(BranchType::Root, ident.span());
             let branch_id = branch.id();
 
             let name = ident.to_string();
 
             let trace_stmt = syn::parse_quote! {
-                TestifyMonitor::trace_fn(String::from(#name), #branch_id);
+                LOGGER.with(|l| l.borrow().trace_fn(String::from(#name), #branch_id));
             };
 
             let stmts = &mut block.stmts;
@@ -392,45 +397,121 @@ pub mod instr {
             self.branches.push(branch);
         }
 
-        fn uses(&mut self) -> Vec<ItemUse> {
-            let write_import: ItemUse = syn::parse_quote! {
+        fn extern_crates(&self) -> Vec<ItemExternCrate> {
+            /*let lazy_static_crate = syn::parse_quote! {
+                #[macro_use]
+                extern crate lazy_static;
+            };*/
+
+            vec![]
+        }
+
+        fn uses(&self) -> Vec<ItemUse> {
+            let io_write_use = syn::parse_quote! {
                 use std::io::Write;
             };
 
-            /*let line_writer_import: ItemUse = syn::parse_quote! {
-                use std::io::LineWriter;
+            let fmt_write_use = syn::parse_quote! {
+                use std::fmt::Write as FmtWrite;
+            };
+
+            vec![io_write_use, fmt_write_use]
+        }
+
+        fn macros(&self) -> Vec<ItemMacro> {
+            let test_id_macro: ItemMacro = syn::parse_quote! {
+                thread_local! {
+                    pub static TEST_ID: std::cell::RefCell<u64> = std::cell::RefCell::new(0);
+                    static LOGGER: std::cell::RefCell<TestifyMonitor> = std::cell::RefCell::new(TestifyMonitor::new());
+                }
+            };
+
+            /*let monitor_macro: ItemMacro = syn::parse_quote! {
+                lazy_static! {
+                    static ref LOGGER: std::sync::Mutex<TestifyMonitor> = std::sync::Mutex::new(TestifyMonitor::new());
+                }
             };*/
 
-            vec![write_import]
+            vec![test_id_macro]
+        }
+
+        fn message_enum(&self) -> ItemEnum {
+            let testify_message: ItemEnum = syn::parse_quote! {
+                enum TestifyMessage {
+                    Stop,
+                    Line(String)
+                }
+            };
+            testify_message
         }
 
         fn monitor_struct(&mut self) -> (ItemStruct, ItemImpl) {
             let trace_file = Instrumenter::TRACE_FILE;
             let monitor: ItemStruct = syn::parse_quote! {
-                struct TestifyMonitor {}
+                struct TestifyMonitor {
+                    sender: Option<std::sync::mpsc::Sender<TestifyMessage>>,
+                    thread: Option<std::thread::JoinHandle<()>>
+                }
             };
 
             let monitor_impl = syn::parse_quote! {
                 impl TestifyMonitor {
                     const TRACE_FILE: &'static str = #trace_file;
 
-                    fn trace_branch(visited_branch: u64, other_branch: u64, distance: f64) {
-                        TestifyMonitor::write(format!(#BRANCH, visited_branch, other_branch, distance));
+                    fn new() -> Self {
+                        TestifyMonitor {
+                            sender: None,
+                            thread: None
+                        }
                     }
 
-                    fn trace_fn(name: String, id: u64) {
-                        TestifyMonitor::write(format!(#ROOT_BRANCH, name, id));
+                    fn set_test_id(&mut self, id: u64) {
+                        let file = format!("trace_{}.txt", id);
+                        let (tx, rx) = std::sync::mpsc::channel();
+                        let thread_handle = std::thread::spawn(move || {
+                            let trace_file = std::fs::OpenOptions::new()
+                                .create(true)
+                                .append(true)
+                                .open(file)
+                                .unwrap();
+                            let mut trace_file = std::io::LineWriter::new(trace_file);
+                            while let Ok(msg) = rx.recv() {
+                                match msg {
+                                    TestifyMessage::Stop => {
+                                        break;
+                                    }
+                                    TestifyMessage::Line(line) => {
+                                        let mut s = String::new();
+                                        writeln!(s, "{}", line);
+                                        trace_file.write_all(s.as_bytes()).unwrap();
+                                    }
+                                }
+                            }
+                        });
+
+                        self.sender = Some(tx);
+                        self.thread = Some(thread_handle);
                     }
 
-                    fn write(output: String) {
-                        let trace_file = std::fs::OpenOptions::new()
-                                                .create(true)
-                                                .append(true)
-                                                .open(TestifyMonitor::TRACE_FILE)
-                                                .unwrap();
-                        let mut trace_file = std::io::LineWriter::new(trace_file);
-                        trace_file.write_all(&output.as_bytes()).unwrap();
-                        trace_file.write_all(b"\n").unwrap();
+                    fn trace_branch(&self, visited_branch: u64, other_branch: u64, distance: f64) {
+                        self.write(format!(#BRANCH, visited_branch, other_branch, distance));
+                    }
+
+                    fn trace_fn(&self, name: String, id: u64) {
+                        self.write(format!(#ROOT_BRANCH, name, id));
+                    }
+
+                    fn write(&self, message: String) {
+                        if let Some(sender) = &self.sender {
+                            sender.send(TestifyMessage::Line(message)).unwrap();
+                        }
+                    }
+
+                    fn wait(&mut self) {
+                        if let Some(sender) = &self.sender {
+                            sender.send(TestifyMessage::Stop).unwrap();
+                        }
+                        self.thread.take().unwrap().join().unwrap();
                     }
                 }
             };
@@ -465,16 +546,25 @@ pub mod instr {
                 VisitMut::visit_item_mut(self, it);
             }
 
-
             // TODO skip imports first
             let (monitor, monitor_impl) = self.monitor_struct();
+            let testify_message = self.message_enum();
+
             i.items.insert(0, Item::Impl(monitor_impl));
             i.items.insert(0, Item::Struct(monitor));
+            i.items.insert(0, Item::Enum(testify_message));
 
-            let uses = self.uses();
-            for u in uses {
+            for mcro in self.macros() {
+                i.items.insert(0, Item::Macro(mcro));
+            }
+
+            for u in self.uses() {
                 // TODO check if this import already exists
                 i.items.insert(0, Item::Use(u));
+            }
+
+            for crte in self.extern_crates() {
+                i.items.insert(0, Item::ExternCrate(crte));
             }
         }
 
@@ -489,7 +579,7 @@ pub mod instr {
             VisitMut::visit_block_mut(self, &mut i.block);
 
             // TODO don't instrument test functions
-            self.instrument_fn(&mut i.block, &i.sig.ident);
+            self.instrument_fn(i);
             self.current_fn = None;
         }
     }

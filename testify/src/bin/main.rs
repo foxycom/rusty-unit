@@ -28,7 +28,7 @@ fn main() {
     let rank_selection = RankSelection::new(branch_manager_rc.clone());
     let mut generator = TestCaseGenerator::new(branch_manager_rc.clone(), mutation.clone(), crossover.clone(), test_id_generator.clone());
     let res = MOSA::new(generator, rank_selection, branch_manager_rc, test_id_generator.clone())
-        .population_size(10)
+        .population_size(20)
         .generations(10)
         .run();
     match res {

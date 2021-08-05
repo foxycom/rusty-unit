@@ -40,9 +40,18 @@ impl SourceFile {
     /// Runs the tests provided they have been added to the source file before.
     pub fn run_tests(&mut self, tests: &mut [TestCase]) {
         self.registrar.register();
+        self.runner.run();
         for test in tests {
-            self.runner.run(test);
-
+            let file = format!("/Users/tim/Documents/master-thesis/testify/src/examples/additions/trace_{}.txt", test.id());
+            test.set_results(TraceParser::parse(&file).unwrap());
+            match fs::remove_file(&file) {
+                Err(err) => {
+                    panic!("There was no trace file: {}", err);
+                }
+                _ => {}
+            }
+        }
+        /*for test in tests {
             test.set_results(TraceParser::parse("/Users/tim/Documents/master-thesis/testify/src/examples/additions/trace.txt").unwrap());
             match fs::remove_file("/Users/tim/Documents/master-thesis/testify/src/examples/additions/trace.txt") {
                 Err(err) => {
@@ -51,7 +60,7 @@ impl SourceFile {
                 _ => {}
             }
         }
-        self.registrar.unregister();
+*/        self.registrar.unregister();
     }
 
     /// Removes the generated tests from the module.
@@ -157,6 +166,7 @@ struct TestWriter {
 }
 
 impl TestWriter {
+    const TESTS_MODULE: &'static str = "testify_tests";
     pub fn new(instrumented_path: &str) -> Self {
         let content = fs::read_to_string(&instrumented_path)
             .expect("Could not read the Rust source file");
@@ -204,7 +214,7 @@ impl VisitMut for TestWriter {
     fn visit_item_mut(&mut self, i: &mut Item) {
         if let Item::Mod(item_mod) = i {
             let mod_name = &item_mod.ident;
-            if mod_name.to_string() == "tests" {
+            if mod_name.to_string() == TestWriter::TESTS_MODULE {
                 if let Some((_, items)) = &mut item_mod.content {
                     if !self.contains_use_super_star(items) {
                         items.insert(0, self.use_all_star.clone());
@@ -285,7 +295,7 @@ impl TestRunner {
         TestRunner {}
     }
 
-    pub fn run(&self, test_case: &TestCase) -> io::Result<()> {
+    pub fn run(&self) -> io::Result<()> {
         let cargo = self.cargo_path()?;
         let mut cmd = Command::new(&*cargo);
         let log_file = fs::File::create("out.log")?;
@@ -298,7 +308,7 @@ impl TestRunner {
         cmd.args(&["test",
             "--package",
             "additions",
-            &format!("tests::{}", test_case.name())])
+            "testify_tests"])
             .current_dir("/Users/tim/Documents/master-thesis/testify/src/examples/additions");
         match cmd.status() {
             Ok(_) => {
