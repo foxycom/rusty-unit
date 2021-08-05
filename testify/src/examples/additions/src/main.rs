@@ -14,4 +14,4 @@ pub fn test_reference(x: u8) {
     }
 }
 #[cfg(test)]
-mod tests {}
+mod testify_tests {}
