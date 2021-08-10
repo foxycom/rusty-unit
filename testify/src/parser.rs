@@ -3,9 +3,9 @@ use std::fs;
 use std::io;
 use std::io::BufRead;
 use regex::Regex;
-use crate::instr::data::BranchType;
 use syn::File;
 use std::path::Path;
+use crate::source::BranchType;
 
 lazy_static! {
     static ref ROOT_REGEX: Regex = Regex::new(r"root\[.+, (?P<branch_id>\d+)\]").unwrap();

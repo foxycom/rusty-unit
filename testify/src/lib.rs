@@ -9,8 +9,7 @@ pub mod algorithm;
 pub mod selection;
 pub mod operators;
 pub mod generators;
-pub mod io;
-pub mod instr;
+pub mod source;
 pub mod parser;
 pub mod server;
 

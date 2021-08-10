@@ -2,13 +2,12 @@ use crate::chromosome::{ChromosomeGenerator, Chromosome, TestCaseGenerator, Test
 use std::rc::Rc;
 use std::collections::{VecDeque, HashMap, HashSet};
 use std::ops::Deref;
-use crate::instr::data::{Branch, BranchManager};
 use std::cmp::Ordering;
 use std::option::Option::Some;
 use crate::operators::RankSelection;
 use std::cell::RefCell;
 use std::iter::FromIterator;
-use crate::io::SourceFile;
+use crate::source::{SourceFile, BranchManager, Branch};
 use crate::generators::TestIdGenerator;
 use std::collections::hash_map::DefaultHasher;
 use pbr::ProgressBar;
@@ -159,7 +158,7 @@ impl MOSA {
             tmp_file.write_all(&line.as_bytes());
         });
 
-        println!("\n{}", time);
+        //println!("\n{}", time);
 
         Some(self.coverage())
     }

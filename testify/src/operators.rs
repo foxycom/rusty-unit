@@ -1,5 +1,4 @@
 use crate::chromosome::{Chromosome, TestCase, Statement};
-use crate::instr::data::{Branch, BranchManager};
 use syn::{Stmt, Expr};
 use std::rc::Rc;
 use std::mem;
@@ -7,6 +6,7 @@ use crate::generators::InputGenerator;
 use syn::punctuated::Punctuated;
 use crate::algorithm::{PreferenceSorter, SVD};
 use std::cell::RefCell;
+use crate::source::BranchManager;
 
 pub trait Crossover {
     type C: Chromosome;

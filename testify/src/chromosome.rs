@@ -5,13 +5,13 @@ use quote::ToTokens;
 use proc_macro2::{Ident, Span};
 use std::collections::HashMap;
 use crate::generators::{InputGenerator, TestIdGenerator};
-use crate::instr::data::{Branch, BranchManager};
 use crate::operators::{BasicMutation, BasicCrossover};
 use std::rc::Rc;
 use std::fs;
 use std::hash::{Hash, Hasher};
 use crate::parser::TraceParser;
 use std::cell::RefCell;
+use crate::source::{Branch, BranchManager};
 
 
 pub trait Chromosome: Clone + Debug {

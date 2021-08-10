@@ -2,12 +2,11 @@ use testify::algorithm::{MOSA, PreferenceSorter};
 use testify::chromosome::{ChromosomeGenerator, Chromosome, TestCaseGenerator};
 use clap::{Clap};
 use std::io::Error;
-use testify::instr::instr::Instrumenter;
 use std::rc::Rc;
 use testify::operators::{BasicMutation, RankSelection, BasicCrossover};
 use testify::generators::TestIdGenerator;
 use std::cell::RefCell;
-use testify::instr::data::BranchManager;
+use testify::source::{SourceFile, BranchManager};
 
 #[derive(Clap)]
 struct CliOpts {
@@ -19,9 +18,11 @@ fn main() {
     let opts: CliOpts = CliOpts::parse();
 
     let test_id_generator = Rc::new(RefCell::new(TestIdGenerator::new()));
-    let mut instrumenter = Instrumenter::new();
-    let branches = instrumenter.instrument(&opts.file).to_owned();
-    let branch_manager = BranchManager::new(&branches);
+    let mut source_file = SourceFile::new(&opts.file);
+    source_file.instrument();
+
+    let branches = source_file.branches();
+    let branch_manager = BranchManager::new(branches);
     let branch_manager_rc = Rc::new(RefCell::new(branch_manager));
     let mutation = BasicMutation::new(branch_manager_rc.clone());
     let crossover = BasicCrossover::new();
@@ -39,4 +40,8 @@ fn main() {
             println!("\nUncovered branches: {:?}\nOverall branch coverage: {}", uncovered_branches, coverage);
         }
     }
+
+    source_file.restore();
+    // Restore the original file
+
 }
