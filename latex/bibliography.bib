@@ -76,16 +76,16 @@ Das Paper zitiert auch mehrere andere Artikel, die auf die Sicherheiten von Rust
   keywords  = {rank5},
 }
 
-@InProceedings{,
+@InProceedings{Anderson2016,
   author    = {Anderson, Brian and Bergstrom, Lars and Goregaokar, Manish and Matthews, Josh and McAllister, Keegan and Moffitt, Jack and Sapin, Simon},
-  title     = {Engineering the Servo Web Browser Engine Using Rust},
   booktitle = {Proceedings of the 38th International Conference on Software Engineering Companion},
-  year      = {2016},
+  title     = {Engineering the Servo Web Browser Engine Using Rust},
+  doi       = {10.1145/2889160.2889229},
   isbn      = {9781450342056},
   pages     = {81-89},
-  doi       = {10.1145/2889160.2889229},
   abstract  = {All modern web browsers --- Internet Explorer, Firefox, Chrome, Opera, and Safari --- have a core rendering engine written in C++. This language choice was made because it affords the systems programmer complete control of the underlying hardware features and memory in use, and it provides a transparent compilation model. Unfortunately, this language is complex (especially to new contributors!), challenging to write correct parallel code in, and highly susceptible to memory safety issues that potentially lead to security holes.Servo is a project started at Mozilla Research to build a new web browser engine that preserves the capabilities of these other browser engines but also both takes advantage of the recent trends in parallel hardware and is more memory-safe. We use a new language, Rust, that provides us a similar level of control of the underlying system to C++ but which statically prevents many memory safety issues and provides direct support for parallelism and concurrency.In this paper, we show how a language with an advanced type system can address many of the most common security issues and software engineering challenges in other browser engines, while still producing code that has the same performance and memory profile. This language is also quite accessible to new open source contributors and employees, even those without a background in C++ or systems programming. We also outline several pitfalls encountered along the way and describe some potential areas for future improvement.},
   keywords  = {rank5},
+  year      = {2016},
 }
 
 @InProceedings{,
@@ -262,6 +262,7 @@ algorithm in different languages or implement different algorithms in the same l
   abstract = {In recent years, search-based software testing (SBST) is the active research topic in software testing. SBST is the process of generating test cases that use metaheuristics for optimization of a task in the framework of software testing to solve difficult NP-hard problems. The best fitness results must be found with the heuristic search among many possibilities for a more cost-effective testing process and automate the process of generating test cases. Although search-based test data generation is a field of interest, some challenges remain unknown. The main objective of this survey is to find the main topics and trends in this emerging field of search-based software testing by examining the methods and the literature of software testing. A review of earlier studies of search-based software testing from the year 1996 to 2016 is discussed with the application of metaheuristics for the optimization of software testing.},
   comment  = {Eine systematische Übersicht über das SBST, die Hierarchie der Algorithmen usw.},
   day      = {01},
+  file     = {:papers/Khari-Kumar2019_Article_AnExtensiveEvaluationOfSearch-.pdf:PDF},
   groups   = {a72186:1},
   journal  = {Soft Computing},
   month    = {Mar},
@@ -427,6 +428,7 @@ algorithm in different languages or implement different algorithms in the same l
   doi       = {10.1109/ICSTW.2011.100},
   pages     = {153-163},
   comment   = {Eine gute Übersicht was SBST überhaupt ist und welche Arten von SBST momentan verbreitet sind: temporal testing, structural testing, functional testing, mit realen Anwendungsbeispielen.},
+  file      = {:papers/Search-Based_Software_Testing_Past_Present_and_Future.pdf:PDF},
   groups    = {a72186:1},
   keywords  = {rank5},
   year      = {2011},
@@ -608,7 +610,7 @@ Insgesamt wird im Paper jeder Schritt der Generierung und Evolution relativ gena
 @InProceedings{cadar2008klee,
   author    = {Cadar, Cristian and Dunbar, Daniel and Engler, Dawson},
   booktitle = {OSDI},
-  title     = {Klee: unassisted and automatic generation of high-coverage tests for complex systems programs.},
+  title     = {KLEE: unassisted and automatic generation of high-coverage tests for complex systems programs.},
   pages     = {209--224},
   volume    = {8},
   groups    = {State of the Art Tools, a72186:1},
@@ -871,6 +873,122 @@ of how computer system builders can better support floating point.},
   file      = {:papers/nsga2.pdf:PDF},
   publisher = {Springer Berlin Heidelberg},
   year      = {2000},
+}
+
+@Article{Babi__2011,
+  author    = {Domagoj Babi{\'{c}} and Lorenzo Martignoni and Stephen McCamant and Dawn Song},
+  title     = {Statically-directed dynamic automated test generation},
+  doi       = {10.1145/2001420.2001423},
+  booktitle = {Proceedings of the 2011 International Symposium on Software Testing and Analysis - {ISSTA} {\textquotesingle}11},
+  comment   = {Der Autor beschreibt vor allem Probleme einer Testgenerierung, die auf Binaries und nicht auf Souce Code Level statt findet. Das könnte man als einen Gegenpunkt bei KLEE und anderen Testgeneratoren für Rust verwenden.},
+  file      = {:papers/2001420.2001423.pdf:PDF},
+  publisher = {{ACM} Press},
+  year      = {2011},
+}
+
+@Article{Myers2012,
+  title     = {The Art of Software Testing},
+  doi       = {10.1002/9781119202486},
+  editor    = {Glenford J. Myers and Tom Badgett and Corey Sandler},
+  month     = {jan},
+  publisher = {Wiley},
+  year      = {2012},
+}
+
+@InProceedings{Harman2015,
+  author    = {Harman, Mark and Jia, Yue and Zhang, Yuanyuan},
+  booktitle = {2015 IEEE 8th International Conference on Software Testing, Verification and Validation (ICST)},
+  title     = {Achievements, Open Problems and Challenges for Search Based Software Testing},
+  doi       = {10.1109/ICST.2015.7102580},
+  pages     = {1-12},
+  comment   = {TODO},
+  file      = {:papers/Achievements_Open_Problems_and_Challenges_for_Search_Based_Software_Testing.pdf:PDF},
+  year      = {2015},
+}
+
+@InProceedings{Campos2017,
+  author    = {Campos, Jos{\'e} and Ge, Yan and Fraser, Gordon and Eler, Marcelo and Arcuri, Andrea},
+  booktitle = {Search Based Software Engineering},
+  title     = {An Empirical Evaluation of Evolutionary Algorithms for Test Suite Generation},
+  editor    = {Menzies, Tim and Petke, Justyna},
+  isbn      = {978-3-319-66299-2},
+  pages     = {33--48},
+  publisher = {Springer International Publishing},
+  abstract  = {Evolutionary algorithms have been shown to be effective at generating unit test suites optimised for code coverage. While many aspects of these algorithms have been evaluated in detail (e.g., test length and different kinds of techniques aimed at improving performance, like seeding), the influence of the specific algorithms has to date seen less attention in the literature. As it is theoretically impossible to design an algorithm that is best on all possible problems, a common approach in software engineering problems is to first try a Genetic Algorithm, and only afterwards try to refine it or compare it with other algorithms to see if any of them is more suited for the addressed problem. This is particularly important in test generation, since recent work suggests that random search may in practice be equally effective, whereas the reformulation as a many-objective problem seems to be more effective. To shed light on the influence of the search algorithms, we empirically evaluate six different algorithms on a selection of non-trivial open source classes. Our study shows that the use of a test archive makes evolutionary algorithms clearly better than random testing, and it confirms that the many-objective search is the most effective.},
+  address   = {Cham},
+  comment   = {TODO},
+  file      = {:papers/2017_Book_SearchBasedSoftwareEngineering.pdf:PDF},
+  year      = {2017},
+}
+
+@Article{10.1145/1013886.1007528,
+  author     = {Tonella, Paolo},
+  title      = {Evolutionary Testing of Classes},
+  doi        = {10.1145/1013886.1007528},
+  issn       = {0163-5948},
+  number     = {4},
+  pages      = {119–128},
+  url        = {https://doi.org/10.1145/1013886.1007528},
+  volume     = {29},
+  abstract   = {Object oriented programming promotes reuse of classes in multiple contexts. Thus,
+a class is designed and implemented with several usage scenarios in mind, some of
+which possibly open and generic. Correspondingly, the unit testing of classes cannot
+make too strict assumptions on the actual method invocation sequences, since these
+vary from application to application.In this paper, a genetic algorithm is exploited
+to automatically produce test cases for the unit testing of classes in a generic usage
+scenario. Test cases are described by chromosomes, which include information on which
+objects to create, which methods to invoke and which values to use as inputs. The
+proposed algorithm mutates them with the aim of maximizing a given coverage measure.
+The implementation of the algorithm and its application to classes from the Java standard
+library are described.},
+  address    = {New York, NY, USA},
+  comment    = {TODO, Single Objectiva at a time approach. 
+Objekt-orientierte Programmierung und Klassen werden bei der genetischen Suche berücksichtigt.},
+  file       = {:papers/1013886.1007528.pdf:PDF},
+  issue_date = {July 2004},
+  journal    = {SIGSOFT Softw. Eng. Notes},
+  keywords   = {genetic algorithms, object-oriented testing, automated test case generation},
+  month      = jul,
+  numpages   = {10},
+  publisher  = {Association for Computing Machinery},
+  year       = {2004},
+}
+
+@InProceedings{Harman2010,
+  author    = {Harman, Mark and Kim, Sung Gon and Lakhotia, Kiran and McMinn, Phil and Yoo, Shin},
+  booktitle = {2010 Third International Conference on Software Testing, Verification, and Validation Workshops},
+  title     = {Optimizing for the Number of Tests Generated in Search Based Test Data Generation with an Application to the Oracle Cost Problem},
+  doi       = {10.1109/ICSTW.2010.31},
+  pages     = {182-191},
+  year      = {2010},
+}
+
+@Article{Korel1990,
+  author  = {Korel, B.},
+  title   = {Automated software test data generation},
+  doi     = {10.1109/32.57624},
+  number  = {8},
+  pages   = {870-879},
+  volume  = {16},
+  comment = {TODO Original Paper über Branch Distance.},
+  journal = {IEEE Transactions on Software Engineering},
+  year    = {1990},
+}
+
+@Article{Wegener2001,
+  author   = {Joachim Wegener and Andre Baresel and Harmen Sthamer},
+  title    = {Evolutionary test environment for automatic structural testing},
+  doi      = {https://doi.org/10.1016/S0950-5849(01)00190-2},
+  issn     = {0950-5849},
+  number   = {14},
+  pages    = {841-854},
+  url      = {https://www.sciencedirect.com/science/article/pii/S0950584901001902},
+  volume   = {43},
+  abstract = {Testing is the most significant analytic quality assurance measure for software. Systematic design of test cases is crucial for the test quality. Structure-oriented test methods, which define test cases on the basis of the internal program structures, are widely used. A promising approach for the automation of structural test case design is evolutionary testing. Evolutionary testing searches test data that fulfil a given structural test criteria by means of evolutionary computation. In this work, an evolutionary test environment has been developed that performs fully automatic test data generation for most structural test methods. The introduction of an approximation level for fitness evaluation of generated test data and the definition of an efficient test strategy for processing test goals, increases the performance of evolutionary testing considerably.},
+  comment  = {TODO Originales paper über Approach Level.},
+  journal  = {Information and Software Technology},
+  keywords = {Test automation, Structural test, Evolutionary test, Evolutionary computation},
+  year     = {2001},
 }
 
 @Comment{jabref-meta: databaseType:biblatex;}
