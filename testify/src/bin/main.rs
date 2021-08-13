@@ -1,7 +1,6 @@
-use testify::algorithm::{MOSA, PreferenceSorter};
-use testify::chromosome::{ChromosomeGenerator, Chromosome, TestCaseGenerator};
+use testify::algorithm::{MOSA};
+use testify::chromosome::{TestCaseGenerator};
 use clap::{Clap};
-use std::io::Error;
 use std::rc::Rc;
 use testify::operators::{BasicMutation, RankSelection, BasicCrossover};
 use testify::generators::TestIdGenerator;
@@ -27,11 +26,11 @@ fn main() {
     let mutation = BasicMutation::new(branch_manager_rc.clone());
     let crossover = BasicCrossover::new();
     let rank_selection = RankSelection::new(branch_manager_rc.clone());
-    let mut generator = TestCaseGenerator::new(branch_manager_rc.clone(), mutation.clone(), crossover.clone(), test_id_generator.clone());
+    let generator = TestCaseGenerator::new(branch_manager_rc.clone(), mutation.clone(), crossover.clone(), test_id_generator.clone());
     let res = MOSA::new(generator, rank_selection, branch_manager_rc, test_id_generator.clone())
         .population_size(20)
         .generations(10)
-        .run();
+        .run(source_file.clone());
     match res {
         None => {
             println!("Execution failed");
@@ -41,7 +40,6 @@ fn main() {
         }
     }
 
-    source_file.restore();
     // Restore the original file
-
+    //source_file.restore();
 }

@@ -59,7 +59,7 @@ impl MOSA {
         self
     }
 
-    pub fn run(&mut self) -> Option<(Vec<Branch>, f64)> {
+    pub fn run(&mut self, mut source_file: SourceFile) -> Option<(Vec<Branch>, f64)> {
         let mut time = Time::new();
 
         let count = (self.generations + 1) * self.population_size;
@@ -73,7 +73,7 @@ impl MOSA {
         time.end("population");
 
         time.start("source_file");
-        let mut source_file = SourceFile::new("/Users/tim/Documents/master-thesis/testify/src/examples/additions/src/main.rs");
+        //let mut source_file = SourceFile::new("/Users/tim/Documents/master-thesis/testify/src/examples/additions/src/main.rs");
         time.end("source_file");
         time.start("test_write");
         source_file.add_tests(&population);

@@ -56,7 +56,7 @@ impl SourceFile {
 
     /// Runs the tests provided they have been added to the source file before.
     pub fn run_tests(&mut self, tests: &mut [TestCase]) {
-        self.runner.run();
+        self.runner.run().unwrap();
         for test in tests {
             let file = format!("/Users/tim/Documents/master-thesis/testify/src/examples/additions/traces/trace_{}.txt", test.id());
             test.set_results(TraceParser::parse(&file).unwrap());
