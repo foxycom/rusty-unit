@@ -454,7 +454,7 @@ algorithm in different languages or implement different algorithms in the same l
   year      = {2005},
 }
 
-@InProceedings{5770604,
+@InProceedings{Fraser2011,
   author    = {Fraser, Gordon and Arcuri, Andrea},
   booktitle = {2011 Fourth IEEE International Conference on Software Testing, Verification and Validation},
   title     = {It is Not the Length That Matters, It is How You Control It},
@@ -608,13 +608,15 @@ Insgesamt wird im Paper jeder Schritt der Generierung und Evolution relativ gena
 }
 
 @InProceedings{cadar2008klee,
-  author    = {Cadar, Cristian and Dunbar, Daniel and Engler, Dawson},
-  booktitle = {OSDI},
-  title     = {KLEE: unassisted and automatic generation of high-coverage tests for complex systems programs.},
-  pages     = {209--224},
-  volume    = {8},
-  groups    = {State of the Art Tools, a72186:1},
-  year      = {2008},
+  author     = {Cadar, Cristian and Dunbar, Daniel and Engler, Dawson},
+  booktitle  = {OSDI},
+  title      = {KLEE: unassisted and automatic generation of high-coverage tests for complex systems programs.},
+  pages      = {209--224},
+  volume     = {8},
+  file       = {:papers/cadar.pdf:PDF},
+  groups     = {State of the Art Tools, a72186:1},
+  readstatus = {skimmed},
+  year       = {2008},
 }
 
 @Misc{Microsoft2019MemoryBugs,
@@ -832,12 +834,13 @@ of how computer system builders can better support floating point.},
   year      = {2011},
 }
 
-@Article{Harman,
-  author    = {M. Harman and C. Fox and R. Hierons and Lin Hu and S. Danicic and J. Wegener},
-  title     = {{VADA}: a transformation-based system for variable dependence analysis},
+@InProceedings{Harman2002,
+  author    = {Harman, M. and Fox, C. and Hierons, R. and Lin Hu and Danicic, S. and Wegener, J.},
+  booktitle = {Proceedings. Second IEEE International Workshop on Source Code Analysis and Manipulation},
+  title     = {VADA: a transformation-based system for variable dependence analysis},
   doi       = {10.1109/SCAM.2002.1134105},
-  booktitle = {Proceedings. Second {IEEE} International Workshop on Source Code Analysis and Manipulation},
-  publisher = {{IEEE} Comput. Soc},
+  pages     = {55-64},
+  year      = {2002},
 }
 
 @Article{Arcuri_2013,
@@ -986,9 +989,45 @@ Objekt-orientierte Programmierung und Klassen werden bei der genetischen Suche b
   volume   = {43},
   abstract = {Testing is the most significant analytic quality assurance measure for software. Systematic design of test cases is crucial for the test quality. Structure-oriented test methods, which define test cases on the basis of the internal program structures, are widely used. A promising approach for the automation of structural test case design is evolutionary testing. Evolutionary testing searches test data that fulfil a given structural test criteria by means of evolutionary computation. In this work, an evolutionary test environment has been developed that performs fully automatic test data generation for most structural test methods. The introduction of an approximation level for fitness evaluation of generated test data and the definition of an efficient test strategy for processing test goals, increases the performance of evolutionary testing considerably.},
   comment  = {TODO Originales paper über Approach Level.},
+  file     = {:papers/evolutionarytest-structural-testing-2.pdf:PDF},
   journal  = {Information and Software Technology},
   keywords = {Test automation, Structural test, Evolutionary test, Evolutionary computation},
   year     = {2001},
+}
+
+@Article{Harman2010a,
+  author  = {Harman, Mark and McMinn, Phil},
+  title   = {A Theoretical and Empirical Study of Search-Based Testing: Local, Global, and Hybrid Search},
+  doi     = {10.1109/TSE.2009.71},
+  number  = {2},
+  pages   = {226-247},
+  volume  = {36},
+  comment = {TODO},
+  file    = {:papers/A_Theoretical_and_Empirical_Study_of_Search-Based_Testing_Local_Global_and_Hybrid_Search.pdf:PDF},
+  journal = {IEEE Transactions on Software Engineering},
+  year    = {2010},
+}
+
+@Article{Sampson_1976,
+  author    = {Jeffrey R. Sampson},
+  title     = {Adaptation in Natural and Artificial Systems (John H. Holland)},
+  doi       = {10.1137/1018105},
+  number    = {3},
+  pages     = {529--530},
+  volume    = {18},
+  journal   = {{SIAM} Review},
+  month     = {jul},
+  publisher = {Society for Industrial {\&} Applied Mathematics ({SIAM})},
+  year      = {1976},
+}
+
+@Book{whitley1989genitor,
+  author    = {Whitley, L Darrell and others},
+  title     = {The GENITOR algorithm and selection pressure: why rank-based allocation of reproductive trials is best.},
+  publisher = {Citeseer},
+  comment   = {TODO Erklärt den linearen Selektionsalgorithmus.
+Lineare Selektion},
+  year      = {1989},
 }
 
 @Comment{jabref-meta: databaseType:biblatex;}

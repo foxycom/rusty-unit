@@ -14,6 +14,31 @@
 % Please do not change this options...
 \usepackage[a4paper, total={6in, 10in}]{geometry}
 \usepackage{todonotes}
+\usepackage[T1]{fontenc}
+\makeatletter
+\newcommand\BeraMonottfamily{%
+  \def\fvm@Scale{0.85}% scales the font down
+  \fontfamily{fvm}\selectfont% selects the Bera Mono font
+}
+\makeatother
+\usepackage{acronym}
+\usepackage{listings}
+\lstset{
+  numbers=left,
+  xleftmargin=2.5em,
+  framexleftmargin=2.5em,
+  frame=tb,
+  stepnumber=1,    
+  firstnumber=1,
+  numberfirstline=true,
+  basicstyle=\BeraMonottfamily,
+  identifierstyle=,
+  stringstyle=\ttfamily,
+  %keywordstyle=\color{OliveGreen},
+  keywordstyle=,
+  showstringspaces=false
+}
+
 \usepackage{graphicx}
 \graphicspath{ {./img/} }
 \usepackage{pgfgantt}
@@ -82,11 +107,22 @@ Das Ziel dieser Masterarbeit ist es, die Effektivität eines such-basierten Ansa
 \end{itemize}
 Das Generieren der Tests geschieht meistens, indem bestimmte Zielkriterien gesetzt werden, zum Beispiel die Codecoverage des getesteten Programms. Die Coveragekriterien sind eine endliche Sammlung von Zielen, die typischerweise einzeln abgearbeitet werden, wobei mittels symbolischer Ausführung oder mit einem such-basierten Ansatz die Inputdaten generiert werden, um ein Ziel zu erreichen bzw. abzudecken~\cite{Fraser_2013}. 
 
-Symbolische Ausführung ist ein verbreiteter Ansatz, um Inputdaten oder ganze Unit-Tests zu generieren, indem Pfadeinschränkungen aufgelöst werden. Dynamische symbolische Ausführung ist eine Erweiterung von DS, die erlaubt, mit Hilfe einer Kombination aus konkreten und symbolischen Werten eine Reihe von Problemen zu überwinden~\cite{Fraser_2013}. Es gibt eine Reihe von Tools, die für eine automatische Generierung von Tests auf DSE setzen, zum Beispiel CUTE and jCUTE~\cite{10.1007/11817963_38} und KLEE~\cite{cadar2008klee}. \todo{Vielleicht gibt es jetzt neuere Tools. Außerdem besser ein anderes Paper zum Zitieren hernehmen, zum Beispiel das von KLEE oder eins, das Grundlagen von DSE beschreibt.}
+\subsection{Symbolische Ausführung}
+Symbolische Ausführung ist ein verbreiteter Ansatz, um Inputdaten oder ganze Unit-Tests zu generieren, indem Pfadeinschränkungen aufgelöst werden. \todo{Werke über DS referenzieren} Grundsätzlich folgen alle Tools dem gleichen Prinzip: Statt Programme mit manuellen oder generierten Inputdaten laufen zu lassen, Inputdaten werden mit symbolischen Werten besetzt, die initial ''alles'' sein können~\cite{cadar2008klee}. Konkrete Operationen auf Daten werden durch solchen ersetzt, die die symbolischen Daten manipulieren können. Wenn sich die Ausführung des Programms verzweigt, behalten die Tools die Ausführung beider Branches ''im Auge'' bzw. der Zustand vor der Verzweigung wird gecloned und es werden jeweils neue Verzweigungsbedingungen angehängt. Für jeden Branch wird eine Sammlung von Einschränkungen (Constraints) gespeichert, die für die Ausführung des jeweiligen Pfades gelten müssen. Wenn die Ausführung in einem Pfad endet oder das Programm abstürzt, kann daraus ein Test generiert werden, indem konkrete Werte als Inputdaten eingesetzt werden, die die entsprechenden Pfad-Constraints erfüllen. Wenn das Programm deterministisch und unverändert bleibt, führt eine Ausführung mit konkreten Inputdaten zum selbem Bug im Program. 
 
+Dynamische symbolische Ausführung ist eine Erweiterung von DS, die erlaubt, mit Hilfe einer Kombination aus konkreten und symbolischen Werten eine Reihe von Problemen zu überwinden~\cite{Fraser_2013}. Es gibt eine Reihe von Tools, die für eine automatische Generierung von Tests auf DSE setzen, zum Beispiel CUTE and jCUTE~\cite{10.1007/11817963_38} und KLEE~\cite{cadar2008klee}. \todo{Vielleicht gibt es jetzt neuere Tools. Außerdem besser ein anderes Paper zum Zitieren hernehmen, zum Beispiel das von KLEE oder eins, das Grundlagen von DSE beschreibt.}
+KLEE hat zwei Ziele: (1) das Tool versucht, jede ausführbare Zeile in einem Programm auszuführen, d. h. hohe Statement Coverage zu erreichen und (2) bei jeder gefährlichen Operation (z. B. dereference, assertion) wird versucht zu überprüfen, ob es Werte gibt, die dabei zu einem Fehler führen könnten. Das letztere wird durch symbolische Ausführung erreicht. Da selbst in einfachen Programmen die Anzahl von Ausführungszuständen / -pfaden explodieren kann, wird von KLEE eine Reihe von Heuristiken und Optimisierungstechniken angewendet, um die Performanz zu erhöhen. Zum Beispiel werden nicht ganze Bäume bei Verzweigungen gecloned (Zustände sind nämlich Bäume), sondern es wird der write-on-copy Ansatz auf Objekt-Level angewendet. Unveränderte Teilbäume können von mehreren verschiedenen Zuständen referenziert werden. Außerdem wird versucht, Anfragen an den SAT Solver, um symbolische Werte in konkrete umzuwandeln, so weit vereinfacht wie möglich, da die Verarbeitungszeit der Anfragen alles andere dominiert. Auf diese Weise konnten die Autoren die Ausführungszeit des Tools auf den GNU Coreutils um das 15-fache beschleunigen.
+
+\subsection{Metaheurische Suche}
 Metaheuristische Suchtechniken sind eine Alternative zu DSE und haben ihre Anfänge in den 70er Jahren~\cite{McMinn_2004}. Damals wurden schon die Schlüsselkonzepte wie Branch Distance~\cite{Korel1990} und Approach Level~\cite{Wegener2001} definiert, um die Suche nach Inputdaten für die Tests in die richtige Richtung zu ''führen''.  
 
-Der Traditionelle Ansatz in Such-basierten Algorithmen ist es, für jedes einzelne Objetive ein Test zu generieren, der dieses Objective durch gezielte Ausführung mit passenden Daten anstößt. Man versucht mit den generierten Tests so viel Code abzudecken, wie nur möglich, in dem zum Beispiel alle Branches ausgeführt werden (Branch Coverage). Ein großer Nachteil von dem Ansatz ist, dass Objectives oft voneinander abhängig und nicht immer feasible sind. Das heißt, die Effektivität einer Suche hängt stark von der Reihenfolge der Objectives ab~\cite{Fraser_2013}. Außerdem kann die Größe der generierten Testsuite stark variieren, da ein bestimmter Test zufällig mehrere Branches abdecken kann (eine sogennante kollaterale Abdeckung)~\cite{Harman2010}. Es ist allgemein schwierig, bei den generierten Tests automatische Testorakel zu erzeugen. Testorakel sind nötig, um zu überprüfen, ob das Verhalten des getesteten Programms richtig ist oder nicht. Der trivialste Testorakel ist ein Absturz des Programms. \todo{Testorakel Referenz} Man möchte allerdings auch anderes testen, zum Beispiel ob die Ausgabe einer Funktion korrekt ist. Das kann durch manuelles Ergänzen der Tests durch einen Menschen erreicht werden, allerdings müssten die generierten Tests kurz genug sein, um noch verständlich zu bleiben. Also ist nicht nur die Coverage ein wichtiges Kriterium bei der Generierung von Tests, sondern auch deren Länge~\cite{Fraser_2013}. 
+Der Traditionelle Ansatz in Such-basierten Algorithmen ist es, für jedes einzelne Objetive ein Test zu generieren, der dieses Objective durch gezielte Ausführung mit passenden Daten anstößt. Man versucht mit den generierten Tests so viel Code abzudecken, wie nur möglich, in dem zum Beispiel alle Branches ausgeführt werden (Branch Coverage). Ein großer Nachteil von dem Ansatz ist, dass Objectives oft voneinander abhängig und nicht immer feasible sind. Das heißt, die Effektivität einer Suche hängt stark von der Reihenfolge der Objectives ab~\cite{Fraser_2013}. Außerdem kann die Größe der generierten Testsuite stark variieren, da ein bestimmter Test zufällig mehrere Branches abdecken kann (eine sogennante kollaterale Abdeckung)~\cite{Harman2010}. Es ist allgemein schwierig, bei den generierten Tests automatische Testorakel zu erzeugen. Testorakel sind nötig, um zu überprüfen, ob das Verhalten des getesteten Programms richtig ist oder nicht. Der trivialste Testorakel ist ein Absturz des Programms. \todo{Testorakel Referenz} Man möchte allerdings auch anderes testen, zum Beispiel ob die Ausgabe einer Funktion korrekt ist. Das kann durch manuelles Ergänzen der Tests durch einen Menschen erreicht werden, allerdings müssten die generierten Tests kurz genug sein, um noch verständlich zu bleiben. Also ist nicht nur die Coverage ein wichtiges Kriterium bei der Generierung von Tests, sondern auch deren Länge~\cite{Fraser_2013}. Im Gegensatz zu Tools wie CUTE~\cite{10.1007/11817963_38}, die von der Verfügbarkeit von automatischen Orakeln ausgehen (z. B. Programm-Crash) und aus diesem Grund die Länge der generierten Tests eher unwichtig ist, wenden sich Fraser und Arcuri~\cite{Fraser_2011} mit ihrem Tool names EvoSuite Problemen zu, für die es keine automatischen Testorakel gibt. Aus diesem Grund steht bei ihrem Ansatz nicht nur die Qualität der generierten Tests (also die Coverage), sondern auch deren Länge im Vordergrund. 
+
+Der Kernpunkt von Metaheuristischen Suchtechniken ist die Optimisierung von generierten Tests, d. h. in jeder Iteration eines Algorithmus wird die bestehende Testsuite w.r.t. der definierten Fitnessfunktion (z. B. Coverage) optimiert. Den Anfang macht oft eine zufällig generierte Testsuite. \todo{Es existieren Arbeiten, die sich damit befassen, die initiale Testsuite möglichst optimal zu seeden, um die Performanz eines Algorithmus zu erhöhen.} 
+
+\subsubsection{Genetischer Algorithmus}
+
+
 \section{Forschungskonzept}
 \begin{itemize}
     \item Forschungsfragen
@@ -95,6 +131,33 @@ Der Traditionelle Ansatz in Such-basierten Algorithmen ist es, für jedes einzel
     \item Daten
     \item Evtl. benötigte Mittel
 \end{itemize}
+
+\subsubsection{Problem representation}
+Um Suchalgorithmen überhaupt anwenden zu können, muss eine problemspezifische Repräsentation definiert werden~\cite{Fraser_2013}. Laut McMinn~\cite{McMinn_2004} sollte eine Enkodierung der Lösung so gewählt sein, dass ähnliche Lösungen ebenfalls \"Nachbarn\" im repräsentierten Suchraum sind. Dadurch kann die Suche leicht von einer zur ähnlichen Lösung durch einfache Modifikationen der Repräsentation fortgeführt werden. Fraser und Arcuri schlagen folgendes zu Repräsentation der Lösung vor~\cite{Fraser_2011}: Eine Lösung ist hier eine Test Suite~$T$, die im Grunde ein Set von Unit Tests ist und für welchen gilt: Wenn~$|T| = n$, dann~$T = \{t_1, t_2, ... ,t_n\}$. 
+
+Ein Unit Test ist demnach eine Liste von Statements, die Teile des \ac{SUT} ausführen, um ein gewisses Objective (bzw. Branch) zu erreichen und abzudecken. Im Grunde wird so ein Test aus einem Subset der Ziel-Programmiersprache zusammengesetzt und muss nicht jedes mögliche Konstrukt beinhalten. Jedes Statement ist ein Wert~$v(s_i)$, welcher von einem der fünf folgenden Typen~$\tau(v(s_i))$ sein kann, die auf Definitionen für Java von Fraser und Arcuri~\cite{Fraser_2013} basieren und für Rust angepasst sind:
+\begin{itemize} 
+    \item \textbf{Primitive Statements} repräsentieren Variablen, die numerische Werte, Strings, Enum Werte, Objekte und Arrays speichern können, z. B. \lstinline{let v = 42}. Der Wert und Typ des Statements werden von der primitiven Variable bestimmt. 
+    \item \textbf{Konstruktor-Statements} generieren neue Instanzen eines gegebenen Structs, z. B. \lstinline{let s = SomeStruct::new()}. Der Wert und Typ des Statements werden vom Struct bestimmt. Ein Konstruktor kann Parameter haben, denen ebenso der Wert aus dem Set~$\{v(s_k) | 0 \leq k < i\}$ zugewiesen wird.
+    \item \textbf{Attribut-Statements} greifen auf die public member variables von Objekten, z. B. \lstinline{let b = a.x}. Der Wert und Typ eines Attribut-Statements sind von der member variable abhängig. Die Quelle der member variable, also~\lstinline{a}, muss ebenso Teil des Sets~$\{v(s_k) | 0 \leq k < i\}$ sein. 
+    \item \textbf{Methoden-Statements} führen Methoden auf Objekten aus oder rufen statische Methoden auf, z. B. \lstinline{let b = a.len()}. Hier wieder, das Quellobjekt und jegliche Parameter der Methode müssen Teil des Sets~$\{v(s_k) | 0 \leq k < i\}$ sein. Der Wert und Typ des Statements werden vom Return-Wert der Methode bestimmt. 
+    \item \textbf{Funktionen-Statements} führen lose bzw. frei stehende Funktionen aus, z. B. \lstinline{let a = do_something()}. Die möglichen Parameter einer solchen Funktion müssen Teil des Sets~$\{v(s_k) | 0 \leq k < i\}$ sein. Der Wert und Typ des Statements werden vom Return-Wert der Funktion bestimmt. 
+\end{itemize}
+
+Die Sammlung von verfügbaren Structs, deren Konstruktoren, Methoden, Felder und frei stehende Funktionen sind ein sogenannter Test Cluster~\cite{Fraser_2011}. Die Größe einer Test Suite sowie einzelner Tests ist dabei dynamisch und kann sich (fast) beliebig verändern. Da für die meisten generierten Tests keine Testorakel zur Verfügung stehen werden, soll die Größe der Test Suite sowie der einzelnen Tests eine Obergrenze haben (kein Mensch möchte tausende Zeilen lange Tests durchlesen, um am Ende eine passende Assertion zu überlegen).
+
+\subsubsection{Fitness Function}
+Eine gute Fitnessfunktion ist sehr wichtig bei der Suche nach Lösungen. Lösungen, die in einer bestimmten Weise \"besser\" als andere sind, sollen mit besseren Fitnesswerten belohnt werden. Was auch immer eine bessere Fitness ist, eine höhere oder niedrigere Fitness hängt davon ab, ob die Suchstrategie versucht, die Fitnessfunktion zu maximieren oder zu minimieren~\cite{McMinn_2004}. Diese Arbeit hat die Branch Coverage im Fokus. In EvoSuite instrumentieren Fraser und Arcuri~\cite{Fraser_2013} in der originalen Implementierung Java \ac{SUT} auf Bytecode-Level und im Bytecode werden alle Loops usw. in die einfachen if-Verzweigungen überführt. Das Ziel ist es, die optimale Lösung zu finden, d. h. eine Test Suite, die möglichst hohe Branch-Coverage hat. Gleichzeitig soll es aber keine andere Testsuite geben, die bei gleicher Branch-Coverage kleiner ist bzw. kleinere Tests enthält. Einige Branches, sogenannte infeasible Branches, können evtl. gar nicht abgedeckt werden, entweder aufgrund der limitierten Repräsentation der Lösung oder weil es keine passenden Inputs existieren, die allen Einschränkungen gerecht werden, z. B. $x < 4 \wedge x > 6$. Somit werden solche Tests bei der Optimierung der Lösung bevorzugt, die eine höhere Fitness bzgl. der Branch-Coverage haben. Bei zwei Tests mit der gleichen Coverage wird der kürzere bevorzugt. 
+
+Um die Suche voranzutreiben, können verschiedene Heuristiken verwendet werden. \todo{Welche gibt es überhaupt?} Eine der weitverbreitesten ist Branch Distance. McMinn~\cite{McMinn_2004} beschreibt eine Sammlung von Regeln, die rekursiv angewendet werden können, um Distanz bei allen möglichen Prädikaten zu berechnen. Wenn die Ausführung des \ac{SUT} bei gegebenen Inputdaten in einem bestimmten Branch landet, so kann eine lokale Suche angewendet werden. Es wird mit Hilfe einer lokalen Fitnessfunktion abgeleitet, wie nah das Prädikat zum Auswerten zu \lstinline{true} ist. Zum Beispiel, bei einem Prädikat~\lstinline{x >= 10} und~\lstinline{x = 5} (während der Ausführung) wird der \lstinline{false} Branch getroffen. Die Distanz zum \lstinline{true} Branch beträge somit~$10 - 5 + k$ mit~$k \geq 1$. Dabei wird jedes Prädikat im \ac{SUT} instrumentiert, um die Distanzen zu anderen Branches während der Ausführung des \ac{SUT} zu tracen. Die Branch-Distanz muss noch normalisiert werden (je nach Werten kann es schnell zu Extremen kommen). Arcuri~\cite{Arcuri_2011} beschreibt in seiner Arbeit, welchen Einfluss die Normalisierung der Branch-Distanz auf die Effektivität einer such-basierten Testgenerierung hat. 
+
+
+\subsubsection{Suchoperatoren}
+
+
+\subsubsection{Instrumentierung}
+
+\subsubsection{Ausführung der Tests}
 
 % Wenn man beispielsweise 40 Seiten schreiben möchte, dann wären 
 % Solution Approach und Evaluation jeweils ~10 Seiten lang. Es ist okay, wenn
@@ -174,6 +237,9 @@ Der Traditionelle Ansatz in Such-basierten Algorithmen ist es, für jedes einzel
 % Remember to list at not less than 4 related work, you can list more if you wish
 % If you like you can also use bib files (see below)
 
+
+\appendix
+\input{acronyms}
 
 \bibliographystyle{unsrt}
 \bibliography{bibliography}
