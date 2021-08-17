@@ -920,7 +920,7 @@ of how computer system builders can better support floating point.},
   abstract  = {Evolutionary algorithms have been shown to be effective at generating unit test suites optimised for code coverage. While many aspects of these algorithms have been evaluated in detail (e.g., test length and different kinds of techniques aimed at improving performance, like seeding), the influence of the specific algorithms has to date seen less attention in the literature. As it is theoretically impossible to design an algorithm that is best on all possible problems, a common approach in software engineering problems is to first try a Genetic Algorithm, and only afterwards try to refine it or compare it with other algorithms to see if any of them is more suited for the addressed problem. This is particularly important in test generation, since recent work suggests that random search may in practice be equally effective, whereas the reformulation as a many-objective problem seems to be more effective. To shed light on the influence of the search algorithms, we empirically evaluate six different algorithms on a selection of non-trivial open source classes. Our study shows that the use of a test archive makes evolutionary algorithms clearly better than random testing, and it confirms that the many-objective search is the most effective.},
   address   = {Cham},
   comment   = {TODO},
-  file      = {:papers/2017_Book_SearchBasedSoftwareEngineering.pdf:PDF},
+  file      = {:papers/CR.pdf:PDF},
   year      = {2017},
 }
 
@@ -1028,6 +1028,113 @@ Objekt-orientierte Programmierung und Klassen werden bei der genetischen Suche b
   comment   = {TODO Erklärt den linearen Selektionsalgorithmus.
 Lineare Selektion},
   year      = {1989},
+}
+
+@Book{Davis1991,
+  author    = {Davis, L.},
+  date      = {1991},
+  title     = {Handbook of genetic algorithms},
+  editor    = {Davis, L.},
+  publisher = {Van Nostrand Reinhold, New York},
+}
+
+@Article{Ramamoorthy1976,
+  author  = {Ramamoorthy, C.V. and Ho, S.-B.F. and Chen, W.T.},
+  title   = {On the Automated Generation of Program Test Data},
+  doi     = {10.1109/TSE.1976.233835},
+  number  = {4},
+  pages   = {293-300},
+  volume  = {SE-2},
+  journal = {IEEE Transactions on Software Engineering},
+  year    = {1976},
+}
+
+@Article{Lewis1983,
+  author    = {Lewis, Harry R.},
+  title     = {Michael R. Garey and David S. Johnson. Computers and intractability. A guide to the theory of NP-completeness. W. H. Freeman and Company, San Francisco1979, x 338 pp.},
+  doi       = {10.2307/2273574},
+  number    = {2},
+  pages     = {498–500},
+  volume    = {48},
+  journal   = {Journal of Symbolic Logic},
+  publisher = {Cambridge University Press},
+  year      = {1983},
+}
+
+@InBook{Tracey2002,
+  author    = {Tracey, Nigel and Clark, John and McDermid, John and Mander, Keith},
+  booktitle = {Systems Engineering for Business Process Change: New Directions: Collected Papers from the EPSRC Research Programme},
+  title     = {A Search-Based Automated Test-Data Generation Framework for Safety-Critical Systems},
+  doi       = {10.1007/978-1-4471-0135-2_12},
+  editor    = {Henderson, Peter},
+  isbn      = {978-1-4471-0135-2},
+  pages     = {174--213},
+  publisher = {Springer London},
+  url       = {https://doi.org/10.1007/978-1-4471-0135-2_12},
+  abstract  = {This paper presents the results of a three year research program to develop an automated test-data generation framework to support the testing of safety-critical software systems. The generality of the framework comes from the exploitation of domain independent search techniques, allowing new test criteria to be addressed by constructing functions that quantify the suitability of test-data against the test-criteria. The paper presents four applications of the framework --- specification falsification testing, structural testing, exception condition testing and worst-case execution time testing. The results of three industrial scale case-studies are also presented to show that the framework offers useful support in the development safety-critical software systems.},
+  address   = {London},
+  comment   = {TODO Branch Distance auch für UNDs und ODERs},
+  year      = {2002},
+}
+
+@InProceedings{Shamshiri2015a,
+  author    = {Shamshiri, Sina and Rojas, Jos\'{e} Miguel and Fraser, Gordon and McMinn, Phil},
+  booktitle = {Proceedings of the 2015 Annual Conference on Genetic and Evolutionary Computation},
+  title     = {Random or Genetic Algorithm Search for Object-Oriented Test Suite Generation?},
+  doi       = {10.1145/2739480.2754696},
+  isbn      = {9781450334723},
+  location  = {Madrid, Spain},
+  pages     = {1367–1374},
+  publisher = {Association for Computing Machinery},
+  series    = {GECCO '15},
+  url       = {https://doi.org/10.1145/2739480.2754696},
+  abstract  = {Achieving high structural coverage is an important aim in software testing. Several
+search-based techniques have proved successful at automatically generating tests that
+achieve high coverage. However, despite the well- established arguments behind using
+evolutionary search algorithms (e.g., genetic algorithms) in preference to random
+search, it remains an open question whether the benefits can actually be observed
+in practice when generating unit test suites for object-oriented classes. In this
+paper, we report an empirical study on the effects of using a genetic algorithm (GA)
+to generate test suites over generating test suites incrementally with random search,
+by applying the EvoSuite unit test suite generator to 1,000 classes randomly selected
+from the SF110 corpus of open source projects. Surprisingly, the results show little
+difference between the coverage achieved by test suites generated with evolutionary
+search compared to those generated using random search. A detailed analysis reveals
+that the genetic algorithm covers more branches of the type where standard fitness
+functions provide guidance. In practice, however, we observed that the vast majority
+of branches in the analyzed projects provide no such guidance.},
+  address   = {New York, NY, USA},
+  comment   = {TODO Random Search kann manchmal sogar effektiver sein, als genetische Algorithmen},
+  keywords  = {automated test generation, search based software engineering, genetic algorithms, search based testing, random testing, object oriented unit testing},
+  numpages  = {8},
+  year      = {2015},
+}
+
+@InProceedings{Rojas2015,
+  author    = {Rojas, Jos{\'e} Miguel and Campos, Jos{\'e} and Vivanti, Mattia and Fraser, Gordon and Arcuri, Andrea},
+  booktitle = {Search-Based Software Engineering},
+  title     = {Combining Multiple Coverage Criteria in Search-Based Unit Test Generation},
+  editor    = {Barros, M{\'a}rcio and Labiche, Yvan},
+  isbn      = {978-3-319-22183-0},
+  pages     = {93--108},
+  publisher = {Springer International Publishing},
+  abstract  = {Automated test generation techniques typically aim at maximising coverage of well-established structural criteria such as statement or branch coverage. In practice, generating tests only for one specific criterion may not be sufficient when testing object oriented classes, as standard structural coverage criteria do not fully capture the properties developers may desire of their unit test suites. For example, covering a large number of statements could be easily achieved by just calling the main method of a class; yet, a good unit test suite would consist of smaller unit tests invoking individual methods, and checking return values and states with test assertions. There are several different properties that test suites should exhibit, and a search-based test generator could easily be extended with additional fitness functions to capture these properties.},
+  address   = {Cham},
+  comment   = {TODO Mehrere Coverage Kriterien in einer linearen Kombination},
+  file      = {:papers/ssbse15_multi.pdf:PDF},
+  year      = {2015},
+}
+
+@Article{Rojas2017,
+  author    = {Rojas, Jos{\'e} Miguel and Vivanti, Mattia and Arcuri, Andrea and Fraser, Gordon},
+  title     = {A detailed investigation of the effectiveness of whole test suite generation},
+  number    = {2},
+  pages     = {852--893},
+  volume    = {22},
+  comment   = {TODO Whole test suite generation},
+  journal   = {Empirical Software Engineering},
+  publisher = {Springer},
+  year      = {2017},
 }
 
 @Comment{jabref-meta: databaseType:biblatex;}
