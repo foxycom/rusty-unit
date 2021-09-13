@@ -667,7 +667,7 @@ impl Instrumenter {
 }
 
 
-impl VisitMut for Instrumenter{
+impl VisitMut for Instrumenter {
     fn visit_expr_if_mut(&mut self, i: &mut ExprIf) {
         for it in &mut i.attrs {
             VisitMut::visit_attribute_mut(self, it);

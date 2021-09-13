@@ -6,6 +6,13 @@ struct SomeStruct {
 }
 
 impl SomeStruct {
+    pub fn new() -> SomeStruct {
+        SomeStruct {
+            a: 2,
+            b: 3
+        }
+    }
+
     pub fn hello(&mut self, y: u8) {
         if y < self.a {
             self.b = y;

@@ -60,7 +60,12 @@ impl Hash for TestCase {
 impl TestCase {
     pub const TEST_FN_PREFIX: &'static str = "testify";
 
-    pub fn new(id: u64, branch: Branch, stmts: Vec<Statement>, mutation: BasicMutation, crossover: BasicCrossover, branch_manager: Rc<RefCell<BranchManager>>) -> Self {
+    pub fn new(id: u64,
+               branch: Branch,
+               stmts: Vec<Statement>,
+               mutation: BasicMutation,
+               crossover: BasicCrossover,
+               branch_manager: Rc<RefCell<BranchManager>>) -> Self {
         TestCase {
             id,
             branch,
