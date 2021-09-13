@@ -6,10 +6,9 @@ struct SomeStruct {
 }
 
 impl SomeStruct {
-    pub fn new() -> SomeStruct {
+    pub fn new(a: u8, b: u8) -> SomeStruct {
         SomeStruct {
-            a: 2,
-            b: 3
+            a, b
         }
     }
 
