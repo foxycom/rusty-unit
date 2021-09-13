@@ -11,7 +11,7 @@ use std::hash::{Hash, Hasher};
 use std::fmt::{Debug, Formatter};
 
 use crate::parser::TraceParser;
-use crate::chromosome::{TestCase, Statement, Chromosome};
+use crate::chromosome::{TestCase, Statement, Chromosome, FnInvStmt, MethodInvStmt, Struct};
 use std::borrow::Cow;
 use crate::generators::InputGenerator;
 
@@ -71,6 +71,14 @@ impl SourceFile {
 
     pub fn instrument(&mut self) {
         self.instrumenter.instrument(&self.file_path);
+    }
+
+    pub fn impl_methods(&self) -> &Vec<ImplItemMethod> {
+        self.instrumenter.impl_methods.as_ref()
+    }
+
+    pub fn structs(&self) -> &Vec<Struct> {
+        self.instrumenter.structs.as_ref()
     }
 
     pub fn branches(&self) -> &Vec<Branch> {
@@ -160,9 +168,8 @@ fn fmt_string(source: &str) -> io::Result<String> {
 
 #[derive(Debug, Clone)]
 struct TestClearer {
-    src_path: String
+    src_path: String,
 }
-
 
 
 impl VisitMut for TestClearer {
@@ -281,7 +288,6 @@ impl TestRunner {
 #[derive(Clone, Builder)]
 pub struct Branch {
     id: u64,
-    target_fn: ItemFn,
     branch_type: BranchType,
     span: Span,
 }
@@ -295,7 +301,6 @@ impl Debug for Branch {
 impl Hash for Branch {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
-        self.target_fn.hash(state);
         self.branch_type.hash(state);
     }
 }
@@ -303,7 +308,6 @@ impl Hash for Branch {
 impl PartialEq for Branch {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
-            && self.target_fn == other.target_fn
             && self.branch_type == other.branch_type
     }
 }
@@ -311,10 +315,9 @@ impl PartialEq for Branch {
 impl Eq for Branch {}
 
 impl Branch {
-    pub fn new(id: u64, target_fn: ItemFn, branch_type: BranchType, span: Span) -> Self {
+    pub fn new(id: u64, branch_type: BranchType, span: Span) -> Self {
         Branch {
             id,
-            target_fn,
             branch_type,
             span,
         }
@@ -325,14 +328,9 @@ impl Branch {
         test_case.results().get(&self.id).unwrap_or(&f64::MAX).to_owned()
     }
 
-    pub fn target_fn(&self) -> &ItemFn {
-        &self.target_fn
-    }
-
     pub fn id(&self) -> &u64 {
         &self.id
     }
-
 
     pub fn branch_type(&self) -> &BranchType {
         &self.branch_type
@@ -343,7 +341,6 @@ impl Default for Branch {
     fn default() -> Self {
         Branch {
             id: Default::default(),
-            target_fn: syn::parse_quote! {fn blank() {}},
             branch_type: BranchType::Root,
             span: Span::call_site(),
         }
@@ -362,8 +359,10 @@ pub struct Instrumenter {
     branches: Vec<Branch>,
     original_ast: Option<File>,
     instrumented_ast: Option<File>,
+    impl_methods: Vec<ImplItemMethod>,
+    structs: Vec<Struct>,
     condition: bool,
-    current_fn: Option<ItemFn>,
+    current_fn: Option<Item>,
 }
 
 impl Instrumenter {
@@ -373,6 +372,8 @@ impl Instrumenter {
         Instrumenter {
             branch_id: 0,
             branches: Vec::new(),
+            impl_methods: Vec::new(),
+            structs: Vec::new(),
             original_ast: None,
             instrumented_ast: None,
             condition: false,
@@ -400,7 +401,6 @@ impl Instrumenter {
         } else {
             panic!()
         }
-
     }
 
     fn instrument_if(&mut self, i: &mut ExprIf) {
@@ -437,7 +437,6 @@ impl Instrumenter {
         BranchBuilder::default()
             .id(self.branch_id)
             //.source_file(source_file)
-            .target_fn(self.current_fn.as_ref().unwrap().clone())
             .branch_type(branch_type)
             .span(span)
             .build()
@@ -523,8 +522,11 @@ impl Instrumenter {
                     unimplemented!();
                 }
             }
-        } else {
+        } else if let Expr::Unary(expr_unary) = cond {
             unimplemented!();
+        } else {
+            println!("{}", cond.to_token_stream().to_string());
+            unimplemented!()
         }
         self.branches.push(true_branch);
         self.branches.push(false_branch);
@@ -547,6 +549,18 @@ impl Instrumenter {
 
         stmts.insert(0, trace_stmt);
         self.branches.push(branch);
+    }
+
+    fn is_constructor(&self, method: &ImplItemMethod) -> bool {
+        method.sig.ident.to_string() == "new"
+    }
+
+    fn is_method(&self, method: &ImplItemMethod) -> bool {
+        method.sig.inputs.iter().any(|a| if let FnArg::Receiver(_) = a {
+            true
+        } else {
+            false
+        })
     }
 
     fn extern_crates(&self) -> Vec<ItemExternCrate> {
@@ -689,6 +703,10 @@ impl VisitMut for Instrumenter {
         }
 
         for it in &mut i.items {
+
+            if let Item::Struct(item_struct) = it {
+                self.structs.push(Struct::new(item_struct.ident.clone()));
+            }
             VisitMut::visit_item_mut(self, it);
         }
 
@@ -714,8 +732,29 @@ impl VisitMut for Instrumenter {
         }
     }
 
+    fn visit_impl_item_method_mut(&mut self, i: &mut ImplItemMethod) {
+
+        self.impl_methods.push(i.clone());
+
+        if self.is_constructor(i) {
+            self.structs.last_mut().unwrap().set_constructor(i.clone());
+        } else if self.is_method(i) {
+            self.structs.last_mut().unwrap().add_method(i.clone());
+        } else {
+            self.structs.last_mut().unwrap().add_static_method(i.clone());
+        }
+
+        for it in &mut i.attrs {
+            VisitMut::visit_attribute_mut(self, it);
+        }
+
+        VisitMut::visit_visibility_mut(self, &mut i.vis);
+        VisitMut::visit_signature_mut(self, &mut i.sig);
+        VisitMut::visit_block_mut(self, &mut i.block);
+    }
+
     fn visit_item_fn_mut(&mut self, i: &mut ItemFn) {
-        self.current_fn = Some(i.clone());
+        self.current_fn = Some(Item::Fn(i.clone()));
         for at in &mut i.attrs {
             VisitMut::visit_attribute_mut(self, at);
         }
@@ -774,21 +813,5 @@ impl BranchManager {
         }
 
         uncovered_branches
-    }
-
-    pub fn get_random_stmt(&self) -> (Statement, Branch) {
-        let i = fastrand::usize((0..self.branches.len()));
-        let branch = self.branches.get(i).unwrap();
-        let target_fn = branch.target_fn();
-        let sig = &target_fn.sig;
-        let params: Vec<FnArg> = sig.inputs.iter().cloned().collect();
-        let args: Vec<Expr> = params.iter().map(InputGenerator::generate_arg).collect();
-
-        (Statement::new(
-            target_fn.sig.ident.clone(),
-            target_fn.clone(),
-            params,
-            args,
-        ), branch.clone())
     }
 }

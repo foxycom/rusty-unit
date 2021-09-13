@@ -1,4 +1,4 @@
-use crate::chromosome::{Chromosome, TestCase, Statement};
+use crate::chromosome::{Chromosome, TestCase, Statement, FnInvStmt, StatementGenerator};
 use syn::{Stmt, Expr};
 use std::rc::Rc;
 use std::mem;
@@ -57,36 +57,16 @@ impl BasicCrossover {
 #[derive(Debug, Clone)]
 pub struct BasicMutation {
     branch_manager: Rc<RefCell<BranchManager>>,
+    statement_generator: Rc<StatementGenerator>
 }
 
 impl BasicMutation {
-    pub fn new(branch_manager: Rc<RefCell<BranchManager>>) -> BasicMutation {
+    pub fn new(statement_generator: Rc<StatementGenerator>,
+               branch_manager: Rc<RefCell<BranchManager>>) -> BasicMutation {
         BasicMutation {
+            statement_generator,
             branch_manager
         }
-    }
-
-    fn mutate_stmt(&self, stmt: &Statement, dist: f64) -> Statement {
-        let mut copy = stmt.clone();
-
-        // Change arguments based on the distance to the selected branch
-        let args = copy.args();
-        let p = 1.0 / args.len() as f64;
-        let mutated_args: Vec<Expr> = args.iter()
-            .map(|a| {
-                if fastrand::f64() < p {
-                    if dist < f64::MAX {
-                        InputGenerator::mutate_arg_dist(a, dist)
-                    } else {
-                        InputGenerator::mutate_arg(a)
-                    }
-                } else {
-                    a.clone()
-                }
-            }).collect();
-
-        copy.set_args(mutated_args);
-        copy
     }
 
     pub fn mutate(&self, test_case: &TestCase) -> TestCase {
@@ -129,11 +109,53 @@ impl BasicMutation {
         };
     }
 
+    fn mutate_stmt(&self, stmt: &Statement, dist: f64) -> Statement {
+        let mut copy = stmt.clone();
+
+        match copy {
+            Statement::PrimitiveAssignment(_) => {
+                unimplemented!()
+            }
+            Statement::Constructor(_) => {
+                unimplemented!()
+            }
+            Statement::AttributeAccess(_) => {
+                unimplemented!()
+            }
+            Statement::MethodInvocation(_) => {
+                unimplemented!()
+            }
+            Statement::FunctionInvocation(ref mut fn_inv_stmt) => {
+                self.mutate_fn_invocation(fn_inv_stmt, dist);
+            }
+        }
+
+        copy
+    }
+
+    fn mutate_fn_invocation(&self, fn_inv_stmt: &mut FnInvStmt, dist: f64) {
+        // Change arguments based on the distance to the selected branch
+        let args = fn_inv_stmt.args();
+        let p = 1.0 / args.len() as f64;
+        let mutated_args: Vec<Expr> = args.iter()
+            .map(|a| {
+                if fastrand::f64() < p {
+                    if dist < f64::MAX {
+                        InputGenerator::mutate_arg_dist(a, dist)
+                    } else {
+                        InputGenerator::mutate_arg(a)
+                    }
+                } else {
+                    a.clone()
+                }
+            }).collect();
+
+        fn_inv_stmt.set_args(mutated_args);
+    }
+
     fn insert_statement(&self, test_case: &TestCase) -> TestCase {
-        let bm = self.branch_manager.borrow();
         let mut copy = test_case.clone();
-        // TODO check size or whether there are available target functions
-        let (stmt, _) = bm.get_random_stmt();
+        let stmt = self.statement_generator.get_random_stmt(&mut copy);
         let stmts = copy.stmts();
         let i = fastrand::usize((0..=stmts.len()));
 

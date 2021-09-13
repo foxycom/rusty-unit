@@ -1,11 +1,13 @@
 use testify::algorithm::{MOSA};
-use testify::chromosome::{TestCaseGenerator};
+use testify::chromosome::{TestCaseGenerator, StatementGenerator};
 use clap::{Clap};
 use std::rc::Rc;
 use testify::operators::{BasicMutation, RankSelection, BasicCrossover};
 use testify::generators::TestIdGenerator;
 use std::cell::RefCell;
 use testify::source::{SourceFile, BranchManager};
+use petgraph::Graph;
+use petgraph::prelude::GraphMap;
 
 #[derive(Clap)]
 struct CliOpts {
@@ -14,6 +16,17 @@ struct CliOpts {
 }
 
 fn main() {
+    let mut graph = GraphMap::<&str, usize>::new();
+    graph.add_node("a");
+    graph.add_node("b");
+    graph.add_edge("a", "b", 20);
+    let edges = graph.edges("a");
+    for (f, t, w) in edges {
+        println!("{}", w);
+    }
+}
+
+fn main2() {
     let opts: CliOpts = CliOpts::parse();
 
     let test_id_generator = Rc::new(RefCell::new(TestIdGenerator::new()));
@@ -23,10 +36,12 @@ fn main() {
     let branches = source_file.branches();
     let branch_manager = BranchManager::new(branches);
     let branch_manager_rc = Rc::new(RefCell::new(branch_manager));
-    let mutation = BasicMutation::new(branch_manager_rc.clone());
+    let statement_generator = Rc::new(StatementGenerator::new(source_file.clone()));
+
+    let mutation = BasicMutation::new(statement_generator.clone(), branch_manager_rc.clone());
     let crossover = BasicCrossover::new();
     let rank_selection = RankSelection::new(branch_manager_rc.clone());
-    let generator = TestCaseGenerator::new(branch_manager_rc.clone(), mutation.clone(), crossover.clone(), test_id_generator.clone());
+    let generator = TestCaseGenerator::new(statement_generator.clone(), branch_manager_rc.clone(), mutation.clone(), crossover.clone(), test_id_generator.clone());
     let res = MOSA::new(generator, rank_selection, branch_manager_rc, test_id_generator.clone())
         .population_size(20)
         .generations(10)
