@@ -59,7 +59,7 @@ impl MOSA {
         self
     }
 
-    pub fn run(&mut self, mut source_file: SourceFile) -> Option<(Vec<Branch>, f64)> {
+    pub fn run(&mut self, mut source_file: SourceFile) -> Option<GaResult> {
         let mut time = Time::new();
 
         let count = (self.generations + 1) * self.population_size;
@@ -76,7 +76,7 @@ impl MOSA {
         //let mut source_file = SourceFile::new("/Users/tim/Documents/master-thesis/testify/src/examples/additions/src/main.rs");
         time.end("source_file");
         time.start("test_write");
-        source_file.add_tests(&population);
+        source_file.add_tests(&population, true);
         time.end("test_write");
         time.start("test_run");
         source_file.run_tests(&mut population);
@@ -100,7 +100,7 @@ impl MOSA {
             time.end("population");
 
             time.start("test_write");
-            source_file.add_tests(&offspring);
+            source_file.add_tests(&offspring, true);
             time.end("test_write");
             time.start("test_run");
             source_file.run_tests(&mut offspring);
@@ -142,7 +142,7 @@ impl MOSA {
         }
 
         time.start("tests");
-        source_file.add_tests(&population);
+        source_file.add_tests(&population, true);
         time.end("tests");
 
 
@@ -160,7 +160,12 @@ impl MOSA {
 
         //println!("\n{}", time);
 
-        Some(self.coverage())
+        let (uncovered_branches, coverage) = self.coverage();
+        Some(GaResult{
+            uncovered_branches,
+            coverage,
+            tests: population
+        })
     }
 
     fn test_ids(&self, tests: &[TestCase]) -> HashSet<u64> {
@@ -472,4 +477,10 @@ impl SVD {
 
         count
     }
+}
+
+pub struct GaResult {
+    pub coverage: f64,
+    pub uncovered_branches: Vec<Branch>,
+    pub tests: Vec<TestCase>
 }

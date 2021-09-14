@@ -1,4 +1,4 @@
-use testify::algorithm::{MOSA};
+use testify::algorithm::{MOSA, GaResult};
 use testify::chromosome::{TestCaseGenerator, StatementGenerator};
 use clap::{Clap};
 use std::rc::Rc;
@@ -39,11 +39,11 @@ fn main() {
         None => {
             println!("Execution failed");
         }
-        Some((uncovered_branches, coverage)) => {
+        Some(GaResult {uncovered_branches, coverage, tests}) => {
             println!("\nUncovered branches: {:?}\nOverall branch coverage: {}", uncovered_branches, coverage);
+            source_file.add_tests(&tests, false);
+
         }
     }
 
-    // Restore the original file
-    //source_file.restore();
 }

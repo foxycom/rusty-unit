@@ -43,21 +43,29 @@ impl SourceFile {
     }
 
     /// Writes the tests as source code into the file.
-    pub fn add_tests(&mut self, tests: &[TestCase]) {
-        if let Some(ast) = &self.instrumenter.instrumented_ast {
-            let mutated_ast = self.writer.add_tests(tests, ast);
-            let tokens = mutated_ast.to_token_stream();
-            let src_code = tokens.to_string();
-            src_to_file(&src_code, &self.file_path);
-        }/* else {
-            panic!()
-        }*/
+    pub fn add_tests(&mut self, tests: &[TestCase], instrumented: bool) {
+        if instrumented {
+            if let Some(ast) = &self.instrumenter.instrumented_ast {
+                let mutated_ast = self.writer.add_tests(tests, ast);
+                let tokens = mutated_ast.to_token_stream();
+                let src_code = tokens.to_string();
+                src_to_file(&src_code, &self.file_path);
+            }
+        } else {
+            if let Some(ast) = &self.instrumenter.original_ast {
+                let mutated_ast = self.writer.add_tests(tests, ast);
+                let tokens = mutated_ast.to_token_stream();
+                let src_code = fmt_string(&tokens.to_string()).unwrap();
+                src_to_file(&src_code, &self.file_path);
+            }
+        }
     }
 
     /// Runs the tests provided they have been added to the source file before.
     pub fn run_tests(&mut self, tests: &mut [TestCase]) {
         self.runner.run().unwrap();
         for test in tests {
+            // TODO magic path
             let file = format!("/Users/tim/Documents/master-thesis/testify/src/examples/additions/traces/trace_{}.txt", test.id());
             test.set_results(TraceParser::parse(&file).unwrap());
             match fs::remove_file(&file) {
