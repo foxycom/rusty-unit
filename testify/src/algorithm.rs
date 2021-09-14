@@ -219,8 +219,8 @@ impl MOSA {
             let parent_1 = self.rank_selection.select(population)?;
             let parent_2 = self.rank_selection.select(population)?;
 
-            let child_1: TestCase;
-            let child_2: TestCase;
+            let mut child_1: TestCase;
+            let mut child_2: TestCase;
 
             if fastrand::f64() < self.crossover_rate {
                 let (a, b) = parent_1.crossover(&parent_2);
@@ -231,11 +231,13 @@ impl MOSA {
                 child_2 = parent_2.clone();
             }
 
+            child_1.set_id(self.test_id_generator.borrow_mut().next_id());
+            child_2.set_id(self.test_id_generator.borrow_mut().next_id());
             let mut mutated_child_1 = child_1.mutate();
             let mut mutated_child_2 = child_2.mutate();
 
-            mutated_child_1.set_id(self.test_id_generator.borrow_mut().next_id());
-            mutated_child_2.set_id(self.test_id_generator.borrow_mut().next_id());
+            /*mutated_child_1.set_id(self.test_id_generator.borrow_mut().next_id());
+            mutated_child_2.set_id(self.test_id_generator.borrow_mut().next_id());*/
 
             if population.len() - offspring.len() >= 2 {
                 offspring.push(mutated_child_1);

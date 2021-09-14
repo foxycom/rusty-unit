@@ -7,6 +7,7 @@ use syn::punctuated::Punctuated;
 use crate::algorithm::{PreferenceSorter, SVD};
 use std::cell::RefCell;
 use crate::source::BranchManager;
+use quote::ToTokens;
 
 pub trait Crossover {
     type C: Chromosome;
@@ -203,11 +204,12 @@ impl BasicMutation {
         let mut copy = test_case.clone();
         let stmt = self.statement_generator.get_random_stmt(&mut copy);
         if let Statement::MethodInvocation(method_inv_stmt) = &stmt {
-            let (_, owner_idx) = test_case.get_owner(&stmt);
+            let (_, owner_idx) = copy.get_owner(&method_inv_stmt);
             let i = fastrand::usize((owner_idx+1..=copy.size()));
-            copy.insert_stmt(i, stmt);
+            copy.insert_stmt(i, stmt.clone());
 
         } else {
+            unimplemented!()
         }
 
         copy
@@ -225,6 +227,7 @@ impl BasicMutation {
     }
 
     fn reorder_statements(&self, test_case: &TestCase) -> TestCase {
+        panic!();
         let mut copy = test_case.clone();
 
         let stmts = copy.stmts();

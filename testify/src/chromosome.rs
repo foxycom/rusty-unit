@@ -1,5 +1,5 @@
 use std::fmt::{Debug, Display, Formatter, Error};
-use syn::{Stmt, Item, ItemFn, FnArg, PatType, Type, Expr, ImplItemMethod, ReturnType};
+use syn::{Stmt, Item, ItemFn, FnArg, PatType, Type, Expr, ImplItemMethod, ReturnType, Pat, PatPath};
 use std::cmp::Ordering;
 use quote::ToTokens;
 use proc_macro2::{Ident, Span};
@@ -48,8 +48,7 @@ pub struct TestCase {
     crossover: BasicCrossover,
     ddg: StableDiGraph<String, Dependency>,
     branch_manager: Rc<RefCell<BranchManager>>,
-    // Variable -> (graph index, index of the statement in the sequence)
-    index_table: HashMap<String, (NodeIndex, usize)>,
+    index_table: HashMap<String, NodeIndex>,
     var_counters: HashMap<String, usize>,
 }
 
@@ -110,25 +109,24 @@ impl TestCase {
         &self.stmts
     }
 
-    fn set_var_name(&mut self, stmt: &mut Statement) {
+    fn set_var_name(&mut self, stmt: &mut Statement) -> String {
         match stmt {
             Statement::PrimitiveAssignment(_) => {
                 unimplemented!()
             }
             Statement::Constructor(constructor_stmt) => {
+                let type_name = constructor_stmt.struct_item().ident.to_string().to_lowercase();
                 let counter = self.var_counters
-                    .entry(constructor_stmt.struct_item.ident.to_string())
+                    .entry(type_name.clone())
                     .and_modify(|c| *c = *c + 1)
                     .or_insert(0);
 
-                let type_name = constructor_stmt.struct_item().ident.to_string();
                 let var_name = format!("{}_{}", type_name, self.var_counters.get(&type_name).unwrap());
-                constructor_stmt.set_name(var_name);
+                constructor_stmt.set_name(var_name.clone());
+                return var_name.to_owned();
             }
             Statement::MethodInvocation(method_inv_stmt) => {
-                if method_inv_stmt.returns_value() {
-
-                }
+                if method_inv_stmt.returns_value() {}
             }
             Statement::FunctionInvocation(_) => {
                 unimplemented!()
@@ -137,36 +135,40 @@ impl TestCase {
                 panic!()
             }
         }
+        "no_name".to_owned()
     }
 
-    pub fn insert_stmt(&mut self, idx: usize, mut stmt: Statement) {
-        self.set_var_name(&mut stmt);
+    pub fn insert_stmt(&mut self, idx: usize, mut stmt: Statement) -> String {
+        let var_name = self.set_var_name(&mut stmt);
 
         match &mut stmt {
             Statement::PrimitiveAssignment(_) => {}
             Statement::Constructor(constructor_stmt) => {
                 let node_index = self.ddg.add_node(constructor_stmt.name.to_owned());
-                self.index_table.insert(constructor_stmt.name.to_owned(), (node_index, idx));
+                self.index_table.insert(constructor_stmt.name.to_owned(), node_index);
             }
             Statement::AttributeAccess(_) => {}
             Statement::MethodInvocation(method_inv_stmt) => {
                 // TODO Store into map when method invocation returns something
-                let (owner_index, _) = self.index_table.get(&method_inv_stmt.owner).unwrap();
+                let owner_index = self.index_table.get(&method_inv_stmt.owner).unwrap();
                 let method_index = self.ddg.add_node(method_inv_stmt.id.to_string());
                 self.ddg.add_edge(owner_index.clone(), method_index, Dependency::Owns);
             }
             Statement::FunctionInvocation(_) => {}
         }
         self.stmts.insert(idx, stmt);
+        var_name
     }
 
-    pub fn get_owner(&self, stmt: &Statement) -> (&Statement, usize) {
-        if let Statement::MethodInvocation(method_inv_stmt) = stmt {
-            let (_, idx) = self.index_table.get(&method_inv_stmt.owner).unwrap();
-            (self.stmts.get(idx.to_owned()).unwrap(), idx.to_owned())
-        } else {
-            panic!()
+    pub fn get_owner(&self, stmt: &MethodInvStmt) -> (&Statement, usize) {
+        for (i, s) in self.stmts.iter().enumerate() {
+            if let Statement::Constructor(constructor) = s {
+                if constructor.name == stmt.owner {
+                    return (s, i);
+                }
+            }
         }
+        panic!()
     }
 
     pub fn delete_stmt(&mut self, idx: usize) {
@@ -305,7 +307,7 @@ impl Statement {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct AssignStmt {
     id: Uuid,
 }
@@ -318,13 +320,33 @@ impl AssignStmt {
     }
 }
 
-#[derive(Clone, Debug)]
+impl Clone for AssignStmt {
+    fn clone(&self) -> Self {
+        AssignStmt {
+            id: Uuid::new_v4()
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct ConstructorStmt {
     id: Uuid,
     name: String,
     struct_item: Struct,
     params: Vec<FnArg>,
     args: Vec<Expr>,
+}
+
+impl Clone for ConstructorStmt {
+    fn clone(&self) -> Self {
+        ConstructorStmt {
+            id: Uuid::new_v4(),
+            name: self.name.clone(),
+            struct_item: self.struct_item.clone(),
+            params: self.params.clone(),
+            args: self.args.clone(),
+        }
+    }
 }
 
 impl ConstructorStmt {
@@ -372,9 +394,17 @@ impl ConstructorStmt {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct AttrStmt {
     id: Uuid,
+}
+
+impl Clone for AttrStmt {
+    fn clone(&self) -> Self {
+        AttrStmt {
+            id: Uuid::new_v4()
+        }
+    }
 }
 
 impl AttrStmt {
@@ -385,7 +415,7 @@ impl AttrStmt {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct MethodInvStmt {
     id: Uuid,
     owner: String,
@@ -393,6 +423,19 @@ pub struct MethodInvStmt {
     method: ImplItemMethod,
     params: Vec<FnArg>,
     args: Vec<Expr>,
+}
+
+impl Clone for MethodInvStmt {
+    fn clone(&self) -> Self {
+        MethodInvStmt {
+            id: Uuid::new_v4(),
+            owner: self.owner.clone(),
+            name: self.name.clone(),
+            method: self.method.clone(),
+            params: self.params.clone(),
+            args: self.args.clone(),
+        }
+    }
 }
 
 impl MethodInvStmt {
@@ -454,13 +497,25 @@ impl MethodInvStmt {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct FnInvStmt {
     id: Uuid,
     params: Vec<FnArg>,
     args: Vec<Expr>,
     ident: Ident,
     item_fn: ItemFn,
+}
+
+impl Clone for FnInvStmt {
+    fn clone(&self) -> Self {
+        FnInvStmt {
+            id: Uuid::new_v4(),
+            params: self.params.clone(),
+            args: self.args.clone(),
+            ident: self.ident.clone(),
+            item_fn: self.item_fn.clone(),
+        }
+    }
 }
 
 impl FnInvStmt {
@@ -535,34 +590,49 @@ impl StatementGenerator {
             let constructor = complex_defs.get(i).unwrap();
 
             let methods = constructor.struct_item.methods();
+            // TODO what if there are no methods
+
             let i = fastrand::usize((0..methods.len()));
             let method = methods.get(i).unwrap();
 
             let params: Vec<FnArg> = method.sig.inputs.iter().cloned().collect();
             let args: Vec<Expr> = params.iter().filter_map(|a| {
-                if let FnArg::Receiver(_) = a {
-                    None
-                } else {
-                    Some(InputGenerator::generate_arg(a))
+                match a {
+                    FnArg::Receiver(_) => None,
+                    FnArg::Typed(arg_pat_type) => {
+                        if InputGenerator::is_primitive(a) {
+                            Some(InputGenerator::generate_arg(a))
+                        } else {
+                            if let Type::Path(type_path) = &arg_pat_type.ty.as_ref() {
+                                let struct_type = self.source_file.structs()
+                                    .iter()
+                                    .filter(|&s| s.ident == *type_path.path.get_ident().unwrap())
+                                    .last().unwrap();
+                                let constructor = struct_type.constructor().as_ref().unwrap();
+                                let constructor_params: Vec<FnArg> = constructor.sig.inputs.iter()
+                                    .cloned()
+                                    .collect();
+                                let constructor_args: Vec<Expr> = constructor_params.iter()
+                                    .map(InputGenerator::generate_arg).collect();
+                                let stmt = Statement::Constructor(ConstructorStmt::new(
+                                    "a".to_string(), struct_type.clone(),
+                                    constructor_params, constructor_args
+                                ));
+                                let var_name = test_case.insert_stmt(0, stmt);
+                                let var_ident = Ident::new(&var_name, Span::call_site());
+                                let var = syn::parse_quote! {#var_ident};
+                                Some(var)
+                            } else {
+                                unimplemented!()
+                            }
+                        }
+                    }
                 }
             }).collect();
 
-            // TODO variable name
             Statement::MethodInvocation(MethodInvStmt::new(constructor.name.to_owned(),
                                                            method.clone(), params, args))
         }
-
-
-        /*let sig = &item_fn.sig;
-        let params: Vec<FnArg> = sig.inputs.iter().cloned().collect();
-        let args: Vec<Expr> = params.iter().map(InputGenerator::generate_arg).collect();
-
-        (Statement::FunctionInvocation(FnInvStmt::new(
-            sig.ident.clone(),
-            item_fn.clone(),
-            params,
-            args,
-        )), branch.clone())*/
     }
 }
 
@@ -598,6 +668,7 @@ impl Struct {
         self.constructor = Some(constructor);
     }
 
+
     pub fn add_method(&mut self, method: ImplItemMethod) {
         self.methods.push(method);
     }
@@ -612,6 +683,9 @@ impl Struct {
         } else {
             false
         }
+    }
+    pub fn ident(&self) -> &Ident {
+        &self.ident
     }
 }
 
