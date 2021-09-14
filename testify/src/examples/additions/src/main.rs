@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+
 fn main() {}
 
 struct SomeStruct {
@@ -24,6 +26,31 @@ impl SomeStruct {
         if x == 3 {
             self.a = 4;
         }
+    }
+}
+
+struct Rectangle {
+    width: u8,
+    height: u8
+}
+
+impl Rectangle {
+    pub fn new(width: u8, height: u8) -> Self {
+        Rectangle { width, height }
+    }
+}
+
+struct AreaCalculator {
+
+}
+
+impl AreaCalculator {
+    pub fn new() -> Self {
+        AreaCalculator {}
+    }
+
+    pub fn area(rect: Rectangle) -> f64 {
+        &rect.height as f64 * &rect.width as f64
     }
 }
 
