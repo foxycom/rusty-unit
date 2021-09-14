@@ -38,6 +38,10 @@ impl Rectangle {
     pub fn new(width: u8, height: u8) -> Self {
         Rectangle { width, height }
     }
+
+    pub fn width(&self) -> u8 {
+        self.width
+    }
 }
 
 struct AreaCalculator {

@@ -1,5 +1,7 @@
 use syn::{FnArg, Expr, Type, Lit};
 use proc_macro2::Ident;
+use crate::chromosome::TestCase;
+use crate::source::SourceFile;
 
 #[derive(Debug)]
 pub struct InputGenerator {}
@@ -14,8 +16,7 @@ impl InputGenerator {
                         let lit: Expr = syn::parse_quote! { #random_u64 };
                         lit
                     } else {
-                        let lit: Expr = syn::parse_quote! { 0 };
-                        lit
+                        unimplemented!()
                     }
                 }
                 _ => {
@@ -26,6 +27,26 @@ impl InputGenerator {
         }
         let lit: Expr = syn::parse_quote! { 0 };
         lit
+    }
+
+    pub fn is_primitive(arg: &FnArg) -> bool {
+        if let FnArg::Typed(pattern) = arg {
+            return match pattern.ty.as_ref() {
+                Type::Path(path) => {
+                    return if path.path.is_ident("u8") {
+                        // TODO add all other primitives
+                        true
+                    } else {
+                        false
+                    };
+                }
+                _ => {
+                    unimplemented!()
+                }
+            };
+        } else {
+            unimplemented!()
+        }
     }
 
     pub fn mutate_arg(arg: &Expr) -> Expr {
