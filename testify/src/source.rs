@@ -533,6 +533,24 @@ impl Instrumenter {
         (true_trace, false_trace)
     }
 
+    fn instrument_method(&mut self, item_method: &mut ImplItemMethod) {
+        let block = &mut item_method.block;
+        let ident = &item_method.sig.ident;
+        let branch = self.create_branch(BranchType::Root, ident.span());
+        let branch_id = branch.id();
+
+        let name = ident.to_string();
+
+        let trace_stmt = syn::parse_quote! {
+                LOGGER.with(|l| l.borrow().trace_fn(String::from(#name), #branch_id));
+            };
+
+        let stmts = &mut block.stmts;
+
+        stmts.insert(0, trace_stmt);
+        self.branches.push(branch);
+    }
+
     fn instrument_fn(&mut self, item_fn: &mut ItemFn) {
         let block = &mut item_fn.block;
         let ident = &item_fn.sig.ident;
@@ -751,6 +769,8 @@ impl VisitMut for Instrumenter {
         VisitMut::visit_visibility_mut(self, &mut i.vis);
         VisitMut::visit_signature_mut(self, &mut i.sig);
         VisitMut::visit_block_mut(self, &mut i.block);
+
+        self.instrument_method(i);
     }
 
     fn visit_item_fn_mut(&mut self, i: &mut ItemFn) {

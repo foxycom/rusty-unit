@@ -1,5 +1,5 @@
 use std::fmt::{Debug, Display, Formatter, Error};
-use syn::{Stmt, Item, ItemFn, FnArg, PatType, Type, Expr, ImplItemMethod};
+use syn::{Stmt, Item, ItemFn, FnArg, PatType, Type, Expr, ImplItemMethod, ReturnType};
 use std::cmp::Ordering;
 use quote::ToTokens;
 use proc_macro2::{Ident, Span};
@@ -13,8 +13,10 @@ use crate::parser::TraceParser;
 use std::cell::RefCell;
 use crate::source::{Branch, BranchManager, SourceFile};
 use petgraph::{Graph, Directed};
-use petgraph::prelude::{GraphMap, DiGraphMap};
-use crate::chromosome::Dependency::Owner;
+use petgraph::prelude::{GraphMap, DiGraphMap, StableDiGraph};
+use petgraph::visit::Walker;
+use petgraph::graph::NodeIndex;
+use uuid::Uuid;
 
 
 pub trait Chromosome: Clone + Debug {
@@ -33,7 +35,8 @@ pub trait ChromosomeGenerator {
 
 #[derive(Debug, Clone)]
 pub enum Dependency {
-    Owner
+    Owns,
+    Uses,
 }
 
 #[derive(Debug)]
@@ -43,8 +46,11 @@ pub struct TestCase {
     results: HashMap<u64, f64>,
     mutation: BasicMutation,
     crossover: BasicCrossover,
-    ddg: GraphMap<Statement, Dependency, Directed>,
+    ddg: StableDiGraph<String, Dependency>,
     branch_manager: Rc<RefCell<BranchManager>>,
+    // Variable -> (graph index, index of the statement in the sequence)
+    index_table: HashMap<String, (NodeIndex, usize)>,
+    var_counters: HashMap<String, usize>,
 }
 
 impl Clone for TestCase {
@@ -56,7 +62,9 @@ impl Clone for TestCase {
             mutation: self.mutation.clone(),
             crossover: self.crossover.clone(),
             branch_manager: self.branch_manager.clone(),
-            ddg: self.ddg.clone()
+            ddg: self.ddg.clone(),
+            index_table: self.index_table.clone(),
+            var_counters: self.var_counters.clone(),
         }
     }
 }
@@ -82,18 +90,19 @@ impl TestCase {
     pub const TEST_FN_PREFIX: &'static str = "testify";
 
     pub fn new(id: u64,
-               stmts: Vec<Statement>,
                mutation: BasicMutation,
                crossover: BasicCrossover,
                branch_manager: Rc<RefCell<BranchManager>>) -> Self {
         TestCase {
             id,
-            stmts,
+            stmts: Vec::new(),
             results: HashMap::new(),
             mutation,
             crossover,
             branch_manager,
-            ddg: GraphMap::new()
+            ddg: StableDiGraph::new(),
+            index_table: HashMap::new(),
+            var_counters: HashMap::new(),
         }
     }
 
@@ -101,17 +110,63 @@ impl TestCase {
         &self.stmts
     }
 
-    pub fn insert_stmt(&mut self, idx: usize, stmt: Statement) {
-        match &stmt {
+    fn set_var_name(&mut self, stmt: &mut Statement) {
+        match stmt {
+            Statement::PrimitiveAssignment(_) => {
+                unimplemented!()
+            }
+            Statement::Constructor(constructor_stmt) => {
+                let counter = self.var_counters
+                    .entry(constructor_stmt.struct_item.ident.to_string())
+                    .and_modify(|c| *c = *c + 1)
+                    .or_insert(0);
+
+                let type_name = constructor_stmt.struct_item().ident.to_string();
+                let var_name = format!("{}_{}", type_name, self.var_counters.get(&type_name).unwrap());
+                constructor_stmt.set_name(var_name);
+            }
+            Statement::MethodInvocation(method_inv_stmt) => {
+                if method_inv_stmt.returns_value() {
+
+                }
+            }
+            Statement::FunctionInvocation(_) => {
+                unimplemented!()
+            }
+            _ => {
+                panic!()
+            }
+        }
+    }
+
+    pub fn insert_stmt(&mut self, idx: usize, mut stmt: Statement) {
+        self.set_var_name(&mut stmt);
+
+        match &mut stmt {
             Statement::PrimitiveAssignment(_) => {}
-            Statement::Constructor(_) => {}
+            Statement::Constructor(constructor_stmt) => {
+                let node_index = self.ddg.add_node(constructor_stmt.name.to_owned());
+                self.index_table.insert(constructor_stmt.name.to_owned(), (node_index, idx));
+            }
             Statement::AttributeAccess(_) => {}
             Statement::MethodInvocation(method_inv_stmt) => {
-                self.ddg.add_edge(stmt, stmt, Owner);
+                // TODO Store into map when method invocation returns something
+                let (owner_index, _) = self.index_table.get(&method_inv_stmt.owner).unwrap();
+                let method_index = self.ddg.add_node(method_inv_stmt.id.to_string());
+                self.ddg.add_edge(owner_index.clone(), method_index, Dependency::Owns);
             }
             Statement::FunctionInvocation(_) => {}
         }
         self.stmts.insert(idx, stmt);
+    }
+
+    pub fn get_owner(&self, stmt: &Statement) -> (&Statement, usize) {
+        if let Statement::MethodInvocation(method_inv_stmt) = stmt {
+            let (_, idx) = self.index_table.get(&method_inv_stmt.owner).unwrap();
+            (self.stmts.get(idx.to_owned()).unwrap(), idx.to_owned())
+        } else {
+            panic!()
+        }
     }
 
     pub fn delete_stmt(&mut self, idx: usize) {
@@ -120,6 +175,10 @@ impl TestCase {
 
     pub fn replace_stmt(&mut self, idx: usize, stmt: Statement) {
         std::mem::replace(&mut self.stmts[idx], stmt);
+    }
+
+    pub fn reorder_stmts(&mut self, idx_a: usize, idx_b: usize) {
+        self.stmts.swap(idx_a, idx_b);
     }
 
     pub fn to_syn(&self) -> Item {
@@ -165,6 +224,7 @@ impl TestCase {
         }).collect()
     }
 
+
     pub fn results(&self) -> &HashMap<u64, f64> {
         &self.results
     }
@@ -186,6 +246,9 @@ impl TestCase {
     }
     pub fn set_stmts(&mut self, stmts: &[Statement]) {
         self.stmts = stmts.to_vec();
+    }
+    pub fn var_counters(&self) -> &HashMap<String, usize> {
+        &self.var_counters
     }
 }
 
@@ -243,16 +306,21 @@ impl Statement {
 }
 
 #[derive(Clone, Debug)]
-pub struct AssignStmt {}
+pub struct AssignStmt {
+    id: Uuid,
+}
 
 impl AssignStmt {
     pub fn new() -> Self {
-        AssignStmt {}
+        AssignStmt {
+            id: Uuid::new_v4()
+        }
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct ConstructorStmt {
+    id: Uuid,
     name: String,
     struct_item: Struct,
     params: Vec<FnArg>,
@@ -266,6 +334,7 @@ impl ConstructorStmt {
             struct_item,
             params,
             args,
+            id: Uuid::new_v4(),
         }
     }
 
@@ -278,20 +347,49 @@ impl ConstructorStmt {
             let mut #name = #type_name::new(#(#args),*);
         }
     }
+    pub fn id(&self) -> Uuid {
+        self.id
+    }
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn struct_item(&self) -> &Struct {
+        &self.struct_item
+    }
+    pub fn params(&self) -> &Vec<FnArg> {
+        &self.params
+    }
+    pub fn args(&self) -> &Vec<Expr> {
+        &self.args
+    }
+
+    pub fn set_args(&mut self, args: Vec<Expr>) {
+        self.args = args;
+    }
+
+    pub fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
 }
 
 #[derive(Clone, Debug)]
-pub struct AttrStmt {}
+pub struct AttrStmt {
+    id: Uuid,
+}
 
 impl AttrStmt {
     pub fn new() -> Self {
-        AttrStmt {}
+        AttrStmt {
+            id: Uuid::new_v4()
+        }
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct MethodInvStmt {
+    id: Uuid,
     owner: String,
+    name: Option<String>,
     method: ImplItemMethod,
     params: Vec<FnArg>,
     args: Vec<Expr>,
@@ -299,7 +397,7 @@ pub struct MethodInvStmt {
 
 impl MethodInvStmt {
     pub fn new(owner: String, method: ImplItemMethod, params: Vec<FnArg>, args: Vec<Expr>) -> Self {
-        MethodInvStmt { owner, method, params, args }
+        MethodInvStmt { owner, method, params, args, id: Uuid::new_v4(), name: None }
     }
 
     pub fn to_syn(&self) -> Stmt {
@@ -310,10 +408,55 @@ impl MethodInvStmt {
             #owner.#ident(#(#args),*);
         }
     }
+
+    pub fn returns_value(&self) -> bool {
+        if let ReturnType::Default = &self.method.sig.output {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn return_type(&self) -> Option<Type> {
+        match &self.method.sig.output {
+            ReturnType::Default => None,
+            ReturnType::Type(_, t) => {
+                unimplemented!()
+            }
+        }
+    }
+
+    pub fn id(&self) -> Uuid {
+        self.id
+    }
+    pub fn owner(&self) -> &str {
+        &self.owner
+    }
+    pub fn method(&self) -> &ImplItemMethod {
+        &self.method
+    }
+    pub fn params(&self) -> &Vec<FnArg> {
+        &self.params
+    }
+    pub fn args(&self) -> &Vec<Expr> {
+        &self.args
+    }
+
+    pub fn set_args(&mut self, args: Vec<Expr>) {
+        self.args = args;
+    }
+
+    pub fn set_owner(&mut self, owner: String) {
+        self.owner = owner;
+    }
+    pub fn name(&self) -> &Option<String> {
+        &self.name
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct FnInvStmt {
+    id: Uuid,
     params: Vec<FnArg>,
     args: Vec<Expr>,
     ident: Ident,
@@ -322,7 +465,7 @@ pub struct FnInvStmt {
 
 impl FnInvStmt {
     pub fn new(ident: Ident, item_fn: ItemFn, params: Vec<FnArg>, args: Vec<Expr>) -> Self {
-        FnInvStmt { params, args, ident, item_fn }
+        FnInvStmt { params, args, ident, item_fn, id: Uuid::new_v4() }
     }
 
     pub fn params(&self) -> &Vec<FnArg> {
@@ -503,7 +646,6 @@ impl ChromosomeGenerator for TestCaseGenerator {
     fn generate(&mut self) -> Self::C {
         let mut test_case = TestCase::new(
             0,
-            vec![],
             self.mutation.clone(),
             self.crossover.clone(),
             self.branch_manager.clone(),
@@ -512,8 +654,8 @@ impl ChromosomeGenerator for TestCaseGenerator {
         let stmt = self.statement_generator.get_random_stmt(&mut test_case);
 
         let test_id = self.test_id.borrow_mut().next_id();
-        test_case.id = test_id;
-        test_case.stmts = vec![stmt];
+        test_case.set_id(test_id);
+        test_case.insert_stmt(0, stmt);
 
         test_case
     }

@@ -35,7 +35,7 @@ impl MOSA {
             population_size: 50,
             mutation_rate: 0.2,
             selection_rate: 0.3,
-            crossover_rate: 0.7,
+            crossover_rate: 0.00001,
             chromosome_generator: generator,
             generations: 100,
             rank_selection,

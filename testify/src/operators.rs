@@ -1,4 +1,4 @@
-use crate::chromosome::{Chromosome, TestCase, Statement, FnInvStmt, StatementGenerator};
+use crate::chromosome::{Chromosome, TestCase, Statement, FnInvStmt, StatementGenerator, MethodInvStmt, ConstructorStmt};
 use syn::{Stmt, Expr};
 use std::rc::Rc;
 use std::mem;
@@ -79,10 +79,12 @@ impl BasicMutation {
             test_case.clone()
         } else if fastrand::f64() < 0.1 && test_case.size() > 1 {
             // Reorder statementes
-            self.reorder_statements(test_case)
+            //self.reorder_statements(test_case)
+            test_case.clone()
         } else if fastrand::f64() < 0.1 && test_case.size() > 1 {
             // Delete statement
-            self.delete_statement(test_case)
+            //self.delete_statement(test_case)
+            test_case.clone()
         } else {
             // Select a branch that has not been covered yet
             let branch_idx = fastrand::usize((0..uncovered_branches.len()));
@@ -98,12 +100,17 @@ impl BasicMutation {
 
                 let len = copy.size();
                 let p = 1.0 / len as f64;
-                for (i, stmt) in copy.stmts().iter_mut().enumerate() {
+                let mut mutated_stmts = vec![];
+                for (i, stmt) in copy.stmts().iter().enumerate() {
                     if fastrand::f64() < p {
-                        let mutated_stmt = self.mutate_stmt(&stmt, dist);
-                        mem::replace(stmt, mutated_stmt);
+                        mutated_stmts.push((i, self.mutate_stmt(&stmt, dist)));
                     }
                 }
+
+                for (i, mutated_stmt) in mutated_stmts {
+                    copy.replace_stmt(i, mutated_stmt);
+                }
+
                 copy
             }
         };
@@ -116,14 +123,14 @@ impl BasicMutation {
             Statement::PrimitiveAssignment(_) => {
                 unimplemented!()
             }
-            Statement::Constructor(_) => {
-                unimplemented!()
+            Statement::Constructor(ref mut constructor_stmt) => {
+                self.mutate_constructor(constructor_stmt, dist);
             }
             Statement::AttributeAccess(_) => {
                 unimplemented!()
             }
-            Statement::MethodInvocation(_) => {
-                unimplemented!()
+            Statement::MethodInvocation(ref mut method_inv_stmt) => {
+                self.mutate_method_invocation(method_inv_stmt, dist);
             }
             Statement::FunctionInvocation(ref mut fn_inv_stmt) => {
                 self.mutate_fn_invocation(fn_inv_stmt, dist);
@@ -131,6 +138,45 @@ impl BasicMutation {
         }
 
         copy
+    }
+
+    fn mutate_method_invocation(&self, method_inv_stmt: &mut MethodInvStmt, dist: f64) {
+        let args = method_inv_stmt.args();
+        let p = 1.0 / args.len() as f64;
+        let mutated_args: Vec<Expr> = args.iter()
+            .map(|a| {
+                if fastrand::f64() < p {
+                    if dist < f64::MAX {
+                        InputGenerator::mutate_arg_dist(a, dist)
+                    } else {
+                        InputGenerator::mutate_arg(a)
+                    }
+                } else {
+                    a.clone()
+                }
+            }).collect();
+
+        method_inv_stmt.set_args(mutated_args);
+    }
+
+    fn mutate_constructor(&self, costructor_stmt: &mut ConstructorStmt, dist: f64) {
+        // Change arguments based on the distance to the selected branch
+        let args = costructor_stmt.args();
+        let p = 1.0 / args.len() as f64;
+        let mutated_args: Vec<Expr> = args.iter()
+            .map(|a| {
+                if fastrand::f64() < p {
+                    if dist < f64::MAX {
+                        InputGenerator::mutate_arg_dist(a, dist)
+                    } else {
+                        InputGenerator::mutate_arg(a)
+                    }
+                } else {
+                    a.clone()
+                }
+            }).collect();
+
+        costructor_stmt.set_args(mutated_args);
     }
 
     fn mutate_fn_invocation(&self, fn_inv_stmt: &mut FnInvStmt, dist: f64) {
@@ -156,10 +202,14 @@ impl BasicMutation {
     fn insert_statement(&self, test_case: &TestCase) -> TestCase {
         let mut copy = test_case.clone();
         let stmt = self.statement_generator.get_random_stmt(&mut copy);
-        let stmts = copy.stmts();
-        let i = fastrand::usize((0..=stmts.len()));
+        if let Statement::MethodInvocation(method_inv_stmt) = &stmt {
+            let (_, owner_idx) = test_case.get_owner(&stmt);
+            let i = fastrand::usize((owner_idx+1..=copy.size()));
+            copy.insert_stmt(i, stmt);
 
-        stmts.insert(i, stmt);
+        } else {
+        }
+
         copy
     }
 
@@ -170,7 +220,7 @@ impl BasicMutation {
 
         let stmts = copy.stmts();
         let i = fastrand::usize((0..stmts.len()));
-        stmts.remove(i);
+        copy.delete_stmt(i);
         copy
     }
 
@@ -182,7 +232,7 @@ impl BasicMutation {
         let i = fastrand::usize((0..stmts.len()));
         let j = fastrand::usize((0..stmts.len()));
 
-        stmts.swap(i, j);
+        copy.reorder_stmts(i, j);
         copy
     }
 }

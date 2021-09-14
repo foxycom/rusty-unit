@@ -27,3 +27,4 @@ lazy_static = "1.4.0"
 regex = "1.5"
 pbr = "1.0.4"
 petgraph = "0.6.0"
+uuid = { version = "0.8", features = ["v4"] }

@@ -16,17 +16,6 @@ struct CliOpts {
 }
 
 fn main() {
-    let mut graph = GraphMap::<&str, usize>::new();
-    graph.add_node("a");
-    graph.add_node("b");
-    graph.add_edge("a", "b", 20);
-    let edges = graph.edges("a");
-    for (f, t, w) in edges {
-        println!("{}", w);
-    }
-}
-
-fn main2() {
     let opts: CliOpts = CliOpts::parse();
 
     let test_id_generator = Rc::new(RefCell::new(TestIdGenerator::new()));
