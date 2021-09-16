@@ -29,7 +29,7 @@ impl InputGenerator {
         lit
     }
 
-    pub fn is_primitive(arg: &FnArg) -> bool {
+    pub fn is_fn_arg_primitive(arg: &FnArg) -> bool {
         if let FnArg::Typed(pattern) = arg {
             return match pattern.ty.as_ref() {
                 Type::Path(path) => {
@@ -40,12 +40,28 @@ impl InputGenerator {
                         false
                     };
                 }
+                Type::Reference(reference) => {
+                    InputGenerator::is_type_primitive(reference.elem.as_ref())
+                }
                 _ => {
                     unimplemented!()
                 }
             };
         } else {
             unimplemented!()
+        }
+    }
+
+    pub fn is_type_primitive(typee: &Type) -> bool {
+        match typee {
+            Type::Path(type_path) => {
+                if type_path.path.is_ident("u8") {
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => unimplemented!()
         }
     }
 

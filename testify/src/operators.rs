@@ -1,4 +1,4 @@
-use crate::chromosome::{Chromosome, TestCase, Statement, FnInvStmt, StatementGenerator, MethodInvStmt, ConstructorStmt};
+use crate::chromosome::{Chromosome, TestCase, Statement, FnInvStmt, StatementGenerator, MethodInvStmt, ConstructorStmt, Arg};
 use syn::{Stmt, Expr};
 use std::rc::Rc;
 use std::mem;
@@ -144,13 +144,13 @@ impl BasicMutation {
     fn mutate_method_invocation(&self, method_inv_stmt: &mut MethodInvStmt, dist: f64) {
         let args = method_inv_stmt.args();
         let p = 1.0 / args.len() as f64;
-        let mutated_args: Vec<Expr> = args.iter()
+        let mutated_args: Vec<Arg> = args.iter()
             .map(|a| {
                 if fastrand::f64() < p {
                     if dist < f64::MAX {
-                        InputGenerator::mutate_arg_dist(a, dist)
+                        Arg::new("".to_string(), InputGenerator::mutate_arg_dist(a.value(), dist), a.param().clone())
                     } else {
-                        InputGenerator::mutate_arg(a)
+                        Arg::new("".to_string(), InputGenerator::mutate_arg(a.value()), a.param().clone())
                     }
                 } else {
                     a.clone()
@@ -164,13 +164,13 @@ impl BasicMutation {
         // Change arguments based on the distance to the selected branch
         let args = costructor_stmt.args();
         let p = 1.0 / args.len() as f64;
-        let mutated_args: Vec<Expr> = args.iter()
+        let mutated_args: Vec<Arg> = args.iter()
             .map(|a| {
                 if fastrand::f64() < p {
                     if dist < f64::MAX {
-                        InputGenerator::mutate_arg_dist(a, dist)
+                        Arg::new("".to_string(), InputGenerator::mutate_arg_dist(a.value(), dist), a.param().clone())
                     } else {
-                        InputGenerator::mutate_arg(a)
+                        Arg::new("".to_string(), InputGenerator::mutate_arg(a.value()), a.param().clone())
                     }
                 } else {
                     a.clone()
@@ -184,13 +184,13 @@ impl BasicMutation {
         // Change arguments based on the distance to the selected branch
         let args = fn_inv_stmt.args();
         let p = 1.0 / args.len() as f64;
-        let mutated_args: Vec<Expr> = args.iter()
+        let mutated_args: Vec<Arg> = args.iter()
             .map(|a| {
                 if fastrand::f64() < p {
                     if dist < f64::MAX {
-                        InputGenerator::mutate_arg_dist(a, dist)
+                        Arg::new("".to_string(), InputGenerator::mutate_arg_dist(a.value(), dist), a.param().clone())
                     } else {
-                        InputGenerator::mutate_arg(a)
+                        Arg::new("".to_string(), InputGenerator::mutate_arg(a.value()), a.param().clone())
                     }
                 } else {
                     a.clone()

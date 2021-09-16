@@ -550,7 +550,7 @@ impl Instrumenter {
         let name = ident.to_string();
 
         let trace_stmt = syn::parse_quote! {
-                LOGGER.with(|l| l.borrow().trace_fn(String::from(#name), #branch_id));
+                LOGGER.with(|l| l.borrow().trace_fn(#name, #branch_id));
             };
 
         let stmts = &mut block.stmts;
@@ -568,7 +568,7 @@ impl Instrumenter {
         let name = ident.to_string();
 
         let trace_stmt = syn::parse_quote! {
-                LOGGER.with(|l| l.borrow().trace_fn(String::from(#name), #branch_id));
+                LOGGER.with(|l| l.borrow().trace_fn(#name, #branch_id));
             };
 
         let stmts = &mut block.stmts;
@@ -683,7 +683,7 @@ impl Instrumenter {
                         self.write(format!(#BRANCH, visited_branch, other_branch, distance));
                     }
 
-                    fn trace_fn(&self, name: String, id: u64) {
+                    fn trace_fn(&self, name: &'static str, id: u64) {
                         self.write(format!(#ROOT_BRANCH, name, id));
                     }
 

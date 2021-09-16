@@ -1,5 +1,5 @@
 use std::fmt::{Debug, Display, Formatter, Error};
-use syn::{Stmt, Item, ItemFn, FnArg, PatType, Type, Expr, ImplItemMethod, ReturnType, Pat, PatPath};
+use syn::{Stmt, Item, ItemFn, FnArg, PatType, Type, Expr, ImplItemMethod, ReturnType, Pat, PatPath, TypePath};
 use std::cmp::Ordering;
 use quote::ToTokens;
 use proc_macro2::{Ident, Span};
@@ -37,6 +37,7 @@ pub trait ChromosomeGenerator {
 pub enum Dependency {
     Owns,
     Uses,
+    Borrows,
 }
 
 #[derive(Debug)]
@@ -149,6 +150,17 @@ impl TestCase {
             }
             Statement::AttributeAccess(_) => {}
             Statement::MethodInvocation(method_inv_stmt) => {
+                method_inv_stmt.args.iter().for_each(|a| {
+                    if !a.is_primitive() {
+                        // TODO extract method to insert new nodes
+                        let new_node = self.ddg.add_node(method_inv_stmt.id.to_string());
+                        self.index_table.insert(method_inv_stmt.id.to_string(), new_node.clone());
+                        self.ddg.add_edge(new_node,
+                                          self.index_table.get(a.name()).unwrap().clone(),
+                                          Dependency::Uses);
+                    }
+                });
+
                 // TODO Store into map when method invocation returns something
                 let owner_index = self.index_table.get(&method_inv_stmt.owner).unwrap();
                 let method_index = self.ddg.add_node(method_inv_stmt.id.to_string());
@@ -158,6 +170,11 @@ impl TestCase {
         }
         self.stmts.insert(idx, stmt);
         var_name
+    }
+
+    pub fn is_used(&self, constructor_stmt: &ConstructorStmt) -> bool {
+        // TODO implement
+        false
     }
 
     pub fn get_owner(&self, stmt: &MethodInvStmt) -> (&Statement, usize) {
@@ -276,6 +293,59 @@ impl Chromosome for TestCase {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct Arg {
+    name: String,
+    value: Expr,
+    param: FnArg,
+}
+
+impl Arg {
+    pub fn new(name: String, value: Expr, param: FnArg) -> Self {
+        Arg { name, value, param }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn value(&self) -> &Expr {
+        &self.value
+    }
+    pub fn param(&self) -> &FnArg {
+        &self.param
+    }
+
+    pub fn is_primitive(&self) -> bool {
+        // TODO introduce an enum
+        self.name == ""
+    }
+
+    pub fn is_self(&self) -> bool {
+        if let FnArg::Receiver(_) = self.param {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn is_by_reference(&self) -> bool {
+        match &self.param {
+            FnArg::Receiver(_) => {
+                unimplemented!()
+            }
+            FnArg::Typed(PatType { pat, .. }) => {
+                match pat.as_ref() {
+                    Pat::Reference(_) => {
+                        true
+                    }
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
+
 #[derive(Clone, Debug)]
 pub enum Statement {
     PrimitiveAssignment(AssignStmt),
@@ -334,7 +404,7 @@ pub struct ConstructorStmt {
     name: String,
     struct_item: Struct,
     params: Vec<FnArg>,
-    args: Vec<Expr>,
+    args: Vec<Arg>,
 }
 
 impl Clone for ConstructorStmt {
@@ -350,7 +420,7 @@ impl Clone for ConstructorStmt {
 }
 
 impl ConstructorStmt {
-    pub fn new(name: String, struct_item: Struct, params: Vec<FnArg>, args: Vec<Expr>) -> Self {
+    pub fn new(name: String, struct_item: Struct, params: Vec<FnArg>, args: Vec<Arg>) -> Self {
         ConstructorStmt {
             name,
             struct_item,
@@ -364,7 +434,7 @@ impl ConstructorStmt {
         let name = Ident::new(&self.name, Span::call_site());
         let struct_item = &self.struct_item;
         let type_name = &struct_item.ident;
-        let args = &self.args;
+        let args: Vec<Expr> = self.args.iter().cloned().map(|a| a.value).collect();
         syn::parse_quote! {
             let mut #name = #type_name::new(#(#args),*);
         }
@@ -381,11 +451,11 @@ impl ConstructorStmt {
     pub fn params(&self) -> &Vec<FnArg> {
         &self.params
     }
-    pub fn args(&self) -> &Vec<Expr> {
+    pub fn args(&self) -> &Vec<Arg> {
         &self.args
     }
 
-    pub fn set_args(&mut self, args: Vec<Expr>) {
+    pub fn set_args(&mut self, args: Vec<Arg>) {
         self.args = args;
     }
 
@@ -422,7 +492,7 @@ pub struct MethodInvStmt {
     name: Option<String>,
     method: ImplItemMethod,
     params: Vec<FnArg>,
-    args: Vec<Expr>,
+    args: Vec<Arg>,
 }
 
 impl Clone for MethodInvStmt {
@@ -439,13 +509,13 @@ impl Clone for MethodInvStmt {
 }
 
 impl MethodInvStmt {
-    pub fn new(owner: String, method: ImplItemMethod, params: Vec<FnArg>, args: Vec<Expr>) -> Self {
+    pub fn new(owner: String, method: ImplItemMethod, params: Vec<FnArg>, args: Vec<Arg>) -> Self {
         MethodInvStmt { owner, method, params, args, id: Uuid::new_v4(), name: None }
     }
 
     pub fn to_syn(&self) -> Stmt {
         let ident = &self.method.sig.ident;
-        let args = &self.args;
+        let args: Vec<Expr> = self.args.iter().cloned().map(|a| a.value).collect();
         let owner = Ident::new(&self.owner, Span::call_site());
         syn::parse_quote! {
             #owner.#ident(#(#args),*);
@@ -481,11 +551,11 @@ impl MethodInvStmt {
     pub fn params(&self) -> &Vec<FnArg> {
         &self.params
     }
-    pub fn args(&self) -> &Vec<Expr> {
+    pub fn args(&self) -> &Vec<Arg> {
         &self.args
     }
 
-    pub fn set_args(&mut self, args: Vec<Expr>) {
+    pub fn set_args(&mut self, args: Vec<Arg>) {
         self.args = args;
     }
 
@@ -501,7 +571,7 @@ impl MethodInvStmt {
 pub struct FnInvStmt {
     id: Uuid,
     params: Vec<FnArg>,
-    args: Vec<Expr>,
+    args: Vec<Arg>,
     ident: Ident,
     item_fn: ItemFn,
 }
@@ -519,14 +589,14 @@ impl Clone for FnInvStmt {
 }
 
 impl FnInvStmt {
-    pub fn new(ident: Ident, item_fn: ItemFn, params: Vec<FnArg>, args: Vec<Expr>) -> Self {
+    pub fn new(ident: Ident, item_fn: ItemFn, params: Vec<FnArg>, args: Vec<Arg>) -> Self {
         FnInvStmt { params, args, ident, item_fn, id: Uuid::new_v4() }
     }
 
     pub fn params(&self) -> &Vec<FnArg> {
         &self.params
     }
-    pub fn args(&self) -> &Vec<Expr> {
+    pub fn args(&self) -> &Vec<Arg> {
         &self.args
     }
     pub fn ident(&self) -> &Ident {
@@ -540,13 +610,13 @@ impl FnInvStmt {
         !self.params.is_empty()
     }
 
-    pub fn set_args(&mut self, args: Vec<Expr>) {
+    pub fn set_args(&mut self, args: Vec<Arg>) {
         self.args = args;
     }
 
     pub fn to_syn(&self) -> Stmt {
         let ident = &self.ident;
-        let args = &self.args;
+        let args: Vec<Expr> = self.args.iter().cloned().map(|a| a.value).collect();
 
         syn::parse_quote! {
             #ident(#(#args),*);
@@ -572,7 +642,10 @@ impl StatementGenerator {
             let item_struct = structs.get(i).unwrap();
             if let Some(constructor) = item_struct.constructor() {
                 let params: Vec<FnArg> = constructor.sig.inputs.iter().cloned().collect();
-                let args: Vec<Expr> = params.iter().map(InputGenerator::generate_arg).collect();
+                let args: Vec<Arg> = params.iter().map(|p| {
+                    let arg = InputGenerator::generate_arg(p);
+                    Arg::new("".to_string(), arg, p.clone())
+                }).collect();
                 Statement::Constructor(ConstructorStmt::new(
                     "a".to_string(),
                     item_struct.clone(),
@@ -596,34 +669,30 @@ impl StatementGenerator {
             let method = methods.get(i).unwrap();
 
             let params: Vec<FnArg> = method.sig.inputs.iter().cloned().collect();
-            let args: Vec<Expr> = params.iter().filter_map(|a| {
+            let args: Vec<Arg> = params.iter().filter_map(|a| {
                 match a {
                     FnArg::Receiver(_) => None,
                     FnArg::Typed(arg_pat_type) => {
-                        if InputGenerator::is_primitive(a) {
-                            Some(InputGenerator::generate_arg(a))
+                        if InputGenerator::is_fn_arg_primitive(a) {
+                            let arg = InputGenerator::generate_arg(a);
+
+                            Some(Arg::new("".to_string(), arg, a.clone()))
                         } else {
-                            if let Type::Path(type_path) = &arg_pat_type.ty.as_ref() {
-                                let struct_type = self.source_file.structs()
-                                    .iter()
-                                    .filter(|&s| s.ident == *type_path.path.get_ident().unwrap())
-                                    .last().unwrap();
-                                let constructor = struct_type.constructor().as_ref().unwrap();
-                                let constructor_params: Vec<FnArg> = constructor.sig.inputs.iter()
-                                    .cloned()
-                                    .collect();
-                                let constructor_args: Vec<Expr> = constructor_params.iter()
-                                    .map(InputGenerator::generate_arg).collect();
-                                let stmt = Statement::Constructor(ConstructorStmt::new(
-                                    "a".to_string(), struct_type.clone(),
-                                    constructor_params, constructor_args
-                                ));
-                                let var_name = test_case.insert_stmt(0, stmt);
-                                let var_ident = Ident::new(&var_name, Span::call_site());
-                                let var = syn::parse_quote! {#var_ident};
-                                Some(var)
-                            } else {
-                                unimplemented!()
+                            match arg_pat_type.ty.as_ref() {
+                                Type::Path(type_path) => {
+                                    // Create consumed argument
+                                    Some(self.construct_arg(test_case, a, type_path))
+                                }
+                                Type::Reference(reference) => {
+                                    // Create referenced argument
+                                    match reference.elem.as_ref() {
+                                        Type::Path(type_path) => {
+                                            Some(self.construct_arg(test_case, a, type_path))
+                                        }
+                                        _ => unimplemented!()
+                                    }
+                                }
+                                _ => unimplemented!()
                             }
                         }
                     }
@@ -634,6 +703,44 @@ impl StatementGenerator {
                                                            method.clone(), params, args))
         }
     }
+
+    fn construct_arg(&self, test_case: &mut TestCase, fn_arg: &FnArg, type_path: &TypePath) -> Arg {
+
+        // Find the required struct by the param from the registered structs in the source code
+        let struct_type = self.source_file.structs()
+            .iter()
+            .filter(|&s| s.ident == *type_path.path.get_ident().unwrap())
+            .last()
+            .unwrap();
+
+        // Get the constructor to initialize the type
+        let constructor = struct_type.constructor().as_ref().unwrap();
+
+        // Get the params for the constructor
+        let constructor_params: Vec<FnArg> = constructor.sig.inputs.iter()
+            .cloned()
+            .collect();
+
+        // Generate arguments for the constructor invocation
+        let constructor_args: Vec<Arg> = constructor_params.iter()
+            .map(|p| {
+                let arg = InputGenerator::generate_arg(p);
+                Arg::new("".to_string(), arg, fn_arg.clone())
+            })
+            .collect();
+
+        // Create constructor invocation
+        let stmt = Statement::Constructor(ConstructorStmt::new(
+            "a".to_string(), struct_type.clone(),
+            constructor_params, constructor_args,
+        ));
+
+        let var_name = test_case.insert_stmt(0, stmt);
+        let var_ident = Ident::new(&var_name, Span::call_site());
+        let var = syn::parse_quote! {#var_ident};
+        Arg::new(var_name, var, fn_arg.clone())
+    }
+
 }
 
 #[derive(Debug, Clone)]
