@@ -53,7 +53,11 @@ impl AreaCalculator {
         AreaCalculator {}
     }
 
-    pub fn area(&self, rect: Rectangle) -> f64 {
+    pub fn area_by_value(&self, rect: Rectangle) -> f64 {
+        rect.height as f64 * rect.width as f64
+    }
+
+    pub fn area_by_ref(&self, rect: &Rectangle) -> f64 {
         rect.height as f64 * rect.width as f64
     }
 }
