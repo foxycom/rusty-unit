@@ -1,15 +1,12 @@
 use crate::chromosome::{ChromosomeGenerator, Chromosome, TestCaseGenerator, TestCase};
 use std::rc::Rc;
-use std::collections::{VecDeque, HashMap, HashSet};
-use std::ops::Deref;
-use std::cmp::Ordering;
+use std::collections::{HashMap, HashSet};
 use std::option::Option::Some;
 use crate::operators::RankSelection;
 use std::cell::RefCell;
 use std::iter::FromIterator;
 use crate::source::{SourceFile, BranchManager, Branch};
 use crate::generators::TestIdGenerator;
-use std::collections::hash_map::DefaultHasher;
 use pbr::ProgressBar;
 use std::time::Instant;
 use std::fmt::{Display, Formatter};

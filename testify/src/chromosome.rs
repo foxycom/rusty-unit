@@ -1,23 +1,17 @@
 use std::fmt::{Debug, Display, Formatter, Error};
-use syn::{Stmt, Item, ItemFn, FnArg, PatType, Type, Expr, ImplItemMethod, ReturnType, Pat, PatPath, TypePath};
-use std::cmp::Ordering;
+use syn::{Stmt, Item, ItemFn, FnArg, PatType, Type, Expr, ImplItemMethod, ReturnType, Pat, TypePath, Path};
 use quote::ToTokens;
 use proc_macro2::{Ident, Span};
 use std::collections::HashMap;
-use crate::generators::{InputGenerator, TestIdGenerator};
+use crate::generators::{PrimitivesGenerator, TestIdGenerator};
 use crate::operators::{BasicMutation, BasicCrossover};
 use std::rc::Rc;
-use std::fs;
 use std::hash::{Hash, Hasher};
-use crate::parser::TraceParser;
 use std::cell::RefCell;
 use crate::source::{Branch, BranchManager, SourceFile};
-use petgraph::{Graph, Directed};
-use petgraph::prelude::{GraphMap, DiGraphMap, StableDiGraph};
-use petgraph::visit::Walker;
-use petgraph::graph::NodeIndex;
+use petgraph::prelude::{StableDiGraph, NodeIndex};
 use uuid::Uuid;
-
+use petgraph::Direction;
 
 pub trait Chromosome: Clone + Debug {
     fn mutate(&self) -> Self;
@@ -33,10 +27,10 @@ pub trait ChromosomeGenerator {
     fn generate(&mut self) -> Self::C;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Dependency {
     Owns,
-    Uses,
+    Consumes,
     Borrows,
 }
 
@@ -110,11 +104,9 @@ impl TestCase {
         &self.stmts
     }
 
-    fn set_var_name(&mut self, stmt: &mut Statement) -> String {
-        match stmt {
-            Statement::PrimitiveAssignment(_) => {
-                unimplemented!()
-            }
+    fn set_var_name(&mut self, stmt: &mut Statement) -> Option<String> {
+        return match stmt {
+            Statement::PrimitiveAssignment(_) => unimplemented!(),
             Statement::Constructor(constructor_stmt) => {
                 let type_name = constructor_stmt.struct_item().ident.to_string().to_lowercase();
                 let counter = self.var_counters
@@ -122,42 +114,70 @@ impl TestCase {
                     .and_modify(|c| *c = *c + 1)
                     .or_insert(0);
 
-                let var_name = format!("{}_{}", type_name, self.var_counters.get(&type_name).unwrap());
-                constructor_stmt.set_name(var_name.clone());
-                return var_name.to_owned();
+                let var_name = format!("{}_{}", type_name, counter);
+                constructor_stmt.set_name(&var_name);
+                Some(var_name)
             }
-            Statement::MethodInvocation(method_inv_stmt) => {
-                if method_inv_stmt.returns_value() {}
-            }
-            Statement::FunctionInvocation(_) => {
-                unimplemented!()
-            }
-            _ => {
-                panic!()
-            }
+            Statement::MethodInvocation(method_inv_stmt) =>
+                if method_inv_stmt.returns_value() {
+                    let type_name = return_type_name(&method_inv_stmt.method.sig.output);
+                    if let Some(type_name) = type_name {
+                        let type_name = type_name.to_lowercase();
+                        let counter = self.var_counters
+                            .entry(type_name.clone())
+                            .and_modify(|c| *c = *c + 1)
+                            .or_insert(0);
+                        let var_name = format!("{}_{}", type_name, counter);
+                        method_inv_stmt.set_name(&var_name);
+                        Some(var_name)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            Statement::FunctionInvocation(_) => unimplemented!(),
+            _ => panic!()
         }
-        "no_name".to_owned()
     }
 
-    pub fn insert_stmt(&mut self, idx: usize, mut stmt: Statement) -> String {
+    pub fn insert_stmt(&mut self, idx: usize, mut stmt: Statement) -> Option<String> {
         let var_name = self.set_var_name(&mut stmt);
 
         match &mut stmt {
             Statement::PrimitiveAssignment(_) => {}
             Statement::Constructor(constructor_stmt) => {
-                let node_index = self.ddg.add_node(constructor_stmt.name.to_owned());
-                self.index_table.insert(constructor_stmt.name.to_owned(), node_index);
+                let var_name = constructor_stmt.name().unwrap();
+                let node_index = self.ddg.add_node(var_name.to_owned());
+                self.index_table.insert(var_name.to_owned(), node_index);
             }
             Statement::AttributeAccess(_) => {}
             Statement::MethodInvocation(method_inv_stmt) => {
                 method_inv_stmt.args.iter().for_each(|a| {
-                    if !a.is_primitive() {
+                    if a.is_primitive() {
+                        // do nothing for now
+                    } else {
                         // TODO extract method to insert new nodes
                         let new_node = self.ddg.add_node(method_inv_stmt.id.to_string());
                         self.index_table.insert(method_inv_stmt.id.to_string(), new_node.clone());
-                        self.ddg.add_edge(new_node,
-                                          self.index_table.get(a.name()).unwrap().clone(),
-                                          Dependency::Uses);
+                        let arg_name = a.name();
+                        if let Some(arg_name) = arg_name {
+                            if a.is_by_reference() {
+                                self.ddg.add_edge(new_node,
+                                                  self.index_table.get(&a.name().unwrap())
+                                                      .unwrap().clone(),
+                                                  Dependency::Borrows,
+                                );
+                            } else {
+                                // The arg is being consumed
+                                self.ddg.add_edge(new_node,
+                                                  self.index_table.get(&a.name().unwrap())
+                                                      .unwrap().clone(),
+                                                  Dependency::Consumes);
+                            }
+                        } else {
+                            panic!("Variable name has not been set")
+                        }
                     }
                 });
 
@@ -172,15 +192,20 @@ impl TestCase {
         var_name
     }
 
-    pub fn is_used(&self, constructor_stmt: &ConstructorStmt) -> bool {
-        // TODO implement
-        false
+    pub fn is_consumed(&self, constructor_stmt: &ConstructorStmt) -> bool {
+        if let Some(var_name) = constructor_stmt.name() {
+            let node_index = self.index_table.get(var_name).unwrap();
+            let mut incoming_edges = self.ddg.edges_directed(node_index.to_owned(), Direction::Incoming);
+            incoming_edges.any(|e| e.weight().to_owned() == Dependency::Consumes)
+        } else {
+            panic!("Name is not set")
+        }
     }
 
     pub fn get_owner(&self, stmt: &MethodInvStmt) -> (&Statement, usize) {
         for (i, s) in self.stmts.iter().enumerate() {
             if let Statement::Constructor(constructor) = s {
-                if constructor.name == stmt.owner {
+                if constructor.name().unwrap().to_string() == stmt.owner {
                     return (s, i);
                 }
             }
@@ -199,6 +224,8 @@ impl TestCase {
     pub fn reorder_stmts(&mut self, idx_a: usize, idx_b: usize) {
         self.stmts.swap(idx_a, idx_b);
     }
+
+    pub fn add_random_stmt(&mut self) {}
 
     pub fn to_syn(&self) -> Item {
         let ident = Ident::new(&format!("{}_{}", TestCase::TEST_FN_PREFIX, self.id),
@@ -228,9 +255,20 @@ impl TestCase {
     }
 
     pub fn complex_definitions(&mut self) -> Vec<ConstructorStmt> {
-        self.stmts().iter().filter_map(|s| if let Statement::Constructor(constructor_stmt) = s {
-            Some(constructor_stmt.clone())
+        self.stmts().iter().filter_map(|s| if let Statement::Constructor(stmt) = s {
+            Some(stmt.clone())
         } else {
+            None
+        }).collect()
+    }
+
+    pub fn unconsumed_complex_definitions(&mut self) -> Vec<ConstructorStmt> {
+        self.stmts().iter().filter_map(|s| {
+            if let Statement::Constructor(stmt) = s {
+                if !self.is_consumed(stmt) {
+                    return Some(stmt.clone());
+                }
+            }
             None
         }).collect()
     }
@@ -295,29 +333,31 @@ impl Chromosome for TestCase {
 
 #[derive(Debug, Clone)]
 pub struct Arg {
-    name: String,
-    value: Expr,
+    name: Option<String>,
     param: FnArg,
+    value: Expr,
+    primitive: bool,
 }
 
 impl Arg {
-    pub fn new(name: String, value: Expr, param: FnArg) -> Self {
-        Arg { name, value, param }
+    pub fn new(name: Option<String>, value: Expr, param: FnArg, primitive: bool) -> Self {
+        Arg { name, value, param, primitive }
     }
 
-    pub fn name(&self) -> &str {
-        &self.name
+    pub fn name(&self) -> Option<String> {
+        self.name.clone()
     }
+
     pub fn value(&self) -> &Expr {
         &self.value
     }
+
     pub fn param(&self) -> &FnArg {
         &self.param
     }
 
     pub fn is_primitive(&self) -> bool {
-        // TODO introduce an enum
-        self.name == ""
+        self.primitive
     }
 
     pub fn is_self(&self) -> bool {
@@ -333,14 +373,35 @@ impl Arg {
             FnArg::Receiver(_) => {
                 unimplemented!()
             }
-            FnArg::Typed(PatType { pat, .. }) => {
-                match pat.as_ref() {
-                    Pat::Reference(_) => {
+            FnArg::Typed(PatType { ty, .. }) => {
+                match ty.as_ref() {
+                    Type::Reference(_) => {
                         true
                     }
                     _ => false
                 }
             }
+        }
+    }
+    pub fn set_name(&mut self, name: Option<String>) {
+        self.name = name;
+    }
+    pub fn set_value(&mut self, value: Expr) {
+        self.value = value;
+    }
+    pub fn set_param(&mut self, param: FnArg) {
+        self.param = param;
+    }
+
+    pub fn to_syn(&self) -> Expr {
+        // TODO this is only limited to basic references
+        if self.is_by_reference() {
+            let value = &self.value;
+            syn::parse_quote! {
+                &#value
+            }
+        } else {
+            self.value.clone()
         }
     }
 }
@@ -401,7 +462,7 @@ impl Clone for AssignStmt {
 #[derive(Debug)]
 pub struct ConstructorStmt {
     id: Uuid,
-    name: String,
+    name: Option<String>,
     struct_item: Struct,
     params: Vec<FnArg>,
     args: Vec<Arg>,
@@ -420,9 +481,9 @@ impl Clone for ConstructorStmt {
 }
 
 impl ConstructorStmt {
-    pub fn new(name: String, struct_item: Struct, params: Vec<FnArg>, args: Vec<Arg>) -> Self {
+    pub fn new(struct_item: Struct, params: Vec<FnArg>, args: Vec<Arg>) -> Self {
         ConstructorStmt {
-            name,
+            name: None,
             struct_item,
             params,
             args,
@@ -431,19 +492,23 @@ impl ConstructorStmt {
     }
 
     pub fn to_syn(&self) -> Stmt {
-        let name = Ident::new(&self.name, Span::call_site());
-        let struct_item = &self.struct_item;
-        let type_name = &struct_item.ident;
-        let args: Vec<Expr> = self.args.iter().cloned().map(|a| a.value).collect();
-        syn::parse_quote! {
-            let mut #name = #type_name::new(#(#args),*);
+        if let Some(name) = &self.name {
+            let name = Ident::new(name, Span::call_site());
+            let struct_item = &self.struct_item;
+            let type_name = &struct_item.ident;
+            let args: Vec<Expr> = self.args.iter().cloned().map(|a| a.value).collect();
+            syn::parse_quote! {
+                let mut #name = #type_name::new(#(#args),*);
+            }
+        } else {
+            panic!("Name must have been set until here")
         }
     }
     pub fn id(&self) -> Uuid {
         self.id
     }
-    pub fn name(&self) -> &str {
-        &self.name
+    pub fn name(&self) -> Option<&String> {
+        self.name.as_ref()
     }
     pub fn struct_item(&self) -> &Struct {
         &self.struct_item
@@ -459,8 +524,8 @@ impl ConstructorStmt {
         self.args = args;
     }
 
-    pub fn set_name(&mut self, name: String) {
-        self.name = name;
+    pub fn set_name(&mut self, name: &str) {
+        self.name = Some(name.to_owned());
     }
 }
 
@@ -509,24 +574,35 @@ impl Clone for MethodInvStmt {
 }
 
 impl MethodInvStmt {
-    pub fn new(owner: String, method: ImplItemMethod, params: Vec<FnArg>, args: Vec<Arg>) -> Self {
-        MethodInvStmt { owner, method, params, args, id: Uuid::new_v4(), name: None }
+    pub fn new(owner: &str, method: ImplItemMethod, params: Vec<FnArg>, args: Vec<Arg>) -> Self {
+        MethodInvStmt { owner: owner.to_owned(), method, params, args, id: Uuid::new_v4(), name: None }
     }
 
     pub fn to_syn(&self) -> Stmt {
-        let ident = &self.method.sig.ident;
-        let args: Vec<Expr> = self.args.iter().cloned().map(|a| a.value).collect();
+        let method_ident = &self.method.sig.ident;
+        let args: Vec<Expr> = self.args.iter().cloned().map(|a| a.to_syn()).collect();
         let owner = Ident::new(&self.owner, Span::call_site());
-        syn::parse_quote! {
-            #owner.#ident(#(#args),*);
+        if self.returns_value() {
+            if let Some(name) = &self.name {
+                let ident = Ident::new(name, Span::call_site());
+                syn::parse_quote! {
+                    let #ident = #owner.#method_ident(#(#args),*);
+                }
+            } else {
+                panic!("Name must have been set before")
+            }
+        } else {
+            syn::parse_quote! {
+                #owner.#method_ident(#(#args),*);
+            }
         }
     }
 
     pub fn returns_value(&self) -> bool {
         if let ReturnType::Default = &self.method.sig.output {
-            true
-        } else {
             false
+        } else {
+            true
         }
     }
 
@@ -564,6 +640,9 @@ impl MethodInvStmt {
     }
     pub fn name(&self) -> &Option<String> {
         &self.name
+    }
+    pub fn set_name(&mut self, name: &str) {
+        self.name = Some(name.to_owned());
     }
 }
 
@@ -635,19 +714,18 @@ impl StatementGenerator {
     }
 
     pub fn get_random_stmt(&self, test_case: &mut TestCase) -> Statement {
-        if test_case.complex_definitions().is_empty() {
+        let unconsumed_defs = test_case.unconsumed_complex_definitions();
+        if unconsumed_defs.is_empty() {
             let structs = self.source_file.structs();
-            let i = fastrand::usize((0..structs.len()));
+            let i = fastrand::usize(0..structs.len());
 
             let item_struct = structs.get(i).unwrap();
             if let Some(constructor) = item_struct.constructor() {
                 let params: Vec<FnArg> = constructor.sig.inputs.iter().cloned().collect();
-                let args: Vec<Arg> = params.iter().map(|p| {
-                    let arg = InputGenerator::generate_arg(p);
-                    Arg::new("".to_string(), arg, p.clone())
-                }).collect();
+                let args: Vec<Arg> = params.iter()
+                    .map(PrimitivesGenerator::generate_arg)
+                    .collect();
                 Statement::Constructor(ConstructorStmt::new(
-                    "a".to_string(),
                     item_struct.clone(),
                     params,
                     args,
@@ -657,15 +735,13 @@ impl StatementGenerator {
                 unimplemented!()
             }
         } else {
-            let complex_defs = test_case.complex_definitions();
-
-            let i = fastrand::usize((0..complex_defs.len()));
-            let constructor = complex_defs.get(i).unwrap();
+            let i = fastrand::usize(0..unconsumed_defs.len());
+            let constructor = unconsumed_defs.get(i).unwrap();
 
             let methods = constructor.struct_item.methods();
             // TODO what if there are no methods
 
-            let i = fastrand::usize((0..methods.len()));
+            let i = fastrand::usize(0..methods.len());
             let method = methods.get(i).unwrap();
 
             let params: Vec<FnArg> = method.sig.inputs.iter().cloned().collect();
@@ -673,10 +749,9 @@ impl StatementGenerator {
                 match a {
                     FnArg::Receiver(_) => None,
                     FnArg::Typed(arg_pat_type) => {
-                        if InputGenerator::is_fn_arg_primitive(a) {
-                            let arg = InputGenerator::generate_arg(a);
-
-                            Some(Arg::new("".to_string(), arg, a.clone()))
+                        if PrimitivesGenerator::is_fn_arg_primitive(a) {
+                            let arg = PrimitivesGenerator::generate_arg(a);
+                            Some(arg)
                         } else {
                             match arg_pat_type.ty.as_ref() {
                                 Type::Path(type_path) => {
@@ -699,8 +774,12 @@ impl StatementGenerator {
                 }
             }).collect();
 
-            Statement::MethodInvocation(MethodInvStmt::new(constructor.name.to_owned(),
-                                                           method.clone(), params, args))
+            let mut stmt = MethodInvStmt::new(constructor.name.as_ref().unwrap(),
+                                              method.clone(), params, args);
+
+            if stmt.returns_value() {}
+
+            Statement::MethodInvocation(stmt)
         }
     }
 
@@ -723,24 +802,24 @@ impl StatementGenerator {
 
         // Generate arguments for the constructor invocation
         let constructor_args: Vec<Arg> = constructor_params.iter()
-            .map(|p| {
-                let arg = InputGenerator::generate_arg(p);
-                Arg::new("".to_string(), arg, fn_arg.clone())
-            })
+            .map(PrimitivesGenerator::generate_arg)
             .collect();
 
         // Create constructor invocation
         let stmt = Statement::Constructor(ConstructorStmt::new(
-            "a".to_string(), struct_type.clone(),
-            constructor_params, constructor_args,
+            struct_type.clone(),
+            constructor_params,
+            constructor_args,
         ));
 
-        let var_name = test_case.insert_stmt(0, stmt);
-        let var_ident = Ident::new(&var_name, Span::call_site());
-        let var = syn::parse_quote! {#var_ident};
-        Arg::new(var_name, var, fn_arg.clone())
+        if let Some(var_name) = test_case.insert_stmt(0, stmt) {
+            let var_ident = Ident::new(&var_name, Span::call_site());
+            let var = syn::parse_quote! {#var_ident};
+            Arg::new(Some(var_name), var, fn_arg.clone(), false)
+        } else {
+            panic!()
+        }
     }
-
 }
 
 #[derive(Debug, Clone)]
@@ -842,3 +921,31 @@ impl ChromosomeGenerator for TestCaseGenerator {
     }
 }
 
+fn return_type_name(return_type: &ReturnType) -> Option<String> {
+    match return_type {
+        ReturnType::Default => None,
+        ReturnType::Type(_, data_type) => Some(type_name(data_type.as_ref()))
+    }
+}
+
+fn type_name(data_type: &Type) -> String {
+    match data_type {
+        Type::Path(type_path) => {
+            let path = &type_path.path;
+            merge_path(&path)
+        }
+        Type::Reference(_) => {
+            unimplemented!()
+        }
+        _ => {
+            unimplemented!()
+        }
+    }
+}
+
+fn merge_path(path: &Path) -> String {
+    path.segments.iter()
+        .map(|s| s.ident.to_string())
+        .collect::<Vec<String>>()
+        .join("::")
+}

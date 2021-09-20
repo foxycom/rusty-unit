@@ -1,32 +1,30 @@
 use syn::{FnArg, Expr, Type, Lit};
-use proc_macro2::Ident;
-use crate::chromosome::TestCase;
-use crate::source::SourceFile;
+use crate::chromosome::{Arg};
 
 #[derive(Debug)]
-pub struct InputGenerator {}
+pub struct PrimitivesGenerator {}
 
-impl InputGenerator {
-    pub fn generate_arg(arg: &FnArg) -> Expr {
-        if let FnArg::Typed(pattern) = arg {
+impl PrimitivesGenerator {
+    pub fn generate_arg(param: &FnArg) -> Arg {
+        if let FnArg::Typed(pattern) = param {
             return match pattern.ty.as_ref() {
                 Type::Path(path) => {
                     if path.path.is_ident("u8") {
                         let random_u64 = fastrand::u8(..);
                         let lit: Expr = syn::parse_quote! { #random_u64 };
-                        lit
+                        Arg::new(None, lit, param.clone(), true)
                     } else {
                         unimplemented!()
                     }
                 }
                 _ => {
                     let lit: Expr = syn::parse_quote! { 0 };
-                    lit
+                    Arg::new(None, lit, param.clone(), true)
                 }
             };
         }
         let lit: Expr = syn::parse_quote! { 0 };
-        lit
+        Arg::new(None, lit, param.clone(), true)
     }
 
     pub fn is_fn_arg_primitive(arg: &FnArg) -> bool {
@@ -41,7 +39,7 @@ impl InputGenerator {
                     };
                 }
                 Type::Reference(reference) => {
-                    InputGenerator::is_type_primitive(reference.elem.as_ref())
+                    PrimitivesGenerator::is_type_primitive(reference.elem.as_ref())
                 }
                 _ => {
                     unimplemented!()
@@ -65,8 +63,9 @@ impl InputGenerator {
         }
     }
 
-    pub fn mutate_arg(arg: &Expr) -> Expr {
-        match arg {
+    pub fn mutate_arg(arg: &Arg) -> Arg {
+        let val = arg.value();
+        match val {
             Expr::Lit(expr_lit) => {
                 let lit = &expr_lit.lit;
                 return match lit {
@@ -77,9 +76,12 @@ impl InputGenerator {
                         } else {
                             n.overflowing_sub(5).0
                         };
-                        syn::parse_quote! {
+                        let new_expr: Expr = syn::parse_quote! {
                             #res
-                        }
+                        };
+                        let mut modified_arg = arg.clone();
+                        modified_arg.set_value(new_expr);
+                        modified_arg
                     }
                     _ => {
                         unimplemented!()
@@ -92,8 +94,9 @@ impl InputGenerator {
         }
     }
 
-    pub fn mutate_arg_dist(arg: &Expr, dist: f64) -> Expr {
-        match arg {
+    pub fn mutate_arg_dist(arg: &Arg, dist: f64) -> Arg {
+        let val = arg.value();
+        match val {
             Expr::Lit(expr_lit) => {
                 let lit = &expr_lit.lit;
                 return match lit {
@@ -104,9 +107,12 @@ impl InputGenerator {
                         } else {
                             n.overflowing_sub(dist as u8).0
                         };
-                        syn::parse_quote! {
+                        let new_expr: Expr = syn::parse_quote! {
                             #res
-                        }
+                        };
+                        let mut modified_arg = arg.clone();
+                        modified_arg.set_value(new_expr);
+                        modified_arg
                     }
                     _ => {
                         unimplemented!()

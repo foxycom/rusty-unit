@@ -1,13 +1,9 @@
 use crate::chromosome::{Chromosome, TestCase, Statement, FnInvStmt, StatementGenerator, MethodInvStmt, ConstructorStmt, Arg};
-use syn::{Stmt, Expr};
 use std::rc::Rc;
-use std::mem;
-use crate::generators::InputGenerator;
-use syn::punctuated::Punctuated;
+use crate::generators::PrimitivesGenerator;
 use crate::algorithm::{PreferenceSorter, SVD};
 use std::cell::RefCell;
 use crate::source::BranchManager;
-use quote::ToTokens;
 
 pub trait Crossover {
     type C: Chromosome;
@@ -34,8 +30,8 @@ impl BasicCrossover {
         let mut child_a = a.clone();
         let mut child_b = b.clone();
 
-        let a_i = fastrand::usize((0..a.size()));
-        let b_i = fastrand::usize((0..b.size()));
+        let a_i = fastrand::usize(0..a.size());
+        let b_i = fastrand::usize(0..b.size());
         let (stmts_a1, stmts_a2) = child_a.stmts().split_at(a_i);
         let (stmts_b1, stmts_b2) = child_b.stmts().split_at(b_i);
 
@@ -88,7 +84,7 @@ impl BasicMutation {
             test_case.clone()
         } else {
             // Select a branch that has not been covered yet
-            let branch_idx = fastrand::usize((0..uncovered_branches.len()));
+            let branch_idx = fastrand::usize(0..uncovered_branches.len());
             let branch = uncovered_branches.get(branch_idx).unwrap();
 
             // The value which the previous execution of the test was off to the branch
@@ -145,17 +141,8 @@ impl BasicMutation {
         let args = method_inv_stmt.args();
         let p = 1.0 / args.len() as f64;
         let mutated_args: Vec<Arg> = args.iter()
-            .map(|a| {
-                if fastrand::f64() < p {
-                    if dist < f64::MAX {
-                        Arg::new("".to_string(), InputGenerator::mutate_arg_dist(a.value(), dist), a.param().clone())
-                    } else {
-                        Arg::new("".to_string(), InputGenerator::mutate_arg(a.value()), a.param().clone())
-                    }
-                } else {
-                    a.clone()
-                }
-            }).collect();
+            .map(|a| BasicMutation::mutate_arg(a, p, dist))
+            .collect();
 
         method_inv_stmt.set_args(mutated_args);
     }
@@ -165,17 +152,8 @@ impl BasicMutation {
         let args = costructor_stmt.args();
         let p = 1.0 / args.len() as f64;
         let mutated_args: Vec<Arg> = args.iter()
-            .map(|a| {
-                if fastrand::f64() < p {
-                    if dist < f64::MAX {
-                        Arg::new("".to_string(), InputGenerator::mutate_arg_dist(a.value(), dist), a.param().clone())
-                    } else {
-                        Arg::new("".to_string(), InputGenerator::mutate_arg(a.value()), a.param().clone())
-                    }
-                } else {
-                    a.clone()
-                }
-            }).collect();
+            .map(|a| BasicMutation::mutate_arg(a, p, dist))
+            .collect();
 
         costructor_stmt.set_args(mutated_args);
     }
@@ -185,19 +163,22 @@ impl BasicMutation {
         let args = fn_inv_stmt.args();
         let p = 1.0 / args.len() as f64;
         let mutated_args: Vec<Arg> = args.iter()
-            .map(|a| {
-                if fastrand::f64() < p {
-                    if dist < f64::MAX {
-                        Arg::new("".to_string(), InputGenerator::mutate_arg_dist(a.value(), dist), a.param().clone())
-                    } else {
-                        Arg::new("".to_string(), InputGenerator::mutate_arg(a.value()), a.param().clone())
-                    }
-                } else {
-                    a.clone()
-                }
-            }).collect();
+            .map(|a| BasicMutation::mutate_arg(a, p, dist))
+            .collect();
 
         fn_inv_stmt.set_args(mutated_args);
+    }
+
+    fn mutate_arg(arg: &Arg, p: f64, dist: f64) -> Arg {
+        if fastrand::f64() < p {
+            if dist < f64::MAX {
+                PrimitivesGenerator::mutate_arg_dist(arg, dist)
+            } else {
+                PrimitivesGenerator::mutate_arg(arg)
+            }
+        } else {
+            arg.clone()
+        }
     }
 
     fn insert_statement(&self, test_case: &TestCase) -> TestCase {
@@ -205,7 +186,7 @@ impl BasicMutation {
         let stmt = self.statement_generator.get_random_stmt(&mut copy);
         if let Statement::MethodInvocation(method_inv_stmt) = &stmt {
             let (_, owner_idx) = copy.get_owner(&method_inv_stmt);
-            let i = fastrand::usize((owner_idx+1..=copy.size()));
+            let i = fastrand::usize(owner_idx+1..=copy.size());
             copy.insert_stmt(i, stmt.clone());
 
         } else {
@@ -221,7 +202,7 @@ impl BasicMutation {
         // TODO check dependencies
 
         let stmts = copy.stmts();
-        let i = fastrand::usize((0..stmts.len()));
+        let i = fastrand::usize(0..stmts.len());
         copy.delete_stmt(i);
         copy
     }
@@ -232,8 +213,8 @@ impl BasicMutation {
 
         let stmts = copy.stmts();
         // TODO check inequality
-        let i = fastrand::usize((0..stmts.len()));
-        let j = fastrand::usize((0..stmts.len()));
+        let i = fastrand::usize(0..stmts.len());
+        let j = fastrand::usize(0..stmts.len());
 
         copy.reorder_stmts(i, j);
         copy

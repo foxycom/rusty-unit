@@ -3,7 +3,6 @@ use std::fs;
 use std::io;
 use std::io::BufRead;
 use regex::Regex;
-use syn::File;
 use std::path::Path;
 use crate::source::BranchType;
 

@@ -1,19 +1,17 @@
-use std::process::{Command, Stdio, Output, ExitStatus};
-use std::path::{PathBuf, Path};
+use std::process::{Command, Stdio};
+use std::path::{PathBuf};
 use std::{io, fs};
-use std::io::{Write, Error};
-use syn::{Item, ItemFn, File, ItemStruct, ItemImpl, BinOp, Expr, Stmt, Block, ExprIf, ItemExternCrate, ItemUse, ItemMacro, ItemEnum, Abi, AngleBracketedGenericArguments, Arm, AttrStyle, Attribute, BareFnArg, Binding, BoundLifetimes, ConstParam, Constraint, Data, DataEnum, DataStruct, DataUnion, DeriveInput, ExprArray, ExprAssign, ExprAssignOp, ExprAsync, ExprAwait, ExprBinary, ExprBlock, ExprBox, ExprBreak, ExprCall, ExprCast, ExprClosure, ExprContinue, ExprField, ExprForLoop, ExprGroup, ExprIndex, ExprLet, ExprLit, ExprLoop, ExprMacro, ExprMatch, ExprMethodCall, ExprParen, ExprPath, ExprRange, ExprReference, ExprRepeat, ExprReturn, ExprStruct, ExprTry, ExprTryBlock, ExprTuple, ExprType, ExprUnary, ExprUnsafe, ExprWhile, ExprYield, Field, FieldPat, FieldValue, Fields, FieldsNamed, FieldsUnnamed, FnArg, ForeignItem, ForeignItemFn, ForeignItemMacro, ForeignItemStatic, ForeignItemType, GenericArgument, GenericMethodArgument, GenericParam, Generics, ImplItem, ImplItemConst, ImplItemMacro, ImplItemMethod, ImplItemType, Index, ItemConst, ItemForeignMod, ItemMacro2, ItemMod, ItemStatic, ItemTrait, ItemTraitAlias, ItemType, ItemUnion, Label, LifetimeDef, Local, Macro, MacroDelimiter, Member, Meta, MetaList, MetaNameValue, MethodTurbofish, NestedMeta, ParenthesizedGenericArguments, Pat, PatBox, PatIdent, PatLit, PatMacro, PatOr, PatPath, PatRange, PatReference, PatRest, PatSlice, PatStruct, PatTuple, PatTupleStruct, PatType, PatWild, PathArguments, PathSegment, PredicateEq, PredicateLifetime, PredicateType, QSelf, RangeLimits, Receiver, ReturnType, Signature, TraitBound, TraitBoundModifier, TraitItem, TraitItemConst, TraitItemMacro, TraitItemMethod, TraitItemType, Type, TypeArray, TypeBareFn, TypeGroup, TypeImplTrait, TypeInfer, TypeMacro, TypeNever, TypeParam, TypeParamBound, TypeParen, TypePath, TypePtr, TypeReference, TypeSlice, TypeTraitObject, TypeTuple, UnOp, UseGlob, UseGroup, UseName, UsePath, UseRename, UseTree, Variadic, Variant, VisCrate, VisPublic, VisRestricted, Visibility, WhereClause, WherePredicate};
-use syn::token::{Else, Comma};
+use std::io::{Write};
+use syn::{Item, ItemFn, File, ItemStruct, ItemImpl, BinOp, Expr, Stmt, Block, ExprIf, ItemExternCrate, ItemUse, ItemMacro, ItemEnum, FnArg, ImplItemMethod, ItemMod};
+use syn::token::{Else};
 use syn::visit_mut::VisitMut;
 use quote::ToTokens;
-use proc_macro2::{Span, Ident};
+use proc_macro2::{Span};
 use std::hash::{Hash, Hasher};
 use std::fmt::{Debug, Formatter};
 
 use crate::parser::TraceParser;
-use crate::chromosome::{TestCase, Statement, Chromosome, FnInvStmt, MethodInvStmt, Struct};
-use std::borrow::Cow;
-use crate::generators::InputGenerator;
+use crate::chromosome::{TestCase, Chromosome, Struct};
 
 pub const ROOT_BRANCH: &'static str = "root[{}, {}]";
 pub const BRANCH: &'static str = "branch[{}, {}, {}]";
@@ -531,7 +529,7 @@ impl Instrumenter {
                 }
             }
         } else if let Expr::Unary(expr_unary) = cond {
-            unimplemented!();
+            unimplemented!()
         } else {
             println!("{}", cond.to_token_stream().to_string());
             unimplemented!()
