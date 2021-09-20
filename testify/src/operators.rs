@@ -1,9 +1,12 @@
-use crate::chromosome::{Chromosome, TestCase, Statement, FnInvStmt, StatementGenerator, MethodInvStmt, ConstructorStmt, Arg};
-use std::rc::Rc;
-use crate::generators::PrimitivesGenerator;
 use crate::algorithm::{PreferenceSorter, SVD};
-use std::cell::RefCell;
+use crate::chromosome::{
+    Arg, Chromosome, ConstructorStmt, FnInvStmt, MethodInvStmt, Statement, StatementGenerator,
+    TestCase,
+};
+use crate::generators::PrimitivesGenerator;
 use crate::source::BranchManager;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub trait Crossover {
     type C: Chromosome;
@@ -18,8 +21,7 @@ pub trait Mutation {
 }
 
 #[derive(Debug, Clone)]
-pub struct BasicCrossover {
-}
+pub struct BasicCrossover {}
 
 impl BasicCrossover {
     pub fn new() -> Self {
@@ -54,15 +56,17 @@ impl BasicCrossover {
 #[derive(Debug, Clone)]
 pub struct BasicMutation {
     branch_manager: Rc<RefCell<BranchManager>>,
-    statement_generator: Rc<StatementGenerator>
+    statement_generator: Rc<StatementGenerator>,
 }
 
 impl BasicMutation {
-    pub fn new(statement_generator: Rc<StatementGenerator>,
-               branch_manager: Rc<RefCell<BranchManager>>) -> BasicMutation {
+    pub fn new(
+        statement_generator: Rc<StatementGenerator>,
+        branch_manager: Rc<RefCell<BranchManager>>,
+    ) -> BasicMutation {
         BasicMutation {
             statement_generator,
-            branch_manager
+            branch_manager,
         }
     }
 
@@ -140,7 +144,8 @@ impl BasicMutation {
     fn mutate_method_invocation(&self, method_inv_stmt: &mut MethodInvStmt, dist: f64) {
         let args = method_inv_stmt.args();
         let p = 1.0 / args.len() as f64;
-        let mutated_args: Vec<Arg> = args.iter()
+        let mutated_args: Vec<Arg> = args
+            .iter()
             .map(|a| BasicMutation::mutate_arg(a, p, dist))
             .collect();
 
@@ -151,7 +156,8 @@ impl BasicMutation {
         // Change arguments based on the distance to the selected branch
         let args = costructor_stmt.args();
         let p = 1.0 / args.len() as f64;
-        let mutated_args: Vec<Arg> = args.iter()
+        let mutated_args: Vec<Arg> = args
+            .iter()
             .map(|a| BasicMutation::mutate_arg(a, p, dist))
             .collect();
 
@@ -162,7 +168,8 @@ impl BasicMutation {
         // Change arguments based on the distance to the selected branch
         let args = fn_inv_stmt.args();
         let p = 1.0 / args.len() as f64;
-        let mutated_args: Vec<Arg> = args.iter()
+        let mutated_args: Vec<Arg> = args
+            .iter()
             .map(|a| BasicMutation::mutate_arg(a, p, dist))
             .collect();
 
@@ -186,9 +193,8 @@ impl BasicMutation {
         let stmt = self.statement_generator.get_random_stmt(&mut copy);
         if let Statement::MethodInvocation(method_inv_stmt) = &stmt {
             let (_, owner_idx) = copy.get_owner(&method_inv_stmt);
-            let i = fastrand::usize(owner_idx+1..=copy.size());
+            let i = fastrand::usize(owner_idx + 1..=copy.size());
             copy.insert_stmt(i, stmt.clone());
-
         } else {
             unimplemented!()
         }
@@ -237,11 +243,11 @@ impl RankSelection {
 
     fn sort(&self, population: &[TestCase]) -> Vec<TestCase> {
         let mut sorted = vec![];
-        let mut fronts = PreferenceSorter::sort(population, self.branch_manager.borrow().branches());
-        fronts.iter_mut()
-            .for_each(|(k, v)| {
-                *v = SVD::compute(v, self.branch_manager.borrow().branches()).unwrap()
-            });
+        let mut fronts =
+            PreferenceSorter::sort(population, self.branch_manager.borrow().branches());
+        fronts.iter_mut().for_each(|(k, v)| {
+            *v = SVD::compute(v, self.branch_manager.borrow().branches()).unwrap()
+        });
         for v in fronts.values_mut() {
             sorted.append(v);
         }
@@ -250,9 +256,11 @@ impl RankSelection {
 
     pub fn select(&self, population: &[TestCase]) -> Option<TestCase> {
         let population = self.sort(population);
-        let probabilities: Vec<f64> = (0..population.len()).map(|i| {
-            self.bias - (2.0 * i as f64 * (self.bias - 1.0)) / (population.len() - 1) as f64
-        }).collect();
+        let probabilities: Vec<f64> = (0..population.len())
+            .map(|i| {
+                self.bias - (2.0 * i as f64 * (self.bias - 1.0)) / (population.len() - 1) as f64
+            })
+            .collect();
 
         let fitness_sum: f64 = probabilities.iter().sum();
         let pick = fastrand::f64() * fitness_sum;

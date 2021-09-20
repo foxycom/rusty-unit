@@ -1,17 +1,20 @@
-use std::process::{Command, Stdio};
-use std::path::{PathBuf};
-use std::{io, fs};
-use std::io::{Write};
-use syn::{Item, ItemFn, File, ItemStruct, ItemImpl, BinOp, Expr, Stmt, Block, ExprIf, ItemExternCrate, ItemUse, ItemMacro, ItemEnum, FnArg, ImplItemMethod, ItemMod};
-use syn::token::{Else};
-use syn::visit_mut::VisitMut;
+use proc_macro2::Span;
 use quote::ToTokens;
-use proc_macro2::{Span};
-use std::hash::{Hash, Hasher};
 use std::fmt::{Debug, Formatter};
+use std::hash::{Hash, Hasher};
+use std::io::Write;
+use std::path::PathBuf;
+use std::process::{Command, Stdio};
+use std::{fs, io};
+use syn::token::Else;
+use syn::visit_mut::VisitMut;
+use syn::{
+    BinOp, Block, Expr, ExprIf, File, FnArg, ImplItemMethod, Item, ItemEnum, ItemExternCrate,
+    ItemFn, ItemImpl, ItemMacro, ItemMod, ItemStruct, ItemUse, Stmt,
+};
 
+use crate::chromosome::{Chromosome, Struct, TestCase};
 use crate::parser::TraceParser;
-use crate::chromosome::{TestCase, Chromosome, Struct};
 
 pub const ROOT_BRANCH: &'static str = "root[{}, {}]";
 pub const BRANCH: &'static str = "branch[{}, {}, {}]";
@@ -131,7 +134,7 @@ impl Hash for SourceFile {
 fn fmt_path() -> io::Result<PathBuf> {
     match which::which("rustfmt") {
         Ok(p) => Ok(p),
-        Err(e) => Err(io::Error::new(io::ErrorKind::Other, format!("{}", e)))
+        Err(e) => Err(io::Error::new(io::ErrorKind::Other, format!("{}", e))),
     }
 }
 
@@ -166,9 +169,9 @@ fn fmt_string(source: &str) -> io::Result<String> {
             _ => Err(io::Error::new(
                 io::ErrorKind::Other,
                 "Internal rustfmt error".to_string(),
-            ))
-        }
-        Err(_) => Ok(source)
+            )),
+        },
+        Err(_) => Ok(source),
     }
 }
 
@@ -176,7 +179,6 @@ fn fmt_string(source: &str) -> io::Result<String> {
 struct TestClearer {
     src_path: String,
 }
-
 
 impl VisitMut for TestClearer {
     fn visit_item_mod_mut(&mut self, i: &mut ItemMod) {
@@ -201,11 +203,6 @@ struct TestWriter {
 impl TestWriter {
     const TESTS_MODULE: &'static str = "testify_tests";
     pub fn new(src_path: &str) -> Self {
-        /*let content = fs::read_to_string(&src_path)
-            .expect("Could not read the Rust source file");
-        let ast = syn::parse_file(&content)
-            .expect("Could not parse the contents of the Rust source file with syn");*/
-
         TestWriter {
             use_all_star: syn::parse_quote! { use super::*; },
             test_cases: None,
@@ -221,9 +218,7 @@ impl TestWriter {
     }
 
     fn contains_use_super_star(&self, items: &[Item]) -> bool {
-        items.iter().any(|i| {
-            *i == self.use_all_star
-        })
+        items.iter().any(|i| *i == self.use_all_star)
     }
 }
 
@@ -238,7 +233,8 @@ impl VisitMut for TestWriter {
                     }
 
                     if let Some(ref mut tests) = self.test_cases {
-                        let mut code: Vec<Item> = tests.iter_mut().map(|t| t.to_syn()).collect();
+                        let mut code: Vec<Item> =
+                            tests.iter_mut().map(|t| t.to_syn(true)).collect();
                         items.append(&mut code);
                     }
                 } else {
@@ -248,7 +244,6 @@ impl VisitMut for TestWriter {
         }
     }
 }
-
 
 #[derive(Debug, Clone)]
 struct TestRunner {}
@@ -268,28 +263,24 @@ impl TestRunner {
             .stderr(Stdio::from(err_file));
 
         // TODO extract package and bin files
-        cmd.args(&["test",
-            "--package",
-            "additions",
-            "testify_tests"])
+        cmd.args(&["test", "--package", "additions", "testify_tests"])
             .current_dir("/Users/tim/Documents/master-thesis/testify/src/examples/additions");
         match cmd.status() {
             Ok(_) => {
                 //println!("Test {}: OK", test_case.name());
                 Ok(())
             }
-            Err(e) => Err(e)
+            Err(e) => Err(e),
         }
     }
 
     fn cargo_path(&self) -> io::Result<PathBuf> {
         match which::which("cargo") {
             Ok(p) => Ok(p),
-            Err(e) => Err(io::Error::new(io::ErrorKind::Other, format!("{}", e)))
+            Err(e) => Err(io::Error::new(io::ErrorKind::Other, format!("{}", e))),
         }
     }
 }
-
 
 #[derive(Clone, Builder)]
 pub struct Branch {
@@ -300,7 +291,12 @@ pub struct Branch {
 
 impl Debug for Branch {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("Branch (id: {}, line: {}:{})", self.id, self.span.start().line, self.span.start().column))
+        f.write_fmt(format_args!(
+            "Branch (id: {}, line: {}:{})",
+            self.id,
+            self.span.start().line,
+            self.span.start().column
+        ))
     }
 }
 
@@ -313,8 +309,7 @@ impl Hash for Branch {
 
 impl PartialEq for Branch {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-            && self.branch_type == other.branch_type
+        self.id == other.id && self.branch_type == other.branch_type
     }
 }
 
@@ -331,7 +326,11 @@ impl Branch {
 
     // TODO return fitness as enum with ZERO value
     pub fn fitness(&self, test_case: &TestCase) -> f64 {
-        test_case.results().get(&self.id).unwrap_or(&f64::MAX).to_owned()
+        test_case
+            .results()
+            .get(&self.id)
+            .unwrap_or(&f64::MAX)
+            .to_owned()
     }
 
     pub fn id(&self) -> &u64 {
@@ -388,11 +387,11 @@ impl Instrumenter {
     }
 
     pub fn instrument(&mut self, source_file: &str) {
-        let content = fs::read_to_string(source_file)
-            .expect("Could not read the Rust source file");
-        self.original_ast = Some(syn::parse_file(&content)
-            .expect("Could not parse the contents of the Rust source file with syn"));
-
+        let content = fs::read_to_string(source_file).expect("Could not read the Rust source file");
+        self.original_ast = Some(
+            syn::parse_file(&content)
+                .expect("Could not parse the contents of the Rust source file with syn"),
+        );
 
         fs::write("ast.txt", format!("{:#?}", &self.original_ast)).unwrap();
 
@@ -426,8 +425,8 @@ impl Instrumenter {
             let mut block: Block = syn::parse_quote! {{}};
             self.insert_stmt(&mut block, false_trace);
             let expr = syn::parse_quote! {
-                    #block
-                };
+                #block
+            };
             i.else_branch = Some((else_expr, Box::new(expr)));
         }
     }
@@ -517,11 +516,11 @@ impl Instrumenter {
                 BinOp::Eq(_) => {
                     // left == right
                     true_trace = syn::parse_quote! {
-                            LOGGER.with(|l| l.borrow().trace_branch(#true_branch_id, #false_branch_id, 1.0));
-                        };
+                        LOGGER.with(|l| l.borrow().trace_branch(#true_branch_id, #false_branch_id, 1.0));
+                    };
                     false_trace = syn::parse_quote! {
-                            LOGGER.with(|l| l.borrow().trace_branch(#false_branch_id, #true_branch_id, ((#left - #right) as f64).abs()));
-                        }
+                        LOGGER.with(|l| l.borrow().trace_branch(#false_branch_id, #true_branch_id, ((#left - #right) as f64).abs()));
+                    }
                 }
                 // TODO all other ops
                 _ => {
@@ -548,8 +547,8 @@ impl Instrumenter {
         let name = ident.to_string();
 
         let trace_stmt = syn::parse_quote! {
-                LOGGER.with(|l| l.borrow().trace_fn(#name, #branch_id));
-            };
+            LOGGER.with(|l| l.borrow().trace_fn(#name, #branch_id));
+        };
 
         let stmts = &mut block.stmts;
 
@@ -566,8 +565,8 @@ impl Instrumenter {
         let name = ident.to_string();
 
         let trace_stmt = syn::parse_quote! {
-                LOGGER.with(|l| l.borrow().trace_fn(#name, #branch_id));
-            };
+            LOGGER.with(|l| l.borrow().trace_fn(#name, #branch_id));
+        };
 
         let stmts = &mut block.stmts;
 
@@ -580,10 +579,12 @@ impl Instrumenter {
     }
 
     fn is_method(&self, method: &ImplItemMethod) -> bool {
-        method.sig.inputs.iter().any(|a| if let FnArg::Receiver(_) = a {
-            true
-        } else {
-            false
+        method.sig.inputs.iter().any(|a| {
+            if let FnArg::Receiver(_) = a {
+                true
+            } else {
+                false
+            }
         })
     }
 
@@ -598,112 +599,111 @@ impl Instrumenter {
 
     fn uses(&self) -> Vec<ItemUse> {
         let io_write_use = syn::parse_quote! {
-                use std::io::Write;
-            };
+            use std::io::Write;
+        };
 
         let fmt_write_use = syn::parse_quote! {
-                use std::fmt::Write as FmtWrite;
-            };
+            use std::fmt::Write as FmtWrite;
+        };
 
         vec![io_write_use, fmt_write_use]
     }
 
     fn macros(&self) -> Vec<ItemMacro> {
         let test_id_macro: ItemMacro = syn::parse_quote! {
-                thread_local! {
-                    pub static TEST_ID: std::cell::RefCell<u64> = std::cell::RefCell::new(0);
-                    static LOGGER: std::cell::RefCell<TestifyMonitor> = std::cell::RefCell::new(TestifyMonitor::new());
-                }
-            };
+            thread_local! {
+                pub static TEST_ID: std::cell::RefCell<u64> = std::cell::RefCell::new(0);
+                static LOGGER: std::cell::RefCell<TestifyMonitor> = std::cell::RefCell::new(TestifyMonitor::new());
+            }
+        };
 
         vec![test_id_macro]
     }
 
     fn message_enum(&self) -> ItemEnum {
         let testify_message: ItemEnum = syn::parse_quote! {
-                enum TestifyMessage {
-                    Stop,
-                    Line(String)
-                }
-            };
+            enum TestifyMessage {
+                Stop,
+                Line(String)
+            }
+        };
         testify_message
     }
 
     fn monitor_struct(&mut self) -> (ItemStruct, ItemImpl) {
         let trace_file = Instrumenter::TRACE_FILE;
         let monitor: ItemStruct = syn::parse_quote! {
-                struct TestifyMonitor {
-                    sender: Option<std::sync::mpsc::Sender<TestifyMessage>>,
-                    thread: Option<std::thread::JoinHandle<()>>
-                }
-            };
+            struct TestifyMonitor {
+                sender: Option<std::sync::mpsc::Sender<TestifyMessage>>,
+                thread: Option<std::thread::JoinHandle<()>>
+            }
+        };
 
         let monitor_impl = syn::parse_quote! {
-                impl TestifyMonitor {
-                    const TRACE_FILE: &'static str = #trace_file;
+            impl TestifyMonitor {
+                const TRACE_FILE: &'static str = #trace_file;
 
-                    fn new() -> Self {
-                        TestifyMonitor {
-                            sender: None,
-                            thread: None
-                        }
-                    }
-
-                    fn set_test_id(&mut self, id: u64) {
-                        let file = format!("traces/trace_{}.txt", id);
-                        let (tx, rx) = std::sync::mpsc::channel();
-                        let thread_handle = std::thread::spawn(move || {
-                            let trace_file = std::fs::OpenOptions::new()
-                                .create(true)
-                                .append(true)
-                                .open(file)
-                                .unwrap();
-                            let mut trace_file = std::io::LineWriter::new(trace_file);
-                            while let Ok(msg) = rx.recv() {
-                                match msg {
-                                    TestifyMessage::Stop => {
-                                        break;
-                                    }
-                                    TestifyMessage::Line(line) => {
-                                        let mut s = String::new();
-                                        writeln!(s, "{}", line);
-                                        trace_file.write_all(s.as_bytes()).unwrap();
-                                    }
-                                }
-                            }
-                        });
-
-                        self.sender = Some(tx);
-                        self.thread = Some(thread_handle);
-                    }
-
-                    fn trace_branch(&self, visited_branch: u64, other_branch: u64, distance: f64) {
-                        self.write(format!(#BRANCH, visited_branch, other_branch, distance));
-                    }
-
-                    fn trace_fn(&self, name: &'static str, id: u64) {
-                        self.write(format!(#ROOT_BRANCH, name, id));
-                    }
-
-                    fn write(&self, message: String) {
-                        if let Some(sender) = &self.sender {
-                            sender.send(TestifyMessage::Line(message)).unwrap();
-                        }
-                    }
-
-                    fn wait(&mut self) {
-                        if let Some(sender) = &self.sender {
-                            sender.send(TestifyMessage::Stop).unwrap();
-                        }
-                        self.thread.take().unwrap().join().unwrap();
+                fn new() -> Self {
+                    TestifyMonitor {
+                        sender: None,
+                        thread: None
                     }
                 }
-            };
+
+                fn set_test_id(&mut self, id: u64) {
+                    let file = format!("traces/trace_{}.txt", id);
+                    let (tx, rx) = std::sync::mpsc::channel();
+                    let thread_handle = std::thread::spawn(move || {
+                        let trace_file = std::fs::OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open(file)
+                            .unwrap();
+                        let mut trace_file = std::io::LineWriter::new(trace_file);
+                        while let Ok(msg) = rx.recv() {
+                            match msg {
+                                TestifyMessage::Stop => {
+                                    break;
+                                }
+                                TestifyMessage::Line(line) => {
+                                    let mut s = String::new();
+                                    writeln!(s, "{}", line);
+                                    trace_file.write_all(s.as_bytes()).unwrap();
+                                }
+                            }
+                        }
+                    });
+
+                    self.sender = Some(tx);
+                    self.thread = Some(thread_handle);
+                }
+
+                fn trace_branch(&self, visited_branch: u64, other_branch: u64, distance: f64) {
+                    self.write(format!(#BRANCH, visited_branch, other_branch, distance));
+                }
+
+                fn trace_fn(&self, name: &'static str, id: u64) {
+                    self.write(format!(#ROOT_BRANCH, name, id));
+                }
+
+                fn write(&self, message: String) {
+                    if let Some(sender) = &self.sender {
+                        sender.send(TestifyMessage::Line(message)).unwrap();
+                    }
+                }
+
+                fn wait(&mut self) {
+                    if let Some(sender) = &self.sender {
+                        sender.send(TestifyMessage::Stop).unwrap();
+                    }
+                    self.thread.take().unwrap().join().unwrap();
+                }
+            }
+        };
 
         (monitor, monitor_impl)
     }
 }
-
 
 impl VisitMut for Instrumenter {
     fn visit_expr_if_mut(&mut self, i: &mut ExprIf) {
@@ -720,14 +720,12 @@ impl VisitMut for Instrumenter {
         self.instrument_if(i);
     }
 
-
     fn visit_file_mut(&mut self, i: &mut File) {
         for at in &mut i.attrs {
             VisitMut::visit_attribute_mut(self, at);
         }
 
         for it in &mut i.items {
-
             if let Item::Struct(item_struct) = it {
                 self.structs.push(Struct::new(item_struct.ident.clone()));
             }
@@ -757,7 +755,6 @@ impl VisitMut for Instrumenter {
     }
 
     fn visit_impl_item_method_mut(&mut self, i: &mut ImplItemMethod) {
-
         self.impl_methods.push(i.clone());
 
         if self.is_constructor(i) {
@@ -765,7 +762,10 @@ impl VisitMut for Instrumenter {
         } else if self.is_method(i) {
             self.structs.last_mut().unwrap().add_method(i.clone());
         } else {
-            self.structs.last_mut().unwrap().add_static_method(i.clone());
+            self.structs
+                .last_mut()
+                .unwrap()
+                .add_static_method(i.clone());
         }
 
         for it in &mut i.attrs {
@@ -803,7 +803,10 @@ pub struct BranchManager {
 
 impl BranchManager {
     pub fn new(branches: &[Branch]) -> Self {
-        BranchManager { branches: branches.to_vec(), uncovered_branches: branches.to_vec() }
+        BranchManager {
+            branches: branches.to_vec(),
+            uncovered_branches: branches.to_vec(),
+        }
     }
 
     pub fn branches(&self) -> &Vec<Branch> {

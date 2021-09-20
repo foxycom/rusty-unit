@@ -1,5 +1,5 @@
-use syn::{FnArg, Expr, Type, Lit};
-use crate::chromosome::{Arg};
+use crate::chromosome::Arg;
+use syn::{Expr, FnArg, Lit, Type};
 
 #[derive(Debug)]
 pub struct PrimitivesGenerator {}
@@ -59,7 +59,7 @@ impl PrimitivesGenerator {
                     false
                 }
             }
-            _ => unimplemented!()
+            _ => unimplemented!(),
         }
     }
 
@@ -134,7 +134,7 @@ pub struct TestIdGenerator {
 impl TestIdGenerator {
     pub fn new() -> TestIdGenerator {
         TestIdGenerator {
-            id: Default::default()
+            id: Default::default(),
         }
     }
 

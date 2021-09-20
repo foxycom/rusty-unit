@@ -4,14 +4,12 @@ fn main() {}
 
 struct SomeStruct {
     a: u8,
-    b: u8
+    b: u8,
 }
 
 impl SomeStruct {
     pub fn new(a: u8, b: u8) -> SomeStruct {
-        SomeStruct {
-            a, b
-        }
+        SomeStruct { a, b }
     }
 
     pub fn hello(&mut self, y: u8) {
@@ -31,7 +29,7 @@ impl SomeStruct {
 
 struct Rectangle {
     width: u8,
-    height: u8
+    height: u8,
 }
 
 impl Rectangle {
@@ -44,9 +42,7 @@ impl Rectangle {
     }
 }
 
-struct AreaCalculator {
-
-}
+struct AreaCalculator {}
 
 impl AreaCalculator {
     pub fn new() -> Self {

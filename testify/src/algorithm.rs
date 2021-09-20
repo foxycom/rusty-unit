@@ -1,17 +1,17 @@
-use crate::chromosome::{ChromosomeGenerator, Chromosome, TestCaseGenerator, TestCase};
-use std::rc::Rc;
-use std::collections::{HashMap, HashSet};
-use std::option::Option::Some;
-use crate::operators::RankSelection;
-use std::cell::RefCell;
-use std::iter::FromIterator;
-use crate::source::{SourceFile, BranchManager, Branch};
+use crate::chromosome::{Chromosome, ChromosomeGenerator, TestCase, TestCaseGenerator};
 use crate::generators::TestIdGenerator;
+use crate::operators::RankSelection;
+use crate::source::{Branch, BranchManager, SourceFile};
 use pbr::ProgressBar;
-use std::time::Instant;
+use std::cell::RefCell;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Write;
+use std::iter::FromIterator;
+use std::option::Option::Some;
+use std::rc::Rc;
+use std::time::Instant;
 
 #[derive(Debug)]
 pub struct MOSA {
@@ -27,7 +27,12 @@ pub struct MOSA {
 }
 
 impl MOSA {
-    pub fn new(generator: TestCaseGenerator, rank_selection: RankSelection, branch_manager: Rc<RefCell<BranchManager>>, test_id_generator: Rc<RefCell<TestIdGenerator>>) -> MOSA {
+    pub fn new(
+        generator: TestCaseGenerator,
+        rank_selection: RankSelection,
+        branch_manager: Rc<RefCell<BranchManager>>,
+        test_id_generator: Rc<RefCell<TestIdGenerator>>,
+    ) -> MOSA {
         MOSA {
             population_size: 50,
             mutation_rate: 0.2,
@@ -90,7 +95,9 @@ impl MOSA {
         time.end("archive");
 
         while current_generation < self.generations {
-            self.branch_manager.borrow_mut().set_current_population(&population);
+            self.branch_manager
+                .borrow_mut()
+                .set_current_population(&population);
 
             time.start("population");
             let mut offspring = self.generate_offspring(&population)?;
@@ -114,7 +121,8 @@ impl MOSA {
 
             // TODO there is a bug in sort, duplicate ids
             time.start("preference_sorting");
-            let mut fronts = PreferenceSorter::sort(&offspring, self.branch_manager.borrow().branches());
+            let mut fronts =
+                PreferenceSorter::sort(&offspring, self.branch_manager.borrow().branches());
             time.end("preference_sorting");
 
             time.start("fronts");
@@ -142,13 +150,13 @@ impl MOSA {
         source_file.add_tests(&population, true);
         time.end("tests");
 
-
         let mut tmp_file = File::create("fitness.log").unwrap();
 
         population.iter().for_each(|t| {
             let bm = self.branch_manager.borrow();
             let branches = bm.branches();
-            let fitness = branches.iter()
+            let fitness = branches
+                .iter()
                 .map(|b| format!("b = {}, f = {}", b.id(), b.fitness(t)))
                 .fold(String::new(), |acc, b| acc + &b.to_string() + ", ");
             let line = format!("Test {} => ({})\n", t.id(), fitness);
@@ -158,10 +166,10 @@ impl MOSA {
         //println!("\n{}", time);
 
         let (uncovered_branches, coverage) = self.coverage();
-        Some(GaResult{
+        Some(GaResult {
             uncovered_branches,
             coverage,
-            tests: population
+            tests: population,
         })
     }
 
@@ -170,7 +178,11 @@ impl MOSA {
     }
 
     fn test_that_covers(&self, archive: &[TestCase], branch: &Branch) -> Option<TestCase> {
-        archive.iter().filter(|&t| branch.fitness(t) == 0.0).nth(0).cloned()
+        archive
+            .iter()
+            .filter(|&t| branch.fitness(t) == 0.0)
+            .nth(0)
+            .cloned()
     }
 
     fn update_archive(&self, archive: &mut Vec<TestCase>, population: &[TestCase]) {
@@ -240,7 +252,11 @@ impl MOSA {
                 offspring.push(mutated_child_1);
                 offspring.push(mutated_child_2);
             } else {
-                offspring.push(if fastrand::f64() < 0.5 { mutated_child_1 } else { mutated_child_2 });
+                offspring.push(if fastrand::f64() < 0.5 {
+                    mutated_child_1
+                } else {
+                    mutated_child_2
+                });
             }
         }
 
@@ -257,12 +273,20 @@ impl MOSA {
     }
 }
 
-struct Archive<G, F> where G: ChromosomeGenerator, F: Fn(G::C) -> f64 {
+struct Archive<G, F>
+where
+    G: ChromosomeGenerator,
+    F: Fn(G::C) -> f64,
+{
     chromosomes: Vec<G::C>,
     objectives: Vec<Box<F>>,
 }
 
-impl<G, F> Archive<G, F> where G: ChromosomeGenerator, F: Fn(G::C) -> f64 {
+impl<G, F> Archive<G, F>
+where
+    G: ChromosomeGenerator,
+    F: Fn(G::C) -> f64,
+{
     pub fn update_archive(&mut self, population: &Vec<G::C>) {}
 }
 
@@ -273,7 +297,9 @@ struct Time {
 
 impl Display for Time {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let values = self.time.iter()
+        let values = self
+            .time
+            .iter()
             .map(|(k, v)| format!("{} => {}", k, *v as f64 / 1000000000f64))
             .fold(String::new(), |a, b| format!("{}, {}", a, b));
 
@@ -303,14 +329,17 @@ impl Time {
     }
 
     pub fn end(&mut self, name: &str) {
-        let elapsed = self.timers
+        let elapsed = self
+            .timers
             .get(name)
             .map(|t| t.elapsed().as_nanos())
             .unwrap();
-        self.time.entry(name.to_owned()).and_modify(|e| *e += elapsed).or_insert(elapsed);
+        self.time
+            .entry(name.to_owned())
+            .and_modify(|e| *e += elapsed)
+            .or_insert(elapsed);
     }
 }
-
 
 #[derive(Debug)]
 pub struct PreferenceSorter {}
@@ -320,7 +349,6 @@ impl PreferenceSorter {
         let mut fronts = HashMap::new();
         let mut front_0 = HashSet::new();
         let mut uncovered_branches = vec![];
-
 
         for objective in objectives {
             let mut min_dist = f64::MAX;
@@ -343,7 +371,8 @@ impl PreferenceSorter {
         }
 
         fronts.insert(0, Vec::from_iter(front_0.to_owned()));
-        let remaining_population: Vec<TestCase> = population.iter()
+        let remaining_population: Vec<TestCase> = population
+            .iter()
             .filter(|&i| !front_0.contains(i))
             .map(|i| i.clone())
             .collect();
@@ -387,7 +416,10 @@ impl Pareto {
 struct FNDS {}
 
 impl FNDS {
-    pub fn sort(population: &[TestCase], objectives: &[Branch]) -> Option<HashMap<usize, Vec<TestCase>>> {
+    pub fn sort(
+        population: &[TestCase],
+        objectives: &[Branch],
+    ) -> Option<HashMap<usize, Vec<TestCase>>> {
         let mut front: HashMap<usize, Vec<TestCase>> = HashMap::new();
         let mut S = HashMap::new();
         let mut n = HashMap::new();
@@ -401,7 +433,9 @@ impl FNDS {
             let p = population.get(i)?;
 
             for j in 0..population.len() {
-                if i == j { continue; }
+                if i == j {
+                    continue;
+                }
                 let q = population.get(j).unwrap();
                 if Pareto::dominates(p, q, objectives) {
                     S.get_mut(p).unwrap().insert(q);
@@ -412,7 +446,8 @@ impl FNDS {
             }
 
             if *n.get(p).unwrap() == 0 {
-                front.entry(0)
+                front
+                    .entry(0)
                     .and_modify(|e| e.push(p.clone()))
                     .or_insert(vec![p.clone()]);
             }
@@ -450,7 +485,9 @@ impl SVD {
             distances.insert(a, 0u64);
 
             for j in 0..population.len() {
-                if i == j { continue; }
+                if i == j {
+                    continue;
+                }
 
                 let b = population.get(j)?;
 
@@ -481,5 +518,5 @@ impl SVD {
 pub struct GaResult {
     pub coverage: f64,
     pub uncovered_branches: Vec<Branch>,
-    pub tests: Vec<TestCase>
+    pub tests: Vec<TestCase>,
 }
