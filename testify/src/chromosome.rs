@@ -110,6 +110,10 @@ impl TestCase {
         &self.stmts
     }
 
+    pub fn is_cutable(&self) -> bool {
+        self.size() > 1
+    }
+
     fn set_var_name(&mut self, stmt: &mut Statement) -> Option<String> {
         return match stmt {
             Statement::PrimitiveAssignment(_) => unimplemented!(),
@@ -764,7 +768,6 @@ impl StatementGenerator {
         if unconsumed_defs.is_empty() {
             let structs = self.source_file.structs();
             let i = fastrand::usize(0..structs.len());
-
             let item_struct = structs.get(i).unwrap();
             if let Some(constructor) = item_struct.constructor() {
                 let params: Vec<FnArg> = constructor.sig.inputs.iter().cloned().collect();
@@ -871,6 +874,8 @@ impl StatementGenerator {
         }
     }
 }
+
+
 
 #[derive(Debug, Clone)]
 pub struct Struct {

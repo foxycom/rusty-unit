@@ -74,7 +74,6 @@ impl BasicMutation {
         let bm = self.branch_manager.borrow();
 
         let uncovered_branches = bm.uncovered_branches();
-
         // TODO magic numbers
         return if uncovered_branches.is_empty() {
             test_case.clone()
@@ -84,8 +83,7 @@ impl BasicMutation {
             test_case.clone()
         } else if fastrand::f64() < 0.1 && test_case.size() > 1 {
             // Delete statement
-            //self.delete_statement(test_case)
-            test_case.clone()
+            self.delete_statement(test_case)
         } else {
             // Select a branch that has not been covered yet
             let branch_idx = fastrand::usize(0..uncovered_branches.len());
@@ -203,14 +201,15 @@ impl BasicMutation {
     }
 
     fn delete_statement(&self, test_case: &TestCase) -> TestCase {
-        let mut copy = test_case.clone();
-        // TODO check size
+        test_case.clone()
+
+        /*let mut copy = test_case.clone();
         // TODO check dependencies
 
         let stmts = copy.stmts();
         let i = fastrand::usize(0..stmts.len());
         copy.delete_stmt(i);
-        copy
+        copy*/
     }
 
     fn reorder_statements(&self, test_case: &TestCase) -> TestCase {
