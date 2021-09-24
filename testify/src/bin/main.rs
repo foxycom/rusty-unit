@@ -22,8 +22,6 @@ fn main() {
     let mut source_file = SourceFile::new(&opts.file);
     source_file.instrument();
 
-
-    unimplemented!();
     let branches = source_file.branches();
     let branch_manager = BranchManager::new(branches);
     let branch_manager_rc = Rc::new(RefCell::new(branch_manager));

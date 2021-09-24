@@ -10,11 +10,12 @@ use syn::token::Else;
 use syn::visit_mut::VisitMut;
 use syn::{
     BinOp, Block, Expr, ExprIf, File, FnArg, ImplItemMethod, Item, ItemEnum, ItemExternCrate,
-    ItemFn, ItemImpl, ItemMacro, ItemMod, ItemStruct, ItemUse, Stmt,
+    ItemFn, ItemImpl, ItemMacro, ItemMod, ItemStruct, ItemUse, Stmt, Type,
 };
 
-use crate::chromosome::{Chromosome, Struct, TestCase, FnInvStmt};
+use crate::chromosome::{Chromosome, FnInvStmt, MethodItem, Struct, TestCase, ConstructorItem, StaticFnItem, Callable, T, FunctionItem};
 use crate::parser::TraceParser;
+use crate::util;
 
 pub const ROOT_BRANCH: &'static str = "root[{}, {}]";
 pub const BRANCH: &'static str = "branch[{}, {}, {}]";
@@ -82,20 +83,31 @@ impl SourceFile {
         self.instrumenter.instrument(&self.file_path);
     }
 
-    pub fn impl_methods(&self) -> &Vec<ImplItemMethod> {
-        self.instrumenter.impl_methods.as_ref()
-    }
-
     pub fn structs(&self) -> &Vec<Struct> {
         self.instrumenter.structs.as_ref()
     }
 
-    /*pub fn generators(&self, ) -> &Vec<> {
+    pub fn generators(&self, ty: T) -> &Vec<Callable> {
+        self.instrumenter.callables
+            .iter()
+            .filter(|&c| {
+                let return_type = c.return_type();
+                match return_type {
+                    None => false,
+                    Some(return_ty) => return_ty == ty
+                }
 
-    }*/
+                unimplemented!()
+            })
+            .collect()
+    }
+
+    pub fn callables(&self) -> &Vec<Callable> {
+        &self.instrumenter.callables
+    }
 
     pub fn branches(&self) -> &Vec<Branch> {
-        self.instrumenter.branches.as_ref()
+        &self.instrumenter.branches
     }
 
     /// Removes the generated tests from the module.
@@ -368,8 +380,8 @@ pub struct Instrumenter {
     branches: Vec<Branch>,
     original_ast: Option<File>,
     instrumented_ast: Option<File>,
-    impl_methods: Vec<ImplItemMethod>,
     structs: Vec<Struct>,
+    callables: Vec<Callable>,
     condition: bool,
     current_fn: Option<Item>,
 }
@@ -381,8 +393,8 @@ impl Instrumenter {
         Instrumenter {
             branch_id: 0,
             branches: Vec::new(),
-            impl_methods: Vec::new(),
             structs: Vec::new(),
+            callables: Vec::new(),
             original_ast: None,
             instrumented_ast: None,
             condition: false,
@@ -578,20 +590,6 @@ impl Instrumenter {
         self.branches.push(branch);
     }
 
-    fn is_constructor(&self, method: &ImplItemMethod) -> bool {
-        method.sig.ident.to_string() == "new"
-    }
-
-    fn is_method(&self, method: &ImplItemMethod) -> bool {
-        method.sig.inputs.iter().any(|a| {
-            if let FnArg::Receiver(_) = a {
-                true
-            } else {
-                false
-            }
-        })
-    }
-
     fn extern_crates(&self) -> Vec<ItemExternCrate> {
         /*let lazy_static_crate = syn::parse_quote! {
             #[macro_use]
@@ -761,15 +759,32 @@ impl VisitMut for Instrumenter {
     fn visit_impl_item_method_mut(&mut self, i: &mut ImplItemMethod) {
         self.impl_methods.push(i.clone());
 
-        if self.is_constructor(i) {
-            self.structs.last_mut().unwrap().set_constructor(i.clone());
-        } else if self.is_method(i) {
-            self.structs.last_mut().unwrap().add_method(i.clone());
-        } else {
+        let ident = self.structs.last_mut().unwrap().ident();
+        let ty: Box<Type> = Box::new(syn::parse_quote! {#ident});
+
+        // FIXME here two copies of the same thing are created
+        if util::is_constructor(i) {
+            let constructor = ConstructorItem::new(i.clone(), ty);
             self.structs
                 .last_mut()
                 .unwrap()
-                .add_static_method(i.clone());
+                .set_constructor(constructor.clone());
+
+            self.callables.push(Callable::Constructor(constructor));
+        } else if util::is_method(i) {
+            let method = MethodItem::new(i.clone(), ty);
+            self.structs
+                .last_mut()
+                .unwrap()
+                .add_method(method.clone());
+            self.callables.push(Callable::Method(method));
+        } else {
+            let func = StaticFnItem::new(i.clone(), ty);
+            self.structs
+                .last_mut()
+                .unwrap()
+                .add_static_method(func.clone());
+            self.callables.push(Callable::StaticFunction(func));
         }
 
         for it in &mut i.attrs {
@@ -788,6 +803,9 @@ impl VisitMut for Instrumenter {
         for at in &mut i.attrs {
             VisitMut::visit_attribute_mut(self, at);
         }
+
+        let func = FunctionItem::new(i.clone());
+        self.callables.push(Callable::Function(func));
 
         VisitMut::visit_visibility_mut(self, &mut i.vis);
         VisitMut::visit_signature_mut(self, &mut i.sig);

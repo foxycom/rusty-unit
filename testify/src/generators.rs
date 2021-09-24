@@ -1,11 +1,11 @@
-use crate::chromosome::Arg;
+use crate::chromosome::{Arg, Param};
 use syn::{Expr, FnArg, Lit, Type};
 
 #[derive(Debug)]
 pub struct PrimitivesGenerator {}
 
 impl PrimitivesGenerator {
-    pub fn generate_arg(param: &FnArg) -> Arg {
+    pub fn generate_arg(param: &Param) -> Arg {
         if let FnArg::Typed(pattern) = param {
             return match pattern.ty.as_ref() {
                 Type::Path(path) => {
