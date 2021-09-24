@@ -119,14 +119,8 @@ impl BasicMutation {
         let mut copy = stmt.clone();
 
         match copy {
-            Statement::PrimitiveAssignment(_) => {
-                unimplemented!()
-            }
             Statement::Constructor(ref mut constructor_stmt) => {
                 self.mutate_constructor(constructor_stmt, dist);
-            }
-            Statement::AttributeAccess(_) => {
-                unimplemented!()
             }
             Statement::MethodInvocation(ref mut method_inv_stmt) => {
                 self.mutate_method_invocation(method_inv_stmt, dist);
@@ -134,6 +128,7 @@ impl BasicMutation {
             Statement::FunctionInvocation(ref mut fn_inv_stmt) => {
                 self.mutate_fn_invocation(fn_inv_stmt, dist);
             }
+            _ => unimplemented!()
         }
 
         copy
@@ -188,16 +183,17 @@ impl BasicMutation {
 
     fn insert_statement(&self, test_case: &TestCase) -> TestCase {
         let mut copy = test_case.clone();
-        let stmt = self.statement_generator.insert_random_stmt(&mut copy);
-        if let Statement::MethodInvocation(method_inv_stmt) = &stmt {
+        self.statement_generator.insert_random_stmt(&mut copy);
+
+        unimplemented!()
+        /*if let Statement::MethodInvocation(method_inv_stmt) = &stmt {
             let (_, owner_idx) = copy.get_owner(&method_inv_stmt);
             let i = fastrand::usize(owner_idx + 1..=copy.size());
             copy.insert_stmt(i, stmt.clone());
         } else {
             unimplemented!()
-        }
+        }*/
 
-        copy
     }
 
     fn delete_statement(&self, test_case: &TestCase) -> TestCase {

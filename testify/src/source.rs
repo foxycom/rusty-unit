@@ -87,18 +87,17 @@ impl SourceFile {
         self.instrumenter.structs.as_ref()
     }
 
-    pub fn generators(&self, ty: T) -> &Vec<Callable> {
+    pub fn generators(&self, ty: T) -> Vec<Callable> {
         self.instrumenter.callables
             .iter()
             .filter(|&c| {
                 let return_type = c.return_type();
                 match return_type {
                     None => false,
-                    Some(return_ty) => return_ty == ty
+                    Some(return_ty) => return_ty == &ty
                 }
-
-                unimplemented!()
             })
+            .cloned()
             .collect()
     }
 
@@ -757,8 +756,6 @@ impl VisitMut for Instrumenter {
     }
 
     fn visit_impl_item_method_mut(&mut self, i: &mut ImplItemMethod) {
-        self.impl_methods.push(i.clone());
-
         let ident = self.structs.last_mut().unwrap().ident();
         let ty: Box<Type> = Box::new(syn::parse_quote! {#ident});
 

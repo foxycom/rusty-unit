@@ -121,8 +121,8 @@ impl TestCase {
             Statement::PrimitiveAssignment(_) => unimplemented!(),
             Statement::Constructor(constructor_stmt) => {
                 let type_name = constructor_stmt
-                    .struct_item()
-                    .ident
+                    .constructor()
+                    .parent()
                     .to_string()
                     .to_lowercase();
                 let counter = self
@@ -137,12 +137,11 @@ impl TestCase {
             }
             Statement::MethodInvocation(method_inv_stmt) => {
                 if method_inv_stmt.returns_value() {
-                    let type_name = method_inv_stmt
-                        .method
-                        .return_type
-                        .map(|rt| rt.to_string())
-                        .as_ref();
-                    if let Some(type_name) = type_name {
+                    let method = method_inv_stmt.method();
+                    let return_type = method.return_type();
+                    let type_name = return_type.map(|rt| rt.to_string());
+
+                    if let Some(type_name) = type_name.as_ref() {
                         let type_name = type_name.to_lowercase();
                         let counter = self
                             .var_counters
@@ -150,7 +149,7 @@ impl TestCase {
                             .and_modify(|c| *c = *c + 1)
                             .or_insert(0);
                         let var_name = format!("{}_{}", type_name, counter);
-                        method_inv_stmt.set_name(&var_name);
+                        method_inv_stmt.set_var(Var::new(&var_name));
                         Some(var_name)
                     } else {
                         None
@@ -168,14 +167,14 @@ impl TestCase {
         let var_name = self.set_var_name(&mut stmt);
 
         match &mut stmt {
-            Statement::PrimitiveAssignment(_) => {}
+            Statement::PrimitiveAssignment(_) => unimplemented!(),
             Statement::Constructor(constructor_stmt) => {
                 let var_name = constructor_stmt.name().unwrap();
                 let node_index = self.ddg.add_node(var_name.to_string());
                 self.index_table
                     .insert(constructor_stmt.id.to_string(), node_index);
             }
-            Statement::AttributeAccess(_) => {}
+            Statement::AttributeAccess(_) => unimplemented!(),
             Statement::MethodInvocation(method_inv_stmt) => {
                 method_inv_stmt.args.iter().for_each(|a| {
                     if a.is_primitive() {
@@ -210,13 +209,14 @@ impl TestCase {
                 // TODO Store into map when method invocation returns something
                 let owner_index = self
                     .index_table
-                    .get(&method_inv_stmt.owner.to_string())
+                    .get(&method_inv_stmt.owner().to_string())
                     .unwrap();
                 let method_index = self.ddg.add_node(method_inv_stmt.id.to_string());
                 self.ddg
                     .add_edge(owner_index.clone(), method_index, Dependency::Owns);
             }
-            Statement::FunctionInvocation(_) => {}
+            Statement::FunctionInvocation(_) => unimplemented!(),
+            Statement::StaticFnInvocation(_) => unimplemented!(),
         }
         self.stmts.insert(idx, stmt);
         var_name
@@ -237,7 +237,7 @@ impl TestCase {
     pub fn get_owner(&self, stmt: &MethodInvStmt) -> (&Statement, usize) {
         for (i, s) in self.stmts.iter().enumerate() {
             if let Statement::Constructor(constructor) = s {
-                if constructor.name().unwrap() == &stmt.owner {
+                if constructor.name().unwrap() == &stmt.owner() {
                     return (s, i);
                 }
             }
@@ -432,7 +432,6 @@ impl Arg {
 
     pub fn is_by_reference(&self) -> bool {
         self.param.is_by_reference()
-
     }
     pub fn set_name(&mut self, name: Option<String>) {
         self.name = name;
@@ -488,7 +487,19 @@ impl Statement {
 pub struct StaticFnInvStmt {
     id: Uuid,
     args: Vec<Arg>,
-    func: StaticFnItem
+    func: StaticFnItem,
+    var: Option<Var>,
+}
+
+impl Clone for StaticFnInvStmt {
+    fn clone(&self) -> Self {
+        StaticFnInvStmt {
+            id: Uuid::new_v4(),
+            args: self.args.clone(),
+            func: self.func.clone(),
+            var: self.var.clone(),
+        }
+    }
 }
 
 impl StaticFnInvStmt {
@@ -496,8 +507,13 @@ impl StaticFnInvStmt {
         StaticFnInvStmt {
             id: Uuid::new_v4(),
             args,
-            func
+            func,
+            var: None,
         }
+    }
+
+    pub fn returns_value(&self) -> bool {
+        self.func.return_type.is_some()
     }
 
     pub fn to_syn(&self) -> Stmt {
@@ -506,8 +522,8 @@ impl StaticFnInvStmt {
         let parent_ident = Ident::new(&self.func.parent.to_string(), Span::call_site());
 
         if self.returns_value() {
-            if let Some(name) = &self.name {
-                let ident = Ident::new(name, Span::call_site());
+            if let Some(var) = &self.var {
+                let ident = Ident::new(&var.to_string(), Span::call_site());
                 syn::parse_quote! {
                     let #ident = #parent_ident::#func_ident(#(#args),*);
                 }
@@ -519,6 +535,13 @@ impl StaticFnInvStmt {
                 #parent_ident::#func_ident(#(#args),*);
             }
         }
+    }
+    pub fn var(&self) -> Option<&Var> {
+        self.var.as_ref()
+    }
+
+    pub fn set_var(&mut self, var: Var) {
+        self.var = Some(var);
     }
 }
 
@@ -569,13 +592,13 @@ impl ConstructorStmt {
     }
 
     pub fn to_syn(&self) -> Stmt {
-        if let Some(name) = &self.var {
-            let name = Ident::new(&name.to_string(), Span::call_site());
-            let struct_item = &self.struct_item;
-            let type_name = &struct_item.ident;
+        if let Some(var) = &self.var {
+            let ident = Ident::new(&var.to_string(), Span::call_site());
+
+            let type_name = self.constructor.parent.to_string();
             let args: Vec<Expr> = self.args.iter().cloned().map(|a| a.value).collect();
             syn::parse_quote! {
-                let mut #name = #type_name::new(#(#args),*);
+                let mut #ident = #type_name::new(#(#args),*);
             }
         } else {
             panic!("Name must have been set until here")
@@ -587,9 +610,7 @@ impl ConstructorStmt {
     pub fn name(&self) -> Option<&Var> {
         self.var.as_ref()
     }
-    pub fn struct_item(&self) -> &Struct {
-        &self.struct_item
-    }
+
     pub fn params(&self) -> &Vec<Param> {
         self.constructor.params()
     }
@@ -603,6 +624,13 @@ impl ConstructorStmt {
 
     pub fn set_var(&mut self, var: Var) {
         self.var = Some(var.clone());
+    }
+
+    pub fn var(&self) -> Option<&Var> {
+        self.var.as_ref()
+    }
+    pub fn constructor(&self) -> &ConstructorItem {
+        &self.constructor
     }
 }
 
@@ -626,7 +654,7 @@ impl AttrStmt {
 #[derive(Debug)]
 pub struct MethodInvStmt {
     id: Uuid,
-    name: Option<String>,
+    var: Option<Var>,
     method: MethodItem,
     args: Vec<Arg>,
 }
@@ -635,7 +663,7 @@ impl Clone for MethodInvStmt {
     fn clone(&self) -> Self {
         MethodInvStmt {
             id: Uuid::new_v4(),
-            name: self.name.clone(),
+            var: self.var.clone(),
             method: self.method.clone(),
             args: self.args.clone(),
         }
@@ -648,7 +676,7 @@ impl MethodInvStmt {
             method,
             args,
             id: Uuid::new_v4(),
-            name: None,
+            var: None,
         }
     }
 
@@ -660,8 +688,8 @@ impl MethodInvStmt {
         //let owner = Ident::new(&self.owner.to_string(), Span::call_site());
 
         if self.returns_value() {
-            if let Some(name) = &self.name {
-                let ident = Ident::new(name, Span::call_site());
+            if let Some(var) = &self.var {
+                let ident = Ident::new(&var.to_string(), Span::call_site());
                 syn::parse_quote! {
                     let #ident = #parent_ident::#method_ident(#(#args),*);
                 }
@@ -686,16 +714,12 @@ impl MethodInvStmt {
     pub fn id(&self) -> Uuid {
         self.id
     }
-    pub fn owner(&self) -> Option<&Var> {
-        if self.args().is_empty() {
-            return None;
-        }
-
+    pub fn owner(&self) -> Var {
         let first_arg = self.args.first().unwrap();
         if first_arg.param().is_self() {
-            Some(&Var::new(&first_arg.name().unwrap()))
+            Var::new(&first_arg.name().unwrap())
         } else {
-            None
+            panic!("There should be an owner")
         }
     }
 
@@ -713,14 +737,11 @@ impl MethodInvStmt {
         self.args = args;
     }
 
-    pub fn set_owner(&mut self, owner: &Var) {
-        self.owner = owner.clone();
+    pub fn var(&self) -> Option<&Var> {
+        self.var.as_ref()
     }
-    pub fn name(&self) -> &Option<String> {
-        &self.name
-    }
-    pub fn set_name(&mut self, name: &str) {
-        self.name = Some(name.to_owned());
+    pub fn set_var(&mut self, var: Var) {
+        self.var = Some(var);
     }
 }
 
@@ -819,8 +840,6 @@ impl StatementGenerator {
         let callables = self.source_file.callables();
         let i = fastrand::usize(0..callables.len());
         let callable = callables.get(i).unwrap();
-
-
     }
 
     /*pub fn get_random_stmt_old(&self, test_case: &mut TestCase) -> Statement {
@@ -929,7 +948,7 @@ impl Param {
     pub fn is_by_reference(&self) -> bool {
         match self {
             Param::Self_(_) => true,
-            Param::Regular(_) => false
+            Param::Regular(_) => false,
         }
     }
 
@@ -968,13 +987,27 @@ impl RegularParam {
     pub fn new(ty: T, fn_arg: FnArg) -> Self {
         RegularParam { ty, fn_arg }
     }
+
+    pub fn ty(&self) -> &T {
+        &self.ty
+    }
+    pub fn fn_arg(&self) -> &FnArg {
+        &self.fn_arg
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct T {
     name: String,
+
     // syn defined type
     ty: Box<Type>,
+}
+
+impl PartialEq for T {
+    fn eq(&self, other: &Self) -> bool {
+        self.ty == other.ty
+    }
 }
 
 impl T {
@@ -1074,7 +1107,7 @@ impl MethodItem {
 
         let return_type = match &sig.output {
             ReturnType::Default => None,
-            ReturnType::Type(_, ty) => T::new(&type_name(ty.as_ref()), ty.clone()),
+            ReturnType::Type(_, ty) => Some(T::new(&type_name(ty.as_ref()), ty.clone())),
         };
 
         MethodItem {
@@ -1085,12 +1118,11 @@ impl MethodItem {
         }
     }
 
-
     pub fn params(&self) -> &Vec<Param> {
         &self.params
     }
-    pub fn return_type(&self) -> &Option<T> {
-        &self.return_type
+    pub fn return_type(&self) -> Option<&T> {
+        self.return_type.as_ref()
     }
     pub fn parent(&self) -> &T {
         &self.parent
@@ -1105,7 +1137,7 @@ impl MethodItem {
 pub struct FunctionItem {
     params: Vec<Param>,
     return_type: Option<T>,
-    item_fn: ItemFn
+    item_fn: ItemFn,
 }
 
 impl FunctionItem {
@@ -1117,21 +1149,22 @@ impl FunctionItem {
             .map(|input| {
                 let ty = match input {
                     FnArg::Receiver(_) => panic!("Should occur"),
-                    FnArg::Typed(pat_type) => pat_type.ty.clone()
+                    FnArg::Typed(pat_type) => pat_type.ty.clone(),
                 };
 
                 fn_arg_to_param(input, ty)
-            }).collect();
+            })
+            .collect();
 
         let return_type = match &sig.output {
             ReturnType::Default => None,
-            ReturnType::Type(_, ty) => T::new(&type_name(ty.as_ref()), ty.clone()),
+            ReturnType::Type(_, ty) => Some(T::new(&type_name(ty.as_ref()), ty.clone())),
         };
 
         FunctionItem {
             params,
             return_type,
-            item_fn
+            item_fn,
         }
     }
 }
@@ -1155,7 +1188,7 @@ impl StaticFnItem {
 
         let return_type = match &sig.output {
             ReturnType::Default => None,
-            ReturnType::Type(_, ty) => T::new(&type_name(ty.as_ref()), ty.clone()),
+            ReturnType::Type(_, ty) => Some(T::new(&type_name(ty.as_ref()), ty.clone())),
         };
 
         let parent = T::new(&type_name(ty.as_ref()), ty.clone());
@@ -1167,8 +1200,6 @@ impl StaticFnItem {
             impl_item_method,
         }
     }
-
-
 }
 
 #[derive(Debug, Clone)]
@@ -1199,6 +1230,15 @@ impl ConstructorItem {
 
     pub fn params(&self) -> &Vec<Param> {
         self.params.as_ref()
+    }
+    pub fn return_type(&self) -> &T {
+        &self.return_type
+    }
+    pub fn parent(&self) -> &T {
+        &self.parent
+    }
+    pub fn impl_item_method(&self) -> &ImplItemMethod {
+        &self.impl_item_method
     }
 }
 

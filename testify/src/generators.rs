@@ -6,23 +6,29 @@ pub struct PrimitivesGenerator {}
 
 impl PrimitivesGenerator {
     pub fn generate_arg(param: &Param) -> Arg {
-        if let FnArg::Typed(pattern) = param {
-            return match pattern.ty.as_ref() {
-                Type::Path(path) => {
-                    if path.path.is_ident("u8") {
-                        let random_u64 = fastrand::u8(..);
-                        let lit: Expr = syn::parse_quote! { #random_u64 };
-                        Arg::new(None, lit, param.clone(), true)
-                    } else {
-                        unimplemented!()
-                    }
+        match param {
+            Param::Regular(regular_param) => {
+                if let FnArg::Typed(pattern) = regular_param.fn_arg() {
+                    return match pattern.ty.as_ref() {
+                        Type::Path(path) => {
+                            if path.path.is_ident("u8") {
+                                let random_u64 = fastrand::u8(..);
+                                let lit: Expr = syn::parse_quote! { #random_u64 };
+                                Arg::new(None, lit, param.clone(), true)
+                            } else {
+                                unimplemented!()
+                            }
+                        }
+                        _ => {
+                            let lit: Expr = syn::parse_quote! { 0 };
+                            Arg::new(None, lit, param.clone(), true)
+                        }
+                    };
                 }
-                _ => {
-                    let lit: Expr = syn::parse_quote! { 0 };
-                    Arg::new(None, lit, param.clone(), true)
-                }
-            };
+            }
+            _ => unimplemented!()
         }
+
         let lit: Expr = syn::parse_quote! { 0 };
         Arg::new(None, lit, param.clone(), true)
     }
