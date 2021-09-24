@@ -754,6 +754,11 @@ impl FnInvStmt {
 }
 
 #[derive(Clone, Debug)]
+pub struct Var {
+    name: String
+}
+
+#[derive(Clone, Debug)]
 pub struct StatementGenerator {
     source_file: SourceFile,
 }
@@ -875,14 +880,135 @@ impl StatementGenerator {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum Param {
+    Self_(SelfParam),
+    Regular(RegularParam)
+}
 
+impl Param {
+    pub fn is_self(&self) -> bool {
+        match self {
+            Param::Self_(_) => true,
+            Param::Regular(_) => false
+        }
+    }
+
+    pub fn ty(&self) -> &T {
+        match self {
+            Param::Self_(self_param) => &self_param.ty,
+            Param::Regular(regular_param) => &regular_param.ty
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SelfParam {
+    ty: T,
+    fn_arg: FnArg,
+    by_reference: bool
+}
+
+impl SelfParam {
+    pub fn new(ty: T, fn_arg: FnArg, by_reference: bool) -> Self {
+        SelfParam { ty, fn_arg, by_reference }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct RegularParam {
+    ty: T,
+    fn_arg: FnArg,
+}
+
+impl RegularParam {
+    pub fn new(ty: T, fn_arg: FnArg) -> Self {
+        Param { ty, fn_arg }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct T {
+    name: String,
+    // syn defined type
+    ty: Box<Type>
+}
+
+impl T {
+    pub fn new(name: String, ty: Box<Type>) -> Self {
+        T { name, ty }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Callable {
+    Method(MethodItem),
+    Function(FunctionItem),
+    Constructor(ConstructorItem)
+}
+
+impl Callable {
+    pub fn params(&self) -> &Vec<Param> {
+        match self {
+            Callable::Method(method_item) => &method_item.params,
+            Callable::Function(fn_item) => &fn_item.params,
+            Callable::Constructor(constructor_item) => &constructor_item.params
+        }
+    }
+
+    pub fn return_type(&self) -> Option<&T> {
+        match self {
+            Callable::Method(method_item) => method_item.return_type.as_ref(),
+            Callable::Function(function_item) => function_item.return_type.as_ref(),
+            Callable::Constructor(constructor_item) => Some(&constructor_item.return_type)
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MethodItem {
+    params: Vec<Param>,
+    return_type: Option<T>,
+    impl_item_method: ImplItemMethod,
+    is_static: bool,
+    is_constructor: bool,
+    is_associative: bool
+}
+
+impl MethodItem {
+    pub fn new(impl_item_method: ImplItemMethod, ty: Box<Type>) -> Self {
+        let sig = &impl_item_method.sig;
+        let params: Vec<Param> = sig.inputs.iter().map(|input| {
+            fn_arg_to_param(input, ty.clone())
+        }).collect();
+
+        let return_type = match &sig.output {
+            ReturnType::Default => None,
+            ReturnType::Type(_, ty) => T::new(type_name(ty.as_ref()), ty.clone())
+        };
+
+        MethodItem { params, return_type, impl_item_method, is_static: (), is_constructor: (), is_associative: () }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FunctionItem {
+    params: Vec<Param>,
+    return_type: Option<T>
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstructorItem {
+    params: Vec<Param>,
+    return_type: T
+}
 
 #[derive(Debug, Clone)]
 pub struct Struct {
     ident: Ident,
-    constructor: Option<ImplItemMethod>,
-    methods: Vec<ImplItemMethod>,
-    static_methods: Vec<ImplItemMethod>,
+    constructor: Option<MethodItem>,
+    methods: Vec<MethodItem>,
+    static_methods: Vec<MethodItem>,
 }
 
 impl Struct {
@@ -895,17 +1021,17 @@ impl Struct {
         }
     }
 
-    pub fn constructor(&self) -> &Option<ImplItemMethod> {
+    pub fn constructor(&self) -> &Option<MethodItem> {
         &self.constructor
     }
 
-    pub fn methods(&self) -> &Vec<ImplItemMethod> {
+    pub fn methods(&self) -> &Vec<MethodItem> {
         &self.methods
     }
-    pub fn static_methods(&self) -> &Vec<ImplItemMethod> {
+    pub fn static_methods(&self) -> &Vec<MethodItem> {
         &self.static_methods
     }
-    pub fn set_constructor(&mut self, constructor: ImplItemMethod) {
+    pub fn set_constructor(&mut self, constructor: MethodItem) {
         self.constructor = Some(constructor);
     }
 
@@ -1006,3 +1132,23 @@ fn merge_path(path: &Path) -> String {
         .collect::<Vec<String>>()
         .join("::")
 }
+
+fn fn_arg_to_param(fn_arg: &FnArg, syn_type: Box<Type>) -> Param {
+    match fn_arg {
+        FnArg::Receiver(recv) => {
+            let t = T::new(type_name(syn_type.as_ref()), syn_type);
+            let self_param = SelfParam::new(t, fn_arg.clone(), recv.reference.is_some());
+
+            Param::Self_(self_param)
+        }
+        FnArg::Typed(typed) => {
+            let syn_type = typed.ty.clone();
+            let t = T::new(type_name(syn_type.as_ref()), syn_type);
+
+            // TODO this is not always true, self can also be typed, see doc about FnArg
+            let regular_param = RegularParam::new(t, fn_arg.clone());
+            Param::Regular(regular_param)
+        }
+    }
+}
+

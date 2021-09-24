@@ -13,7 +13,7 @@ use syn::{
     ItemFn, ItemImpl, ItemMacro, ItemMod, ItemStruct, ItemUse, Stmt,
 };
 
-use crate::chromosome::{Chromosome, Struct, TestCase};
+use crate::chromosome::{Chromosome, Struct, TestCase, FnInvStmt};
 use crate::parser::TraceParser;
 
 pub const ROOT_BRANCH: &'static str = "root[{}, {}]";
@@ -89,6 +89,10 @@ impl SourceFile {
     pub fn structs(&self) -> &Vec<Struct> {
         self.instrumenter.structs.as_ref()
     }
+
+    /*pub fn generators(&self, ) -> &Vec<> {
+
+    }*/
 
     pub fn branches(&self) -> &Vec<Branch> {
         self.instrumenter.branches.as_ref()
