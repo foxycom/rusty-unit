@@ -28,8 +28,8 @@ pub fn type_name(data_type: &Type) -> String {
             let path = &type_path.path;
             merge_path(&path)
         }
-        Type::Reference(_) => {
-            unimplemented!()
+        Type::Reference(type_reference) => {
+            type_name(type_reference.elem.as_ref())
         }
         _ => {
             unimplemented!()

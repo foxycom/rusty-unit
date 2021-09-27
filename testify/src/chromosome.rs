@@ -1,21 +1,23 @@
-use crate::generators::{PrimitivesGenerator, TestIdGenerator};
-use crate::operators::{BasicCrossover, BasicMutation};
-use crate::source::{Branch, BranchManager, SourceFile};
-use crate::util;
-use crate::util::{fn_arg_to_param, is_constructor, is_method, return_type_name, type_name};
-use petgraph::prelude::{NodeIndex, StableDiGraph};
-use petgraph::Direction;
-use proc_macro2::{Ident, Span};
-use quote::ToTokens;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Error, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
+
+use petgraph::prelude::{NodeIndex, StableDiGraph};
+use petgraph::Direction;
+use proc_macro2::{Ident, Span};
+use quote::ToTokens;
 use syn::{
     Expr, FnArg, ImplItemMethod, Item, ItemFn, Pat, PatType, Path, ReturnType, Stmt, Type, TypePath,
 };
 use uuid::Uuid;
+
+use crate::generators::{PrimitivesGenerator, TestIdGenerator};
+use crate::operators::{BasicCrossover, BasicMutation};
+use crate::source::{Branch, BranchManager, SourceFile};
+use crate::util;
+use crate::util::{fn_arg_to_param, is_constructor, is_method, return_type_name, type_name};
 
 pub trait Chromosome: Clone + Debug {
     fn mutate(&self) -> Self;
@@ -49,7 +51,12 @@ pub struct TestCase {
     crossover: BasicCrossover,
     ddg: StableDiGraph<String, Dependency>,
     branch_manager: Rc<RefCell<BranchManager>>,
-    index_table: HashMap<String, NodeIndex>,
+
+    /// Stores connection of variables and the appropriate statements
+    var_table: HashMap<Var, Uuid>,
+
+    /// Stores ids of statement to be able to retrieve dd graph nodes later by their index
+    node_index_table: HashMap<Uuid, NodeIndex>,
     var_counters: HashMap<String, usize>,
 }
 
@@ -63,7 +70,8 @@ impl Clone for TestCase {
             crossover: self.crossover.clone(),
             branch_manager: self.branch_manager.clone(),
             ddg: self.ddg.clone(),
-            index_table: self.index_table.clone(),
+            node_index_table: self.node_index_table.clone(),
+            var_table: self.var_table.clone(),
             var_counters: self.var_counters.clone(),
         }
     }
@@ -72,6 +80,8 @@ impl Clone for TestCase {
 impl PartialEq for TestCase {
     fn eq(&self, other: &Self) -> bool {
         /*self.stmts == other.stmts && self.objective == other.objective*/
+
+        // TODO there is more to it
         self.id == other.id
     }
 }
@@ -103,7 +113,8 @@ impl TestCase {
             crossover,
             branch_manager,
             ddg: StableDiGraph::new(),
-            index_table: HashMap::new(),
+            var_table: HashMap::new(),
+            node_index_table: HashMap::new(),
             var_counters: HashMap::new(),
         }
     }
@@ -116,121 +127,87 @@ impl TestCase {
         self.size() > 1
     }
 
-    fn set_var_name(&mut self, stmt: &mut Statement) -> Option<String> {
-        return match stmt {
-            Statement::PrimitiveAssignment(_) => unimplemented!(),
-            Statement::Constructor(constructor_stmt) => {
-                let type_name = constructor_stmt
-                    .constructor()
-                    .parent()
-                    .to_string()
-                    .to_lowercase();
-                let counter = self
-                    .var_counters
-                    .entry(type_name.clone())
-                    .and_modify(|c| *c = *c + 1)
-                    .or_insert(0);
+    fn set_var(&mut self, stmt: &mut Statement) -> Option<Var> {
+        if let Some(return_type) = stmt.return_type() {
+            let type_name = return_type.to_string();
+            let counter = self
+                .var_counters
+                .entry(type_name.clone())
+                .and_modify(|c| *c = *c + 1)
+                .or_insert(0);
 
-                let var_name = format!("{}_{}", type_name, counter);
-                constructor_stmt.set_var(Var::new(&var_name));
-                Some(var_name)
-            }
-            Statement::MethodInvocation(method_inv_stmt) => {
-                if method_inv_stmt.returns_value() {
-                    let method = method_inv_stmt.method();
-                    let return_type = method.return_type();
-                    let type_name = return_type.map(|rt| rt.to_string());
+            let var_name = format!("{}_{}", type_name, counter);
+            let var = Var::new(&var_name, return_type.clone());
+            stmt.set_var(var.clone());
+            Some(var)
+        } else {
+            None
+        }
+    }
 
-                    if let Some(type_name) = type_name.as_ref() {
-                        let type_name = type_name.to_lowercase();
-                        let counter = self
-                            .var_counters
-                            .entry(type_name.clone())
-                            .and_modify(|c| *c = *c + 1)
-                            .or_insert(0);
-                        let var_name = format!("{}_{}", type_name, counter);
-                        method_inv_stmt.set_var(Var::new(&var_name));
-                        Some(var_name)
+    pub fn add_stmt(&mut self, mut stmt: Statement) -> Option<Var> {
+        let var = self.set_var(&mut stmt);
+
+        let node_index = self.ddg.add_node(stmt.id().to_string());
+        self.node_index_table.insert(stmt.id(), node_index.clone());
+
+        let mut insert_position: usize = 0;
+        if let Some(args) = stmt.args() {
+            insert_position = args.iter()
+                .filter_map(|a|
+                    // Return the indeces of statements that produce variables used
+                    // as arguments in a statement. All variables must be defined before
+                    // they can be used in a statement
+                    if let Arg::Var(var_arg) = a {
+                        // Connect used variables in the graph
+                        let var = var_arg.var();
+                        let generating_statement_uuid = self.var_table.get(var).unwrap();
+                        let other_node_index = self.node_index_table.get(
+                            &generating_statement_uuid
+                        ).unwrap();
+
+                        if var_arg.is_by_reference() {
+                            self.ddg.add_edge(node_index, other_node_index.clone(), Dependency::Borrows);
+                        } else {
+                            self.ddg.add_edge(node_index, other_node_index.clone(), Dependency::Consumes);
+                        }
+
+                        let generating_stmt_position = self.stmts.iter().position(|s| {
+                            s.id() == generating_statement_uuid
+                        }).unwrap();
+
+                        Some(generating_statement_position)
                     } else {
                         None
                     }
-                } else {
-                    None
-                }
-            }
-            Statement::FunctionInvocation(_) => unimplemented!(),
-            _ => panic!(),
-        };
-    }
-
-    pub fn insert_stmt(&mut self, idx: usize, mut stmt: Statement) -> Option<String> {
-        let var_name = self.set_var_name(&mut stmt);
-
-        match &mut stmt {
-            Statement::PrimitiveAssignment(_) => unimplemented!(),
-            Statement::Constructor(constructor_stmt) => {
-                let var_name = constructor_stmt.name().unwrap();
-                let node_index = self.ddg.add_node(var_name.to_string());
-                self.index_table
-                    .insert(constructor_stmt.id.to_string(), node_index);
-            }
-            Statement::AttributeAccess(_) => unimplemented!(),
-            Statement::MethodInvocation(method_inv_stmt) => {
-                method_inv_stmt.args.iter().for_each(|a| {
-                    if a.is_primitive() {
-                        // do nothing for now
-                    } else {
-                        // TODO extract method to insert new nodes
-                        let new_node = self.ddg.add_node(method_inv_stmt.id.to_string());
-                        self.index_table
-                            .insert(method_inv_stmt.id.to_string(), new_node.clone());
-                        let arg_name = a.name();
-                        if let Some(_) = arg_name {
-                            if a.is_by_reference() {
-                                self.ddg.add_edge(
-                                    new_node,
-                                    self.index_table.get(&a.name().unwrap()).unwrap().clone(),
-                                    Dependency::Borrows,
-                                );
-                            } else {
-                                // The arg is being consumed
-                                self.ddg.add_edge(
-                                    new_node,
-                                    self.index_table.get(&a.name().unwrap()).unwrap().clone(),
-                                    Dependency::Consumes,
-                                );
-                            }
-                        } else {
-                            panic!("Variable name has not been set")
-                        }
-                    }
-                });
-
-                // TODO Store into map when method invocation returns something
-                let owner_index = self
-                    .index_table
-                    .get(&method_inv_stmt.owner().to_string())
-                    .unwrap();
-                let method_index = self.ddg.add_node(method_inv_stmt.id.to_string());
-                self.ddg
-                    .add_edge(owner_index.clone(), method_index, Dependency::Owns);
-            }
-            Statement::FunctionInvocation(_) => unimplemented!(),
-            Statement::StaticFnInvocation(_) => unimplemented!(),
+                ).fold(0usize, |a, b| {
+                a.max(b)
+            });
         }
-        self.stmts.insert(idx, stmt);
-        var_name
+
+        self.stmts.insert(insert_position + 1, stmt);
+
+        if let Some(var) = &var {
+            self.var_table.insert(var.clone(), stmt.id());
+        }
+
+        var
     }
 
-    pub fn is_consumed(&self, constructor_stmt: &ConstructorStmt) -> bool {
-        if let Some(var_name) = constructor_stmt.name() {
-            let node_index = self.index_table.get(&var_name.to_string()).unwrap();
+    pub fn is_consumed(&self, stmt: &Statement) -> bool {
+        if !stmt.returns_value() {
+            panic!("The statement does not return anything");
+        }
+
+        if let Some(var) = stmt.var() {
+            let uuid = self.var_table.get(var).unwrap();
+            let node_index = self.node_index_table.get(uuid).unwrap();
             let mut incoming_edges = self
                 .ddg
                 .edges_directed(node_index.to_owned(), Direction::Incoming);
             incoming_edges.any(|e| e.weight().to_owned() == Dependency::Consumes)
         } else {
-            panic!("Name is not set")
+            panic!("Variable is not defined even though the statement returns a value");
         }
     }
 
@@ -313,13 +290,13 @@ impl TestCase {
             .collect()
     }
 
-    pub fn unconsumed_complex_definitions(&mut self) -> Vec<ConstructorStmt> {
+    pub fn unconsumed_complex_definitions(&mut self) -> Vec<Statement> {
         self.stmts()
             .iter()
             .filter_map(|s| {
-                if let Statement::Constructor(stmt) = s {
-                    if !self.is_consumed(stmt) {
-                        return Some(stmt.clone());
+                if s.returns_value() {
+                    if !self.is_consumed(s) {
+                        return Some(s.clone());
                     }
                 }
                 None
@@ -338,6 +315,14 @@ impl TestCase {
                 }
             })
             .collect()
+    }
+
+    pub fn instantiated_types(&self) -> &Vec<T> {
+        unimplemented!()
+    }
+
+    pub fn free_instantiated_types(&self) -> &Vec<T> {
+        unimplemented!()
     }
 
     pub fn results(&self) -> &HashMap<u64, f64> {
@@ -393,65 +378,57 @@ impl Chromosome for TestCase {
 }
 
 #[derive(Debug, Clone)]
-pub struct Arg {
-    name: Option<String>,
-    param: Param,
-    value: Expr,
-    primitive: bool,
+pub enum Arg {
+    Var(VarArg),
 }
 
 impl Arg {
-    pub fn new(name: Option<String>, value: Expr, param: Param, primitive: bool) -> Self {
-        Arg {
-            name,
-            value,
-            param,
-            primitive,
+    pub fn to_syn(&self) -> Expr {
+        match self {
+            Arg::Var(var_arg) => var_arg.to_syn(),
         }
     }
+}
 
-    pub fn name(&self) -> Option<String> {
-        self.name.clone()
-    }
+#[derive(Debug, Clone)]
+pub struct VarArg {
+    param: Param,
+    var: Var,
+}
 
-    pub fn value(&self) -> &Expr {
-        &self.value
+impl VarArg {
+    pub fn new(var: Var, param: Param) -> Self {
+        VarArg { param, var }
     }
 
     pub fn param(&self) -> &Param {
         &self.param
     }
 
-    pub fn is_primitive(&self) -> bool {
-        self.primitive
+    pub fn var(&self) -> &Var {
+        &self.var
+    }
+
+    pub fn is_consuming(&self) -> bool {
+        !self.param.is_by_reference()
+    }
+
+    pub fn is_by_reference(&self) -> bool {
+        self.param.is_by_reference()
     }
 
     pub fn is_self(&self) -> bool {
         self.param.is_self()
     }
 
-    pub fn is_by_reference(&self) -> bool {
-        self.param.is_by_reference()
-    }
-    pub fn set_name(&mut self, name: Option<String>) {
-        self.name = name;
-    }
-    pub fn set_value(&mut self, value: Expr) {
-        self.value = value;
-    }
-    pub fn set_param(&mut self, param: Param) {
-        self.param = param;
-    }
-
     pub fn to_syn(&self) -> Expr {
-        // TODO this is only limited to basic references
-        if self.is_by_reference() {
-            let value = &self.value;
+        if self.param.is_by_reference() {
+            let expr = self.var.to_syn();
             syn::parse_quote! {
-                &#value
+                &#expr
             }
         } else {
-            self.value.clone()
+            self.var.to_syn()
         }
     }
 }
@@ -479,6 +456,80 @@ impl Statement {
             Statement::StaticFnInvocation(fn_inv_stmt) => fn_inv_stmt.to_syn(),
             Statement::MethodInvocation(method_inv_stmt) => method_inv_stmt.to_syn(),
             Statement::FunctionInvocation(fn_inv_stmt) => fn_inv_stmt.to_syn(),
+        }
+    }
+
+    pub fn returns_value(&self) -> bool {
+        match self {
+            Statement::Constructor(_) => true,
+            Statement::StaticFnInvocation(func) => func.returns_value(),
+            Statement::PrimitiveAssignment(_) => true,
+            Statement::FunctionInvocation(func) => func.returns_value(),
+            Statement::MethodInvocation(m) => m.returns_value(),
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn var(&self) -> Option<&Var> {
+        if !self.returns_value() {
+            panic!("Statement does not return anything");
+        }
+
+        match self {
+            Statement::Constructor(c) => c.var(),
+            Statement::MethodInvocation(m) => m.var(),
+            Statement::StaticFnInvocation(func) => func.var(),
+            Statement::FunctionInvocation(func) => func.var(),
+            Statement::PrimitiveAssignment(a) => a.var(),
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn return_type(&self) -> Option<&T> {
+        match self {
+            Statement::PrimitiveAssignment(a) => a.return_type(),
+            Statement::Constructor(c) => Some(c.return_type()),
+            Statement::MethodInvocation(m) => m.return_type(),
+            Statement::StaticFnInvocation(f) => f.return_type(),
+            Statement::FunctionInvocation(f) => f.return_type(),
+            Statement::AttributeAccess(a) => a.return_type(),
+        }
+    }
+
+    pub fn set_var(&mut self, var: Var) {
+        if !self.returns_value() {
+            panic!("Statement does not return any value")
+        }
+
+        match self {
+            Statement::PrimitiveAssignment(ref mut p) => p.set_var(var),
+            Statement::Constructor(ref mut c) => c.set_var(var),
+            Statement::AttributeAccess(ref mut a) => a.set_var(var),
+            Statement::MethodInvocation(ref mut m) => m.set_var(var),
+            Statement::StaticFnInvocation(ref mut f) => f.set_var(var),
+            Statement::FunctionInvocation(ref mut f) => f.set_var(var),
+        }
+    }
+
+    pub fn args(&self) -> Option<&Vec<Arg>> {
+        match self {
+            Statement::PrimitiveAssignment(_) => None,
+            Statement::Constructor(c) => Some(c.args()),
+            Statement::AttributeAccess(_) => None,
+            Statement::MethodInvocation(m) => Some(m.args()),
+            Statement::StaticFnInvocation(f) => Some(f.args()),
+            Statement::FunctionInvocation(f) => Some(f.args()),
+        }
+    }
+
+    pub fn id(&self) -> Uuid {
+        match self {
+            Statement::PrimitiveAssignment(p) => p.id(),
+            Statement::Constructor(c) => c.id(),
+            Statement::AttributeAccess(a) => a.id(),
+            Statement::MethodInvocation(m) => m.id(),
+            Statement::StaticFnInvocation(f) => f.id(),
+            Statement::FunctionInvocation(f) => f.id(),
         }
     }
 }
@@ -512,6 +563,10 @@ impl StaticFnInvStmt {
         }
     }
 
+    pub fn return_type(&self) -> Option<&T> {
+        self.func.return_type.as_ref()
+    }
+
     pub fn returns_value(&self) -> bool {
         self.func.return_type.is_some()
     }
@@ -543,22 +598,54 @@ impl StaticFnInvStmt {
     pub fn set_var(&mut self, var: Var) {
         self.var = Some(var);
     }
+    pub fn args(&self) -> &Vec<Arg> {
+        &self.args
+    }
+    pub fn func(&self) -> &StaticFnItem {
+        &self.func
+    }
+    pub fn id(&self) -> Uuid {
+        self.id
+    }
 }
 
 #[derive(Debug)]
 pub struct AssignStmt {
     id: Uuid,
+    var: Option<Var>,
 }
 
 impl AssignStmt {
     pub fn new() -> Self {
-        AssignStmt { id: Uuid::new_v4() }
+        AssignStmt {
+            id: Uuid::new_v4(),
+            var: None,
+        }
+    }
+
+    pub fn var(&self) -> Option<&Var> {
+        self.var.as_ref()
+    }
+
+    pub fn return_type(&self) -> Option<&T> {
+        unimplemented!()
+    }
+
+    pub fn set_var(&mut self, var: Var) {
+        self.var = Some(var);
+    }
+
+    pub fn id(&self) -> Uuid {
+        self.id
     }
 }
 
 impl Clone for AssignStmt {
     fn clone(&self) -> Self {
-        AssignStmt { id: Uuid::new_v4() }
+        AssignStmt {
+            id: Uuid::new_v4(),
+            var: self.var.clone(),
+        }
     }
 }
 
@@ -604,6 +691,7 @@ impl ConstructorStmt {
             panic!("Name must have been set until here")
         }
     }
+
     pub fn id(&self) -> Uuid {
         self.id
     }
@@ -632,6 +720,14 @@ impl ConstructorStmt {
     pub fn constructor(&self) -> &ConstructorItem {
         &self.constructor
     }
+
+    pub fn returns_value(&self) -> bool {
+        true
+    }
+
+    pub fn return_type(&self) -> &T {
+        &self.constructor.return_type
+    }
 }
 
 #[derive(Debug)]
@@ -648,6 +744,17 @@ impl Clone for AttrStmt {
 impl AttrStmt {
     pub fn new() -> Self {
         AttrStmt { id: Uuid::new_v4() }
+    }
+
+    pub fn return_type(&self) -> Option<&T> {
+        unimplemented!()
+    }
+
+    pub fn set_var(&mut self, var: Var) {
+        unimplemented!()
+    }
+    pub fn id(&self) -> Uuid {
+        self.id
     }
 }
 
@@ -682,10 +789,8 @@ impl MethodInvStmt {
 
     pub fn to_syn(&self) -> Stmt {
         let method_ident = &self.method.impl_item_method.sig.ident;
-        let args: Vec<Expr> = self.args.iter().cloned().map(|a| a.to_syn()).collect();
+        let args: Vec<Expr> = self.args.iter().map(Arg::to_syn).collect();
         let parent_ident = Ident::new(&self.method.parent.to_string(), Span::call_site());
-
-        //let owner = Ident::new(&self.owner.to_string(), Span::call_site());
 
         if self.returns_value() {
             if let Some(var) = &self.var {
@@ -715,9 +820,10 @@ impl MethodInvStmt {
         self.id
     }
     pub fn owner(&self) -> Var {
-        let first_arg = self.args.first().unwrap();
-        if first_arg.param().is_self() {
-            Var::new(&first_arg.name().unwrap())
+        let first_param = self.params().first().unwrap();
+        if first_param.is_self() {
+            let owner_type = first_param.ty();
+            Var::new(&first_arg.name().unwrap(), owner_type.clone())
         } else {
             panic!("There should be an owner")
         }
@@ -750,6 +856,7 @@ pub struct FnInvStmt {
     id: Uuid,
     args: Vec<Arg>,
     func: FunctionItem,
+    var: Option<Var>,
 }
 
 impl Clone for FnInvStmt {
@@ -758,6 +865,7 @@ impl Clone for FnInvStmt {
             id: Uuid::new_v4(),
             args: self.args.clone(),
             func: self.func.clone(),
+            var: self.var.clone(),
         }
     }
 }
@@ -768,6 +876,7 @@ impl FnInvStmt {
             args,
             func,
             id: Uuid::new_v4(),
+            var: None,
         }
     }
 
@@ -786,6 +895,22 @@ impl FnInvStmt {
         !self.func.params.is_empty()
     }
 
+    pub fn returns_value(&self) -> bool {
+        unimplemented!()
+    }
+
+    pub fn return_type(&self) -> Option<&T> {
+        self.func.return_type.as_ref()
+    }
+
+    pub fn var(&self) -> Option<&Var> {
+        self.var.as_ref()
+    }
+
+    pub fn set_var(&mut self, var: Var) {
+        self.var = Some(var);
+    }
+
     pub fn set_args(&mut self, args: Vec<Arg>) {
         self.args = args;
     }
@@ -798,11 +923,15 @@ impl FnInvStmt {
             #ident(#(#args),*);
         }
     }
+    pub fn id(&self) -> Uuid {
+        self.id
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Var {
     name: String,
+    ty: T,
 }
 
 impl Display for Var {
@@ -812,9 +941,25 @@ impl Display for Var {
 }
 
 impl Var {
-    pub fn new(name: &str) -> Self {
+    pub fn new(name: &str, ty: T) -> Self {
         Var {
             name: name.to_owned(),
+            ty,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn ty(&self) -> &T {
+        &self.ty
+    }
+
+    pub fn to_syn(&self) -> Expr {
+        let ident = Ident::new(self.name(), Span::call_site());
+        syn::parse_quote! {
+            #ident
         }
     }
 }
@@ -840,6 +985,43 @@ impl StatementGenerator {
         let callables = self.source_file.callables();
         let i = fastrand::usize(0..callables.len());
         let callable = callables.get(i).unwrap();
+
+        let args: Vec<Arg> = callable
+            .params()
+            .iter()
+            .map(|p| self.generate_arg(test_case, param))
+            .collect();
+        let stmt = callable.to_stmt(args);
+        test_case.add_stmt(stmt);
+    }
+
+    fn generate_arg(&self, test_case: &mut TestCase, param: &Param) -> Arg {
+        let generators = self.source_file.generators(param.ty());
+
+        // Pick a random generator
+        let i = fastrand::usize(0..generators.len());
+        let generator = generators.get(i).unwrap();
+        let args: Vec<Arg> = generator
+            .params()
+            .iter()
+            .map(|p| {
+                // TODO instantiate new object with a 10% probability even if there is a free ones
+                // already in the test case
+                if !test_case.instantiated_types().contains(p.ty()) {
+                    let var = self.generate_arg(test_case, p).unwrap();
+                    (var, param.clone())
+                } else {
+                    unimplemented!()
+                }
+            })
+            .map(|(var, param)| Arg::Var(VarArg::new(var, param)))
+            .collect();
+
+        let stmt = generator.to_stmt(args);
+
+        let return_var = test_case.add_stmt(stmt).unwrap();
+
+        Arg::Var(VarArg::new(return_var, param.clone()))
     }
 
     /*pub fn get_random_stmt_old(&self, test_case: &mut TestCase) -> Statement {

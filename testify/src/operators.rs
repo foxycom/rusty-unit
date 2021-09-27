@@ -184,8 +184,8 @@ impl BasicMutation {
     fn insert_statement(&self, test_case: &TestCase) -> TestCase {
         let mut copy = test_case.clone();
         self.statement_generator.insert_random_stmt(&mut copy);
-
-        unimplemented!()
+        copy
+        // TODO maintain correct positions
         /*if let Statement::MethodInvocation(method_inv_stmt) = &stmt {
             let (_, owner_idx) = copy.get_owner(&method_inv_stmt);
             let i = fastrand::usize(owner_idx + 1..=copy.size());

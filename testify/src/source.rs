@@ -87,14 +87,14 @@ impl SourceFile {
         self.instrumenter.structs.as_ref()
     }
 
-    pub fn generators(&self, ty: T) -> Vec<Callable> {
+    pub fn generators(&self, ty: &T) -> Vec<Callable> {
         self.instrumenter.callables
             .iter()
             .filter(|&c| {
                 let return_type = c.return_type();
                 match return_type {
                     None => false,
-                    Some(return_ty) => return_ty == &ty
+                    Some(return_ty) => return_ty == ty
                 }
             })
             .cloned()
