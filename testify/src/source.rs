@@ -13,9 +13,10 @@ use syn::{
     ItemFn, ItemImpl, ItemMacro, ItemMod, ItemStruct, ItemUse, Stmt, Type,
 };
 
-use crate::chromosome::{Chromosome, FnInvStmt, MethodItem, Struct, TestCase, ConstructorItem, StaticFnItem, Callable, T, FunctionItem};
+use crate::chromosome::{Chromosome, FnInvStmt, MethodItem, Struct, TestCase, ConstructorItem, StaticFnItem, Callable, T, FunctionItem, PrimitiveItem};
 use crate::parser::TraceParser;
 use crate::util;
+use crate::util::type_name;
 
 pub const ROOT_BRANCH: &'static str = "root[{}, {}]";
 pub const BRANCH: &'static str = "branch[{}, {}, {}]";
@@ -26,6 +27,7 @@ fn src_to_file(src: &str, path: &str) {
     file.write_all(&src.as_bytes()).unwrap();
 }
 
+#[cfg_attr(test, create)]
 #[derive(Debug, Clone)]
 pub struct SourceFile {
     file_path: String,

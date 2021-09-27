@@ -1,7 +1,8 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Error, Formatter};
 use std::hash::{Hash, Hasher};
+use std::iter::FromIterator;
 use std::rc::Rc;
 
 use petgraph::prelude::{NodeIndex, StableDiGraph};
@@ -15,6 +16,7 @@ use uuid::Uuid;
 
 use crate::generators::{PrimitivesGenerator, TestIdGenerator};
 use crate::operators::{BasicCrossover, BasicMutation};
+
 use crate::source::{Branch, BranchManager, SourceFile};
 use crate::util;
 use crate::util::{fn_arg_to_param, is_constructor, is_method, return_type_name, type_name};
@@ -136,7 +138,7 @@ impl TestCase {
                 .and_modify(|c| *c = *c + 1)
                 .or_insert(0);
 
-            let var_name = format!("{}_{}", type_name, counter);
+            let var_name = format!("{}_{}", type_name.to_lowercase(), counter);
             let var = Var::new(&var_name, return_type.clone());
             stmt.set_var(var.clone());
             Some(var)
@@ -147,9 +149,10 @@ impl TestCase {
 
     pub fn add_stmt(&mut self, mut stmt: Statement) -> Option<Var> {
         let var = self.set_var(&mut stmt);
+        let uuid = stmt.id();
 
-        let node_index = self.ddg.add_node(stmt.id().to_string());
-        self.node_index_table.insert(stmt.id(), node_index.clone());
+        let node_index = self.ddg.add_node(uuid.to_string());
+        self.node_index_table.insert(uuid, node_index.clone());
 
         let mut insert_position: usize = 0;
         if let Some(args) = stmt.args() {
@@ -173,10 +176,10 @@ impl TestCase {
                         }
 
                         let generating_stmt_position = self.stmts.iter().position(|s| {
-                            s.id() == generating_statement_uuid
+                            s.id() == *generating_statement_uuid
                         }).unwrap();
 
-                        Some(generating_statement_position)
+                        Some(generating_stmt_position)
                     } else {
                         None
                     }
@@ -185,10 +188,12 @@ impl TestCase {
             });
         }
 
-        self.stmts.insert(insert_position + 1, stmt);
+        let length = self.stmts.len();
+        // The statements list might be empty, so we have to check the bounds
+        self.stmts.insert(length.min(insert_position + 1), stmt);
 
         if let Some(var) = &var {
-            self.var_table.insert(var.clone(), stmt.id());
+            self.var_table.insert(var.clone(), uuid);
         }
 
         var
@@ -214,7 +219,7 @@ impl TestCase {
     pub fn get_owner(&self, stmt: &MethodInvStmt) -> (&Statement, usize) {
         for (i, s) in self.stmts.iter().enumerate() {
             if let Statement::Constructor(constructor) = s {
-                if constructor.name().unwrap() == &stmt.owner() {
+                if constructor.name().unwrap() == stmt.owner() {
                     return (s, i);
                 }
             }
@@ -317,8 +322,11 @@ impl TestCase {
             .collect()
     }
 
-    pub fn instantiated_types(&self) -> &Vec<T> {
-        unimplemented!()
+    pub fn instantiated_types(&self) -> Vec<T> {
+        self.var_table
+            .iter()
+            .map(|(var, _)| var.ty.clone())
+            .collect()
     }
 
     pub fn free_instantiated_types(&self) -> &Vec<T> {
@@ -380,12 +388,45 @@ impl Chromosome for TestCase {
 #[derive(Debug, Clone)]
 pub enum Arg {
     Var(VarArg),
+    Primitive(Primitive),
 }
 
 impl Arg {
     pub fn to_syn(&self) -> Expr {
         match self {
             Arg::Var(var_arg) => var_arg.to_syn(),
+            Arg::Primitive(primitive_arg) => primitive_arg.to_syn(),
+        }
+    }
+
+    fn decorate_reference(expr: Expr) -> Expr {
+        syn::parse_quote! {
+            &#expr
+        }
+    }
+
+    fn decorate_mut(expr: Expr) -> Expr {
+        syn::parse_quote! {
+            mut #expr
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Primitive {
+    U8(u8),
+}
+
+impl Primitive {
+    pub fn ty(&self) -> Box<Type> {
+        match self {
+            Primitive::U8(_) => Box::new(syn::parse_quote!(u8)),
+        }
+    }
+
+    pub fn to_syn(&self) -> Expr {
+        match self {
+            Primitive::U8(val) => syn::parse_quote! {#val},
         }
     }
 }
@@ -410,11 +451,11 @@ impl VarArg {
     }
 
     pub fn is_consuming(&self) -> bool {
-        !self.param.is_by_reference()
+        !self.param.by_reference()
     }
 
     pub fn is_by_reference(&self) -> bool {
-        self.param.is_by_reference()
+        self.param.by_reference()
     }
 
     pub fn is_self(&self) -> bool {
@@ -422,13 +463,27 @@ impl VarArg {
     }
 
     pub fn to_syn(&self) -> Expr {
-        if self.param.is_by_reference() {
-            let expr = self.var.to_syn();
-            syn::parse_quote! {
-                &#expr
+        let expr = self.var.to_syn();
+        if self.param().mutable() {
+            // mutable
+            if self.param().by_reference() {
+                // by reference
+                syn::parse_quote! {
+                    &mut #expr
+                }
+            } else {
+                // mutable and without reference
+                panic!("Should not occur");
             }
         } else {
-            self.var.to_syn()
+            // non-mutable
+            if self.param().by_reference() {
+                syn::parse_quote! {
+                    &#expr
+                }
+            } else {
+                expr
+            }
         }
     }
 }
@@ -446,9 +501,7 @@ pub enum Statement {
 impl Statement {
     pub fn to_syn(&self) -> Stmt {
         match self {
-            Statement::PrimitiveAssignment(_) => {
-                unimplemented!()
-            }
+            Statement::PrimitiveAssignment(primitive_stmt) => primitive_stmt.to_syn(),
             Statement::Constructor(constructor_stmt) => constructor_stmt.to_syn(),
             Statement::AttributeAccess(_) => {
                 unimplemented!()
@@ -487,7 +540,7 @@ impl Statement {
 
     pub fn return_type(&self) -> Option<&T> {
         match self {
-            Statement::PrimitiveAssignment(a) => a.return_type(),
+            Statement::PrimitiveAssignment(a) => Some(a.return_type()),
             Statement::Constructor(c) => Some(c.return_type()),
             Statement::MethodInvocation(m) => m.return_type(),
             Statement::StaticFnInvocation(f) => f.return_type(),
@@ -613,13 +666,15 @@ impl StaticFnInvStmt {
 pub struct AssignStmt {
     id: Uuid,
     var: Option<Var>,
+    primitive: PrimitiveItem,
 }
 
 impl AssignStmt {
-    pub fn new() -> Self {
+    pub fn new(primitive: PrimitiveItem) -> Self {
         AssignStmt {
             id: Uuid::new_v4(),
             var: None,
+            primitive,
         }
     }
 
@@ -627,8 +682,8 @@ impl AssignStmt {
         self.var.as_ref()
     }
 
-    pub fn return_type(&self) -> Option<&T> {
-        unimplemented!()
+    pub fn return_type(&self) -> &T {
+        &self.primitive.ty
     }
 
     pub fn set_var(&mut self, var: Var) {
@@ -638,6 +693,10 @@ impl AssignStmt {
     pub fn id(&self) -> Uuid {
         self.id
     }
+
+    pub fn to_syn(&self) -> Stmt {
+        unimplemented!()
+    }
 }
 
 impl Clone for AssignStmt {
@@ -645,6 +704,7 @@ impl Clone for AssignStmt {
         AssignStmt {
             id: Uuid::new_v4(),
             var: self.var.clone(),
+            primitive: self.primitive.clone(),
         }
     }
 }
@@ -682,8 +742,11 @@ impl ConstructorStmt {
         if let Some(var) = &self.var {
             let ident = Ident::new(&var.to_string(), Span::call_site());
 
-            let type_name = self.constructor.parent.to_string();
-            let args: Vec<Expr> = self.args.iter().cloned().map(|a| a.value).collect();
+            let type_name = Ident::new(&self.constructor.parent.to_string(), Span::call_site());
+            let args: Vec<Expr> = self.args.iter().map(|a| a.to_syn()).collect();
+            println!("{:?}", args);
+            println!("{}", type_name);
+            println!("{:?}", ident);
             syn::parse_quote! {
                 let mut #ident = #type_name::new(#(#args),*);
             }
@@ -819,13 +882,16 @@ impl MethodInvStmt {
     pub fn id(&self) -> Uuid {
         self.id
     }
-    pub fn owner(&self) -> Var {
-        let first_param = self.params().first().unwrap();
-        if first_param.is_self() {
-            let owner_type = first_param.ty();
-            Var::new(&first_arg.name().unwrap(), owner_type.clone())
+    pub fn owner(&self) -> &Var {
+        let first_arg = self.args.first().unwrap();
+        if let Arg::Var(var_arg) = first_arg {
+            if var_arg.is_self() {
+                &var_arg.var
+            } else {
+                panic!("There should be an owner")
+            }
         } else {
-            panic!("There should be an owner")
+            panic!("First arg must be a variable")
         }
     }
 
@@ -917,7 +983,7 @@ impl FnInvStmt {
 
     pub fn to_syn(&self) -> Stmt {
         let ident = &self.func.item_fn.sig.ident;
-        let args: Vec<Expr> = self.args.iter().cloned().map(|a| a.value).collect();
+        let args: Vec<Expr> = self.args.iter().map(Arg::to_syn).collect();
 
         syn::parse_quote! {
             #ident(#(#args),*);
@@ -928,7 +994,7 @@ impl FnInvStmt {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash, Eq)]
 pub struct Var {
     name: String,
     ty: T,
@@ -989,18 +1055,62 @@ impl StatementGenerator {
         let args: Vec<Arg> = callable
             .params()
             .iter()
-            .map(|p| self.generate_arg(test_case, param))
+            .map(|p| self.generate_arg(test_case, p, HashSet::new()))
             .collect();
         let stmt = callable.to_stmt(args);
         test_case.add_stmt(stmt);
     }
 
-    fn generate_arg(&self, test_case: &mut TestCase, param: &Param) -> Arg {
-        let generators = self.source_file.generators(param.ty());
+    fn generate_arg(
+        &self,
+        test_case: &mut TestCase,
+        param: &Param,
+        mut types_to_generate: HashSet<T>,
+    ) -> Arg {
+        println!(
+            "Generating arg of type {}. Set: {:?}",
+            param.ty().to_string(),
+            types_to_generate
+                .iter()
+                .map(T::to_string)
+                .collect::<Vec<String>>()
+        );
+        let mut generator = None;
+        if param.is_primitive() {
+            return Arg::Primitive(Primitive::U8(fastrand::u8(..)));
+        } else {
+            let mut generators = self.source_file.generators(param.ty());
+            println!("Number of generators: {}", generators.len());
+            let mut retry = true;
+            while retry && !generators.is_empty() {
+                retry = false;
 
-        // Pick a random generator
-        let i = fastrand::usize(0..generators.len());
-        let generator = generators.get(i).unwrap();
+                // Pick a random generator
+                let i = fastrand::usize(0..generators.len());
+                let candidate = generators.get(i).unwrap().clone();
+                let params = HashSet::from_iter(candidate.params().iter().map(Param::ty).cloned());
+
+                let intersection = Vec::from_iter(params.intersection(&types_to_generate));
+                if !intersection.is_empty() {
+                    // We already try to generate a type which is needed as an argument for the call
+                    // Hence, this would probably lead to infinite recursive chain. Remove the
+                    // generator and retry with another one.
+                    generators.remove(i);
+                    println!("- Deleted one generator");
+                    retry = true;
+                } else {
+                    generator = Some(candidate);
+                }
+            }
+        }
+
+        if generator.is_none() {
+            // No appropriate generator found
+            println!("Panic! Param type: {}", param.ty().to_string());
+            panic!("No generator")
+        }
+
+        let generator = generator.unwrap();
         let args: Vec<Arg> = generator
             .params()
             .iter()
@@ -1008,13 +1118,22 @@ impl StatementGenerator {
                 // TODO instantiate new object with a 10% probability even if there is a free ones
                 // already in the test case
                 if !test_case.instantiated_types().contains(p.ty()) {
-                    let var = self.generate_arg(test_case, p).unwrap();
-                    (var, param.clone())
+                    let mut types_to_generate = types_to_generate.clone();
+                    types_to_generate.insert(param.ty().clone());
+                    self.generate_arg(test_case, p, types_to_generate)
                 } else {
+                    println!("Unimplemented: Param type: {}", param.ty().to_string());
+                    println!(
+                        "Params: {:?}",
+                        generator
+                            .params()
+                            .iter()
+                            .map(|p| p.ty().to_string())
+                            .collect::<Vec<String>>()
+                    );
                     unimplemented!()
                 }
             })
-            .map(|(var, param)| Arg::Var(VarArg::new(var, param)))
             .collect();
 
         let stmt = generator.to_stmt(args);
@@ -1023,94 +1142,6 @@ impl StatementGenerator {
 
         Arg::Var(VarArg::new(return_var, param.clone()))
     }
-
-    /*pub fn get_random_stmt_old(&self, test_case: &mut TestCase) -> Statement {
-        let unconsumed_defs = test_case.unconsumed_complex_definitions();
-        if unconsumed_defs.is_empty() {
-            let structs = self.source_file.structs();
-            let i = fastrand::usize(0..structs.len());
-            let item_struct = structs.get(i).unwrap();
-            if let Some(constructor) = item_struct.constructor() {
-                let params = constructor.params();
-                let args: Vec<Arg> = params
-                    .iter()
-                    .map(PrimitivesGenerator::generate_arg)
-                    .collect();
-                Statement::Constructor(ConstructorStmt::new(constructor.clone(), args))
-            } else {
-                // No constructor, so initialize directly
-                unimplemented!()
-            }
-        } else {
-            let i = fastrand::usize(0..unconsumed_defs.len());
-            let constructor_stmt = unconsumed_defs.get(i).unwrap();
-
-            let methods = constructor_stmt.struct_item.methods();
-            // TODO what if there are no methods
-
-            let i = fastrand::usize(0..methods.len());
-            let method = methods.get(i).unwrap();
-
-            let params = method.params();
-            let args: Vec<Arg> = params
-                .iter()
-                .filter_map(|p| {
-
-                })
-                .collect();
-
-            let owner = constructor_stmt.name();
-            if let Some(owner_var) = owner {
-                let stmt = MethodInvStmt::new(method.clone(), args);
-
-                if stmt.returns_value() {
-                    // TODO
-                }
-
-                Statement::MethodInvocation(stmt)
-            } else {
-                panic!("Owner var is not set")
-            }
-        }
-    }*/
-
-    /*fn construct_arg(&self, test_case: &mut TestCase, param: &Param, type_path: &TypePath) -> Arg {
-        // Find the required struct by the param from the registered structs in the source code
-        let struct_type = self
-            .source_file
-            .structs()
-            .iter()
-            .filter(|&s| s.ident == *type_path.path.get_ident().unwrap())
-            .last()
-            .unwrap();
-
-        // Get the constructor to initialize the type
-        let constructor = struct_type.constructor().as_ref().unwrap();
-
-        // Get the params for the constructor
-        let constructor_params: Vec<FnArg> = constructor.sig.inputs.iter().cloned().collect();
-
-        // Generate arguments for the constructor invocation
-        let constructor_args: Vec<Arg> = constructor_params
-            .iter()
-            .map(PrimitivesGenerator::generate_arg)
-            .collect();
-
-        // Create constructor invocation
-        let stmt = Statement::Constructor(ConstructorStmt::new(
-            struct_type.clone(),
-            constructor.clone(),
-            constructor_args,
-        ));
-
-        if let Some(var_name) = test_case.insert_stmt(0, stmt) {
-            let var_ident = Ident::new(&var_name, Span::call_site());
-            let var = syn::parse_quote! {#var_ident};
-            Arg::new(Some(var_name), var, param.clone(), false)
-        } else {
-            panic!()
-        }
-    }*/
 }
 
 #[derive(Debug, Clone)]
@@ -1127,10 +1158,17 @@ impl Param {
         }
     }
 
-    pub fn is_by_reference(&self) -> bool {
+    pub fn by_reference(&self) -> bool {
         match self {
-            Param::Self_(_) => true,
-            Param::Regular(_) => false,
+            Param::Self_(self_param) => self_param.by_reference(),
+            Param::Regular(regular_param) => regular_param.by_reference(),
+        }
+    }
+
+    pub fn mutable(&self) -> bool {
+        match self {
+            Param::Self_(self_param) => self_param.mutable(),
+            Param::Regular(regular_param) => regular_param.mutable(),
         }
     }
 
@@ -1140,6 +1178,16 @@ impl Param {
             Param::Regular(regular_param) => &regular_param.ty,
         }
     }
+
+    pub fn is_primitive(&self) -> bool {
+        match self {
+            Param::Self_(_) => false,
+            Param::Regular(regular_param) => {
+                let ty = regular_param.ty();
+                ty.to_string() == "u8"
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1147,15 +1195,25 @@ pub struct SelfParam {
     ty: T,
     fn_arg: FnArg,
     by_reference: bool,
+    mutable: bool,
 }
 
 impl SelfParam {
-    pub fn new(ty: T, fn_arg: FnArg, by_reference: bool) -> Self {
+    pub fn new(ty: T, fn_arg: FnArg, by_reference: bool, mutable: bool) -> Self {
         SelfParam {
             ty,
             fn_arg,
             by_reference,
+            mutable,
         }
+    }
+
+    pub fn by_reference(&self) -> bool {
+        self.by_reference
+    }
+
+    pub fn mutable(&self) -> bool {
+        self.mutable
     }
 }
 
@@ -1163,11 +1221,18 @@ impl SelfParam {
 pub struct RegularParam {
     ty: T,
     fn_arg: FnArg,
+    by_reference: bool,
+    mutable: bool,
 }
 
 impl RegularParam {
-    pub fn new(ty: T, fn_arg: FnArg) -> Self {
-        RegularParam { ty, fn_arg }
+    pub fn new(ty: T, fn_arg: FnArg, by_reference: bool, mutable: bool) -> Self {
+        RegularParam {
+            ty,
+            fn_arg,
+            by_reference,
+            mutable,
+        }
     }
 
     pub fn ty(&self) -> &T {
@@ -1176,9 +1241,17 @@ impl RegularParam {
     pub fn fn_arg(&self) -> &FnArg {
         &self.fn_arg
     }
+
+    pub fn by_reference(&self) -> bool {
+        self.by_reference
+    }
+
+    pub fn mutable(&self) -> bool {
+        self.mutable
+    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, Eq)]
 pub struct T {
     name: String,
 
@@ -1188,7 +1261,7 @@ pub struct T {
 
 impl PartialEq for T {
     fn eq(&self, other: &Self) -> bool {
-        self.ty == other.ty
+        self.name == other.name
     }
 }
 
@@ -1213,6 +1286,7 @@ pub enum Callable {
     StaticFunction(StaticFnItem),
     Function(FunctionItem),
     Constructor(ConstructorItem),
+    Primitive(PrimitiveItem),
 }
 
 impl Callable {
@@ -1222,6 +1296,7 @@ impl Callable {
             Callable::StaticFunction(fn_item) => &fn_item.params,
             Callable::Function(fn_item) => &fn_item.params,
             Callable::Constructor(constructor_item) => &constructor_item.params,
+            Callable::Primitive(primitive_item) => primitive_item.params(),
         }
     }
 
@@ -1231,6 +1306,7 @@ impl Callable {
             Callable::StaticFunction(fn_item) => fn_item.return_type.as_ref(),
             Callable::Function(fn_item) => fn_item.return_type.as_ref(),
             Callable::Constructor(constructor_item) => Some(&constructor_item.return_type),
+            Callable::Primitive(primitive_item) => Some(&primitive_item.ty),
         }
     }
 
@@ -1240,6 +1316,7 @@ impl Callable {
             Callable::StaticFunction(fn_item) => Some(&fn_item.parent),
             Callable::Function(_) => None,
             Callable::Constructor(constructor) => Some(&constructor.parent),
+            Callable::Primitive(_) => None,
         }
     }
 
@@ -1257,7 +1334,27 @@ impl Callable {
             Callable::Constructor(constructor_item) => {
                 Statement::Constructor(ConstructorStmt::new(constructor_item.clone(), args))
             }
+            Callable::Primitive(primitive_item) => {
+                Statement::PrimitiveAssignment(AssignStmt::new(primitive_item.clone()))
+            }
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PrimitiveItem {
+    ty: T,
+    params: Vec<Param>,
+}
+
+impl PrimitiveItem {
+    pub fn new(ty: T) -> PrimitiveItem {
+        PrimitiveItem { ty, params: vec![] }
+    }
+
+    pub fn params(&self) -> &Vec<Param> {
+        // Just for compilation reasons
+        &self.params
     }
 }
 

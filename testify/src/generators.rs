@@ -5,7 +5,7 @@ use syn::{Expr, FnArg, Lit, Type};
 pub struct PrimitivesGenerator {}
 
 impl PrimitivesGenerator {
-    pub fn generate_arg(param: &Param) -> Arg {
+    /*pub fn generate_arg(param: &Param) -> Arg {
         match param {
             Param::Regular(regular_param) => {
                 if let FnArg::Typed(pattern) = regular_param.fn_arg() {
@@ -31,7 +31,7 @@ impl PrimitivesGenerator {
 
         let lit: Expr = syn::parse_quote! { 0 };
         Arg::new(None, lit, param.clone(), true)
-    }
+    }*/
 
     pub fn is_fn_arg_primitive(arg: &FnArg) -> bool {
         if let FnArg::Typed(pattern) = arg {
@@ -70,8 +70,13 @@ impl PrimitivesGenerator {
     }
 
     pub fn mutate_arg(arg: &Arg) -> Arg {
-        let val = arg.value();
-        match val {
+        match arg {
+            Arg::Var(_) => unimplemented!(),
+            Arg::Primitive(_) => unimplemented!()
+        }
+
+
+        /*match val {
             Expr::Lit(expr_lit) => {
                 let lit = &expr_lit.lit;
                 return match lit {
@@ -97,11 +102,12 @@ impl PrimitivesGenerator {
             _ => {
                 unimplemented!()
             }
-        }
+        }*/
     }
 
     pub fn mutate_arg_dist(arg: &Arg, dist: f64) -> Arg {
-        let val = arg.value();
+        unimplemented!()
+        /*let val = arg.value();
         match val {
             Expr::Lit(expr_lit) => {
                 let lit = &expr_lit.lit;
@@ -128,7 +134,7 @@ impl PrimitivesGenerator {
             _ => {
                 unimplemented!()
             }
-        }
+        }*/
     }
 }
 
