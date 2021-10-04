@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Error, Formatter};
 use std::hash::{Hash, Hasher};
@@ -15,26 +16,41 @@ use syn::{
 use uuid::Uuid;
 
 use crate::generators::{PrimitivesGenerator, TestIdGenerator};
-use crate::operators::{BasicCrossover, BasicMutation};
+use crate::operators::{BasicMutation, Crossover, Mutation, SinglePointCrossover};
 
 use crate::source::{Branch, BranchManager, SourceFile};
 use crate::util;
 use crate::util::{fn_arg_to_param, is_constructor, is_method, return_type_name, type_name};
 
-pub trait Chromosome: Clone + Debug {
+const CHROMOSOME_ID_GENERATOR: Box<TestIdGenerator> = Box::new(TestIdGenerator::new());
+
+pub trait ToSyn {
+    fn to_syn(&self) -> Item;
+}
+
+pub trait Chromosome: Clone + Debug + ToSyn {
+    /// Returns the unique id of the test
+    fn id(&self) -> u64;
+
+    fn coverage(&self) -> &HashMap<Branch, FitnessValue>;
+
+    /// Applies mutation to the chromosome
     fn mutate(&self) -> Self;
 
+    /// Returns the fitness of the chromosome with respect to a certain branch
     fn fitness(&self, objective: &Branch) -> f64;
 
+    /// Applies crossover to this and other chromosome and returns a pair of offsprings
     fn crossover(&self, other: &Self) -> (Self, Self)
     where
         Self: Sized;
-}
 
-pub trait ChromosomeGenerator {
-    type C: Chromosome;
-
-    fn generate(&mut self) -> Self::C;
+    /// Generates a random chromosome
+    fn random<M: Mutation, C: Crossover>(
+        source_file: &SourceFile,
+        mutation: Rc<M>,
+        crossover: Rc<C>,
+    ) -> Self;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,15 +60,71 @@ pub enum Dependency {
     Borrows,
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum FitnessValue {
+    Zero,
+    Val(f64),
+    Max,
+}
+
+impl PartialEq for FitnessValue {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            FitnessValue::Zero => other == Self::Zero,
+            FitnessValue::Val(a) => {
+                if let Self::Val(b) = other {
+                    true
+                } else {
+                    false
+                }
+            }
+            FitnessValue::Max => other == Self::Max
+        }
+    }
+}
+
+impl Eq for FitnessValue {}
+
+impl PartialOrd for FitnessValue {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match self {
+            FitnessValue::Zero => match other {
+                FitnessValue::Zero => Some(Ordering::Equal),
+                FitnessValue::Val(_) => Some(Ordering::Less),
+                FitnessValue::Max => Some(Ordering::Less)
+            }
+            FitnessValue::Val(a) => match other {
+                FitnessValue::Zero => Some(Ordering::Greater),
+                FitnessValue::Val(b) => a.partial_cmp(b),
+                FitnessValue::Max => Some(Ordering::Less)
+            }
+            FitnessValue::Max => match other {
+                FitnessValue::Zero => Some(Ordering::Greater),
+                FitnessValue::Val(_) => Some(Ordering::Greater),
+                FitnessValue::Max => Some(Ordering::Equal)
+            }
+        }
+    }
+}
+
+impl Display for FitnessValue {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FitnessValue::Zero => write!(f, "Zero"),
+            FitnessValue::Val(val) => write!(f, "Val({})", val),
+            FitnessValue::Max => write!(f, "Max"),
+        }
+    }
+}
+
 #[derive(Debug)]
-pub struct TestCase {
+pub struct TestCase<M: Mutation, C: Crossover> {
     id: u64,
     stmts: Vec<Statement>,
-    results: HashMap<u64, f64>,
-    mutation: BasicMutation,
-    crossover: BasicCrossover,
+    results: HashMap<Branch, FitnessValue>,
+    mutation: Rc<M>,
+    crossover: Rc<C>,
     ddg: StableDiGraph<Uuid, Dependency>,
-    branch_manager: Rc<RefCell<BranchManager>>,
 
     /// Stores connection of variables and the appropriate statements
     var_table: HashMap<Var, Uuid>,
@@ -62,15 +134,14 @@ pub struct TestCase {
     var_counters: HashMap<String, usize>,
 }
 
-impl Clone for TestCase {
+impl<M: Mutation, C: Crossover> Clone for TestCase<M, C> {
     fn clone(&self) -> Self {
         TestCase {
-            id: self.id.clone(),
+            id: CHROMOSOME_ID_GENERATOR.next_id(),
             stmts: self.stmts.clone(),
             results: self.results.clone(),
             mutation: self.mutation.clone(),
             crossover: self.crossover.clone(),
-            branch_manager: self.branch_manager.clone(),
             ddg: self.ddg.clone(),
             node_index_table: self.node_index_table.clone(),
             var_table: self.var_table.clone(),
@@ -79,7 +150,7 @@ impl Clone for TestCase {
     }
 }
 
-impl PartialEq for TestCase {
+impl<M: Mutation, C: Crossover> PartialEq for TestCase<M, C> {
     fn eq(&self, other: &Self) -> bool {
         /*self.stmts == other.stmts && self.objective == other.objective*/
 
@@ -88,9 +159,9 @@ impl PartialEq for TestCase {
     }
 }
 
-impl Eq for TestCase {}
+impl<M: Mutation, C: Crossover> Eq for TestCase<M, C> {}
 
-impl Hash for TestCase {
+impl<M: Mutation, C: Crossover> Hash for TestCase<M, C> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
         /*self.objective.hash(state);
@@ -98,22 +169,16 @@ impl Hash for TestCase {
     }
 }
 
-impl TestCase {
+impl<M: Mutation, C: Crossover> TestCase<M, C> {
     pub const TEST_FN_PREFIX: &'static str = "testify";
 
-    pub fn new(
-        id: u64,
-        mutation: BasicMutation,
-        crossover: BasicCrossover,
-        branch_manager: Rc<RefCell<BranchManager>>,
-    ) -> Self {
+    pub fn new(id: u64, mutation: Rc<M>, crossover: Rc<C>) -> Self {
         TestCase {
             id,
             stmts: Vec::new(),
             results: HashMap::new(),
             mutation,
             crossover,
-            branch_manager,
             ddg: StableDiGraph::new(),
             var_table: HashMap::new(),
             node_index_table: HashMap::new(),
@@ -236,14 +301,15 @@ impl TestCase {
         }
 
         let node_index = self.node_index_table.get(&id).unwrap();
-        let neighbours = self.ddg.neighbors_directed(node_index.clone(), Direction::Incoming);
+        let neighbours = self
+            .ddg
+            .neighbors_directed(node_index.clone(), Direction::Incoming);
         self.ddg.remove_node(node_index.clone());
         neighbours.for_each(|n| {
             let uuid = self.ddg.node_weight(n.clone()).unwrap();
             let next = self.get_pos_by_id(uuid.clone()).unwrap();
             self.delete_stmt(next);
         });
-
     }
 
     pub fn get_pos_by_id(&self, id: Uuid) -> Option<usize> {
@@ -259,43 +325,6 @@ impl TestCase {
     }
 
     pub fn add_random_stmt(&mut self) {}
-
-    pub fn to_syn(&self, decorate: bool) -> Item {
-        let ident = Ident::new(
-            &format!("{}_{}", TestCase::TEST_FN_PREFIX, self.id),
-            Span::call_site(),
-        );
-        let id = self.id;
-
-        let stmts: Vec<Stmt> = self.stmts.iter().map(Statement::to_syn).collect();
-        let test: Item;
-
-        if decorate {
-            let set_test_id: Stmt = syn::parse_quote! {
-                LOGGER.with(|l| l.borrow_mut().set_test_id(#id));
-            };
-            let wait: Stmt = syn::parse_quote! {
-                LOGGER.with(|l| l.borrow_mut().wait());
-            };
-            test = syn::parse_quote! {
-                #[test]
-                fn #ident() {
-                    #set_test_id
-                    #(#stmts)*
-                    #wait
-                }
-            };
-        } else {
-            test = syn::parse_quote! {
-                #[test]
-                fn #ident() {
-                    #(#stmts)*
-                }
-            }
-        }
-
-        test
-    }
 
     pub fn name(&self) -> String {
         format!("{}_{}", TestCase::TEST_FN_PREFIX, self.id)
@@ -352,23 +381,11 @@ impl TestCase {
         unimplemented!()
     }
 
-    pub fn results(&self) -> &HashMap<u64, f64> {
-        &self.results
-    }
-
     pub fn size(&self) -> usize {
         self.stmts.len()
     }
 
-    pub fn set_id(&mut self, id: u64) {
-        self.id = id;
-    }
-
-    pub fn id(&self) -> u64 {
-        self.id
-    }
-
-    pub fn set_results(&mut self, results: HashMap<u64, f64>) {
+    pub fn set_results(&mut self, results: HashMap<Branch, FitnessValue>) {
         self.results = results;
     }
     pub fn set_stmts(&mut self, stmts: &[Statement]) {
@@ -377,9 +394,97 @@ impl TestCase {
     pub fn var_counters(&self) -> &HashMap<String, usize> {
         &self.var_counters
     }
+
+    /// Generates a complete random statement and all its dependencies, even if the
+    /// test already contains some definitions that can be reused.
+    ///
+    /// # Arguments
+    ///
+    /// * `test_case` - The test case where a randomly generated statement should be inserted into.
+    pub fn insert_random_stmt(&mut self, source_file: &SourceFile) {
+        // TODO primitive statements are not being generated yet
+        let callables = source_file.callables();
+        let i = fastrand::usize(0..callables.len());
+        let callable = callables.get(i).unwrap();
+
+        let args: Vec<Arg> = callable
+            .params()
+            .iter()
+            .map(|p| self.generate_argument(p, HashSet::new()))
+            .collect();
+        let stmt = callable.to_stmt(args);
+        self.add_stmt(stmt);
+    }
+
+    fn generate_argument(&mut self, param: &Param, mut types_to_generate: HashSet<T>) -> Arg {
+        let mut generator = None;
+        if param.is_primitive() {
+            return Arg::Primitive(Primitive::U8(fastrand::u8(..)));
+        } else {
+            let mut generators = self.source_file.generators(param.ty());
+            let mut retry = true;
+            while retry && !generators.is_empty() {
+                retry = false;
+
+                // Pick a random generator
+                let i = fastrand::usize(0..generators.len());
+                let candidate = generators.get(i).unwrap().clone();
+                let params = HashSet::from_iter(candidate.params().iter().map(Param::ty).cloned());
+
+                let intersection = Vec::from_iter(params.intersection(&types_to_generate));
+                if !intersection.is_empty() {
+                    // We already try to generate a type which is needed as an argument for the call
+                    // Hence, this would probably lead to infinite recursive chain. Remove the
+                    // generator and retry with another one.
+                    generators.remove(i);
+                    retry = true;
+                } else {
+                    generator = Some(candidate);
+                }
+            }
+        }
+
+        if generator.is_none() {
+            // No appropriate generator found
+            println!("Panic! Param type: {}", param.ty().to_string());
+            panic!("No generator")
+        }
+
+        let generator = generator.unwrap();
+        let args: Vec<Arg> = generator
+            .params()
+            .iter()
+            .map(|p| {
+                // TODO instantiate new object with a 10% probability even if there is a free ones
+                // already in the test case
+                if !self.instantiated_types().contains(p.ty()) {
+                    let mut types_to_generate = types_to_generate.clone();
+                    types_to_generate.insert(param.ty().clone());
+                    self.generate_argument(p, types_to_generate)
+                } else {
+                    println!("Unimplemented: Param type: {}", param.ty().to_string());
+                    println!(
+                        "Params: {:?}",
+                        generator
+                            .params()
+                            .iter()
+                            .map(|p| p.ty().to_string())
+                            .collect::<Vec<String>>()
+                    );
+                    unimplemented!()
+                }
+            })
+            .collect();
+
+        let stmt = generator.to_stmt(args);
+
+        let return_var = self.add_stmt(stmt).unwrap();
+
+        Arg::Var(VarArg::new(return_var, param.clone()))
+    }
 }
 
-impl Display for TestCase {
+impl<M: Mutation, C: Crossover> Display for TestCase<M, C> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         let syn_item = self.to_syn(false);
         let token_stream = syn_item.to_token_stream();
@@ -387,12 +492,48 @@ impl Display for TestCase {
     }
 }
 
-impl Chromosome for TestCase {
+impl<M: Mutation, C: Crossover> ToSyn for TestCase<M, C> {
+    fn to_syn(&self) -> Item {
+        let ident = Ident::new(
+            &format!("{}_{}", TestCase::TEST_FN_PREFIX, self.id),
+            Span::call_site(),
+        );
+        let id = self.id;
+
+        let stmts: Vec<Stmt> = self.stmts.iter().map(Statement::to_syn).collect();
+
+        let set_test_id: Stmt = syn::parse_quote! {
+            LOGGER.with(|l| l.borrow_mut().set_test_id(#id));
+        };
+        let wait: Stmt = syn::parse_quote! {
+            LOGGER.with(|l| l.borrow_mut().wait());
+        };
+
+        syn::parse_quote! {
+            #[test]
+            fn #ident() {
+                #set_test_id
+                #(#stmts)*
+                #wait
+            }
+        }
+    }
+}
+
+impl<M: Mutation, C: Crossover> Chromosome for TestCase<M, C> {
+    fn id(&self) -> u64 {
+        self.id
+    }
+
+    fn coverage(&self) -> &HashMap<Branch, FitnessValue> {
+        &self.results
+    }
+
     fn mutate(&self) -> Self {
         self.mutation.mutate(self)
     }
 
-    fn fitness(&self, objective: &Branch) -> f64 {
+    fn fitness(&self, objective: &Branch) -> FitnessValue {
         objective.fitness(self)
     }
 
@@ -401,6 +542,20 @@ impl Chromosome for TestCase {
         Self: Sized,
     {
         self.crossover.crossover(self, other)
+    }
+
+    fn random(source_file: &SourceFile,
+        mutation: Rc<M>,
+        crossover: Rc<C>,
+    ) -> Self {
+        let test_id = CHROMOSOME_ID_GENERATOR.next_id();
+
+        let mut test_case = TestCase::new(test_id, mutation.clone(), crossover.clone());
+
+        // TODO fill test case with statements until a certain length
+        test_case.insert_random_stmt(source_file);
+
+        test_case
     }
 }
 
@@ -1049,120 +1204,6 @@ impl Var {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct StatementGenerator {
-    source_file: SourceFile,
-}
-
-impl StatementGenerator {
-    pub fn new(source_file: SourceFile) -> Self {
-        StatementGenerator { source_file }
-    }
-
-    /// Generates a complete random statement and all its dependencies, even if the
-    /// test already contains some definitions that can be reused.
-    ///
-    /// # Arguments
-    ///
-    /// * `test_case` - The test case where a randomly generated statement should be inserted into.
-    pub fn insert_random_stmt(&self, test_case: &mut TestCase) {
-        // TODO primitive statements are not being generated yet
-        let callables = self.source_file.callables();
-        let i = fastrand::usize(0..callables.len());
-        let callable = callables.get(i).unwrap();
-
-        let args: Vec<Arg> = callable
-            .params()
-            .iter()
-            .map(|p| self.generate_arg(test_case, p, HashSet::new()))
-            .collect();
-        let stmt = callable.to_stmt(args);
-        test_case.add_stmt(stmt);
-    }
-
-    fn generate_arg(
-        &self,
-        test_case: &mut TestCase,
-        param: &Param,
-        mut types_to_generate: HashSet<T>,
-    ) -> Arg {
-        println!(
-            "Generating arg of type {}. Set: {:?}",
-            param.ty().to_string(),
-            types_to_generate
-                .iter()
-                .map(T::to_string)
-                .collect::<Vec<String>>()
-        );
-        let mut generator = None;
-        if param.is_primitive() {
-            return Arg::Primitive(Primitive::U8(fastrand::u8(..)));
-        } else {
-            let mut generators = self.source_file.generators(param.ty());
-            println!("Number of generators: {}", generators.len());
-            let mut retry = true;
-            while retry && !generators.is_empty() {
-                retry = false;
-
-                // Pick a random generator
-                let i = fastrand::usize(0..generators.len());
-                let candidate = generators.get(i).unwrap().clone();
-                let params = HashSet::from_iter(candidate.params().iter().map(Param::ty).cloned());
-
-                let intersection = Vec::from_iter(params.intersection(&types_to_generate));
-                if !intersection.is_empty() {
-                    // We already try to generate a type which is needed as an argument for the call
-                    // Hence, this would probably lead to infinite recursive chain. Remove the
-                    // generator and retry with another one.
-                    generators.remove(i);
-                    println!("- Deleted one generator");
-                    retry = true;
-                } else {
-                    generator = Some(candidate);
-                }
-            }
-        }
-
-        if generator.is_none() {
-            // No appropriate generator found
-            println!("Panic! Param type: {}", param.ty().to_string());
-            panic!("No generator")
-        }
-
-        let generator = generator.unwrap();
-        let args: Vec<Arg> = generator
-            .params()
-            .iter()
-            .map(|p| {
-                // TODO instantiate new object with a 10% probability even if there is a free ones
-                // already in the test case
-                if !test_case.instantiated_types().contains(p.ty()) {
-                    let mut types_to_generate = types_to_generate.clone();
-                    types_to_generate.insert(param.ty().clone());
-                    self.generate_arg(test_case, p, types_to_generate)
-                } else {
-                    println!("Unimplemented: Param type: {}", param.ty().to_string());
-                    println!(
-                        "Params: {:?}",
-                        generator
-                            .params()
-                            .iter()
-                            .map(|p| p.ty().to_string())
-                            .collect::<Vec<String>>()
-                    );
-                    unimplemented!()
-                }
-            })
-            .collect();
-
-        let stmt = generator.to_stmt(args);
-
-        let return_var = test_case.add_stmt(stmt).unwrap();
-
-        Arg::Var(VarArg::new(return_var, param.clone()))
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum Param {
     Self_(SelfParam),
@@ -1589,52 +1630,5 @@ impl Struct {
     }
     pub fn ident(&self) -> &Ident {
         &self.ident
-    }
-}
-
-#[derive(Debug)]
-pub struct TestCaseGenerator {
-    branch_manager: Rc<RefCell<BranchManager>>,
-    statement_generator: Rc<StatementGenerator>,
-    mutation: BasicMutation,
-    crossover: BasicCrossover,
-    test_id: Rc<RefCell<TestIdGenerator>>,
-}
-
-impl TestCaseGenerator {
-    pub fn new(
-        statement_generator: Rc<StatementGenerator>,
-        branch_manager: Rc<RefCell<BranchManager>>,
-        mutation: BasicMutation,
-        crossover: BasicCrossover,
-        test_id: Rc<RefCell<TestIdGenerator>>,
-    ) -> TestCaseGenerator {
-        TestCaseGenerator {
-            statement_generator,
-            branch_manager,
-            mutation,
-            crossover,
-            test_id,
-        }
-    }
-}
-
-impl ChromosomeGenerator for TestCaseGenerator {
-    type C = TestCase;
-
-    fn generate(&mut self) -> Self::C {
-        let mut test_case = TestCase::new(
-            0,
-            self.mutation.clone(),
-            self.crossover.clone(),
-            self.branch_manager.clone(),
-        );
-
-        self.statement_generator.insert_random_stmt(&mut test_case);
-
-        let test_id = self.test_id.borrow_mut().next_id();
-        test_case.set_id(test_id);
-
-        test_case
     }
 }

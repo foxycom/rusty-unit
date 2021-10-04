@@ -13,7 +13,10 @@ use syn::{
     ItemFn, ItemImpl, ItemMacro, ItemMod, ItemStruct, ItemUse, Stmt, Type,
 };
 
-use crate::chromosome::{Chromosome, FnInvStmt, MethodItem, Struct, TestCase, ConstructorItem, StaticFnItem, Callable, T, FunctionItem, PrimitiveItem};
+use crate::chromosome::{
+    Callable, Chromosome, ConstructorItem, FitnessValue, FnInvStmt, FunctionItem, MethodItem,
+    PrimitiveItem, StaticFnItem, Struct, TestCase, T,
+};
 use crate::parser::TraceParser;
 use crate::util;
 use crate::util::type_name;
@@ -47,7 +50,7 @@ impl SourceFile {
     }
 
     /// Writes the tests as source code into the file.
-    pub fn add_tests(&mut self, tests: &[TestCase], instrumented: bool) {
+    pub fn add_tests<C: Chromosome>(&mut self, tests: &[C], instrumented: bool) {
         if instrumented {
             if let Some(ast) = &self.instrumenter.instrumented_ast {
                 let mutated_ast = self.writer.add_tests(tests, ast);
@@ -66,7 +69,7 @@ impl SourceFile {
     }
 
     /// Runs the tests provided they have been added to the source file before.
-    pub fn run_tests(&mut self, tests: &mut [TestCase]) {
+    pub fn run_tests<C: Chromosome>(&mut self, tests: &mut [C]) {
         self.runner.run().unwrap();
         for test in tests {
             // TODO magic path
@@ -90,13 +93,14 @@ impl SourceFile {
     }
 
     pub fn generators(&self, ty: &T) -> Vec<Callable> {
-        self.instrumenter.callables
+        self.instrumenter
+            .callables
             .iter()
             .filter(|&c| {
                 let return_type = c.return_type();
                 match return_type {
                     None => false,
-                    Some(return_ty) => return_ty == ty
+                    Some(return_ty) => return_ty == ty,
                 }
             })
             .cloned()
@@ -213,7 +217,7 @@ impl VisitMut for TestClearer {
 #[derive(Debug, Clone)]
 struct TestWriter {
     use_all_star: Item,
-    test_cases: Option<Vec<TestCase>>,
+    test_cases: Option<Vec<dyn Chromosome>>,
     src_path: String,
 }
 
@@ -227,7 +231,7 @@ impl TestWriter {
         }
     }
 
-    pub fn add_tests(&mut self, test_cases: &[TestCase], ast: &File) -> File {
+    pub fn add_tests(&mut self, test_cases: &[dyn Chromosome], ast: &File) -> File {
         self.test_cases = Some(test_cases.to_vec());
         let mut ast = ast.clone();
         self.visit_file_mut(&mut ast);
@@ -342,7 +346,7 @@ impl Branch {
     }
 
     // TODO return fitness as enum with ZERO value
-    pub fn fitness(&self, test_case: &TestCase) -> f64 {
+    pub fn fitness<C: Chromosome>(&self, test_case: &C) -> FitnessValue {
         test_case
             .results()
             .get(&self.id)
@@ -772,10 +776,7 @@ impl VisitMut for Instrumenter {
             self.callables.push(Callable::Constructor(constructor));
         } else if util::is_method(i) {
             let method = MethodItem::new(i.clone(), ty);
-            self.structs
-                .last_mut()
-                .unwrap()
-                .add_method(method.clone());
+            self.structs.last_mut().unwrap().add_method(method.clone());
             self.callables.push(Callable::Method(method));
         } else {
             let func = StaticFnItem::new(i.clone(), ty);
@@ -841,17 +842,17 @@ impl BranchManager {
         self.branches = branches.to_vec();
     }
 
-    pub fn set_current_population(&mut self, population: &[TestCase]) {
+    pub fn set_current_population<C: Chromosome>(&mut self, population: &[C]) {
         let uncovered_branches = self.compute_uncovered_branches(population);
         self.uncovered_branches = uncovered_branches;
     }
 
-    fn compute_uncovered_branches(&self, population: &[TestCase]) -> Vec<Branch> {
+    fn compute_uncovered_branches<C: Chromosome>(&self, population: &[C]) -> Vec<Branch> {
         let mut uncovered_branches = vec![];
         for branch in &self.branches {
             let mut covered = false;
             for individual in population {
-                if individual.fitness(branch) == 0.0 {
+                if individual.fitness(branch) == FitnessValue::Zero {
                     covered = true;
                     break;
                 }

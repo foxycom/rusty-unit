@@ -1,10 +1,12 @@
-use crate::chromosome::{Chromosome, ChromosomeGenerator, TestCase, TestCaseGenerator};
+use crate::chromosome::{Chromosome, FitnessValue, TestCase};
 use crate::generators::TestIdGenerator;
 use crate::operators::RankSelection;
+use crate::selection::Selection;
 use crate::source::{Branch, BranchManager, SourceFile};
 use pbr::ProgressBar;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
+use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Write;
@@ -13,42 +15,159 @@ use std::option::Option::Some;
 use std::rc::Rc;
 use std::time::Instant;
 
+pub struct DynaMOSA<S: Selection> {
+    population_size: u64,
+    mutation_rate: f64,
+    selection_rate: f64,
+    crossover_rate: f64,
+    generations: u64,
+    branch_manager: Rc<RefCell<BranchManager>>,
+    selection: S,
+}
+
+impl<S: Selection> DynaMOSA<S> {
+    pub fn new(
+        population_size: u64,
+        mutation_rate: f64,
+        selection_rate: f64,
+        crossover_rate: f64,
+        generations: u64,
+        branch_manager: Rc<RefCell<BranchManager>>,
+        selection: S,
+    ) -> Self {
+        DynaMOSA {
+            population_size,
+            mutation_rate,
+            selection_rate,
+            crossover_rate,
+            generations,
+            branch_manager,
+            selection,
+        }
+    }
+
+    pub fn set_population_size(&mut self, population_size: u64) {
+        self.population_size = population_size;
+    }
+    pub fn set_mutation_rate(&mut self, mutation_rate: f64) {
+        self.mutation_rate = mutation_rate;
+    }
+    pub fn set_selection_rate(&mut self, selection_rate: f64) {
+        self.selection_rate = selection_rate;
+    }
+    pub fn set_crossover_rate(&mut self, crossover_rate: f64) {
+        self.crossover_rate = crossover_rate;
+    }
+    pub fn set_generations(&mut self, generations: u64) {
+        self.generations = generations;
+    }
+    pub fn run<C: Chromosome>(
+        &mut self,
+        mut source_file: SourceFile,
+        initial_population: Vec<C>,
+    ) -> Result<C, Box<dyn Error>> {
+        let mut archive = Archive::new(self.branch_manager.clone());
+
+        let count = (self.generations + 1) * self.population_size;
+        let mut pb = ProgressBar::new(count);
+        pb.format("╢▌▌░╟");
+
+        let mut current_generation = 0;
+
+        let mut population = initial_population;
+
+        source_file.add_tests(&population, true);
+        source_file.run_tests(&mut population);
+        source_file.clear_tests();
+
+        pb.add(self.population_size);
+
+        archive.update(&population);
+
+        while current_generation < self.generations {
+            self.branch_manager
+                .borrow_mut()
+                .set_current_population(&population);
+
+            let mut offspring = self.generate_offspring(&population)?;
+
+            source_file.add_tests(&offspring, true);
+            source_file.run_tests(&mut offspring);
+            source_file.clear_tests();
+
+            archive.update(&population);
+
+            offspring.append(&mut population);
+
+            // TODO there is a bug in sort, duplicate ids
+            let mut fronts =
+                PreferenceSorter::sort(&offspring, self.branch_manager.borrow().branches());
+
+            for i in 0..fronts.len() {
+                let front = fronts.get(&i).unwrap();
+                let front = SVD::compute(front, self.branch_manager.borrow().branches())?;
+                for t in &front {
+                    population.push(t.clone());
+                    if population.len() == self.population_size as usize {
+                        break;
+                    }
+                }
+
+                if population.len() == self.population_size as usize {
+                    break;
+                }
+            }
+
+            pb.add(self.population_size);
+            current_generation += 1;
+        }
+
+        source_file.add_tests(&population, true);
+
+        let mut tmp_file = File::create("fitness.log").unwrap();
+
+        population.iter().for_each(|t| {
+            let bm = self.branch_manager.borrow();
+            let branches = bm.branches();
+            let fitness = branches
+                .iter()
+                .map(|b| format!("b = {}, f = {}", b.id(), b.fitness(t)))
+                .fold(String::new(), |acc, b| acc + &b.to_string() + ", ");
+            let line = format!("Test {} => ({})\n", t.id(), fitness);
+            tmp_file.write_all(&line.as_bytes());
+        });
+
+        let (uncovered_branches, coverage) = self.coverage();
+        Ok(TestSuite {
+            uncovered_branches,
+            coverage,
+            tests: population,
+        })
+    }
+}
+
 #[derive(Debug)]
 pub struct MOSA {
     population_size: u64,
     mutation_rate: f64,
     selection_rate: f64,
     crossover_rate: f64,
-    chromosome_generator: TestCaseGenerator,
     branch_manager: Rc<RefCell<BranchManager>>,
     generations: u64,
     rank_selection: RankSelection,
-    test_id_generator: Rc<RefCell<TestIdGenerator>>,
 }
 
 impl MOSA {
-    pub fn new(
-        generator: TestCaseGenerator,
-        rank_selection: RankSelection,
-        branch_manager: Rc<RefCell<BranchManager>>,
-        test_id_generator: Rc<RefCell<TestIdGenerator>>,
-    ) -> MOSA {
+    pub fn new(rank_selection: RankSelection, branch_manager: Rc<RefCell<BranchManager>>) -> MOSA {
         MOSA {
             population_size: 50,
             mutation_rate: 0.2,
             selection_rate: 0.3,
             crossover_rate: 0.00001,
-            chromosome_generator: generator,
             generations: 100,
             rank_selection,
-            test_id_generator,
             branch_manager,
         }
-    }
-
-    pub fn chromosome_generator(&mut self, generator: TestCaseGenerator) -> &mut MOSA {
-        self.chromosome_generator = generator;
-        self
     }
 
     pub fn generations(&mut self, generations: u64) -> &mut MOSA {
@@ -61,7 +180,11 @@ impl MOSA {
         self
     }
 
-    pub fn run(&mut self, mut source_file: SourceFile) -> Option<GaResult> {
+    pub fn run<C: Chromosome>(
+        &mut self,
+        mut source_file: SourceFile,
+        initial_population: Vec<C>,
+    ) -> Option<C> {
         let mut time = Time::new();
 
         let count = (self.generations + 1) * self.population_size;
@@ -71,7 +194,7 @@ impl MOSA {
         let mut current_generation = 0;
 
         time.start("population");
-        let mut population = self.generate_random_population();
+        let mut population = initial_population;
         time.end("population");
 
         time.start("source_file");
@@ -163,55 +286,19 @@ impl MOSA {
             tmp_file.write_all(&line.as_bytes());
         });
 
-        //println!("\n{}", time);
-
         let (uncovered_branches, coverage) = self.coverage();
-        Some(GaResult {
+        Some(TestSuite {
             uncovered_branches,
             coverage,
             tests: population,
         })
     }
 
-    fn test_ids(&self, tests: &[TestCase]) -> HashSet<u64> {
+    fn test_ids<C: Chromosome>(&self, tests: &[C]) -> HashSet<u64> {
         tests.iter().map(TestCase::id).collect()
     }
 
-    fn test_that_covers(&self, archive: &[TestCase], branch: &Branch) -> Option<TestCase> {
-        archive
-            .iter()
-            .filter(|&t| branch.fitness(t) == 0.0)
-            .nth(0)
-            .cloned()
-    }
-
-    fn update_archive(&self, archive: &mut Vec<TestCase>, population: &[TestCase]) {
-        for branch in self.branch_manager.borrow().branches() {
-            let mut best_test_case = None;
-            let mut best_length = usize::MAX;
-            if let Some(test_case) = self.test_that_covers(archive, &branch) {
-                best_length = test_case.size();
-                best_test_case = Some(test_case);
-            }
-
-            for test_case in population {
-                let score = branch.fitness(test_case);
-                let length = test_case.size();
-                if score == 0.0 && length <= best_length {
-                    if let Some(best_test_case) = best_test_case {
-                        let i = archive.iter().position(|t| *t == best_test_case).unwrap();
-                        archive[i] = test_case.clone();
-                    } else {
-                        archive.push(test_case.clone());
-                    }
-                    best_test_case = Some(test_case.clone());
-                    best_length = length;
-                }
-            }
-        }
-    }
-
-    fn crowding_distance_assignment(&self, population: &mut [TestCase]) {
+    fn crowding_distance_assignment<C: Chromosome>(&self, population: &mut [C]) {
         todo!()
     }
 
@@ -221,73 +308,6 @@ impl MOSA {
         let coverage = 1.0 - uncovered_branches.len() as f64 / bm.branches().len() as f64;
         (uncovered_branches.to_vec(), coverage)
     }
-
-    fn generate_offspring(&self, population: &[TestCase]) -> Option<Vec<TestCase>> {
-        let mut offspring = vec![];
-        while offspring.len() < population.len() {
-            let parent_1 = self.rank_selection.select(population)?;
-            let parent_2 = self.rank_selection.select(population)?;
-
-            let mut child_1: TestCase;
-            let mut child_2: TestCase;
-
-            if fastrand::f64() < self.crossover_rate {
-                let (a, b) = parent_1.crossover(&parent_2);
-                child_1 = a;
-                child_2 = b;
-            } else {
-                child_1 = parent_1.clone();
-                child_2 = parent_2.clone();
-            }
-
-            child_1.set_id(self.test_id_generator.borrow_mut().next_id());
-            child_2.set_id(self.test_id_generator.borrow_mut().next_id());
-            let mut mutated_child_1 = child_1.mutate();
-            let mut mutated_child_2 = child_2.mutate();
-
-            /*mutated_child_1.set_id(self.test_id_generator.borrow_mut().next_id());
-            mutated_child_2.set_id(self.test_id_generator.borrow_mut().next_id());*/
-
-            if population.len() - offspring.len() >= 2 {
-                offspring.push(mutated_child_1);
-                offspring.push(mutated_child_2);
-            } else {
-                offspring.push(if fastrand::f64() < 0.5 {
-                    mutated_child_1
-                } else {
-                    mutated_child_2
-                });
-            }
-        }
-
-        Some(offspring)
-    }
-
-    fn generate_random_population(&mut self) -> Vec<TestCase> {
-        let mut population = Vec::new();
-        for _ in 0..self.population_size {
-            population.push(self.chromosome_generator.generate());
-        }
-
-        population
-    }
-}
-
-struct Archive<G, F>
-where
-    G: ChromosomeGenerator,
-    F: Fn(G::C) -> f64,
-{
-    chromosomes: Vec<G::C>,
-    objectives: Vec<Box<F>>,
-}
-
-impl<G, F> Archive<G, F>
-where
-    G: ChromosomeGenerator,
-    F: Fn(G::C) -> f64,
-{
-    pub fn update_archive(&mut self, population: &Vec<G::C>) {}
 }
 
 struct Time {
@@ -345,14 +365,14 @@ impl Time {
 pub struct PreferenceSorter {}
 
 impl PreferenceSorter {
-    pub fn sort(population: &[TestCase], objectives: &[Branch]) -> HashMap<usize, Vec<TestCase>> {
+    pub fn sort<C: Chromosome>(population: &[C], objectives: &[Branch]) -> HashMap<usize, Vec<C>> {
         let mut fronts = HashMap::new();
         let mut front_0 = HashSet::new();
         let mut uncovered_branches = vec![];
 
         for objective in objectives {
             let mut min_dist = f64::MAX;
-            let mut best_individual: Option<&TestCase> = None;
+            let mut best_individual = None;
 
             for individual in population {
                 let dist = individual.fitness(objective);
@@ -371,7 +391,7 @@ impl PreferenceSorter {
         }
 
         fronts.insert(0, Vec::from_iter(front_0.to_owned()));
-        let remaining_population: Vec<TestCase> = population
+        let remaining_population: Vec<C> = population
             .iter()
             .filter(|&i| !front_0.contains(i))
             .map(|i| i.clone())
@@ -385,13 +405,13 @@ impl PreferenceSorter {
         fronts
     }
 
-    pub fn test_ids(tests: &[TestCase]) -> HashSet<u64> {
-        tests.iter().map(TestCase::id).collect()
+    pub fn test_ids<C: Chromosome>(test_cases: &[C]) -> HashSet<u64> {
+        test_cases.iter().map(C::id).collect()
     }
 
-    pub fn ids(fronts: &HashMap<usize, Vec<TestCase>>) -> Vec<u64> {
+    pub fn ids<C: Chromosome>(fronts: &HashMap<usize, Vec<C>>) -> Vec<u64> {
         let mut ids = vec![];
-        for (i, front) in fronts.iter() {
+        for (_, front) in fronts.iter() {
             for test_case in front {
                 ids.push(test_case.id());
             }
@@ -404,7 +424,7 @@ impl PreferenceSorter {
 struct Pareto {}
 
 impl Pareto {
-    pub fn dominates(t1: &TestCase, t2: &TestCase, objectives: &[Branch]) -> bool {
+    pub fn dominates<C: Chromosome>(t1: &C, t2: &C, objectives: &[Branch]) -> bool {
         if objectives.iter().any(|m| t2.fitness(m) < t1.fitness(m)) {
             return false;
         }
@@ -416,11 +436,11 @@ impl Pareto {
 struct FNDS {}
 
 impl FNDS {
-    pub fn sort(
-        population: &[TestCase],
+    pub fn sort<C: Chromosome>(
+        population: &[C],
         objectives: &[Branch],
-    ) -> Option<HashMap<usize, Vec<TestCase>>> {
-        let mut front: HashMap<usize, Vec<TestCase>> = HashMap::new();
+    ) -> Option<HashMap<usize, Vec<C>>> {
+        let mut front: HashMap<usize, Vec<C>> = HashMap::new();
         let mut S = HashMap::new();
         let mut n = HashMap::new();
         (0..population.len()).for_each(|i| {
@@ -478,7 +498,7 @@ impl FNDS {
 pub struct SVD {}
 
 impl SVD {
-    pub fn compute(population: &[TestCase], objectives: &[Branch]) -> Option<Vec<TestCase>> {
+    pub fn compute<C: Chromosome>(population: &[C], objectives: &[Branch]) -> Option<Vec<C>> {
         let mut distances = HashMap::new();
         for i in 0..population.len() {
             let a = population.get(i)?;
@@ -503,7 +523,7 @@ impl SVD {
         Some(sorted_population)
     }
 
-    fn svd(a: &TestCase, b: &TestCase, objectives: &[Branch]) -> u64 {
+    fn svd<C: Chromosome>(a: &C, b: &C, objectives: &[Branch]) -> u64 {
         let mut count = 0;
         for m in objectives {
             if b.fitness(m) < a.fitness(m) {
@@ -515,8 +535,115 @@ impl SVD {
     }
 }
 
-pub struct GaResult {
+pub struct Archive<C: Chromosome> {
+    test_cases: Vec<C>,
+    branch_manager: Rc<RefCell<BranchManager>>,
+}
+
+impl<C: Chromosome> Archive<C> {
+    pub fn new(branch_manager: Rc<RefCell<BranchManager>>) -> Self {
+        Archive {
+            test_cases: vec![],
+            branch_manager,
+        }
+    }
+
+    pub fn update(&mut self, population: &[C]) {
+        for branch in self.branch_manager.borrow().branches() {
+            let mut best_test_case = None;
+            let mut best_length = usize::MAX;
+            if let Some(test_case) = self.test_that_covers(&branch) {
+                best_length = test_case.size();
+                best_test_case = Some(test_case);
+            }
+
+            for test_case in population {
+                let score = branch.fitness(test_case);
+                let length = test_case.size();
+                if score == FitnessValue::Zero && length <= best_length {
+                    if let Some(best_test_case) = best_test_case {
+                        let i = self
+                            .test_cases
+                            .iter()
+                            .position(|t| *t == best_test_case)
+                            .unwrap();
+                        self.archive[i] = test_case.clone();
+                    } else {
+                        self.archive.push(test_case.clone());
+                    }
+                    best_test_case = Some(test_case.clone());
+                    best_length = length;
+                }
+            }
+        }
+    }
+
+    fn test_that_covers(&self, branch: &Branch) -> Option<&C> {
+        self.test_cases
+            .iter()
+            .filter(|&t| branch.fitness(t) == FitnessValue::Zero)
+            .nth(0)
+            .cloned()
+    }
+}
+
+pub trait GenerateOffspring {
+    fn generate<C: Chromosome>(&self, population: &[C]) -> Vec<C>;
+}
+
+pub struct OffspringGenerator<S: Selection> {
+    selection: Rc<S>,
+}
+
+impl<S: Selection> OffspringGenerator<S> {
+    pub fn new(selection: Rc<S>) -> Self {
+        OffspringGenerator { selection }
+    }
+}
+
+impl<S: Selection> GenerateOffspring for OffspringGenerator<S> {
+    fn generate<C: Chromosome>(&self, population: &[C]) -> Vec<C> {
+        let mut offspring = vec![];
+        while offspring.len() < population.len() {
+            let parent_1 = self.selection.apply(population);
+            let parent_2 = self.selection.apply(population);
+
+            let mut child_1: C;
+            let mut child_2: C;
+
+            if fastrand::f64() < self.crossover_rate {
+                let (a, b) = parent_1.crossover(&parent_2);
+                child_1 = a;
+                child_2 = b;
+            } else {
+                child_1 = parent_1.clone();
+                child_2 = parent_2.clone();
+            }
+
+            assert_ne!(parent_1.id(), child_1.id());
+            assert_ne!(parent_2.id(), child_2.id());
+
+            let mut mutated_child_1 = child_1.mutate();
+            let mut mutated_child_2 = child_2.mutate();
+
+            if population.len() - offspring.len() >= 2 {
+                offspring.push(mutated_child_1);
+                offspring.push(mutated_child_2);
+            } else {
+                offspring.push(if fastrand::f64() < 0.5 {
+                    mutated_child_1
+                } else {
+                    mutated_child_2
+                });
+            }
+        }
+
+        offspring
+    }
+}
+
+pub struct TestSuite<C: Chromosome> {
     pub coverage: f64,
     pub uncovered_branches: Vec<Branch>,
-    pub tests: Vec<TestCase>,
+    pub tests: Vec<Chromosome>,
 }

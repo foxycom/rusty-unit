@@ -1,34 +1,39 @@
 use crate::algorithm::{PreferenceSorter, SVD};
 use crate::chromosome::{
-    Arg, Chromosome, ConstructorStmt, FnInvStmt, MethodInvStmt, Statement, StatementGenerator,
-    TestCase,
+    Arg, Chromosome, ConstructorStmt, FnInvStmt, MethodInvStmt, Statement, TestCase,
 };
 use crate::generators::PrimitivesGenerator;
 use crate::source::BranchManager;
 use std::cell::RefCell;
+use std::fmt::Debug;
 use std::rc::Rc;
+use crate::selection::Selection;
 
-pub trait Crossover {
+pub trait Crossover: Debug {
     type C: Chromosome;
 
     fn apply(&self, a: &Self::C, b: &Self::C) -> (Self::C, Self::C);
 }
 
-pub trait Mutation {
+pub trait Mutation: Debug {
     type C: Chromosome;
 
     fn apply(&self, chromosome: &Self::C) -> Self::C;
 }
 
 #[derive(Debug, Clone)]
-pub struct BasicCrossover {}
+pub struct SinglePointCrossover {}
 
-impl BasicCrossover {
+impl SinglePointCrossover {
     pub fn new() -> Self {
-        BasicCrossover {}
+        SinglePointCrossover {}
     }
+}
 
-    pub fn crossover(&self, a: &TestCase, b: &TestCase) -> (TestCase, TestCase) {
+impl<M: Mutation> Crossover for SinglePointCrossover {
+    type C = TestCase<M, Self>;
+
+    fn apply(&self, a: &Self::C, b: &Self::C) -> (Self::C, Self::C) {
         let mut child_a = a.clone();
         let mut child_b = b.clone();
 
@@ -56,25 +61,15 @@ impl BasicCrossover {
 #[derive(Debug, Clone)]
 pub struct BasicMutation {
     branch_manager: Rc<RefCell<BranchManager>>,
-    statement_generator: Rc<StatementGenerator>,
 }
 
-impl BasicMutation {
-    pub fn new(
-        statement_generator: Rc<StatementGenerator>,
-        branch_manager: Rc<RefCell<BranchManager>>,
-    ) -> BasicMutation {
-        BasicMutation {
-            statement_generator,
-            branch_manager,
-        }
-    }
+impl<C: Crossover> Mutation for BasicMutation {
+    type C = TestCase<Self, C>;
 
-    pub fn mutate(&self, test_case: &TestCase) -> TestCase {
-        let bm = self.branch_manager.borrow();
-        let mut copy = test_case.clone();
+    fn apply(&self, chromosome: &Self::C) -> Self::C {
+        let mut copy = chromosome.clone();
 
-        if fastrand::f64() < 0.3 && test_case.size() > 1 {
+        if fastrand::f64() < 0.3 && chromosome.size() > 1 {
             // Delete a statement
             let i = fastrand::usize(0..copy.size());
             copy.delete_stmt(i);
@@ -87,8 +82,12 @@ impl BasicMutation {
             unimplemented!()
         }
     }
+}
 
-
+impl BasicMutation {
+    pub fn new(branch_manager: Rc<RefCell<BranchManager>>) -> BasicMutation {
+        BasicMutation { branch_manager }
+    }
 
     fn mutate_stmt(&self, stmt: &Statement, dist: f64) -> Statement {
         let mut copy = stmt.clone();
@@ -103,7 +102,7 @@ impl BasicMutation {
             Statement::FunctionInvocation(ref mut fn_inv_stmt) => {
                 self.mutate_fn_invocation(fn_inv_stmt, dist);
             }
-            _ => unimplemented!()
+            _ => unimplemented!(),
         }
 
         copy
@@ -156,7 +155,7 @@ impl BasicMutation {
         }
     }
 
-    fn insert_statement(&self, test_case: &TestCase) -> TestCase {
+    fn insert_statement(&self, test_case: &<Self as Mutation>::C) -> <Self as Mutation>::C {
         let mut copy = test_case.clone();
         self.statement_generator.insert_random_stmt(&mut copy);
         copy
@@ -168,10 +167,9 @@ impl BasicMutation {
         } else {
             unimplemented!()
         }*/
-
     }
 
-    fn delete_statement(&self, test_case: &TestCase) -> TestCase {
+    fn delete_statement(&self, test_case: &<Self as Mutation>::C) -> <Self as Mutation>::C {
         test_case.clone()
 
         /*let mut copy = test_case.clone();
@@ -183,7 +181,7 @@ impl BasicMutation {
         copy*/
     }
 
-    fn reorder_statements(&self, test_case: &TestCase) -> TestCase {
+    fn reorder_statements(&self, test_case: &<Self as Mutation>::C) -> <Self as Mutation>::C {
         panic!();
         let mut copy = test_case.clone();
 
@@ -203,6 +201,14 @@ pub struct RankSelection {
     bias: f64,
 }
 
+impl<M: Mutation, C: Crossover> Selection for RankSelection {
+    type C = TestCase<M, C>;
+
+    fn apply(&self, population: &Vec<Self::C>) -> Self::C {
+        todo!()
+    }
+}
+
 impl RankSelection {
     pub fn new(branch_manager: Rc<RefCell<BranchManager>>) -> RankSelection {
         RankSelection {
@@ -211,7 +217,7 @@ impl RankSelection {
         }
     }
 
-    fn sort(&self, population: &[TestCase]) -> Vec<TestCase> {
+    fn sort(&self, population: &[<Self as Selection>::C]) -> Vec<<Self as Selection>::C> {
         let mut sorted = vec![];
         let mut fronts =
             PreferenceSorter::sort(population, self.branch_manager.borrow().branches());
@@ -224,7 +230,7 @@ impl RankSelection {
         sorted
     }
 
-    pub fn select(&self, population: &[TestCase]) -> Option<TestCase> {
+    pub fn select(&self, population: &[<Self as Selection>::C]) -> Option<<Self as Selection>::C> {
         let population = self.sort(population);
         let probabilities: Vec<f64> = (0..population.len())
             .map(|i| {
