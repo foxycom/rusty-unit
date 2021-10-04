@@ -51,7 +51,7 @@ pub struct TestCase {
     results: HashMap<u64, f64>,
     mutation: BasicMutation,
     crossover: BasicCrossover,
-    ddg: StableDiGraph<String, Dependency>,
+    ddg: StableDiGraph<Uuid, Dependency>,
     branch_manager: Rc<RefCell<BranchManager>>,
 
     /// Stores connection of variables and the appropriate statements
@@ -151,7 +151,7 @@ impl TestCase {
         let var = self.set_var(&mut stmt);
         let uuid = stmt.id();
 
-        let node_index = self.ddg.add_node(uuid.to_string());
+        let node_index = self.ddg.add_node(uuid);
         self.node_index_table.insert(uuid, node_index.clone());
 
         let mut insert_position: usize = 0;
@@ -228,7 +228,26 @@ impl TestCase {
     }
 
     pub fn delete_stmt(&mut self, idx: usize) {
-        self.stmts.remove(idx);
+        let stmt = self.stmts.remove(idx);
+        let id = stmt.id();
+
+        if stmt.returns_value() {
+            self.var_table.remove(stmt.var().unwrap());
+        }
+
+        let node_index = self.node_index_table.get(&id).unwrap();
+        let neighbours = self.ddg.neighbors_directed(node_index.clone(), Direction::Incoming);
+        self.ddg.remove_node(node_index.clone());
+        neighbours.for_each(|n| {
+            let uuid = self.ddg.node_weight(n.clone()).unwrap();
+            let next = self.get_pos_by_id(uuid.clone()).unwrap();
+            self.delete_stmt(next);
+        });
+
+    }
+
+    pub fn get_pos_by_id(&self, id: Uuid) -> Option<usize> {
+        self.stmts.iter().position(|s| s.id() == id)
     }
 
     pub fn replace_stmt(&mut self, idx: usize, stmt: Statement) {

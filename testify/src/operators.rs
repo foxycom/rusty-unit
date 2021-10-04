@@ -72,48 +72,23 @@ impl BasicMutation {
 
     pub fn mutate(&self, test_case: &TestCase) -> TestCase {
         let bm = self.branch_manager.borrow();
+        let mut copy = test_case.clone();
 
-        let uncovered_branches = bm.uncovered_branches();
-        // TODO magic numbers
-        return if uncovered_branches.is_empty() {
-            test_case.clone()
-        } else if fastrand::f64() < 0.1 && test_case.size() > 1 {
-            // Reorder statementes
-            //self.reorder_statements(test_case)
-            test_case.clone()
-        } else if fastrand::f64() < 0.1 && test_case.size() > 1 {
-            // Delete statement
-            self.delete_statement(test_case)
+        if fastrand::f64() < 0.3 && test_case.size() > 1 {
+            // Delete a statement
+            let i = fastrand::usize(0..copy.size());
+            copy.delete_stmt(i);
+            copy
+        } else if fastrand::f64() < 0.3 {
+            // Insert a method call
+            unimplemented!()
         } else {
-            // Select a branch that has not been covered yet
-            let branch_idx = fastrand::usize(0..uncovered_branches.len());
-            let branch = uncovered_branches.get(branch_idx).unwrap();
-
-            // The value which the previous execution of the test was off to the branch
-            let dist = test_case.fitness(branch);
-            if dist == f64::MAX {
-                // Insert call to target
-                self.insert_statement(test_case)
-            } else {
-                let mut copy = test_case.clone();
-
-                let len = copy.size();
-                let p = 1.0 / len as f64;
-                let mut mutated_stmts = vec![];
-                for (i, stmt) in copy.stmts().iter().enumerate() {
-                    if fastrand::f64() < p {
-                        mutated_stmts.push((i, self.mutate_stmt(&stmt, dist)));
-                    }
-                }
-
-                for (i, mutated_stmt) in mutated_stmts {
-                    copy.replace_stmt(i, mutated_stmt);
-                }
-
-                copy
-            }
-        };
+            // Modify a statement
+            unimplemented!()
+        }
     }
+
+
 
     fn mutate_stmt(&self, stmt: &Statement, dist: f64) -> Statement {
         let mut copy = stmt.clone();
