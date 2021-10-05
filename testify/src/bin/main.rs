@@ -1,12 +1,11 @@
-use clap::Clap;
-use petgraph::prelude::GraphMap;
-use petgraph::Graph;
 use std::cell::RefCell;
 use std::rc::Rc;
-use testify::algorithm::{DynaMOSA, TestSuite, MOSA};
-use testify::chromosome::{Chromosome, StatementGenerator, TestCase, TestCaseGenerator};
-use testify::generators::TestIdGenerator;
-use testify::operators::{SinglePointCrossover, BasicMutation, RankSelection};
+
+use clap::Clap;
+
+use testify::algorithm::{DynaMOSA, OffspringGenerator, TestSuite};
+use testify::chromosome::{Chromosome, TestCase};
+use testify::operators::{BasicMutation, RankSelection, SinglePointCrossover};
 use testify::source::{BranchManager, SourceFile};
 
 #[derive(Clap)]
@@ -15,7 +14,7 @@ struct CliOpts {
     file: String,
 }
 
-fn main<C: Chromosome>() {
+fn main() {
     let opts: CliOpts = CliOpts::parse();
 
     let mut source_file = SourceFile::new(&opts.file);
@@ -29,10 +28,16 @@ fn main<C: Chromosome>() {
 
     let mutation = Rc::new(BasicMutation::new(branch_manager_rc.clone()));
     let crossover = Rc::new(SinglePointCrossover::new());
-    let rank_selection = RankSelection::new(branch_manager_rc.clone());
-
-    let initial_population: Vec<C> = (0..population_size)
-        .map(|_| TestCase::random(&source_file, mutation.clone(), crossover.clone()))
+    let rank_selection = Rc::new(RankSelection::new(branch_manager_rc.clone()));
+    let offspring_generator = Rc::new(OffspringGenerator::new(
+        rank_selection.clone(),
+        mutation.clone(),
+        crossover.clone(),
+        0.2,
+        0.2,
+    ));
+    let initial_population: Vec<TestCase> = (0..population_size)
+        .map(|_| TestCase::random(&source_file))
         .collect();
 
     let res = DynaMOSA::new(
@@ -42,30 +47,24 @@ fn main<C: Chromosome>() {
         0.00001,
         10,
         branch_manager_rc.clone(),
-    ).run(source_file.clone(), initial_population);
+        offspring_generator.clone(),
+    )
+    .run(source_file.clone(), initial_population);
     match res {
-        None => {
-            println!("Execution failed");
-        }
-        Some(TestSuite {
-            uncovered_branches,
-            coverage,
-            tests,
-        }) => {
+        Ok(TestSuite {
+                 uncovered_branches,
+                 coverage,
+                 tests,
+             }) => {
             println!(
                 "\nUncovered branches: {:?}\nOverall branch coverage: {}",
                 uncovered_branches, coverage
             );
             source_file.add_tests(&tests, false);
         }
+        Err(err) => {
+            println!("{}", err);
+        }
     }
 }
 
-fn generate_random_population<C: Chromosome>(source_file: &SourceFile, population_size: usize) -> Vec<C> {
-    let mut population = Vec::new();
-    for _ in 0..population_size {
-        population.push(TestCase::random(source_file, ));
-    }
-
-    population
-}

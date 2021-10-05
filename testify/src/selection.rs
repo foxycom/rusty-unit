@@ -1,9 +1,9 @@
 use crate::chromosome::Chromosome;
 
 pub trait Selection {
-    type C: Chromosome;
+    type C;
 
-    fn apply(&self, population: &Vec<Self::C>) -> Self::C;
+    fn apply(&self, population: &[Self::C]) -> Self::C;
 }
 
 

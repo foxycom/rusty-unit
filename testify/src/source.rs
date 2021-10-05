@@ -32,15 +32,15 @@ fn src_to_file(src: &str, path: &str) {
 
 #[cfg_attr(test, create)]
 #[derive(Debug, Clone)]
-pub struct SourceFile {
+pub struct SourceFile<C: Chromosome> {
     file_path: String,
-    writer: TestWriter,
+    writer: TestWriter<C>,
     runner: TestRunner,
     instrumenter: Instrumenter,
 }
 
-impl SourceFile {
-    pub fn new(src_path: &str) -> SourceFile {
+impl<C: Chromosome> SourceFile<C> {
+    pub fn new(src_path: &str) -> SourceFile<C> {
         SourceFile {
             file_path: src_path.to_owned(),
             writer: TestWriter::new(src_path),
@@ -50,7 +50,7 @@ impl SourceFile {
     }
 
     /// Writes the tests as source code into the file.
-    pub fn add_tests<C: Chromosome>(&mut self, tests: &[C], instrumented: bool) {
+    pub fn add_tests(&mut self, tests: &[C], instrumented: bool) {
         if instrumented {
             if let Some(ast) = &self.instrumenter.instrumented_ast {
                 let mutated_ast = self.writer.add_tests(tests, ast);
@@ -69,12 +69,12 @@ impl SourceFile {
     }
 
     /// Runs the tests provided they have been added to the source file before.
-    pub fn run_tests<C: Chromosome>(&mut self, tests: &mut [C]) {
+    pub fn run_tests(&mut self, tests: &mut [C]) {
         self.runner.run().unwrap();
         for test in tests {
             // TODO magic path
             let file = format!("/Users/tim/Documents/master-thesis/testify/src/examples/additions/traces/trace_{}.txt", test.id());
-            test.set_results(TraceParser::parse(&file).unwrap());
+            test.set_coverage(TraceParser::parse(&file).unwrap());
             match fs::remove_file(&file) {
                 Err(err) => {
                     panic!("There was no trace file: {}", err);
@@ -138,15 +138,15 @@ impl SourceFile {
     }
 }
 
-impl PartialEq for SourceFile {
+impl<C: Chromosome> PartialEq for SourceFile<C> {
     fn eq(&self, other: &Self) -> bool {
         self.file_path == other.file_path
     }
 }
 
-impl Eq for SourceFile {}
+impl<C: Chromosome> Eq for SourceFile<C> {}
 
-impl Hash for SourceFile {
+impl<C: Chromosome> Hash for SourceFile<C> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.file_path.hash(state);
     }
@@ -215,13 +215,13 @@ impl VisitMut for TestClearer {
 }
 
 #[derive(Debug, Clone)]
-struct TestWriter {
+struct TestWriter<C: Chromosome> {
     use_all_star: Item,
-    test_cases: Option<Vec<dyn Chromosome>>,
+    test_cases: Option<Vec<C>>,
     src_path: String,
 }
 
-impl TestWriter {
+impl<C: Chromosome> TestWriter<C> {
     const TESTS_MODULE: &'static str = "testify_tests";
     pub fn new(src_path: &str) -> Self {
         TestWriter {
@@ -231,7 +231,7 @@ impl TestWriter {
         }
     }
 
-    pub fn add_tests(&mut self, test_cases: &[dyn Chromosome], ast: &File) -> File {
+    pub fn add_tests(&mut self, test_cases: &[C], ast: &File) -> File {
         self.test_cases = Some(test_cases.to_vec());
         let mut ast = ast.clone();
         self.visit_file_mut(&mut ast);
@@ -243,11 +243,11 @@ impl TestWriter {
     }
 }
 
-impl VisitMut for TestWriter {
+impl<C: Chromosome> VisitMut for TestWriter<C> {
     fn visit_item_mut(&mut self, i: &mut Item) {
         if let Item::Mod(item_mod) = i {
             let mod_name = &item_mod.ident;
-            if mod_name.to_string() == TestWriter::TESTS_MODULE {
+            if mod_name.to_string() == TestWriter::<C>::TESTS_MODULE {
                 if let Some((_, items)) = &mut item_mod.content {
                     if !self.contains_use_super_star(items) {
                         items.insert(0, self.use_all_star.clone());
@@ -255,7 +255,7 @@ impl VisitMut for TestWriter {
 
                     if let Some(ref mut tests) = self.test_cases {
                         let mut code: Vec<Item> =
-                            tests.iter_mut().map(|t| t.to_syn(true)).collect();
+                            tests.iter_mut().map(|t| t.to_syn()).collect();
                         items.append(&mut code);
                     }
                 } else {
@@ -348,9 +348,9 @@ impl Branch {
     // TODO return fitness as enum with ZERO value
     pub fn fitness<C: Chromosome>(&self, test_case: &C) -> FitnessValue {
         test_case
-            .results()
-            .get(&self.id)
-            .unwrap_or(&f64::MAX)
+            .coverage()
+            .get(self)
+            .unwrap_or(&FitnessValue::Max)
             .to_owned()
     }
 

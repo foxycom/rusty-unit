@@ -1,13 +1,13 @@
 use crate::algorithm::{PreferenceSorter, SVD};
 use crate::chromosome::{
-    Arg, Chromosome, ConstructorStmt, FnInvStmt, MethodInvStmt, Statement, TestCase,
+    Arg, Chromosome, ConstructorStmt, FnInvStmt, MethodInvStmt, Statement, TestCase, Var, VarArg,
 };
-use crate::generators::PrimitivesGenerator;
+use crate::selection::Selection;
 use crate::source::BranchManager;
 use std::cell::RefCell;
+use std::env::var;
 use std::fmt::Debug;
 use std::rc::Rc;
-use crate::selection::Selection;
 
 pub trait Crossover: Debug {
     type C: Chromosome;
@@ -30,8 +30,9 @@ impl SinglePointCrossover {
     }
 }
 
-impl<M: Mutation> Crossover for SinglePointCrossover {
-    type C = TestCase<M, Self>;
+impl Crossover for SinglePointCrossover {
+    // TODO this is really bad
+    type C = TestCase;
 
     fn apply(&self, a: &Self::C, b: &Self::C) -> (Self::C, Self::C) {
         let mut child_a = a.clone();
@@ -63,24 +64,36 @@ pub struct BasicMutation {
     branch_manager: Rc<RefCell<BranchManager>>,
 }
 
-impl<C: Crossover> Mutation for BasicMutation {
-    type C = TestCase<Self, C>;
+impl Mutation for BasicMutation {
+    type C = TestCase;
 
     fn apply(&self, chromosome: &Self::C) -> Self::C {
         let mut copy = chromosome.clone();
-
-        if fastrand::f64() < 0.3 && chromosome.size() > 1 {
-            // Delete a statement
-            let i = fastrand::usize(0..copy.size());
-            copy.delete_stmt(i);
-            copy
+        if fastrand::f64() < 0.3 {
+            // Modify statement
+            let stmts = copy.stmts();
+            let stmt = stmts.get(fastrand::usize(0..stmts.len())).unwrap().clone();
+            match stmt {
+                Statement::Constructor(_) => {
+                    self.mutate_invocation(&mut copy, stmt.clone());
+                }
+                Statement::MethodInvocation(_) => {
+                    self.mutate_invocation(&mut copy, stmt.clone());
+                }
+                Statement::FunctionInvocation(_) => {
+                    self.mutate_invocation(&mut copy, stmt.clone());
+                }
+                _ => unimplemented!(),
+            }
         } else if fastrand::f64() < 0.3 {
-            // Insert a method call
-            unimplemented!()
+            // Delete statement
+            self.delete_statement(&mut copy);
         } else {
-            // Modify a statement
-            unimplemented!()
+            // Insert a statement
+            self.insert_statement(&mut copy);
         }
+
+        copy
     }
 }
 
@@ -89,108 +102,88 @@ impl BasicMutation {
         BasicMutation { branch_manager }
     }
 
-    fn mutate_stmt(&self, stmt: &Statement, dist: f64) -> Statement {
-        let mut copy = stmt.clone();
-
-        match copy {
-            Statement::Constructor(ref mut constructor_stmt) => {
-                self.mutate_constructor(constructor_stmt, dist);
+    fn mutate_invocation(&self, test_case: &mut TestCase, mut stmt: Statement) {
+        let stmt_id = stmt.id();
+        let stmt_i = match test_case.stmt_position(stmt_id) {
+            None => {
+                test_case.to_dot();
+                println!("{}", test_case.to_string());
+                panic!()
             }
-            Statement::MethodInvocation(ref mut method_inv_stmt) => {
-                self.mutate_method_invocation(method_inv_stmt, dist);
-            }
-            Statement::FunctionInvocation(ref mut fn_inv_stmt) => {
-                self.mutate_fn_invocation(fn_inv_stmt, dist);
-            }
-            _ => unimplemented!(),
-        }
+            Some(idx) => idx,
+        };
 
-        copy
-    }
-
-    fn mutate_method_invocation(&self, method_inv_stmt: &mut MethodInvStmt, dist: f64) {
-        let args = method_inv_stmt.args();
-        let p = 1.0 / args.len() as f64;
-        let mutated_args: Vec<Arg> = args
-            .iter()
-            .map(|a| BasicMutation::mutate_arg(a, p, dist))
-            .collect();
-
-        method_inv_stmt.set_args(mutated_args);
-    }
-
-    fn mutate_constructor(&self, costructor_stmt: &mut ConstructorStmt, dist: f64) {
-        // Change arguments based on the distance to the selected branch
-        let args = costructor_stmt.args();
-        let p = 1.0 / args.len() as f64;
-        let mutated_args: Vec<Arg> = args
-            .iter()
-            .map(|a| BasicMutation::mutate_arg(a, p, dist))
-            .collect();
-
-        costructor_stmt.set_args(mutated_args);
-    }
-
-    fn mutate_fn_invocation(&self, fn_inv_stmt: &mut FnInvStmt, dist: f64) {
-        // Change arguments based on the distance to the selected branch
-        let args = fn_inv_stmt.args();
-        let p = 1.0 / args.len() as f64;
-        let mutated_args: Vec<Arg> = args
-            .iter()
-            .map(|a| BasicMutation::mutate_arg(a, p, dist))
-            .collect();
-
-        fn_inv_stmt.set_args(mutated_args);
-    }
-
-    fn mutate_arg(arg: &Arg, p: f64, dist: f64) -> Arg {
-        if fastrand::f64() < p {
-            if dist < f64::MAX {
-                PrimitivesGenerator::mutate_arg_dist(arg, dist)
-            } else {
-                PrimitivesGenerator::mutate_arg(arg)
-            }
+        let args = stmt.args().unwrap();
+        if !args.is_empty() {
+            // Change the method itself
+            unimplemented!()
         } else {
-            arg.clone()
+            // Change the source object for the arg or mutate if it's a primitive
+            let arg_i = fastrand::usize(0..args.len());
+            let arg = args.get(arg_i).unwrap();
+            match arg {
+                Arg::Var(var_arg) => {
+                    if fastrand::f64() < 0.5 {
+                        // Swap object
+                        if var_arg.is_consuming() {
+                            // Only use objects that are not consumed in the whole test and
+                            // that will not be borrowed after this call
+                            let variables = test_case.variables_typed(var_arg.param().ty());
+                            let consumables: Vec<&(Var, usize)> = variables
+                                .iter()
+                                .filter(|(v, _)| test_case.is_consumable(v, stmt_i))
+                                .collect();
+                            if !consumables.is_empty() {
+                                let consumable_i = fastrand::usize(0..consumables.len());
+                                let (new_var, _) = consumables
+                                    .get(consumable_i)
+                                    .unwrap();
+                                let mut new_stmt = stmt.clone();
+                                let new_arg = Arg::Var(VarArg::new(new_var.clone(), var_arg.param().clone()));
+                                new_stmt.set_arg(new_arg, arg_i);
+                                test_case.remove_stmt(stmt_id);
+                                test_case.insert_stmt(stmt_i, new_stmt);
+                            } else {
+                                unimplemented!("Was jetzt?")
+                            }
+                        } else {
+                            unimplemented!()
+                        }
+                    } else {
+                        // Mutate object
+                        unimplemented!()
+                    }
+                }
+                Arg::Primitive(primitive) => unimplemented!(),
+            }
         }
+
+        // Change which method is called (for now replace borrowing stmts with borrowing ones,
+        // and consuming with consuming ones
+        unimplemented!();
+        // Change params
+        /*let args = stmt.args();
+        let p = 1.0 / args.len() as f64;
+        let mutated_args: Vec<Arg> = args
+            .iter()
+            .map(|a| BasicMutation::mutate_arg(a, p, 0.0))
+            .collect();
+
+        stmt.set_args(mutated_args);*/
     }
 
     fn insert_statement(&self, test_case: &<Self as Mutation>::C) -> <Self as Mutation>::C {
         let mut copy = test_case.clone();
-        self.statement_generator.insert_random_stmt(&mut copy);
-        copy
-        // TODO maintain correct positions
-        /*if let Statement::MethodInvocation(method_inv_stmt) = &stmt {
-            let (_, owner_idx) = copy.get_owner(&method_inv_stmt);
-            let i = fastrand::usize(owner_idx + 1..=copy.size());
-            copy.insert_stmt(i, stmt.clone());
-        } else {
-            unimplemented!()
-        }*/
+
+        copy.add_stmt()
     }
 
     fn delete_statement(&self, test_case: &<Self as Mutation>::C) -> <Self as Mutation>::C {
-        test_case.clone()
-
-        /*let mut copy = test_case.clone();
-        // TODO check dependencies
-
-        let stmts = copy.stmts();
-        let i = fastrand::usize(0..stmts.len());
-        copy.delete_stmt(i);
-        copy*/
-    }
-
-    fn reorder_statements(&self, test_case: &<Self as Mutation>::C) -> <Self as Mutation>::C {
-        panic!();
         let mut copy = test_case.clone();
 
         let stmts = copy.stmts();
-        // TODO check inequality
         let i = fastrand::usize(0..stmts.len());
-        let j = fastrand::usize(0..stmts.len());
-
-        copy.reorder_stmts(i, j);
+        copy.remove_stmt_at(i);
         copy
     }
 }
@@ -201,11 +194,11 @@ pub struct RankSelection {
     bias: f64,
 }
 
-impl<M: Mutation, C: Crossover> Selection for RankSelection {
-    type C = TestCase<M, C>;
+impl Selection for RankSelection {
+    type C = TestCase;
 
-    fn apply(&self, population: &Vec<Self::C>) -> Self::C {
-        todo!()
+    fn apply(&self, population: &[Self::C]) -> Self::C {
+        self.select(population)
     }
 }
 
@@ -217,7 +210,7 @@ impl RankSelection {
         }
     }
 
-    fn sort(&self, population: &[<Self as Selection>::C]) -> Vec<<Self as Selection>::C> {
+    fn sort<C: Chromosome>(&self, population: &[C]) -> Vec<C> {
         let mut sorted = vec![];
         let mut fronts =
             PreferenceSorter::sort(population, self.branch_manager.borrow().branches());
@@ -230,7 +223,7 @@ impl RankSelection {
         sorted
     }
 
-    pub fn select(&self, population: &[<Self as Selection>::C]) -> Option<<Self as Selection>::C> {
+    pub fn select<C: Chromosome>(&self, population: &[C]) -> C {
         let population = self.sort(population);
         let probabilities: Vec<f64> = (0..population.len())
             .map(|i| {
@@ -242,12 +235,12 @@ impl RankSelection {
         let pick = fastrand::f64() * fitness_sum;
         let mut current = 0.0;
         for i in 0..probabilities.len() {
-            current += probabilities.get(i)?;
+            current += probabilities.get(i).unwrap();
             if current > pick {
-                return population.get(i).cloned();
+                return population.get(i).cloned().unwrap();
             }
         }
 
-        None
+        panic!("This should never happen")
     }
 }

@@ -1,4 +1,6 @@
-use crate::source::BranchType;
+use crate::chromosome::FitnessValue;
+use crate::source::{Branch, BranchType};
+use proc_macro2::Span;
 use regex::Regex;
 use std::collections::HashMap;
 use std::fs;
@@ -16,27 +18,37 @@ lazy_static! {
 pub struct TraceParser {}
 
 impl TraceParser {
-    pub fn parse(path: &str) -> Result<HashMap<u64, f64>, io::Error> {
-        let mut results = HashMap::new();
+    pub fn parse(path: &str) -> Result<HashMap<Branch, FitnessValue>, io::Error> {
+        let mut coverage = HashMap::new();
 
-        if let Ok(lines) = TraceParser::lines(path) {
-            for line in lines {
-                if let Ok(trace_line) = line {
-                    let data = TraceParser::parse_line(&trace_line)
-                        .ok_or(io::Error::new(io::ErrorKind::Other, "Could not read data"))?;
-                    results.insert(data.branch_id, 0.0);
-                    if let Some(other_branch) = data.other_branch_id {
-                        let dist = data.distance.ok_or(io::Error::new(
-                            io::ErrorKind::Other,
-                            "No distance to other branch known",
-                        ))?;
-                        results.insert(other_branch, dist);
+        match TraceParser::lines(path) {
+            Ok(lines) => {
+                for line in lines {
+                    if let Ok(trace_line) = line {
+                        let data = TraceParser::parse_line(&trace_line)
+                            .ok_or(io::Error::new(io::ErrorKind::Other, "Could not read data"))?;
+                        coverage.insert(
+                            Branch::new(data.branch_id, data.branch_type.clone(), Span::call_site()),
+                            FitnessValue::Zero,
+                        );
+                        if let Some(other_branch) = data.other_branch_id {
+                            let dist = data.distance.ok_or(io::Error::new(
+                                io::ErrorKind::Other,
+                                "No distance to other branch known",
+                            ))?;
+                            coverage.insert(
+                                Branch::new(other_branch, data.branch_type, Span::call_site()),
+                                FitnessValue::Val(dist),
+                            );
+                        }
                     }
                 }
+
+                Ok(coverage)
             }
+            Err(err) => Err(err)
         }
 
-        Ok(results)
     }
 
     fn lines<P>(path: P) -> io::Result<io::Lines<io::BufReader<fs::File>>>

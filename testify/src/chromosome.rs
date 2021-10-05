@@ -1,13 +1,16 @@
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
+use std::env::var;
 use std::fmt::{Debug, Display, Error, Formatter};
 use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 use petgraph::prelude::{NodeIndex, StableDiGraph};
-use petgraph::Direction;
+use petgraph::{Direction, Graph};
+use petgraph::dot::{Config, Dot};
 use proc_macro2::{Ident, Span};
 use quote::ToTokens;
 use syn::{
@@ -15,42 +18,46 @@ use syn::{
 };
 use uuid::Uuid;
 
-use crate::generators::{PrimitivesGenerator, TestIdGenerator};
+use crate::generators::{TestIdGenerator};
 use crate::operators::{BasicMutation, Crossover, Mutation, SinglePointCrossover};
 
 use crate::source::{Branch, BranchManager, SourceFile};
 use crate::util;
 use crate::util::{fn_arg_to_param, is_constructor, is_method, return_type_name, type_name};
+lazy_static! {
+    static ref CHROMOSOME_ID_GENERATOR: Arc<Mutex<TestIdGenerator>> =
+        Arc::new(Mutex::new(TestIdGenerator::new()));
+}
 
-const CHROMOSOME_ID_GENERATOR: Box<TestIdGenerator> = Box::new(TestIdGenerator::new());
+const TEST_FN_PREFIX: &'static str = "testify";
 
 pub trait ToSyn {
     fn to_syn(&self) -> Item;
 }
 
-pub trait Chromosome: Clone + Debug + ToSyn {
+pub trait Chromosome: Clone + Debug + ToSyn + PartialEq + Eq + Hash {
     /// Returns the unique id of the test
     fn id(&self) -> u64;
 
     fn coverage(&self) -> &HashMap<Branch, FitnessValue>;
 
+    fn set_coverage(&mut self, coverage: HashMap<Branch, FitnessValue>);
+
     /// Applies mutation to the chromosome
-    fn mutate(&self) -> Self;
+    fn mutate<M: Mutation<C = Self>>(&self, mutation: &M) -> Self;
 
     /// Returns the fitness of the chromosome with respect to a certain branch
-    fn fitness(&self, objective: &Branch) -> f64;
+    fn fitness(&self, objective: &Branch) -> FitnessValue;
 
     /// Applies crossover to this and other chromosome and returns a pair of offsprings
-    fn crossover(&self, other: &Self) -> (Self, Self)
+    fn crossover<C: Crossover<C = Self>>(&self, other: &Self, crossover: &C) -> (Self, Self)
     where
         Self: Sized;
 
     /// Generates a random chromosome
-    fn random<M: Mutation, C: Crossover>(
-        source_file: &SourceFile,
-        mutation: Rc<M>,
-        crossover: Rc<C>,
-    ) -> Self;
+    fn random(source_file: &SourceFile<Self>) -> Self;
+
+    fn size(&self) -> usize;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -70,15 +77,27 @@ pub enum FitnessValue {
 impl PartialEq for FitnessValue {
     fn eq(&self, other: &Self) -> bool {
         match self {
-            FitnessValue::Zero => other == Self::Zero,
-            FitnessValue::Val(a) => {
-                if let Self::Val(b) = other {
+            FitnessValue::Zero => {
+                if let Self::Zero = other {
                     true
                 } else {
                     false
                 }
             }
-            FitnessValue::Max => other == Self::Max
+            FitnessValue::Val(a) => {
+                if let Self::Val(b) = other {
+                    a == b
+                } else {
+                    false
+                }
+            }
+            FitnessValue::Max => {
+                if let Self::Max = other {
+                    true
+                } else {
+                    false
+                }
+            }
         }
     }
 }
@@ -91,18 +110,18 @@ impl PartialOrd for FitnessValue {
             FitnessValue::Zero => match other {
                 FitnessValue::Zero => Some(Ordering::Equal),
                 FitnessValue::Val(_) => Some(Ordering::Less),
-                FitnessValue::Max => Some(Ordering::Less)
-            }
+                FitnessValue::Max => Some(Ordering::Less),
+            },
             FitnessValue::Val(a) => match other {
                 FitnessValue::Zero => Some(Ordering::Greater),
                 FitnessValue::Val(b) => a.partial_cmp(b),
-                FitnessValue::Max => Some(Ordering::Less)
-            }
+                FitnessValue::Max => Some(Ordering::Less),
+            },
             FitnessValue::Max => match other {
                 FitnessValue::Zero => Some(Ordering::Greater),
                 FitnessValue::Val(_) => Some(Ordering::Greater),
-                FitnessValue::Max => Some(Ordering::Equal)
-            }
+                FitnessValue::Max => Some(Ordering::Equal),
+            },
         }
     }
 }
@@ -118,12 +137,10 @@ impl Display for FitnessValue {
 }
 
 #[derive(Debug)]
-pub struct TestCase<M: Mutation, C: Crossover> {
+pub struct TestCase {
     id: u64,
     stmts: Vec<Statement>,
-    results: HashMap<Branch, FitnessValue>,
-    mutation: Rc<M>,
-    crossover: Rc<C>,
+    coverage: HashMap<Branch, FitnessValue>,
     ddg: StableDiGraph<Uuid, Dependency>,
 
     /// Stores connection of variables and the appropriate statements
@@ -134,14 +151,12 @@ pub struct TestCase<M: Mutation, C: Crossover> {
     var_counters: HashMap<String, usize>,
 }
 
-impl<M: Mutation, C: Crossover> Clone for TestCase<M, C> {
+impl Clone for TestCase {
     fn clone(&self) -> Self {
         TestCase {
-            id: CHROMOSOME_ID_GENERATOR.next_id(),
+            id: self.id.clone(),
             stmts: self.stmts.clone(),
-            results: self.results.clone(),
-            mutation: self.mutation.clone(),
-            crossover: self.crossover.clone(),
+            coverage: self.coverage.clone(),
             ddg: self.ddg.clone(),
             node_index_table: self.node_index_table.clone(),
             var_table: self.var_table.clone(),
@@ -150,7 +165,7 @@ impl<M: Mutation, C: Crossover> Clone for TestCase<M, C> {
     }
 }
 
-impl<M: Mutation, C: Crossover> PartialEq for TestCase<M, C> {
+impl PartialEq for TestCase {
     fn eq(&self, other: &Self) -> bool {
         /*self.stmts == other.stmts && self.objective == other.objective*/
 
@@ -159,9 +174,9 @@ impl<M: Mutation, C: Crossover> PartialEq for TestCase<M, C> {
     }
 }
 
-impl<M: Mutation, C: Crossover> Eq for TestCase<M, C> {}
+impl Eq for TestCase {}
 
-impl<M: Mutation, C: Crossover> Hash for TestCase<M, C> {
+impl Hash for TestCase {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
         /*self.objective.hash(state);
@@ -169,21 +184,21 @@ impl<M: Mutation, C: Crossover> Hash for TestCase<M, C> {
     }
 }
 
-impl<M: Mutation, C: Crossover> TestCase<M, C> {
-    pub const TEST_FN_PREFIX: &'static str = "testify";
-
-    pub fn new(id: u64, mutation: Rc<M>, crossover: Rc<C>) -> Self {
+impl TestCase {
+    pub fn new(id: u64) -> Self {
         TestCase {
             id,
             stmts: Vec::new(),
-            results: HashMap::new(),
-            mutation,
-            crossover,
+            coverage: HashMap::new(),
             ddg: StableDiGraph::new(),
             var_table: HashMap::new(),
             node_index_table: HashMap::new(),
             var_counters: HashMap::new(),
         }
+    }
+
+    pub fn to_dot(&self) {
+        println!("{:?}", Dot::with_config(&self.ddg, &[Config::NodeIndexLabel]));
     }
 
     pub fn stmts(&self) -> &Vec<Statement> {
@@ -223,7 +238,7 @@ impl<M: Mutation, C: Crossover> TestCase<M, C> {
         if let Some(args) = stmt.args() {
             insert_position = args.iter()
                 .filter_map(|a|
-                    // Return the indeces of statements that produce variables used
+                    // Return the indices of statements that produce variables used
                     // as arguments in a statement. All variables must be defined before
                     // they can be used in a statement
                     if let Arg::Var(var_arg) = a {
@@ -240,9 +255,7 @@ impl<M: Mutation, C: Crossover> TestCase<M, C> {
                             self.ddg.add_edge(node_index, other_node_index.clone(), Dependency::Consumes);
                         }
 
-                        let generating_stmt_position = self.stmts.iter().position(|s| {
-                            s.id() == *generating_statement_uuid
-                        }).unwrap();
+                        let generating_stmt_position = self.stmt_position(generating_statement_uuid.clone()).unwrap();
 
                         Some(generating_stmt_position)
                     } else {
@@ -264,23 +277,6 @@ impl<M: Mutation, C: Crossover> TestCase<M, C> {
         var
     }
 
-    pub fn is_consumed(&self, stmt: &Statement) -> bool {
-        if !stmt.returns_value() {
-            panic!("The statement does not return anything");
-        }
-
-        if let Some(var) = stmt.var() {
-            let uuid = self.var_table.get(var).unwrap();
-            let node_index = self.node_index_table.get(uuid).unwrap();
-            let mut incoming_edges = self
-                .ddg
-                .edges_directed(node_index.to_owned(), Direction::Incoming);
-            incoming_edges.any(|e| e.weight().to_owned() == Dependency::Consumes)
-        } else {
-            panic!("Variable is not defined even though the statement returns a value");
-        }
-    }
-
     pub fn get_owner(&self, stmt: &MethodInvStmt) -> (&Statement, usize) {
         for (i, s) in self.stmts.iter().enumerate() {
             if let Statement::Constructor(constructor) = s {
@@ -292,7 +288,14 @@ impl<M: Mutation, C: Crossover> TestCase<M, C> {
         panic!()
     }
 
-    pub fn delete_stmt(&mut self, idx: usize) {
+    pub fn remove_stmt(&mut self, stmt_id: Uuid) -> usize {
+        let position = self.stmts.iter().position(|s| s.id() == stmt_id).unwrap();
+        self.remove_stmt_at(position);
+
+        position
+    }
+
+    pub fn remove_stmt_at(&mut self, idx: usize) {
         let stmt = self.stmts.remove(idx);
         let id = stmt.id();
 
@@ -300,64 +303,51 @@ impl<M: Mutation, C: Crossover> TestCase<M, C> {
             self.var_table.remove(stmt.var().unwrap());
         }
 
-        let node_index = self.node_index_table.get(&id).unwrap();
+        let node_index = self.node_index_table.get(&id).unwrap().clone();
         let neighbours = self
             .ddg
             .neighbors_directed(node_index.clone(), Direction::Incoming);
+
+        let neighbour_ids: Vec<usize> = neighbours
+            .map(|n| {
+                let uuid = self.ddg.node_weight(n.clone()).unwrap();
+                self.stmt_position(uuid.clone()).unwrap()
+            })
+            .collect();
+        neighbour_ids.iter().for_each(|&i| self.remove_stmt_at(i));
         self.ddg.remove_node(node_index.clone());
-        neighbours.for_each(|n| {
-            let uuid = self.ddg.node_weight(n.clone()).unwrap();
-            let next = self.get_pos_by_id(uuid.clone()).unwrap();
-            self.delete_stmt(next);
-        });
     }
 
-    pub fn get_pos_by_id(&self, id: Uuid) -> Option<usize> {
+    pub fn stmt_position(&self, id: Uuid) -> Option<usize> {
         self.stmts.iter().position(|s| s.id() == id)
+    }
+
+    pub fn var_position(&self, var: &Var) -> Option<usize> {
+        let id = self.var_table.get(var);
+        if let Some(&id) = id {
+            self.stmt_position(id)
+        } else {
+            None
+        }
     }
 
     pub fn replace_stmt(&mut self, idx: usize, stmt: Statement) {
         std::mem::replace(&mut self.stmts[idx], stmt);
     }
 
-    pub fn reorder_stmts(&mut self, idx_a: usize, idx_b: usize) {
+    pub fn swap_stmts(&mut self, idx_a: usize, idx_b: usize) {
         self.stmts.swap(idx_a, idx_b);
     }
 
-    pub fn add_random_stmt(&mut self) {}
+    pub fn add_random_stmt(&mut self) {
+        unimplemented!()
+    }
 
     pub fn name(&self) -> String {
-        format!("{}_{}", TestCase::TEST_FN_PREFIX, self.id)
+        format!("{}_{}", TEST_FN_PREFIX, self.id)
     }
 
-    pub fn complex_definitions(&mut self) -> Vec<ConstructorStmt> {
-        self.stmts()
-            .iter()
-            .filter_map(|s| {
-                if let Statement::Constructor(stmt) = s {
-                    Some(stmt.clone())
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
-    pub fn unconsumed_complex_definitions(&mut self) -> Vec<Statement> {
-        self.stmts()
-            .iter()
-            .filter_map(|s| {
-                if s.returns_value() {
-                    if !self.is_consumed(s) {
-                        return Some(s.clone());
-                    }
-                }
-                None
-            })
-            .collect()
-    }
-
-    pub fn primitive_definitions(&mut self) -> Vec<AssignStmt> {
+    pub fn instantiated_primitives(&mut self) -> Vec<AssignStmt> {
         self.stmts()
             .iter()
             .filter_map(|s| {
@@ -377,16 +367,75 @@ impl<M: Mutation, C: Crossover> TestCase<M, C> {
             .collect()
     }
 
-    pub fn free_instantiated_types(&self) -> &Vec<T> {
+    pub fn variables(&self) -> Vec<Var> {
+        self.var_table.keys().cloned().collect()
+    }
+
+    pub fn is_consumable(&self, var: &Var, idx: usize) -> bool {
         unimplemented!()
     }
 
-    pub fn size(&self) -> usize {
-        self.stmts.len()
+    pub fn is_borrowable(&self, var: &Var, idx: usize) -> bool {
+        unimplemented!()
     }
 
-    pub fn set_results(&mut self, results: HashMap<Branch, FitnessValue>) {
-        self.results = results;
+    pub fn unconsumed_variables_typed(&self, ty: &T) -> Vec<(Var, usize)> {
+        let mut vars = self.variables_typed(ty);
+        vars.retain(|(v, _)| !self.is_consumed(v));
+        vars
+    }
+
+    pub fn variables_typed(&self, ty: &T) -> Vec<(Var, usize)> {
+        // Also return their positions in the test case
+        self.stmts
+            .iter()
+            .zip(0..self.stmts.len())
+            .filter_map(|(s, i)| {
+                if let Some(var) = s.var() {
+                    if var.ty() == ty {
+                        return Some((var.clone(), i));
+                    }
+                }
+                None
+            }).collect()
+    }
+
+    pub fn is_consumed(&self, var: &Var) -> bool {
+        let uuid = self.var_table.get(var).unwrap();
+        let node_index = self.node_index_table.get(uuid).unwrap();
+        let mut incoming_edges = self
+            .ddg
+            .edges_directed(node_index.to_owned(), Direction::Incoming);
+        incoming_edges.any(|e| e.weight().to_owned() == Dependency::Consumes)
+    }
+
+    pub fn consumed_at(&self, var: &Var) -> Option<usize> {
+        let uuid = self.var_table.get(var).unwrap();
+        let node_index = self.node_index_table.get(uuid).unwrap();
+        let mut neighbours = self
+            .ddg
+            .neighbors_directed(node_index.clone(), Direction::Incoming);
+
+        let consuming_stmt_index = neighbours.find(|n| {
+            let edge = self.ddg.find_edge(node_index.clone(), n.clone());
+            if let Some(edge_index) = edge {
+                let weight = self.ddg.edge_weight(edge_index).unwrap();
+                return *weight == Dependency::Consumes
+            }
+            false
+        });
+
+        if let Some(consuming_stmt_index) = consuming_stmt_index {
+            let consuming_stmt_id = self.ddg.node_weight(consuming_stmt_index);
+            if let Some(id) = consuming_stmt_id {
+                return self.stmts.iter().position(|s| s.id() == *id)
+            }
+        }
+        None
+    }
+
+    pub fn set_coverage(&mut self, coverage: HashMap<Branch, FitnessValue>) {
+        self.coverage = coverage;
     }
     pub fn set_stmts(&mut self, stmts: &[Statement]) {
         self.stmts = stmts.to_vec();
@@ -401,7 +450,7 @@ impl<M: Mutation, C: Crossover> TestCase<M, C> {
     /// # Arguments
     ///
     /// * `test_case` - The test case where a randomly generated statement should be inserted into.
-    pub fn insert_random_stmt(&mut self, source_file: &SourceFile) {
+    pub fn insert_random_stmt(&mut self, source_file: &SourceFile<Self>) {
         // TODO primitive statements are not being generated yet
         let callables = source_file.callables();
         let i = fastrand::usize(0..callables.len());
@@ -410,18 +459,23 @@ impl<M: Mutation, C: Crossover> TestCase<M, C> {
         let args: Vec<Arg> = callable
             .params()
             .iter()
-            .map(|p| self.generate_argument(p, HashSet::new()))
+            .map(|p| self.generate_argument(source_file, p, HashSet::new()))
             .collect();
         let stmt = callable.to_stmt(args);
         self.add_stmt(stmt);
     }
 
-    fn generate_argument(&mut self, param: &Param, mut types_to_generate: HashSet<T>) -> Arg {
+    fn generate_argument(
+        &mut self,
+        source_file: &SourceFile<Self>,
+        param: &Param,
+        mut types_to_generate: HashSet<T>,
+    ) -> Arg {
         let mut generator = None;
         if param.is_primitive() {
             return Arg::Primitive(Primitive::U8(fastrand::u8(..)));
         } else {
-            let mut generators = self.source_file.generators(param.ty());
+            let mut generators = source_file.generators(param.ty());
             let mut retry = true;
             while retry && !generators.is_empty() {
                 retry = false;
@@ -460,7 +514,7 @@ impl<M: Mutation, C: Crossover> TestCase<M, C> {
                 if !self.instantiated_types().contains(p.ty()) {
                     let mut types_to_generate = types_to_generate.clone();
                     types_to_generate.insert(param.ty().clone());
-                    self.generate_argument(p, types_to_generate)
+                    self.generate_argument(source_file, p, types_to_generate)
                 } else {
                     println!("Unimplemented: Param type: {}", param.ty().to_string());
                     println!(
@@ -484,18 +538,18 @@ impl<M: Mutation, C: Crossover> TestCase<M, C> {
     }
 }
 
-impl<M: Mutation, C: Crossover> Display for TestCase<M, C> {
+impl Display for TestCase {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        let syn_item = self.to_syn(false);
+        let syn_item = self.to_syn();
         let token_stream = syn_item.to_token_stream();
         write!(f, "{}", token_stream.to_string())
     }
 }
 
-impl<M: Mutation, C: Crossover> ToSyn for TestCase<M, C> {
+impl ToSyn for TestCase {
     fn to_syn(&self) -> Item {
         let ident = Ident::new(
-            &format!("{}_{}", TestCase::TEST_FN_PREFIX, self.id),
+            &format!("{}_{}", TEST_FN_PREFIX, self.id),
             Span::call_site(),
         );
         let id = self.id;
@@ -520,42 +574,52 @@ impl<M: Mutation, C: Crossover> ToSyn for TestCase<M, C> {
     }
 }
 
-impl<M: Mutation, C: Crossover> Chromosome for TestCase<M, C> {
+impl Chromosome for TestCase {
     fn id(&self) -> u64 {
         self.id
     }
 
     fn coverage(&self) -> &HashMap<Branch, FitnessValue> {
-        &self.results
+        &self.coverage
     }
 
-    fn mutate(&self) -> Self {
-        self.mutation.mutate(self)
+    fn set_coverage(&mut self, coverage: HashMap<Branch, FitnessValue>) {
+        self.coverage = coverage;
+    }
+
+    fn mutate<M: Mutation<C = Self>>(&self, mutation: &M) -> Self {
+        let mut mutated_test = mutation.apply(self);
+        mutated_test.id = CHROMOSOME_ID_GENERATOR.lock().unwrap().next_id();
+        mutated_test
     }
 
     fn fitness(&self, objective: &Branch) -> FitnessValue {
         objective.fitness(self)
     }
 
-    fn crossover(&self, other: &Self) -> (Self, Self)
+    fn crossover<C: Crossover<C = Self>>(&self, other: &Self, crossover: &C) -> (Self, Self)
     where
         Self: Sized,
     {
-        self.crossover.crossover(self, other)
+        let (mut left, mut right) = crossover.apply(self, other);
+        left.id = CHROMOSOME_ID_GENERATOR.lock().unwrap().next_id();
+        right.id = CHROMOSOME_ID_GENERATOR.lock().unwrap().next_id();
+        (left, right)
     }
 
-    fn random(source_file: &SourceFile,
-        mutation: Rc<M>,
-        crossover: Rc<C>,
-    ) -> Self {
-        let test_id = CHROMOSOME_ID_GENERATOR.next_id();
+    fn random(source_file: &SourceFile<Self>) -> Self {
+        let test_id = CHROMOSOME_ID_GENERATOR.lock().as_mut().unwrap().next_id();
 
-        let mut test_case = TestCase::new(test_id, mutation.clone(), crossover.clone());
+        let mut test_case = TestCase::new(test_id);
 
         // TODO fill test case with statements until a certain length
         test_case.insert_random_stmt(source_file);
 
         test_case
+    }
+
+    fn size(&self) -> usize {
+        self.stmts.len()
     }
 }
 
@@ -749,6 +813,17 @@ impl Statement {
         }
     }
 
+    pub fn set_arg(&mut self, arg: Arg, idx: usize) {
+        match self {
+            Statement::PrimitiveAssignment(_) => panic!("Primitives do not have args"),
+            Statement::Constructor(c) => c.set_arg(arg, idx),
+            Statement::AttributeAccess(_) => panic!("Attribute access cannot have args"),
+            Statement::MethodInvocation(m) => m.set_arg(arg, idx),
+            Statement::StaticFnInvocation(f) => f.set_arg(arg, idx),
+            Statement::FunctionInvocation(f) => f.set_arg(arg, idx)
+        }
+    }
+
     pub fn id(&self) -> Uuid {
         match self {
             Statement::PrimitiveAssignment(p) => p.id(),
@@ -822,6 +897,7 @@ impl StaticFnInvStmt {
         self.var.as_ref()
     }
 
+
     pub fn set_var(&mut self, var: Var) {
         self.var = Some(var);
     }
@@ -833,6 +909,13 @@ impl StaticFnInvStmt {
     }
     pub fn id(&self) -> Uuid {
         self.id
+    }
+    pub fn set_args(&mut self, args: Vec<Arg>) {
+        self.args = args;
+    }
+
+    pub fn set_arg(&mut self, arg: Arg, idx: usize) {
+        self.args[idx] = arg;
     }
 }
 
@@ -918,9 +1001,9 @@ impl ConstructorStmt {
 
             let type_name = Ident::new(&self.constructor.parent.to_string(), Span::call_site());
             let args: Vec<Expr> = self.args.iter().map(|a| a.to_syn()).collect();
-            println!("{:?}", args);
+            /*println!("{:?}", args);
             println!("{}", type_name);
-            println!("{:?}", ident);
+            println!("{:?}", ident);*/
             syn::parse_quote! {
                 let mut #ident = #type_name::new(#(#args),*);
             }
@@ -941,6 +1024,10 @@ impl ConstructorStmt {
     }
     pub fn args(&self) -> &Vec<Arg> {
         &self.args
+    }
+
+    pub fn set_arg(&mut self, arg: Arg, idx: usize) {
+        self.args[idx] = arg;
     }
 
     pub fn set_args(&mut self, args: Vec<Arg>) {
@@ -1024,6 +1111,19 @@ impl MethodInvStmt {
         }
     }
 
+    pub fn callee(&self) -> &Arg {
+        // Associative method call must always have a callee
+        self.args.first().unwrap()
+    }
+
+    pub fn set_callee(&mut self, callee: Arg) {
+        if self.args.is_empty() {
+            self.args.push(callee);
+        } else {
+            std::mem::replace(&mut self.args[0], callee);
+        }
+    }
+
     pub fn to_syn(&self) -> Stmt {
         let method_ident = &self.method.impl_item_method.sig.ident;
         let args: Vec<Expr> = self.args.iter().map(Arg::to_syn).collect();
@@ -1078,7 +1178,9 @@ impl MethodInvStmt {
     pub fn args(&self) -> &Vec<Arg> {
         &self.args
     }
-
+    pub fn set_arg(&mut self, arg: Arg, idx: usize) {
+        self.args[idx] = arg;
+    }
     pub fn set_args(&mut self, args: Vec<Arg>) {
         self.args = args;
     }
@@ -1149,6 +1251,10 @@ impl FnInvStmt {
 
     pub fn set_var(&mut self, var: Var) {
         self.var = Some(var);
+    }
+
+    pub fn set_arg(&mut self, arg: Arg, idx: usize) {
+        self.args[idx] = arg;
     }
 
     pub fn set_args(&mut self, args: Vec<Arg>) {
