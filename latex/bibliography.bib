@@ -1654,6 +1654,57 @@ editions of the competition.},
   url    = {https://github.com/dtolnay/syn},
 }
 
+@Misc{Zalewski2014,
+  author = {Zalewski, Michal},
+  title  = {American fuzzy lop},
+  year   = {2014},
+}
+
+@InProceedings{Fioraldi2020,
+  author    = {Andrea Fioraldi and Dominik Maier and Heiko Ei{\ss}feldt and Marc Heuse},
+  booktitle = {14th {USENIX} Workshop on Offensive Technologies ({WOOT} 20)},
+  title     = {AFL++ : Combining Incremental Steps of Fuzzing Research},
+  publisher = {{USENIX} Association},
+  url       = {https://www.usenix.org/conference/woot20/presentation/fioraldi},
+  file      = {:papers/aflpp-woot2020.pdf:PDF},
+  month     = aug,
+  year      = {2020},
+}
+
+@Misc{LLVMProject2017,
+  author = {{LLVM Project}},
+  title  = {libFuzzer – a library for coverage-guided fuzz testing},
+  year   = {2017},
+}
+
+@InProceedings{Rocha2020,
+  author    = {Rocha, Herbert and Menezes, Rafael and Cordeiro, Lucas C. and Barreto, Raimundo},
+  booktitle = {Tools and Algorithms for the Construction and Analysis of Systems},
+  title     = {Map2Check: Using Symbolic Execution and Fuzzing},
+  editor    = {Biere, Armin and Parker, David},
+  isbn      = {978-3-030-45237-7},
+  pages     = {403--407},
+  publisher = {Springer International Publishing},
+  abstract  = {Map2Check is a software verification tool that combines fuzzing, symbolic execution, and inductive invariants. It automatically checks safety properties in C programs by adopting source code instrumentation to monitor data (e.g., memory pointers) from the program's executions using LLVM compiler infrastructure. For SV-COMP 2020, we extended Map2Check to exploit an iterative deepening approach using LibFuzzer and Klee to check for safety properties. We also use Crab-LLVM to infer program invariants based on reachability analysis. Experimental results show that Map2Check can handle a wide variety of safety properties in several intricate verification tasks from SV-COMP 2020.},
+  address   = {Cham},
+  file      = {:papers/2020_Book_ToolsAndAlgorithmsForTheConstr.pdf:PDF},
+  year      = {2020},
+}
+
+@InProceedings{Le2019,
+  author    = {Le, Hoang M.},
+  booktitle = {Automated Technology for Verification and Analysis},
+  title     = {KLUZZER: Whitebox Fuzzing on Top of LLVM},
+  editor    = {Chen, Yu-Fang and Cheng, Chih-Hong and Esparza, Javier},
+  isbn      = {978-3-030-31784-3},
+  pages     = {246--252},
+  publisher = {Springer International Publishing},
+  abstract  = {Whitebox fuzzing (a.k.a. concolic testing) has been shown to be an effective bug finding technique on its own as well as in combination with coverage-guided greybox fuzzing. However, there is currently a lack of whitebox fuzzers operating above the binary code level. We present KLUZZER, a whitebox fuzzer targeting LLVM bitcode, and thus can be easily combined with the widely deployed LLVM's coverage-guided greybox fuzzer LibFuzzer. Experimental evaluation on a set of benchmarks shows encouraging results.},
+  address   = {Cham},
+  file      = {:papers/10.1007_978-3-030-31784-3_14-citation.bib:bib},
+  year      = {2019},
+}
+
 @Comment{jabref-meta: databaseType:biblatex;}
 
 @Comment{jabref-meta: grouping:
