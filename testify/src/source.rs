@@ -30,6 +30,26 @@ fn src_to_file(src: &str, path: &str) {
     file.write_all(&src.as_bytes()).unwrap();
 }
 
+
+pub struct Corpus<C: Chromosome> {
+    source_files: Vec<SourceFile<C>>
+}
+
+impl<C: Chromosome> Corpus<C> {
+    pub fn new(source_files: Vec<SourceFile<C>>) -> Self {
+        Corpus { source_files }
+    }
+
+    pub fn add_tests(&mut self, tests: &[C], instrumented: bool) {
+
+    }
+
+
+    pub fn source_files(&self) -> &Vec<SourceFile<C>> {
+        &self.source_files
+    }
+}
+
 #[cfg_attr(test, create)]
 #[derive(Debug, Clone)]
 pub struct SourceFile<C: Chromosome> {
@@ -105,6 +125,17 @@ impl<C: Chromosome> SourceFile<C> {
             })
             .cloned()
             .collect()
+    }
+
+    pub fn callables_of(&self, ty: &T) -> Vec<Callable> {
+        self.instrumenter.callables.iter().filter(|&c| {
+            match c {
+                Callable::Method(m) => m.parent() == ty,
+                Callable::StaticFunction(f) => f.parent() == ty,
+                Callable::Constructor(c) => c.parent() == ty,
+                _ => false
+            }
+        }).cloned().collect()
     }
 
     pub fn callables(&self) -> &Vec<Callable> {

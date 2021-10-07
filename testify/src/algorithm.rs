@@ -452,7 +452,6 @@ pub struct OffspringGenerator<C: Chromosome, M: Mutation, Cr: Crossover> {
 impl<C: Chromosome, M: Mutation, Cr: Crossover> OffspringGenerator<C, M, Cr> {
     pub fn new(
         selection: Rc<dyn Selection<C = C>>,
-        //mutation: Rc<dyn Mutation<C = C>>,
         mutation: Rc<M>,
         crossover: Rc<Cr>,
         crossover_rate: f64,

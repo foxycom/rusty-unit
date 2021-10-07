@@ -29,3 +29,6 @@ pbr = "1.0.4"
 petgraph = "0.6.0"
 uuid = { version = "0.8", features = ["v4"] }
 
+[dev-dependencies]
+mockall = "0.10.2"
+

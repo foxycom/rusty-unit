@@ -6,6 +6,7 @@
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/examples/additions/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/instrument/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/src/examples/additions/target" />
       <excludeFolder url="file://$MODULE_DIR$/src/instrument/target" />

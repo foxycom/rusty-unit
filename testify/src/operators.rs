@@ -1,13 +1,17 @@
 use crate::algorithm::{PreferenceSorter, SVD};
 use crate::chromosome::{
-    Arg, Chromosome, ConstructorStmt, FnInvStmt, MethodInvStmt, Statement, TestCase, Var, VarArg,
+    Arg, Chromosome, ConstructorStmt, FnInvStmt, MethodInvStmt, Param, Primitive, Statement,
+    TestCase, Var, VarArg,
 };
 use crate::selection::Selection;
-use crate::source::BranchManager;
+use crate::source::{BranchManager, SourceFile};
+use quote::ToTokens;
 use std::cell::RefCell;
 use std::env::var;
 use std::fmt::Debug;
 use std::rc::Rc;
+use syn::Stmt;
+use uuid::Uuid;
 
 pub trait Crossover: Debug {
     type C: Chromosome;
@@ -62,6 +66,7 @@ impl Crossover for SinglePointCrossover {
 #[derive(Debug, Clone)]
 pub struct BasicMutation {
     branch_manager: Rc<RefCell<BranchManager>>,
+    source_file: Rc<SourceFile<<Self as Mutation>::C>>,
 }
 
 impl Mutation for BasicMutation {
@@ -98,84 +103,177 @@ impl Mutation for BasicMutation {
 }
 
 impl BasicMutation {
-    pub fn new(branch_manager: Rc<RefCell<BranchManager>>) -> BasicMutation {
-        BasicMutation { branch_manager }
+    pub fn new(
+        source_file: Rc<SourceFile<<Self as Mutation>::C>>,
+        branch_manager: Rc<RefCell<BranchManager>>,
+    ) -> BasicMutation {
+        BasicMutation {
+            branch_manager,
+            source_file,
+        }
     }
 
-    fn mutate_invocation(&self, test_case: &mut TestCase, mut stmt: Statement) {
+    pub fn mutate_invocation(&self, test_case: &mut TestCase, stmt: Statement) {
         let stmt_id = stmt.id();
         let stmt_i = match test_case.stmt_position(stmt_id) {
             None => {
-                test_case.to_dot();
-                println!("{}", test_case.to_string());
-                panic!()
+                test_case.to_file();
+                panic!(
+                    "Looking for stmt {} with id {} in test {}",
+                    stmt,
+                    stmt_id,
+                    test_case.id()
+                );
             }
             Some(idx) => idx,
         };
 
+        let mut new_stmt = stmt.clone();
         let args = stmt.args().unwrap();
         if !args.is_empty() {
-            // Change the method itself
-            unimplemented!()
-        } else {
             // Change the source object for the arg or mutate if it's a primitive
             let arg_i = fastrand::usize(0..args.len());
             let arg = args.get(arg_i).unwrap();
             match arg {
                 Arg::Var(var_arg) => {
-                    if fastrand::f64() < 0.5 {
+                    // TODO reduce probability
+                    if fastrand::f64() < 1.0 {
                         // Swap object
+                        let variables = test_case.variables_typed(var_arg.param().ty());
+                        let candidates: Vec<&(Var, usize)>;
                         if var_arg.is_consuming() {
-                            // Only use objects that are not consumed in the whole test and
-                            // that will not be borrowed after this call
-                            let variables = test_case.variables_typed(var_arg.param().ty());
-                            let consumables: Vec<&(Var, usize)> = variables
+                            // The candidates must not be consumed throughout the whole test
+                            // and they also must not be borrowed after stmt_i
+                            candidates = variables
                                 .iter()
                                 .filter(|(v, _)| test_case.is_consumable(v, stmt_i))
                                 .collect();
-                            if !consumables.is_empty() {
-                                let consumable_i = fastrand::usize(0..consumables.len());
-                                let (new_var, _) = consumables
-                                    .get(consumable_i)
-                                    .unwrap();
-                                let mut new_stmt = stmt.clone();
-                                let new_arg = Arg::Var(VarArg::new(new_var.clone(), var_arg.param().clone()));
-                                new_stmt.set_arg(new_arg, arg_i);
-                                test_case.remove_stmt(stmt_id);
-                                test_case.insert_stmt(stmt_i, new_stmt);
-                            } else {
-                                unimplemented!("Was jetzt?")
-                            }
                         } else {
-                            unimplemented!()
+                            // The candidates must not be consumed before stmt_i
+                            candidates = variables
+                                .iter()
+                                .filter(|(v, _)| test_case.is_borrowable(v, stmt_i))
+                                .collect();
+                        }
+
+                        if !candidates.is_empty() {
+                            let candidate_i = fastrand::usize(0..candidates.len());
+                            let (new_var, _) = candidates.get(candidate_i).unwrap();
+                            let new_arg =
+                                Arg::Var(VarArg::new(new_var.clone(), var_arg.param().clone()));
+                            new_stmt.set_arg(new_arg, arg_i);
+                        } else {
+                            // There are no candidates
+                            unimplemented!("Was jetzt?")
                         }
                     } else {
                         // Mutate object
                         unimplemented!()
                     }
                 }
-                Arg::Primitive(primitive) => unimplemented!(),
+                Arg::Primitive(primitive) => {
+                    let mutated_primitive = Arg::Primitive(primitive.mutate());
+                    new_stmt.set_arg(mutated_primitive, arg_i);
+                }
+            }
+        } else {
+            // Args is empty, hence it's not an associative method
+            // Change to a call with an identical return type
+
+            let return_type = stmt.return_type();
+            if let Some(ty) = return_type {
+                let generators = test_case.source_file().generators(ty);
+                if !generators.is_empty() {
+                    let generator_i = fastrand::usize(0..generators.len());
+                    let generator = generators.get(generator_i).unwrap();
+
+                    let args: Vec<Arg> = generator
+                        .params()
+                        .iter()
+                        .map(|p| test_case.generate_arg(p))
+                        .collect();
+                    new_stmt = generator.to_stmt(args);
+                } else {
+                    unimplemented!()
+                }
+            } else {
+                // TODO is this appropriate?
+                unimplemented!()
             }
         }
 
-        // Change which method is called (for now replace borrowing stmts with borrowing ones,
-        // and consuming with consuming ones
-        unimplemented!();
-        // Change params
-        /*let args = stmt.args();
-        let p = 1.0 / args.len() as f64;
-        let mutated_args: Vec<Arg> = args
-            .iter()
-            .map(|a| BasicMutation::mutate_arg(a, p, 0.0))
-            .collect();
-
-        stmt.set_args(mutated_args);*/
+        test_case.remove_stmt(stmt_id);
+        test_case.insert_stmt(stmt_i, new_stmt);
     }
 
     fn insert_statement(&self, test_case: &<Self as Mutation>::C) -> <Self as Mutation>::C {
         let mut copy = test_case.clone();
 
-        copy.add_stmt()
+        /*if self.source_files.len() > 1 {
+            panic!("The implementation is incorrect for multiple files")
+        }
+
+        let source_file_i = fastrand::usize(0..self.source_files.len());
+        let source_file = self.source_files.get(source_file_i).unwrap();*/
+
+        // TODO types can be 0 length and lead to panic
+
+        let available_callables = copy.available_callables();
+
+        if !available_callables.is_empty() && fastrand::f64() < 0.5 {
+            let callable_i = fastrand::usize(0..available_callables.len());
+            let (var, callable, range) = available_callables.get(callable_i).unwrap();
+            let self_param = match callable.params().first() {
+                None => {
+                    test_case.to_file();
+                    panic!(
+                        "\nFailing test: {}, callable: {:?}",
+                        test_case.id(),
+                        callable
+                    );
+                }
+                Some(param) => param,
+            };
+            let self_arg = Arg::Var(VarArg::new(var.clone(), self_param.clone()));
+
+            let mut args = Vec::with_capacity(callable.params().len());
+            args.push(self_arg);
+
+            callable.params()[1..].iter().for_each(|p| {
+                let arg = copy.generate_arg(p);
+                args.push(arg);
+            });
+
+            let stmt = callable.to_stmt(args);
+            let stmt_i = fastrand::usize(range.clone());
+            copy.insert_stmt(stmt_i, stmt);
+        } else {
+            // Generate a new object
+            let types = copy.instantiated_types();
+            if types.is_empty() {
+                // TODO There is nothing defined, why?
+                copy.insert_random_stmt();
+            } else {
+                let ty = types.get(fastrand::usize(0..types.len())).unwrap();
+                let source_file = copy.source_file();
+
+                let callables = source_file.callables_of(ty);
+                if callables.is_empty() {
+                    println!();
+                }
+                let i = fastrand::usize(0..callables.len());
+                let callable = callables.get(i).unwrap();
+                let args = callable
+                    .params()
+                    .iter()
+                    .map(|p| copy.generate_arg(p))
+                    .collect();
+                let stmt = callable.to_stmt(args);
+                copy.add_stmt(stmt);
+            }
+        }
+
+        copy
     }
 
     fn delete_statement(&self, test_case: &<Self as Mutation>::C) -> <Self as Mutation>::C {
