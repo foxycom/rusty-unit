@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 fn main() {}
 struct SomeStruct {
     a: u8,
