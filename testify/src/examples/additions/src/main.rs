@@ -1,11 +1,16 @@
+use crate::dependency::DependencyStruct;
+
+mod dependency;
+
 fn main() {}
 struct SomeStruct {
     a: u8,
     b: u8,
+    dependency: dependency::DependencyStruct
 }
 impl SomeStruct {
     pub fn new(a: u8, b: u8) -> SomeStruct {
-        SomeStruct { a, b }
+        SomeStruct { a, b, dependency: DependencyStruct{} }
     }
     pub fn hello(&mut self, y: u8) {
         if y < self.a {
