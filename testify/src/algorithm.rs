@@ -15,6 +15,7 @@ use std::option::Option::Some;
 use std::os::unix::raw::off_t;
 use std::rc::Rc;
 use std::time::Instant;
+use crate::test::TestWriter;
 
 pub struct DynaMOSA<C: Chromosome, M: Mutation, Cr: Crossover> {
     population_size: u64,
@@ -64,9 +65,13 @@ impl<C: Chromosome, M: Mutation<C = C>, Cr: Crossover<C = C>> DynaMOSA<C, M, Cr>
     }
     pub fn run(
         &mut self,
-        mut source_file: SourceFile<C>,
+        mut source_file: SourceFile,
         initial_population: Vec<C>,
     ) -> Result<TestSuite<C>, Box<dyn Error>> {
+        let mut test_writer = TestWriter::<C>::new();
+        //test_writer.add_tests();
+        todo!();
+
         let mut archive = Archive::new(self.branch_manager.clone());
 
         let count = (self.generations + 1) * self.population_size;
@@ -77,9 +82,10 @@ impl<C: Chromosome, M: Mutation<C = C>, Cr: Crossover<C = C>> DynaMOSA<C, M, Cr>
 
         let mut population = initial_population;
 
-        source_file.add_tests(&population, true);
+        todo!("Run tests");
+       /* source_file.add_tests(&population, true);
         source_file.run_tests(&mut population);
-        source_file.clear_tests();
+        source_file.clear_tests();*/
 
         pb.add(self.population_size);
 
@@ -92,9 +98,10 @@ impl<C: Chromosome, M: Mutation<C = C>, Cr: Crossover<C = C>> DynaMOSA<C, M, Cr>
 
             let mut offspring = self.offspring_generator.generate(&population);
 
-            source_file.add_tests(&offspring, true);
+            /*source_file.add_tests(&offspring, true);
             source_file.run_tests(&mut offspring);
-            source_file.clear_tests();
+            source_file.clear_tests();*/
+            todo!("Run tests");
 
             archive.update(&offspring);
 
@@ -123,7 +130,8 @@ impl<C: Chromosome, M: Mutation<C = C>, Cr: Crossover<C = C>> DynaMOSA<C, M, Cr>
             current_generation += 1;
         }
 
-        source_file.add_tests(&population, true);
+        todo!("Add tests to source files");
+        //source_file.add_tests(&population, true);
 
         let mut tmp_file = File::create("fitness.log").unwrap();
 

@@ -66,7 +66,7 @@ impl Crossover for SinglePointCrossover {
 #[derive(Debug, Clone)]
 pub struct BasicMutation {
     branch_manager: Rc<RefCell<BranchManager>>,
-    source_file: Rc<SourceFile<<Self as Mutation>::C>>,
+    source_file: Rc<SourceFile>,
 }
 
 impl Mutation for BasicMutation {
@@ -104,7 +104,7 @@ impl Mutation for BasicMutation {
 
 impl BasicMutation {
     pub fn new(
-        source_file: Rc<SourceFile<<Self as Mutation>::C>>,
+        source_file: Rc<SourceFile>,
         branch_manager: Rc<RefCell<BranchManager>>,
     ) -> BasicMutation {
         BasicMutation {
@@ -218,34 +218,35 @@ impl BasicMutation {
 
         // TODO types can be 0 length and lead to panic
 
-        let available_callables = copy.available_callables();
+        let available_callables = test_case.available_callables();
 
         if !available_callables.is_empty() && fastrand::f64() < 0.5 {
             let callable_i = fastrand::usize(0..available_callables.len());
-            let (var, callable, range) = available_callables.get(callable_i).unwrap();
-            let self_param = match callable.params().first() {
+            let callable_tuple = available_callables.get(callable_i).unwrap();
+
+            let self_param = match callable_tuple.1.params().first() {
                 None => {
                     test_case.to_file();
                     panic!(
                         "\nFailing test: {}, callable: {:?}",
                         test_case.id(),
-                        callable
+                        callable_tuple.1
                     );
                 }
                 Some(param) => param,
             };
-            let self_arg = Arg::Var(VarArg::new(var.clone(), self_param.clone()));
+            let self_arg = Arg::Var(VarArg::new(callable_tuple.0.clone(), self_param.clone()));
 
-            let mut args = Vec::with_capacity(callable.params().len());
+            let mut args = Vec::with_capacity(callable_tuple.1.params().len());
             args.push(self_arg);
 
-            callable.params()[1..].iter().for_each(|p| {
+            callable_tuple.1.params()[1..].iter().for_each(|p| {
                 let arg = copy.generate_arg(p);
                 args.push(arg);
             });
 
-            let stmt = callable.to_stmt(args);
-            let stmt_i = fastrand::usize(range.clone());
+            let stmt = callable_tuple.1.to_stmt(args);
+            let stmt_i = fastrand::usize(callable_tuple.2.clone());
             copy.insert_stmt(stmt_i, stmt);
         } else {
             // Generate a new object

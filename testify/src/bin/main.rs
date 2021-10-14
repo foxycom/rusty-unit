@@ -5,6 +5,7 @@ use clap::Clap;
 
 use testify::algorithm::{DynaMOSA, OffspringGenerator, TestSuite};
 use testify::chromosome::{Chromosome, TestCase};
+use testify::instrument::Instrumenter;
 use testify::operators::{BasicMutation, RankSelection, SinglePointCrossover};
 use testify::source::{BranchManager, SourceFile};
 
@@ -18,9 +19,10 @@ fn main() {
     let opts: CliOpts = CliOpts::parse();
 
     let mut source_file = SourceFile::new(&opts.file);
-    source_file.instrument();
+    let mut instrumenter = Instrumenter::new();
+    instrumenter.instrument(&source_file);
 
-    let mut source_file = Rc::new(source_file);
+    /*let mut source_file = Rc::new(source_file);
 
     let population_size = 20usize;
 
@@ -67,6 +69,6 @@ fn main() {
         Err(err) => {
             println!("{}", err);
         }
-    }
+    }*/
 }
 

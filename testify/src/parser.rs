@@ -93,14 +93,5 @@ mod tests {
     use crate::parser::TraceParser;
     use std::collections::HashMap;
 
-    #[test]
-    fn test_parse_trace() {
-        let mut expected = HashMap::new();
-        expected.insert(2u64, 109.0);
-        expected.insert(6u64, 0.0);
-        expected.insert(3u64, 0.0);
-        let path = "/Users/tim/Documents/master-thesis/testify/src/examples/additions/trace.txt";
-        let results = TraceParser::parse(path).unwrap();
-        assert_eq!(expected, results);
-    }
+
 }

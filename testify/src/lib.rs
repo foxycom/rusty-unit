@@ -9,6 +9,7 @@ pub mod generators;
 pub mod operators;
 pub mod parser;
 pub mod selection;
-pub mod server;
 pub mod source;
 pub mod util;
+pub mod instrument;
+pub mod test;

@@ -43,13 +43,11 @@ pub fn merge_path(path: &Path) -> String {
         .join("::")
 }
 
-pub(crate) fn fn_arg_to_param(fn_arg: &FnArg, syn_type: Box<Type>) -> Param {
-
+pub(crate) fn fn_arg_to_param(fn_arg: &FnArg, ty: &T) -> Param {
     match fn_arg {
         FnArg::Receiver(recv) => {
-            let t = T::new(&type_name(syn_type.as_ref()), syn_type);
             let self_param = SelfParam::new(
-                t,
+                ty.clone(),
                 fn_arg.clone(),
                 recv.reference.is_some(),
                 recv.mutability.is_some()
@@ -59,7 +57,7 @@ pub(crate) fn fn_arg_to_param(fn_arg: &FnArg, syn_type: Box<Type>) -> Param {
         }
         FnArg::Typed(typed) => {
             let syn_type = typed.ty.clone();
-            let t = T::new(&type_name(syn_type.as_ref()), syn_type);
+            let t = T::from(syn_type.as_ref());
 
             // TODO this is not always true, self can also be typed, see doc about FnArg
             let regular_param = RegularParam::new(

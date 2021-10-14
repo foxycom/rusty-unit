@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
-use std::env::var;
 use std::fmt::{Debug, Display, Error, Formatter};
 use std::fs::{File, OpenOptions};
 use std::hash::{Hash, Hasher};
@@ -17,8 +16,10 @@ use petgraph::prelude::{NodeIndex, StableDiGraph};
 use petgraph::{Direction, Graph};
 use proc_macro2::{Ident, Span};
 use quote::ToTokens;
+use syn::ext::IdentExt;
 use syn::{
-    Expr, FnArg, ImplItemMethod, Item, ItemFn, Pat, PatType, Path, ReturnType, Stmt, Type, TypePath,
+    Expr, FnArg, ImplItemMethod, Item, ItemEnum, ItemFn, ItemStruct, Pat, PatType, Path,
+    ReturnType, Stmt, Type, TypePath,
 };
 use uuid::Uuid;
 
@@ -59,7 +60,7 @@ pub trait Chromosome: Clone + Debug + ToSyn + PartialEq + Eq + Hash {
         Self: Sized;
 
     /// Generates a random chromosome
-    fn random(source_file: Rc<SourceFile<Self>>) -> Self;
+    fn random(source_file: Rc<SourceFile>) -> Self;
 
     fn size(&self) -> usize;
 }
@@ -153,7 +154,7 @@ pub struct TestCase {
     /// Stores ids of statement to be able to retrieve dd graph nodes later by their index
     node_index_table: HashMap<Uuid, NodeIndex>,
     var_counters: HashMap<String, usize>,
-    source_file: Rc<SourceFile<TestCase>>,
+    source_file: Rc<SourceFile>,
 }
 
 impl Clone for TestCase {
@@ -191,7 +192,7 @@ impl Hash for TestCase {
 }
 
 impl TestCase {
-    pub fn new(id: u64, source_file: Rc<SourceFile<TestCase>>) -> Self {
+    pub fn new(id: u64, source_file: Rc<SourceFile>) -> Self {
         TestCase {
             id,
             stmts: Vec::new(),
@@ -231,7 +232,6 @@ impl TestCase {
     }
 
     pub fn insert_stmt(&mut self, idx: usize, mut stmt: Statement) -> Option<Var> {
-
         let var = self.set_var(&mut stmt);
         let uuid = stmt.id();
 
@@ -557,7 +557,7 @@ impl TestCase {
     ///     // a can be only be borrowed at position p with 1 < p < pos(consume)
     /// }
     /// ```
-    pub fn available_callables(&self) -> Vec<(Var, Callable, RangeInclusive<usize>)> {
+    pub fn available_callables(&self) -> Vec<(&Var, &Callable, RangeInclusive<usize>)> {
         self.var_table
             .keys()
             .filter_map(|v| {
@@ -567,12 +567,12 @@ impl TestCase {
                     // v can only be borrowed
                     let range = self.instantiated_at(v).unwrap()..=idx;
                     // Retain only callables that are borrowing
-                    let possible_callables: Vec<(Var, Callable, RangeInclusive<usize>)> = callables
+                    let possible_callables: Vec<(&Var, &Callable, RangeInclusive<usize>)> = callables
                         .iter()
-                        .filter_map(|c| {
+                        .filter_map(|&c| {
                             if let Callable::Method(method_item) = c {
                                 if !method_item.consumes_parent() {
-                                    return Some((v.clone(), c.clone(), range.clone()));
+                                    return Some((v, c, range.clone()));
                                 }
                             }
                             None
@@ -588,12 +588,12 @@ impl TestCase {
                         let range_consume = last_borrow_i..=self.size();
                         let callables = callables
                             .iter()
-                            .filter_map(|c| {
+                            .filter_map(|&c| {
                                 if let Callable::Method(method_item) = c {
                                     return if method_item.consumes_parent() {
-                                        Some((v.clone(), c.clone(), range_consume.clone()))
+                                        Some((v, c, range_consume.clone()))
                                     } else {
-                                        Some((v.clone(), c.clone(), range_borrow.clone()))
+                                        Some((v, c, range_borrow.clone()))
                                     };
                                 }
                                 None
@@ -605,7 +605,7 @@ impl TestCase {
                         let range = self.instantiated_at(v).unwrap()..=self.size();
                         let callables = callables
                             .iter()
-                            .map(|c| (v.clone(), c.clone(), range.clone()))
+                            .map(|&c| (v, c, range.clone()))
                             .collect();
                         Some(callables)
                     };
@@ -631,9 +631,9 @@ impl TestCase {
     /// test already contains some definitions that can be reused.
     pub fn insert_random_stmt(&mut self) {
         // TODO primitive statements are not being generated yet
-        let callables = self.source_file.callables().to_owned();
+        let callables = self.source_file.callables();
         let i = fastrand::usize(0..callables.len());
-        let callable = callables.get(i).unwrap();
+        let callable = (*(callables.get(i).unwrap())).clone();
 
         let args: Vec<Arg> = callable
             .params()
@@ -715,7 +715,7 @@ impl TestCase {
 
         Arg::Var(VarArg::new(return_var, param.clone()))
     }
-    pub fn source_file(&self) -> Rc<SourceFile<TestCase>> {
+    pub fn source_file(&self) -> Rc<SourceFile> {
         self.source_file.clone()
     }
 
@@ -738,7 +738,13 @@ impl TestCase {
                 if let Some(node_index) = node_index {
                     Some(format!("({}) {}: {}", node_index.index(), s.id(), s))
                 } else {
-                    println!("\nFailed test id: {}\nStatement {}: {}\nNode index table:{:?}", self.id, s.id(), s, self.node_index_table);
+                    println!(
+                        "\nFailed test id: {}\nStatement {}: {}\nNode index table:{:?}",
+                        self.id,
+                        s.id(),
+                        s,
+                        self.node_index_table
+                    );
                     None
                 }
             })
@@ -837,7 +843,7 @@ impl Chromosome for TestCase {
         (left, right)
     }
 
-    fn random(source_file: Rc<SourceFile<Self>>) -> Self {
+    fn random(source_file: Rc<SourceFile>) -> Self {
         let test_id = CHROMOSOME_ID_GENERATOR.lock().as_mut().unwrap().next_id();
 
         let mut test_case = TestCase::new(test_id, source_file.clone());
@@ -1456,7 +1462,6 @@ impl MethodInvStmt {
         self.args[idx] = arg;
     }
     pub fn set_args(&mut self, args: Vec<Arg>) {
-
         self.args = args;
     }
 
@@ -1516,7 +1521,7 @@ impl FnInvStmt {
         let output = &self.func.item_fn.sig.output;
         match output {
             ReturnType::Default => false,
-            ReturnType::Type(_, _) => true
+            ReturnType::Type(_, _) => true,
         }
     }
 
@@ -1624,6 +1629,13 @@ impl Param {
         }
     }
 
+    pub fn ty_mut(&mut self) -> &mut T {
+        match self {
+            Param::Self_(self_param) => &mut self_param.ty,
+            Param::Regular(regular_param) => &mut regular_param.ty,
+        }
+    }
+
     pub fn is_primitive(&self) -> bool {
         match self {
             Param::Self_(_) => false,
@@ -1696,44 +1708,6 @@ impl RegularParam {
     }
 }
 
-#[derive(Debug, Clone, Hash, Eq)]
-pub struct T {
-    name: String,
-
-    // syn defined type
-    ty: Box<Type>,
-}
-
-impl PartialEq for T {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-    }
-}
-
-impl T {
-    pub fn new(name: &str, ty: Box<Type>) -> Self {
-        T {
-            name: name.to_owned(),
-            ty,
-        }
-    }
-}
-
-impl Display for T {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum Callable {
-    Method(MethodItem),
-    StaticFunction(StaticFnItem),
-    Function(FunctionItem),
-    Constructor(ConstructorItem),
-    Primitive(PrimitiveItem),
-}
-
 impl Callable {
     pub fn params(&self) -> &Vec<Param> {
         match self {
@@ -1742,6 +1716,16 @@ impl Callable {
             Callable::Function(fn_item) => &fn_item.params,
             Callable::Constructor(constructor_item) => &constructor_item.params,
             Callable::Primitive(primitive_item) => primitive_item.params(),
+        }
+    }
+
+    pub fn params_mut(&mut self) -> &mut Vec<Param> {
+        match self {
+            Callable::Method(m) => &mut m.params,
+            Callable::StaticFunction(f) => &mut f.params,
+            Callable::Function(f) => &mut f.params,
+            Callable::Constructor(c) => &mut c.params,
+            Callable::Primitive(p) => &mut p.params,
         }
     }
 
@@ -1784,6 +1768,16 @@ impl Callable {
             }
         }
     }
+
+    pub fn name(&self) -> String {
+        match self {
+            Callable::Method(m) => m.name(),
+            Callable::StaticFunction(f) => f.name(),
+            Callable::Function(f) => f.name(),
+            Callable::Constructor(c) => String::from("new"),
+            Callable::Primitive(_) => unimplemented!()
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1819,19 +1813,17 @@ impl MethodItem {
     /// * `impl_item_method` - The original syn container for the method
     /// * `ty` - The parent struct or enum of the method
     ///
-    pub fn new(impl_item_method: ImplItemMethod, ty: Box<Type>) -> Self {
+    pub fn new(impl_item_method: ImplItemMethod, parent: T) -> Self {
         let sig = &impl_item_method.sig;
         let params: Vec<Param> = sig
             .inputs
             .iter()
-            .map(|input| util::fn_arg_to_param(input, ty.clone()))
+            .map(|input| util::fn_arg_to_param(input, &parent))
             .collect();
-
-        let parent = T::new(&type_name(ty.as_ref()), ty.clone());
 
         let return_type = match &sig.output {
             ReturnType::Default => None,
-            ReturnType::Type(_, ty) => Some(T::new(&type_name(ty.as_ref()), ty.clone())),
+            ReturnType::Type(_, ty) => Some(T::from(ty.as_ref())),
         };
 
         MethodItem {
@@ -1859,6 +1851,10 @@ impl MethodItem {
     pub fn consumes_parent(&self) -> bool {
         !self.params.first().unwrap().by_reference()
     }
+
+    pub fn name(&self) -> String {
+        self.impl_item_method.sig.ident.to_string()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1875,18 +1871,19 @@ impl FunctionItem {
             .inputs
             .iter()
             .map(|input| {
-                let ty = match input {
-                    FnArg::Receiver(_) => panic!("Should occur"),
+                let syn_type = match input {
+                    FnArg::Receiver(_) => panic!("Should never occur"),
                     FnArg::Typed(pat_type) => pat_type.ty.clone(),
                 };
 
-                fn_arg_to_param(input, ty)
+                let ty = T::from(syn_type.as_ref());
+                fn_arg_to_param(input, &ty)
             })
             .collect();
 
         let return_type = match &sig.output {
             ReturnType::Default => None,
-            ReturnType::Type(_, ty) => Some(T::new(&type_name(ty.as_ref()), ty.clone())),
+            ReturnType::Type(_, ty) => Some(T::from(ty.as_ref())),
         };
 
         FunctionItem {
@@ -1894,6 +1891,10 @@ impl FunctionItem {
             return_type,
             item_fn,
         }
+    }
+
+    pub fn name(&self) -> String {
+        self.item_fn.sig.ident.to_string()
     }
 }
 
@@ -1906,20 +1907,18 @@ pub struct StaticFnItem {
 }
 
 impl StaticFnItem {
-    pub fn new(impl_item_method: ImplItemMethod, ty: Box<Type>) -> Self {
+    pub fn new(impl_item_method: ImplItemMethod, parent: T) -> Self {
         let sig = &impl_item_method.sig;
         let params: Vec<Param> = sig
             .inputs
             .iter()
-            .map(|input| fn_arg_to_param(input, ty.clone()))
+            .map(|input| fn_arg_to_param(input, &parent))
             .collect();
 
         let return_type = match &sig.output {
             ReturnType::Default => None,
-            ReturnType::Type(_, ty) => Some(T::new(&type_name(ty.as_ref()), ty.clone())),
+            ReturnType::Type(_, ty) => Some(T::from(ty.as_ref())),
         };
-
-        let parent = T::new(&type_name(ty.as_ref()), ty.clone());
 
         StaticFnItem {
             params,
@@ -1941,31 +1940,40 @@ impl StaticFnItem {
     pub fn impl_item_method(&self) -> &ImplItemMethod {
         &self.impl_item_method
     }
+
+    pub fn name(&self) -> String {
+        self.impl_item_method.sig.ident.to_string()
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct ConstructorItem {
     params: Vec<Param>,
-    return_type: T,
-    parent: T,
+    return_type: Box<T>,
+    parent: Box<T>,
     impl_item_method: ImplItemMethod,
 }
 
 impl ConstructorItem {
-    pub fn new(impl_item_method: ImplItemMethod, ty: Box<Type>) -> Self {
+    pub fn new(impl_item_method: ImplItemMethod, parent: T) -> Self {
         let sig = &impl_item_method.sig;
         let params: Vec<Param> = sig
             .inputs
             .iter()
-            .map(|input| fn_arg_to_param(input, ty.clone()))
+            .map(|input| fn_arg_to_param(input, &parent))
             .collect();
-        let parent = T::new(&type_name(ty.as_ref()), ty.clone());
+
+        let return_type = if let ReturnType::Type(_, ty) = &sig.output {
+            Box::new(T::from(ty.as_ref()))
+        } else {
+            panic!("Constructor must have a return type");
+        };
 
         ConstructorItem {
             impl_item_method,
-            parent,
+            parent: Box::new(parent),
             params,
-            return_type: T::new(&type_name(ty.as_ref()), ty.clone()),
+            return_type,
         }
     }
 
@@ -1983,54 +1991,185 @@ impl ConstructorItem {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Struct {
-    ident: Ident,
-    constructor: Option<ConstructorItem>,
-    methods: Vec<MethodItem>,
-    static_methods: Vec<StaticFnItem>,
+#[derive(Debug, Clone, Hash, Eq)]
+pub struct T {
+    path: Vec<Ident>,
+    name: String,
 }
 
-impl Struct {
-    pub fn new(ident: Ident) -> Self {
-        Struct {
-            ident,
-            constructor: None,
-            methods: Vec::new(),
-            static_methods: Vec::new(),
+impl PartialEq for T {
+    fn eq(&self, other: &Self) -> bool {
+        self.name() == other.name()
+    }
+}
+
+impl From<&Type> for T {
+    fn from(ty: &Type) -> Self {
+        return match ty {
+            Type::Path(type_path) => {
+                let path = type_path
+                    .path
+                    .segments
+                    .iter()
+                    .map(|s| s.ident.clone())
+                    .collect();
+                T::new(path)
+            }
+            Type::Reference(type_reference) => T::from(type_reference.elem.as_ref()),
+            _ => {
+                println!("{:?}", ty);
+                unimplemented!()
+            }
+        };
+    }
+}
+
+impl T {
+    pub fn new(path: Vec<Ident>) -> Self {
+        let segments: Vec<String> = path.iter().map(|i| i.to_string()).collect();
+        let name = segments.join("::");
+        T { path, name }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn path(&self) -> &Vec<Ident> {
+        &self.path
+    }
+
+    pub fn path_mut(&mut self) -> &mut Vec<Ident> {
+        &mut self.path
+    }
+
+    pub fn set_path(&mut self, path: Vec<Ident>) {
+        let segments: Vec<String> = path.iter().map(|i| i.to_string()).collect();
+        self.path = path;
+        self.name = segments.join("::");
+    }
+
+    pub fn syn_type(&self) -> &Type {
+        unimplemented!()
+    }
+
+    pub fn from_struct(item: &ItemStruct, mut path: Vec<Ident>) -> Self {
+        path.push(item.ident.clone());
+        T::new(path)
+    }
+
+    pub fn from_enum(item: &ItemEnum, mut path: Vec<Ident>) -> Self {
+        path.push(item.ident.clone());
+        T::new(path)
+    }
+}
+
+impl Display for T {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let stringified_segments: Vec<String> = self.path.iter().map(|s| s.to_string()).collect();
+        write!(f, "{}", stringified_segments.join("::"))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Callable {
+    Method(MethodItem),
+    StaticFunction(StaticFnItem),
+    Function(FunctionItem),
+    Constructor(ConstructorItem),
+    Primitive(PrimitiveItem),
+}
+
+#[derive(Debug, Clone)]
+pub struct EnumType {
+    ty: T,
+    variants: Vec<String>,
+    syn_item_enum: ItemEnum,
+}
+
+impl PartialEq for EnumType {
+    fn eq(&self, other: &Self) -> bool {
+        self.syn_item_enum == other.syn_item_enum
+    }
+}
+
+impl Eq for EnumType {}
+
+impl Hash for EnumType {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.syn_item_enum.hash(state);
+    }
+}
+
+impl EnumType {
+    pub fn new(syn_item_enum: ItemEnum, mut path: Vec<Ident>) -> Self {
+        path.push(syn_item_enum.ident.clone());
+        let variants = syn_item_enum
+            .variants
+            .iter()
+            .map(|v| v.ident.to_string())
+            .collect();
+        EnumType {
+            ty: T::new(path),
+            variants,
+            syn_item_enum,
         }
     }
 
-    pub fn constructor(&self) -> &Option<ConstructorItem> {
-        &self.constructor
+    pub fn name(&self) -> String {
+        self.ty.to_string()
     }
+}
 
-    pub fn methods(&self) -> &Vec<MethodItem> {
-        &self.methods
-    }
-    pub fn static_methods(&self) -> &Vec<StaticFnItem> {
-        &self.static_methods
-    }
-    pub fn set_constructor(&mut self, constructor: ConstructorItem) {
-        self.constructor = Some(constructor);
-    }
+#[derive(Debug, Clone)]
+pub struct StructType {
+    ty: T,
+    syn_item_struct: ItemStruct,
+}
 
-    pub fn add_method(&mut self, method: MethodItem) {
-        self.methods.push(method);
+impl PartialEq for StructType {
+    fn eq(&self, other: &Self) -> bool {
+        self.syn_item_struct == other.syn_item_struct
     }
+}
 
-    pub fn add_static_method(&mut self, method: StaticFnItem) {
-        self.static_methods.push(method);
+impl Eq for StructType {}
+
+impl Hash for StructType {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.syn_item_struct.hash(state);
     }
+}
 
-    pub fn has_constructor(&self) -> bool {
-        if let Some(_) = &self.constructor {
-            true
-        } else {
-            false
+impl StructType {
+    pub fn new(syn_item_struct: ItemStruct, mut path: Vec<Ident>) -> Self {
+        path.push(syn_item_struct.ident.clone());
+        StructType {
+            ty: T::new(path),
+            syn_item_struct,
         }
     }
+
+    pub fn name(&self) -> String {
+        self.ty.to_string()
+    }
+
     pub fn ident(&self) -> &Ident {
-        &self.ident
+        self.ty.path.last().unwrap()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Container {
+    Struct(StructType),
+    Enum(EnumType),
+}
+
+impl Container {
+    pub fn ty(&self) -> &T {
+        match self {
+            Container::Struct(s) => &s.ty,
+            Container::Enum(e) => &e.ty,
+        }
     }
 }
