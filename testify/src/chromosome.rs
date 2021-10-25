@@ -10,6 +10,7 @@ use std::ops::{Range, RangeInclusive};
 use std::option::Option::Some;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
+use serde::Serialize;
 
 use crate::analysis::Analysis;
 use petgraph::dot::{Config, Dot};
@@ -18,6 +19,7 @@ use petgraph::{Direction, Graph};
 use proc_macro2::{Ident, Span};
 use quote::ToTokens;
 use rustc_hir::{BodyId, FieldDef, FnDecl, FnSig, HirId, ImplItemRef, Mutability, Node, PrimTy, Ty, TyKind};
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty::TyCtxt;
 use syn::ext::IdentExt;
 use syn::{
@@ -858,7 +860,9 @@ impl Chromosome for TestCase {
         let mut test_case = TestCase::new(test_id, analysis.clone());
 
         // TODO fill test case with statements until a certain length
-        test_case.insert_random_stmt();
+        while test_case.size() < 5 {
+            test_case.insert_random_stmt();
+        }
 
         //test_case.to_file();
 
@@ -1832,7 +1836,8 @@ impl MethodItem {
         let return_type = fn_ret_ty_to_t(&fn_sig.decl.output, parent_hir_id, tcx);
 
         let parent_name = node_to_name(&tcx.hir().get(parent_hir_id));
-        let parent = T::Complex(ComplexT::new(parent_hir_id, parent_name));
+        let def_id = tcx.hir().local_def_id(parent_hir_id).to_def_id();
+        let parent = T::Complex(ComplexT::new(parent_hir_id, def_id, parent_name));
 
         MethodItem {
             params,
@@ -1936,7 +1941,8 @@ impl StaticFnItem {
         let return_type = fn_ret_ty_to_t(&fn_sig.decl.output, parent_id, tcx);
 
         let parent_name = node_to_name(&tcx.hir().get(parent_id));
-        let parent = T::Complex(ComplexT::new(parent_id, parent_name));
+        let def_id = tcx.hir().local_def_id(parent_id).to_def_id();
+        let parent = T::Complex(ComplexT::new(parent_id, def_id, parent_name));
 
         StaticFnItem {
             params,
@@ -1982,7 +1988,8 @@ impl FieldAccessItem {
         let ty = ty_to_t(field_def.ty, parent_hir_id, tcx);
 
         let parent_name = node_to_name(&tcx.hir().get(parent_hir_id));
-        let parent = T::Complex(ComplexT::new(parent_hir_id, parent_name));
+        let def_id = tcx.hir().local_def_id(parent_hir_id).to_def_id();
+        let parent = T::Complex(ComplexT::new(parent_hir_id, def_id, parent_name));
 
         FieldAccessItem {
             name,
@@ -2087,6 +2094,20 @@ impl T {
             T::Complex(complex) => complex.hir_id(),
         }
     }
+
+    pub fn is_prim(&self) -> bool {
+        match self {
+            T::Prim(_) => false,
+            T::Complex(_) => true
+        }
+    }
+
+    pub fn is_complex(&self) -> bool {
+        match self {
+            T::Prim(_) => false,
+            T::Complex(_) => true
+        }
+    }
 }
 
 impl Display for T {
@@ -2101,6 +2122,7 @@ impl Display for T {
 #[derive(Debug, Clone, Hash, Eq)]
 pub struct ComplexT {
     hir_id: HirId,
+    def_id: DefId,
     name: String,
 }
 
@@ -2111,8 +2133,8 @@ impl PartialEq for ComplexT {
 }
 
 impl ComplexT {
-    pub fn new(hir_id: HirId, name: String) -> Self {
-        ComplexT { hir_id, name }
+    pub fn new(hir_id: HirId, def_id: DefId, name: String) -> Self {
+        ComplexT { hir_id, name, def_id }
     }
     pub fn hir_id(&self) -> HirId {
         self.hir_id
@@ -2120,6 +2142,10 @@ impl ComplexT {
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn def_id(&self) -> DefId {
+        self.def_id
     }
 }
 

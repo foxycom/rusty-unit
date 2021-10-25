@@ -24,6 +24,7 @@ use std::sync::{Arc, Mutex};
 use crate::util::impl_to_struct_id;
 
 const MAIN: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<'tcx> = |tcx, def| {
+    println!("Doing main");
     let opt_mir = rustc_interface::DEFAULT_QUERY_PROVIDERS
         .borrow()
         .optimized_mir;
@@ -58,6 +59,7 @@ const TRACE: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<'tcx> = |tcx,
 
     tcx.arena.alloc(body)
 };
+
 
 pub fn run_compiler() {
     // Clear build directory, otherwise the compiler won't run the main function
@@ -127,8 +129,7 @@ impl rustc_driver::Callbacks for CompilerCallbacks {
         //_config.opts.debugging_opts.mir_opt_level = Some(0);
 
         _config.override_queries = Some(|session, local, external| {
-            //local.optimized_mir = MAIN;
-            external.optimized_mir = TRACE;
+            local.optimized_mir = MAIN;
         });
     }
 
@@ -137,10 +138,12 @@ impl rustc_driver::Callbacks for CompilerCallbacks {
         _compiler: &rustc_interface::interface::Compiler,
         _queries: &'tcx rustc_interface::Queries<'tcx>,
     ) -> Compilation {
+        println!("Doing after analysis");
         enter_with_fn(_queries, run);
         Compilation::Continue
     }
 }
+
 
 fn enter_with_fn<'tcx, TyCtxtFn>(queries: &'tcx rustc_interface::Queries<'tcx>, enter_fn: TyCtxtFn)
 where
@@ -173,7 +176,9 @@ fn hir_analysis(tcx: TyCtxt<'_>) -> Analysis {
     for item in tcx.hir().items() {
         match &item.kind {
             ItemKind::Fn(sig, generics, body_id) => {
-                analyze_fn(sig, item.def_id, body_id, &mut callables, &tcx)
+                if &item.ident.name.to_string() != "main" {
+                    analyze_fn(sig, item.def_id, body_id, &mut callables, &tcx)
+                }
             }
             ItemKind::Impl(im) => {
                 analyze_impl(im, &mut callables, &tcx)
@@ -202,8 +207,10 @@ fn analyze_fn(
 }
 
 fn analyze_struct(struct_local_def_id: LocalDefId, vd: &VariantData, g: &Generics, tcx: &TyCtxt<'_>) {
-    println!("Analyzing struct: {:?}", struct_local_def_id);
+    //let adt_def = tcx.adt_def(struct_local_def_id.to_def_id());
+
     let struct_hir_id = tcx.hir().local_def_id_to_hir_id(struct_local_def_id);
+
     match vd {
         VariantData::Struct(fields, _) => {
             for field in fields.iter() {
@@ -216,8 +223,12 @@ fn analyze_struct(struct_local_def_id: LocalDefId, vd: &VariantData, g: &Generic
 }
 
 fn analyze_impl(im: &Impl, callables: &mut Vec<Callable>, tcx: &TyCtxt<'_>) {
-    let parent_hir_id = impl_to_struct_id(im);
-    let parent_hir_id = tcx.hir().local_def_id_to_hir_id(parent_hir_id.expect_local());
+    let parent_def_id = impl_to_struct_id(im);
+    /*let impls = tcx.associated_items(parent_def_id);
+    for i in impls {
+        println!("Impl: {:?}", i);
+    }*/
+    let parent_hir_id = tcx.hir().local_def_id_to_hir_id(parent_def_id.expect_local());
     let items = im.items;
     for item in items {
         let def_id = item.id.def_id;

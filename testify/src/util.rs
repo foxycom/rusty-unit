@@ -91,8 +91,14 @@ pub fn ty_to_param(ty: &Ty, self_hir_id: HirId, tcx: &TyCtxt<'_>) -> Param {
     };
 
     let real_ty = ty_to_t(ty, self_hir_id, tcx);
-    let original_ty = T::Complex(ComplexT::new(ty.hir_id, real_ty.name()));
-    Param::new(real_ty, original_ty, by_reference, mutable)
+    if real_ty.is_complex() {
+        let def_id = tcx.hir().local_def_id(real_ty.id()).to_def_id();
+        let original_ty = T::Complex(ComplexT::new(ty.hir_id, def_id, real_ty.name()));
+        Param::new(real_ty, original_ty, by_reference, mutable)
+    } else {
+        Param::new(real_ty.clone(), real_ty, by_reference, mutable)
+    }
+
 }
 
 pub fn ty_to_t(ty: &Ty, self_: HirId, tcx: &TyCtxt<'_>) -> T {
@@ -105,14 +111,16 @@ pub fn ty_to_t(ty: &Ty, self_: HirId, tcx: &TyCtxt<'_>) -> T {
                         Res::Def(_, def_id) => {
                             let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
                             let name = join_path_to_str(path);
-                            let complex_ty = ComplexT::new(hir_id, name);
+                            let def_id = tcx.hir().local_def_id(hir_id).to_def_id();
+                            let complex_ty = ComplexT::new(hir_id, def_id, name);
                             T::Complex(complex_ty)
                         }
                         Res::PrimTy(prim_ty) => T::from(prim_ty),
                         Res::SelfTy(trait_def_id, impl_) => {
                             // Self type, so replace it with the parent id
                             let name = node_to_name(&tcx.hir().get(self_));
-                            T::Complex(ComplexT::new(self_, name))
+                            let def_id = tcx.hir().local_def_id(self_).to_def_id();
+                            T::Complex(ComplexT::new(self_, def_id, name))
                         }
                         _ => {
                             unimplemented!()
