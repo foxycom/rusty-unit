@@ -1,4 +1,4 @@
-use crate::chromosome::{Chromosome, FitnessValue, TestCase};
+use crate::chromosome::{Chromosome, FitnessValue};
 use crate::generators::TestIdGenerator;
 use crate::operators::{Crossover, Mutation, RankSelection};
 use crate::selection::Selection;
@@ -12,7 +12,6 @@ use std::fs::File;
 use std::io::Write;
 use std::iter::FromIterator;
 use std::option::Option::Some;
-use std::os::unix::raw::off_t;
 use std::rc::Rc;
 use std::time::Instant;
 use crate::test::TestWriter;

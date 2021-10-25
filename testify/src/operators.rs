@@ -117,10 +117,10 @@ impl BasicMutation {
         let stmt_id = stmt.id();
         let stmt_i = match test_case.stmt_position(stmt_id) {
             None => {
-                test_case.to_file();
+                //test_case.to_file();
                 panic!(
-                    "Looking for stmt {} with id {} in test {}",
-                    stmt,
+                    "Looking for stmt  with id {} in test {}",
+                    //stmt,
                     stmt_id,
                     test_case.id()
                 );
@@ -139,7 +139,7 @@ impl BasicMutation {
                     // TODO reduce probability
                     if fastrand::f64() < 1.0 {
                         // Swap object
-                        let variables = test_case.variables_typed(var_arg.param().ty());
+                        let variables = test_case.variables_typed(var_arg.param().real_ty());
                         let candidates: Vec<&(Var, usize)>;
                         if var_arg.is_consuming() {
                             // The candidates must not be consumed throughout the whole test
@@ -182,7 +182,8 @@ impl BasicMutation {
 
             let return_type = stmt.return_type();
             if let Some(ty) = return_type {
-                let generators = test_case.source_file().generators(ty);
+                let analysis = test_case.analysis();
+                let generators = analysis.generators(ty);
                 if !generators.is_empty() {
                     let generator_i = fastrand::usize(0..generators.len());
                     let generator = generators.get(generator_i).unwrap();
@@ -226,7 +227,7 @@ impl BasicMutation {
 
             let self_param = match callable_tuple.1.params().first() {
                 None => {
-                    test_case.to_file();
+                    //test_case.to_file();
                     panic!(
                         "\nFailing test: {}, callable: {:?}",
                         test_case.id(),
@@ -256,7 +257,7 @@ impl BasicMutation {
                 copy.insert_random_stmt();
             } else {
                 let ty = types.get(fastrand::usize(0..types.len())).unwrap();
-                let source_file = copy.source_file();
+                let source_file = copy.analysis();
 
                 let callables = source_file.callables_of(ty);
                 if callables.is_empty() {

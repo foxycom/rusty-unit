@@ -11,11 +11,14 @@ use std::option::Option::Some;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
+use crate::analysis::Analysis;
 use petgraph::dot::{Config, Dot};
 use petgraph::prelude::{NodeIndex, StableDiGraph};
 use petgraph::{Direction, Graph};
 use proc_macro2::{Ident, Span};
 use quote::ToTokens;
+use rustc_hir::{BodyId, FieldDef, FnDecl, FnSig, HirId, ImplItemRef, Mutability, Node, PrimTy, Ty, TyKind};
+use rustc_middle::ty::TyCtxt;
 use syn::ext::IdentExt;
 use syn::{
     Expr, FnArg, ImplItemMethod, Item, ItemEnum, ItemFn, ItemStruct, Pat, PatType, Path,
@@ -28,7 +31,10 @@ use crate::operators::{BasicMutation, Crossover, Mutation, SinglePointCrossover}
 
 use crate::source::{Branch, BranchManager, SourceFile};
 use crate::util;
-use crate::util::{fn_arg_to_param, is_constructor, is_method, return_type_name, type_name};
+use crate::util::{
+    fn_arg_to_param, fn_ret_ty_to_t, is_constructor, is_method, node_to_name, return_type_name,
+    ty_to_param, ty_to_t, type_name,
+};
 lazy_static! {
     static ref CHROMOSOME_ID_GENERATOR: Arc<Mutex<TestIdGenerator>> =
         Arc::new(Mutex::new(TestIdGenerator::new()));
@@ -37,7 +43,7 @@ lazy_static! {
 const TEST_FN_PREFIX: &'static str = "testify";
 
 pub trait ToSyn {
-    fn to_syn(&self) -> Item;
+    fn to_syn(&self, tcx: &TyCtxt<'_>) -> Item;
 }
 
 pub trait Chromosome: Clone + Debug + ToSyn + PartialEq + Eq + Hash {
@@ -60,7 +66,7 @@ pub trait Chromosome: Clone + Debug + ToSyn + PartialEq + Eq + Hash {
         Self: Sized;
 
     /// Generates a random chromosome
-    fn random(source_file: Rc<SourceFile>) -> Self;
+    fn random(analysis: Rc<Analysis>) -> Self;
 
     fn size(&self) -> usize;
 }
@@ -154,7 +160,7 @@ pub struct TestCase {
     /// Stores ids of statement to be able to retrieve dd graph nodes later by their index
     node_index_table: HashMap<Uuid, NodeIndex>,
     var_counters: HashMap<String, usize>,
-    source_file: Rc<SourceFile>,
+    analysis: Rc<Analysis>,
 }
 
 impl Clone for TestCase {
@@ -167,7 +173,7 @@ impl Clone for TestCase {
             node_index_table: self.node_index_table.clone(),
             var_table: self.var_table.clone(),
             var_counters: self.var_counters.clone(),
-            source_file: self.source_file.clone(),
+            analysis: self.analysis.clone(),
         }
     }
 }
@@ -192,7 +198,7 @@ impl Hash for TestCase {
 }
 
 impl TestCase {
-    pub fn new(id: u64, source_file: Rc<SourceFile>) -> Self {
+    pub fn new(id: u64, analysis: Rc<Analysis>) -> Self {
         TestCase {
             id,
             stmts: Vec::new(),
@@ -201,7 +207,7 @@ impl TestCase {
             var_table: HashMap::new(),
             node_index_table: HashMap::new(),
             var_counters: HashMap::new(),
-            source_file,
+            analysis,
         }
     }
 
@@ -307,7 +313,7 @@ impl TestCase {
         let node_index = match self.node_index_table.remove(&id) {
             None => {
                 println!("\nFailing test: {}", self.id);
-                self.to_file();
+                //self.to_file(tcx);
                 panic!()
             }
             Some(node_index) => node_index,
@@ -464,7 +470,7 @@ impl TestCase {
         id.map(|id| {
             let pos = self.stmts.iter().position(|s| s.id() == *id);
             if pos.is_none() {
-                self.to_file();
+                //self.to_file();
                 panic!("\nLooking for var {} in test {}", var.name, self.id);
             } else {
                 return pos.unwrap();
@@ -561,23 +567,24 @@ impl TestCase {
         self.var_table
             .keys()
             .filter_map(|v| {
-                let mut callables = self.source_file.callables_of(v.ty());
+                let mut callables = self.analysis.callables_of(v.ty());
 
                 if let Some(idx) = self.consumed_at(v) {
                     // v can only be borrowed
                     let range = self.instantiated_at(v).unwrap()..=idx;
                     // Retain only callables that are borrowing
-                    let possible_callables: Vec<(&Var, &Callable, RangeInclusive<usize>)> = callables
-                        .iter()
-                        .filter_map(|&c| {
-                            if let Callable::Method(method_item) = c {
-                                if !method_item.consumes_parent() {
-                                    return Some((v, c, range.clone()));
+                    let possible_callables: Vec<(&Var, &Callable, RangeInclusive<usize>)> =
+                        callables
+                            .iter()
+                            .filter_map(|&c| {
+                                if let Callable::Method(method_item) = c {
+                                    if !method_item.consumes_parent() {
+                                        return Some((v, c, range.clone()));
+                                    }
                                 }
-                            }
-                            None
-                        })
-                        .collect();
+                                None
+                            })
+                            .collect();
                     return Some(possible_callables);
                 } else if let borrowed_indices = self.borrowed_at(v) {
                     return if !borrowed_indices.is_empty() {
@@ -603,10 +610,7 @@ impl TestCase {
                     } else {
                         // v can be borrowed and consumed freely
                         let range = self.instantiated_at(v).unwrap()..=self.size();
-                        let callables = callables
-                            .iter()
-                            .map(|&c| (v, c, range.clone()))
-                            .collect();
+                        let callables = callables.iter().map(|&c| (v, c, range.clone())).collect();
                         Some(callables)
                     };
                 }
@@ -631,9 +635,10 @@ impl TestCase {
     /// test already contains some definitions that can be reused.
     pub fn insert_random_stmt(&mut self) {
         // TODO primitive statements are not being generated yet
-        let callables = self.source_file.callables();
+        let callables = self.analysis.callables();
         let i = fastrand::usize(0..callables.len());
         let callable = (*(callables.get(i).unwrap())).clone();
+        println!("Selected callable: {:?}", callable);
 
         let args: Vec<Arg> = callable
             .params()
@@ -654,7 +659,12 @@ impl TestCase {
         if param.is_primitive() {
             return Arg::Primitive(Primitive::U8(fastrand::u8(..)));
         } else {
-            let mut generators = self.source_file.generators(param.ty());
+            let mut generators = self.analysis.generators(param.real_ty());
+
+            // TODO remove
+            println!("Generators for {:?}", param.real_ty());
+            println!("{:?}", generators);
+
             let mut retry = true;
             while retry && !generators.is_empty() {
                 retry = false;
@@ -662,7 +672,8 @@ impl TestCase {
                 // Pick a random generator
                 let i = fastrand::usize(0..generators.len());
                 let candidate = generators.get(i).unwrap().clone();
-                let params = HashSet::from_iter(candidate.params().iter().map(Param::ty).cloned());
+                let params =
+                    HashSet::from_iter(candidate.params().iter().map(Param::real_ty).cloned());
 
                 let intersection = Vec::from_iter(params.intersection(&types_to_generate));
                 if !intersection.is_empty() {
@@ -679,29 +690,29 @@ impl TestCase {
 
         if generator.is_none() {
             // No appropriate generator found
-            println!("Panic! Param type: {}", param.ty().to_string());
+            println!("Panic! Param type: {}", param.real_ty().to_string());
             panic!("No generator")
         }
 
-        let generator = generator.unwrap();
+        let generator = generator.unwrap().clone();
         let args: Vec<Arg> = generator
             .params()
             .iter()
             .map(|p| {
                 // TODO instantiate new object with a 10% probability even if there is a free ones
                 // already in the test case
-                if !self.instantiated_types().contains(p.ty()) {
+                if !self.instantiated_types().contains(p.real_ty()) {
                     let mut types_to_generate = types_to_generate.clone();
-                    types_to_generate.insert(param.ty().clone());
+                    types_to_generate.insert(param.real_ty().clone());
                     self.generate_arg_inner(p, types_to_generate)
                 } else {
-                    println!("Unimplemented: Param type: {}", param.ty().to_string());
+                    println!("Unimplemented: Param type: {}", param.real_ty().to_string());
                     println!(
                         "Params: {:?}",
                         generator
                             .params()
                             .iter()
-                            .map(|p| p.ty().to_string())
+                            .map(|p| p.real_ty().to_string())
                             .collect::<Vec<String>>()
                     );
                     unimplemented!()
@@ -715,13 +726,13 @@ impl TestCase {
 
         Arg::Var(VarArg::new(return_var, param.clone()))
     }
-    pub fn source_file(&self) -> Rc<SourceFile> {
-        self.source_file.clone()
+    pub fn analysis(&self) -> Rc<Analysis> {
+        self.analysis.clone()
     }
 
-    pub fn to_file(&self) {
+    /*pub fn to_file(&self, tcx: &TyCtxt<'_>) {
         let mut file = File::create(format!("tests_debug/test_{}.rs", self.id)).unwrap();
-        file.write_all(format!("{}", self).as_bytes()).unwrap();
+        file.write_all(format!("{}", self.to_string(tcx)).as_bytes()).unwrap();
 
         let mut file = OpenOptions::new()
             .write(true)
@@ -771,26 +782,24 @@ impl TestCase {
             )
             .as_bytes(),
         );
-    }
-}
+    }*/
 
-impl Display for TestCase {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        let syn_item = self.to_syn();
+    pub fn to_string(&self, tcx: &TyCtxt<'_>) -> String {
+        let syn_item = self.to_syn(tcx);
         let token_stream = syn_item.to_token_stream();
-        write!(f, "{}", token_stream.to_string())
+        token_stream.to_string()
     }
 }
 
 impl ToSyn for TestCase {
-    fn to_syn(&self) -> Item {
+    fn to_syn(&self, tcx: &TyCtxt<'_>) -> Item {
         let ident = Ident::new(
             &format!("{}_{}", TEST_FN_PREFIX, self.id),
             Span::call_site(),
         );
         let id = self.id;
 
-        let stmts: Vec<Stmt> = self.stmts.iter().map(Statement::to_syn).collect();
+        let stmts: Vec<Stmt> = self.stmts.iter().map(|s| s.to_syn(tcx)).collect();
 
         let set_test_id: Stmt = syn::parse_quote! {
             LOGGER.with(|l| l.borrow_mut().set_test_id(#id));
@@ -843,15 +852,15 @@ impl Chromosome for TestCase {
         (left, right)
     }
 
-    fn random(source_file: Rc<SourceFile>) -> Self {
+    fn random(analysis: Rc<Analysis>) -> Self {
         let test_id = CHROMOSOME_ID_GENERATOR.lock().as_mut().unwrap().next_id();
 
-        let mut test_case = TestCase::new(test_id, source_file.clone());
+        let mut test_case = TestCase::new(test_id, analysis.clone());
 
         // TODO fill test case with statements until a certain length
         test_case.insert_random_stmt();
 
-        test_case.to_file();
+        //test_case.to_file();
 
         assert_eq!(test_case.size(), test_case.ddg.node_count());
         test_case
@@ -987,19 +996,21 @@ pub enum Statement {
     MethodInvocation(MethodInvStmt),
     StaticFnInvocation(StaticFnInvStmt),
     FunctionInvocation(FnInvStmt),
+    FieldAccess(FieldAccessStmt),
 }
 
 impl Statement {
-    pub fn to_syn(&self) -> Stmt {
+    pub fn to_syn(&self, tcx: &TyCtxt<'_>) -> Stmt {
         match self {
-            Statement::PrimitiveAssignment(primitive_stmt) => primitive_stmt.to_syn(),
-            Statement::Constructor(constructor_stmt) => constructor_stmt.to_syn(),
+            Statement::PrimitiveAssignment(primitive_stmt) => primitive_stmt.to_syn(tcx),
+            Statement::Constructor(constructor_stmt) => constructor_stmt.to_syn(tcx),
             Statement::AttributeAccess(_) => {
                 unimplemented!()
             }
-            Statement::StaticFnInvocation(fn_inv_stmt) => fn_inv_stmt.to_syn(),
-            Statement::MethodInvocation(method_inv_stmt) => method_inv_stmt.to_syn(),
-            Statement::FunctionInvocation(fn_inv_stmt) => fn_inv_stmt.to_syn(),
+            Statement::StaticFnInvocation(fn_inv_stmt) => fn_inv_stmt.to_syn(tcx),
+            Statement::MethodInvocation(method_inv_stmt) => method_inv_stmt.to_syn(tcx),
+            Statement::FunctionInvocation(fn_inv_stmt) => fn_inv_stmt.to_syn(tcx),
+            Statement::FieldAccess(field_access_stmt) => field_access_stmt.to_syn(tcx),
         }
     }
 
@@ -1010,13 +1021,14 @@ impl Statement {
             Statement::PrimitiveAssignment(_) => true,
             Statement::FunctionInvocation(func) => func.returns_value(),
             Statement::MethodInvocation(m) => m.returns_value(),
+            Statement::FieldAccess(_) => true,
             _ => unimplemented!(),
         }
     }
 
     pub fn var(&self) -> Option<&Var> {
         if !self.returns_value() {
-            panic!("Statement does not return anything, {}\n", self);
+            panic!("Statement does not return anything, \n",);
         }
 
         match self {
@@ -1025,6 +1037,7 @@ impl Statement {
             Statement::StaticFnInvocation(func) => func.var(),
             Statement::FunctionInvocation(func) => func.var(),
             Statement::PrimitiveAssignment(a) => a.var(),
+            Statement::FieldAccess(f_stmt) => f_stmt.var(),
             _ => unimplemented!(),
         }
     }
@@ -1037,6 +1050,7 @@ impl Statement {
             Statement::StaticFnInvocation(f) => f.return_type(),
             Statement::FunctionInvocation(f) => f.return_type(),
             Statement::AttributeAccess(a) => a.return_type(),
+            Statement::FieldAccess(f) => Some(f.return_type()),
         }
     }
 
@@ -1052,6 +1066,7 @@ impl Statement {
             Statement::MethodInvocation(ref mut m) => m.set_var(var),
             Statement::StaticFnInvocation(ref mut f) => f.set_var(var),
             Statement::FunctionInvocation(ref mut f) => f.set_var(var),
+            Statement::FieldAccess(ref mut f) => f.set_var(var),
         }
     }
 
@@ -1063,6 +1078,7 @@ impl Statement {
             Statement::MethodInvocation(m) => Some(m.args()),
             Statement::StaticFnInvocation(f) => Some(f.args()),
             Statement::FunctionInvocation(f) => Some(f.args()),
+            Statement::FieldAccess(f) => unimplemented!(),
         }
     }
 
@@ -1074,6 +1090,7 @@ impl Statement {
             Statement::MethodInvocation(m) => m.set_arg(arg, idx),
             Statement::StaticFnInvocation(f) => f.set_arg(arg, idx),
             Statement::FunctionInvocation(f) => f.set_arg(arg, idx),
+            Statement::FieldAccess(_) => unimplemented!(),
         }
     }
 
@@ -1085,36 +1102,77 @@ impl Statement {
             Statement::MethodInvocation(m) => m.id(),
             Statement::StaticFnInvocation(f) => f.id(),
             Statement::FunctionInvocation(f) => f.id(),
+            Statement::FieldAccess(f) => f.id(),
+        }
+    }
+
+    pub fn to_string(&self, tcx: &TyCtxt<'_>) -> String {
+        match self {
+            Statement::PrimitiveAssignment(_) => unimplemented!(),
+            Statement::Constructor(c) => {
+                let syn_item = c.to_syn(tcx);
+                let token_stream = syn_item.to_token_stream();
+                token_stream.to_string()
+            }
+            Statement::AttributeAccess(_) => unimplemented!(),
+            Statement::MethodInvocation(m) => {
+                let syn_item = m.to_syn(tcx);
+                let token_stream = syn_item.to_token_stream();
+                token_stream.to_string()
+            }
+            Statement::StaticFnInvocation(func) => {
+                let syn_item = func.to_syn(tcx);
+                let token_stream = syn_item.to_token_stream();
+                token_stream.to_string()
+            }
+            Statement::FunctionInvocation(func) => {
+                let syn_item = func.to_syn(tcx);
+                let token_stream = syn_item.to_token_stream();
+                token_stream.to_string()
+            }
+            Statement::FieldAccess(field) => {
+                let syn_item = field.to_syn(tcx);
+                let token_stream = syn_item.to_token_stream();
+                token_stream.to_string()
+            }
         }
     }
 }
 
-impl Display for Statement {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Statement::PrimitiveAssignment(_) => unimplemented!(),
-            Statement::Constructor(c) => {
-                let syn_item = c.to_syn();
-                let token_stream = syn_item.to_token_stream();
-                write!(f, "{}", token_stream.to_string())
-            }
-            Statement::AttributeAccess(_) => unimplemented!(),
-            Statement::MethodInvocation(m) => {
-                let syn_item = m.to_syn();
-                let token_stream = syn_item.to_token_stream();
-                write!(f, "{}", token_stream.to_string())
-            }
-            Statement::StaticFnInvocation(func) => {
-                let syn_item = func.to_syn();
-                let token_stream = syn_item.to_token_stream();
-                write!(f, "{}", token_stream.to_string())
-            }
-            Statement::FunctionInvocation(func) => {
-                let syn_item = func.to_syn();
-                let token_stream = syn_item.to_token_stream();
-                write!(f, "{}", token_stream.to_string())
-            }
+#[derive(Debug, Clone)]
+pub struct FieldAccessStmt {
+    id: Uuid,
+    field: FieldAccessItem,
+    var: Option<Var>,
+}
+
+impl FieldAccessStmt {
+    pub fn new(field: FieldAccessItem) -> Self {
+        FieldAccessStmt {
+            id: Uuid::new_v4(),
+            field,
+            var: None,
         }
+    }
+
+    pub fn to_syn(&self, tcx: &TyCtxt<'_>) -> Stmt {
+        todo!()
+    }
+
+    pub fn return_type(&self) -> &T {
+        &self.field.ty
+    }
+
+    pub fn id(&self) -> Uuid {
+        self.id
+    }
+
+    pub fn var(&self) -> Option<&Var> {
+        self.var.as_ref()
+    }
+
+    pub fn set_var(&mut self, var: Var) {
+        self.var = Some(var);
     }
 }
 
@@ -1155,13 +1213,19 @@ impl StaticFnInvStmt {
         self.func.return_type.is_some()
     }
 
-    pub fn to_syn(&self) -> Stmt {
-        let func_ident = &self.func.impl_item_method.sig.ident;
-        let args: Vec<Expr> = self.args.iter().cloned().map(|a| a.to_syn()).collect();
-        let parent_ident = Ident::new(&self.func.parent.to_string(), Span::call_site());
+    pub fn to_syn(&self, tcx: &TyCtxt<'_>) -> Stmt {
+        let func_ident = Ident::new(self.func.name(), Span::call_site());
+        let args: Vec<Expr> = self.args().iter().map(|a| a.to_syn()).collect();
+        let parent_node = tcx.hir().get(self.func.parent.id());
+        let parent_ident = if let Node::Item(item) = parent_node {
+            Ident::new(&item.ident.name.to_string(), Span::call_site())
+        } else {
+            panic!("Should be an item");
+        };
 
         if self.returns_value() {
             if let Some(var) = &self.var {
+                println!("Creating a var ident {}", var.to_string());
                 let ident = Ident::new(&var.to_string(), Span::call_site());
                 syn::parse_quote! {
                     let #ident = #parent_ident::#func_ident(#(#args),*);
@@ -1232,7 +1296,7 @@ impl AssignStmt {
         self.id
     }
 
-    pub fn to_syn(&self) -> Stmt {
+    pub fn to_syn(&self, tcx: &TyCtxt<'_>) -> Stmt {
         unimplemented!()
     }
 }
@@ -1276,7 +1340,7 @@ impl ConstructorStmt {
         }
     }
 
-    pub fn to_syn(&self) -> Stmt {
+    pub fn to_syn(&self, tcx: &TyCtxt<'_>) -> Stmt {
         if let Some(var) = &self.var {
             let ident = Ident::new(&var.to_string(), Span::call_site());
 
@@ -1328,7 +1392,7 @@ impl ConstructorStmt {
     }
 
     pub fn return_type(&self) -> &T {
-        &self.constructor.return_type
+        self.constructor.parent()
     }
 }
 
@@ -1404,10 +1468,15 @@ impl MethodInvStmt {
         }
     }
 
-    pub fn to_syn(&self) -> Stmt {
-        let method_ident = &self.method.impl_item_method.sig.ident;
-        let args: Vec<Expr> = self.args.iter().map(Arg::to_syn).collect();
-        let parent_ident = Ident::new(&self.method.parent.to_string(), Span::call_site());
+    pub fn to_syn(&self, tcx: &TyCtxt<'_>) -> Stmt {
+        let method_ident = Ident::new(self.method.name(), Span::call_site());
+        let args: Vec<Expr> = self.args().iter().map(|a| a.to_syn()).collect();
+        let parent_node = tcx.hir().get(self.method.parent.id());
+        let parent_ident = if let Node::Item(item) = parent_node {
+            Ident::new(&item.ident.name.to_string(), Span::call_site())
+        } else {
+            panic!("Should be an item");
+        };
 
         if self.returns_value() {
             if let Some(var) = &self.var {
@@ -1518,11 +1587,7 @@ impl FnInvStmt {
     }
 
     pub fn returns_value(&self) -> bool {
-        let output = &self.func.item_fn.sig.output;
-        match output {
-            ReturnType::Default => false,
-            ReturnType::Type(_, _) => true,
-        }
+        self.func.return_type.is_some()
     }
 
     pub fn return_type(&self) -> Option<&T> {
@@ -1545,8 +1610,8 @@ impl FnInvStmt {
         self.args = args;
     }
 
-    pub fn to_syn(&self) -> Stmt {
-        let ident = &self.func.item_fn.sig.ident;
+    pub fn to_syn(&self, tcx: &TyCtxt<'_>) -> Stmt {
+        let ident = Ident::new(self.func.name(), Span::call_site());
         let args: Vec<Expr> = self.args.iter().map(Arg::to_syn).collect();
 
         syn::parse_quote! {
@@ -1595,116 +1660,48 @@ impl Var {
 }
 
 #[derive(Debug, Clone)]
-pub enum Param {
-    Self_(SelfParam),
-    Regular(RegularParam),
+pub struct Param {
+    real_ty: T,
+    original_ty: T,
+    by_reference: bool,
+    mutable: bool,
 }
 
 impl Param {
-    pub fn is_self(&self) -> bool {
-        match self {
-            Param::Self_(_) => true,
-            Param::Regular(_) => false,
+    pub fn new(real_ty: T, original_ty: T, by_reference: bool, mutable: bool) -> Self {
+        Param {
+            real_ty,
+            original_ty,
+            by_reference,
+            mutable,
         }
+    }
+
+    pub fn is_self(&self) -> bool {
+        todo!()
     }
 
     pub fn by_reference(&self) -> bool {
-        match self {
-            Param::Self_(self_param) => self_param.by_reference(),
-            Param::Regular(regular_param) => regular_param.by_reference(),
-        }
+        self.by_reference
     }
 
     pub fn mutable(&self) -> bool {
-        match self {
-            Param::Self_(self_param) => self_param.mutable(),
-            Param::Regular(regular_param) => regular_param.mutable(),
-        }
+        self.mutable
     }
 
-    pub fn ty(&self) -> &T {
-        match self {
-            Param::Self_(self_param) => &self_param.ty,
-            Param::Regular(regular_param) => &regular_param.ty,
-        }
+    pub fn real_ty(&self) -> &T {
+        &self.real_ty
     }
 
-    pub fn ty_mut(&mut self) -> &mut T {
-        match self {
-            Param::Self_(self_param) => &mut self_param.ty,
-            Param::Regular(regular_param) => &mut regular_param.ty,
-        }
+    pub fn real_ty_mut(&mut self) -> &mut T {
+        todo!()
     }
 
     pub fn is_primitive(&self) -> bool {
-        match self {
-            Param::Self_(_) => false,
-            Param::Regular(regular_param) => {
-                let ty = regular_param.ty();
-                ty.to_string() == "u8"
-            }
+        match self.real_ty {
+            T::Prim(_) => true,
+            T::Complex(_) => false,
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct SelfParam {
-    ty: T,
-    fn_arg: FnArg,
-    by_reference: bool,
-    mutable: bool,
-}
-
-impl SelfParam {
-    pub fn new(ty: T, fn_arg: FnArg, by_reference: bool, mutable: bool) -> Self {
-        SelfParam {
-            ty,
-            fn_arg,
-            by_reference,
-            mutable,
-        }
-    }
-
-    pub fn by_reference(&self) -> bool {
-        self.by_reference
-    }
-
-    pub fn mutable(&self) -> bool {
-        self.mutable
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct RegularParam {
-    ty: T,
-    fn_arg: FnArg,
-    by_reference: bool,
-    mutable: bool,
-}
-
-impl RegularParam {
-    pub fn new(ty: T, fn_arg: FnArg, by_reference: bool, mutable: bool) -> Self {
-        RegularParam {
-            ty,
-            fn_arg,
-            by_reference,
-            mutable,
-        }
-    }
-
-    pub fn ty(&self) -> &T {
-        &self.ty
-    }
-    pub fn fn_arg(&self) -> &FnArg {
-        &self.fn_arg
-    }
-
-    pub fn by_reference(&self) -> bool {
-        self.by_reference
-    }
-
-    pub fn mutable(&self) -> bool {
-        self.mutable
     }
 }
 
@@ -1716,6 +1713,7 @@ impl Callable {
             Callable::Function(fn_item) => &fn_item.params,
             Callable::Constructor(constructor_item) => &constructor_item.params,
             Callable::Primitive(primitive_item) => primitive_item.params(),
+            Callable::FieldAccess(_) => unimplemented!(),
         }
     }
 
@@ -1726,6 +1724,7 @@ impl Callable {
             Callable::Function(f) => &mut f.params,
             Callable::Constructor(c) => &mut c.params,
             Callable::Primitive(p) => &mut p.params,
+            Callable::FieldAccess(_) => unimplemented!(),
         }
     }
 
@@ -1734,8 +1733,9 @@ impl Callable {
             Callable::Method(method_item) => method_item.return_type.as_ref(),
             Callable::StaticFunction(fn_item) => fn_item.return_type.as_ref(),
             Callable::Function(fn_item) => fn_item.return_type.as_ref(),
-            Callable::Constructor(constructor_item) => Some(&constructor_item.return_type),
+            Callable::Constructor(constructor_item) => Some(&constructor_item.return_type()),
             Callable::Primitive(primitive_item) => Some(&primitive_item.ty),
+            Callable::FieldAccess(field_access_item) => Some(&field_access_item.ty),
         }
     }
 
@@ -1746,6 +1746,7 @@ impl Callable {
             Callable::Function(_) => None,
             Callable::Constructor(constructor) => Some(&constructor.parent),
             Callable::Primitive(_) => None,
+            Callable::FieldAccess(field_access_item) => Some(&field_access_item.parent),
         }
     }
 
@@ -1766,16 +1767,20 @@ impl Callable {
             Callable::Primitive(primitive_item) => {
                 Statement::PrimitiveAssignment(AssignStmt::new(primitive_item.clone()))
             }
+            Callable::FieldAccess(field_access_item) => {
+                Statement::FieldAccess(FieldAccessStmt::new(field_access_item.clone()))
+            }
         }
     }
 
-    pub fn name(&self) -> String {
+    pub fn name(&self) -> &str {
         match self {
             Callable::Method(m) => m.name(),
             Callable::StaticFunction(f) => f.name(),
             Callable::Function(f) => f.name(),
-            Callable::Constructor(c) => String::from("new"),
-            Callable::Primitive(_) => unimplemented!()
+            Callable::Constructor(c) => "new",
+            Callable::Primitive(_) => unimplemented!(),
+            Callable::FieldAccess(_) => unimplemented!(),
         }
     }
 }
@@ -1802,35 +1807,40 @@ pub struct MethodItem {
     params: Vec<Param>,
     return_type: Option<T>,
     parent: T,
-    impl_item_method: ImplItemMethod,
+    body_id: BodyId,
+    name: String,
+    fn_id: HirId,
 }
 
 impl MethodItem {
-    /// Creates a new method of a struct or enum
-    ///
-    /// # Arguments
-    ///
-    /// * `impl_item_method` - The original syn container for the method
-    /// * `ty` - The parent struct or enum of the method
-    ///
-    pub fn new(impl_item_method: ImplItemMethod, parent: T) -> Self {
-        let sig = &impl_item_method.sig;
-        let params: Vec<Param> = sig
+    pub fn new(
+        fn_sig: &FnSig,
+        body_id: BodyId,
+        fn_id: HirId,
+        parent_hir_id: HirId,
+        tcx: &TyCtxt<'_>,
+    ) -> Self {
+        let ident = tcx.hir().get(fn_id).ident().unwrap();
+        let name = ident.name.to_string();
+        let params: Vec<Param> = fn_sig
+            .decl
             .inputs
             .iter()
-            .map(|input| util::fn_arg_to_param(input, &parent))
+            .map(|ty| ty_to_param(ty, parent_hir_id, tcx))
             .collect();
 
-        let return_type = match &sig.output {
-            ReturnType::Default => None,
-            ReturnType::Type(_, ty) => Some(T::from(ty.as_ref())),
-        };
+        let return_type = fn_ret_ty_to_t(&fn_sig.decl.output, parent_hir_id, tcx);
+
+        let parent_name = node_to_name(&tcx.hir().get(parent_hir_id));
+        let parent = T::Complex(ComplexT::new(parent_hir_id, parent_name));
 
         MethodItem {
             params,
             parent,
             return_type,
-            impl_item_method,
+            body_id,
+            name,
+            fn_id,
         }
     }
 
@@ -1845,15 +1855,15 @@ impl MethodItem {
     }
 
     pub fn impl_item_method(&self) -> &ImplItemMethod {
-        &self.impl_item_method
+        todo!()
     }
 
     pub fn consumes_parent(&self) -> bool {
         !self.params.first().unwrap().by_reference()
     }
 
-    pub fn name(&self) -> String {
-        self.impl_item_method.sig.ident.to_string()
+    pub fn name(&self) -> &str {
+        &self.name
     }
 }
 
@@ -1861,40 +1871,37 @@ impl MethodItem {
 pub struct FunctionItem {
     params: Vec<Param>,
     return_type: Option<T>,
-    item_fn: ItemFn,
+    body_id: BodyId,
+    fn_id: HirId,
+    name: String,
 }
 
 impl FunctionItem {
-    pub fn new(item_fn: ItemFn) -> Self {
-        let sig = &item_fn.sig;
-        let params: Vec<Param> = sig
+    pub fn new(fn_sig: &FnSig, body_id: BodyId, fn_id: HirId, tcx: &TyCtxt<'_>) -> Self {
+        let ident = tcx.hir().get(fn_id).ident().unwrap();
+        let name = ident.name.to_string();
+        let fn_decl = &fn_sig.decl;
+
+        // self_hir_id must never be used, so just pass a dummy value
+        let params: Vec<Param> = fn_decl
             .inputs
             .iter()
-            .map(|input| {
-                let syn_type = match input {
-                    FnArg::Receiver(_) => panic!("Should never occur"),
-                    FnArg::Typed(pat_type) => pat_type.ty.clone(),
-                };
-
-                let ty = T::from(syn_type.as_ref());
-                fn_arg_to_param(input, &ty)
-            })
+            .map(|ty| ty_to_param(ty, fn_id, tcx))
             .collect();
 
-        let return_type = match &sig.output {
-            ReturnType::Default => None,
-            ReturnType::Type(_, ty) => Some(T::from(ty.as_ref())),
-        };
+        let return_type = fn_ret_ty_to_t(&fn_decl.output, fn_id, tcx);
 
         FunctionItem {
             params,
             return_type,
-            item_fn,
+            body_id,
+            name,
+            fn_id,
         }
     }
 
-    pub fn name(&self) -> String {
-        self.item_fn.sig.ident.to_string()
+    pub fn name(&self) -> &str {
+        &self.name
     }
 }
 
@@ -1903,28 +1910,41 @@ pub struct StaticFnItem {
     params: Vec<Param>,
     return_type: Option<T>,
     parent: T,
-    impl_item_method: ImplItemMethod,
+    body_id: BodyId,
+    fn_id: HirId,
+    name: String,
 }
 
 impl StaticFnItem {
-    pub fn new(impl_item_method: ImplItemMethod, parent: T) -> Self {
-        let sig = &impl_item_method.sig;
-        let params: Vec<Param> = sig
+    pub fn new(
+        fn_sig: &FnSig,
+        body_id: BodyId,
+        fn_id: HirId,
+        parent_id: HirId,
+        tcx: &TyCtxt<'_>,
+    ) -> Self {
+        let ident = tcx.hir().get(fn_id).ident().unwrap();
+        let name = ident.name.to_string();
+
+        let params: Vec<Param> = fn_sig
+            .decl
             .inputs
             .iter()
-            .map(|input| fn_arg_to_param(input, &parent))
+            .map(|ty| ty_to_param(ty, parent_id, tcx))
             .collect();
 
-        let return_type = match &sig.output {
-            ReturnType::Default => None,
-            ReturnType::Type(_, ty) => Some(T::from(ty.as_ref())),
-        };
+        let return_type = fn_ret_ty_to_t(&fn_sig.decl.output, parent_id, tcx);
+
+        let parent_name = node_to_name(&tcx.hir().get(parent_id));
+        let parent = T::Complex(ComplexT::new(parent_id, parent_name));
 
         StaticFnItem {
             params,
             parent,
             return_type,
-            impl_item_method,
+            body_id,
+            fn_id,
+            name,
         }
     }
 
@@ -1938,136 +1958,168 @@ impl StaticFnItem {
         &self.parent
     }
     pub fn impl_item_method(&self) -> &ImplItemMethod {
-        &self.impl_item_method
+        todo!()
     }
 
-    pub fn name(&self) -> String {
-        self.impl_item_method.sig.ident.to_string()
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FieldAccessItem {
+    ty: T,
+    field_id: HirId,
+    parent: T,
+    name: String,
+}
+
+impl FieldAccessItem {
+    pub fn new(field_def: &FieldDef, parent_hir_id: HirId, field_id: HirId, tcx: &TyCtxt<'_>) -> Self {
+        let ident = tcx.hir().get(field_id).ident().unwrap();
+        let name = ident.name.to_string();
+
+        let ty = ty_to_t(field_def.ty, parent_hir_id, tcx);
+
+        let parent_name = node_to_name(&tcx.hir().get(parent_hir_id));
+        let parent = T::Complex(ComplexT::new(parent_hir_id, parent_name));
+
+        FieldAccessItem {
+            name,
+            ty,
+            parent,
+            field_id,
+        }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct ConstructorItem {
     params: Vec<Param>,
-    return_type: Box<T>,
-    parent: Box<T>,
-    impl_item_method: ImplItemMethod,
+    parent: T,
+    body_id: BodyId,
+    fn_id: HirId,
 }
 
 impl ConstructorItem {
-    pub fn new(impl_item_method: ImplItemMethod, parent: T) -> Self {
-        let sig = &impl_item_method.sig;
-        let params: Vec<Param> = sig
+    pub fn new(
+        fn_sig: &FnSig,
+        body_id: BodyId,
+        fn_id: HirId,
+        parent_hir_id: HirId,
+        tcx: &TyCtxt<'_>,
+    ) -> Self {
+        let params: Vec<Param> = fn_sig
+            .decl
             .inputs
             .iter()
-            .map(|input| fn_arg_to_param(input, &parent))
+            .map(|ty| ty_to_param(ty, parent_hir_id, tcx))
             .collect();
-
-        let return_type = if let ReturnType::Type(_, ty) = &sig.output {
-            Box::new(T::from(ty.as_ref()))
-        } else {
-            panic!("Constructor must have a return type");
-        };
-
+        todo!()
+        /*
         ConstructorItem {
-            impl_item_method,
-            parent: Box::new(parent),
+            parent,
             params,
-            return_type,
-        }
+            body_id,
+            fn_id
+        }*/
     }
 
     pub fn params(&self) -> &Vec<Param> {
         self.params.as_ref()
     }
     pub fn return_type(&self) -> &T {
-        &self.return_type
+        &self.parent
     }
     pub fn parent(&self) -> &T {
         &self.parent
     }
     pub fn impl_item_method(&self) -> &ImplItemMethod {
-        &self.impl_item_method
+        todo!()
     }
 }
 
 #[derive(Debug, Clone, Hash, Eq)]
-pub struct T {
-    path: Vec<Ident>,
-    name: String,
+pub enum T {
+    Prim(PrimTy),
+    Complex(ComplexT),
 }
 
 impl PartialEq for T {
     fn eq(&self, other: &Self) -> bool {
-        self.name() == other.name()
+        match self {
+            T::Prim(prim) => match other {
+                T::Prim(other_prim) => prim == other_prim,
+                T::Complex(_) => false,
+            },
+            T::Complex(comp) => match other {
+                T::Prim(_) => false,
+                T::Complex(other_comp) => comp == other_comp,
+            },
+        }
     }
 }
 
-impl From<&Type> for T {
-    fn from(ty: &Type) -> Self {
-        return match ty {
-            Type::Path(type_path) => {
-                let path = type_path
-                    .path
-                    .segments
-                    .iter()
-                    .map(|s| s.ident.clone())
-                    .collect();
-                T::new(path)
-            }
-            Type::Reference(type_reference) => T::from(type_reference.elem.as_ref()),
-            _ => {
-                println!("{:?}", ty);
-                unimplemented!()
-            }
-        };
+impl From<PrimTy> for T {
+    fn from(ty: PrimTy) -> Self {
+        T::Prim(ty)
     }
 }
 
 impl T {
-    pub fn new(path: Vec<Ident>) -> Self {
-        let segments: Vec<String> = path.iter().map(|i| i.to_string()).collect();
-        let name = segments.join("::");
-        T { path, name }
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn path(&self) -> &Vec<Ident> {
-        &self.path
-    }
-
-    pub fn path_mut(&mut self) -> &mut Vec<Ident> {
-        &mut self.path
-    }
-
-    pub fn set_path(&mut self, path: Vec<Ident>) {
-        let segments: Vec<String> = path.iter().map(|i| i.to_string()).collect();
-        self.path = path;
-        self.name = segments.join("::");
-    }
-
     pub fn syn_type(&self) -> &Type {
         unimplemented!()
     }
 
-    pub fn from_struct(item: &ItemStruct, mut path: Vec<Ident>) -> Self {
-        path.push(item.ident.clone());
-        T::new(path)
+    pub fn name(&self) -> String {
+        match self {
+            T::Prim(prim) => {
+                // TODO only for debugging
+                format!("{:?}", prim)
+            }
+            T::Complex(complex) => complex.name().to_string(),
+        }
     }
 
-    pub fn from_enum(item: &ItemEnum, mut path: Vec<Ident>) -> Self {
-        path.push(item.ident.clone());
-        T::new(path)
+    pub fn id(&self) -> HirId {
+        match self {
+            T::Prim(_) => unimplemented!(),
+            T::Complex(complex) => complex.hir_id(),
+        }
     }
 }
 
 impl Display for T {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let stringified_segments: Vec<String> = self.path.iter().map(|s| s.to_string()).collect();
-        write!(f, "{}", stringified_segments.join("::"))
+        match self {
+            T::Prim(prim) => write!(f, "{}", prim.name_str()),
+            T::Complex(complex) => write!(f, "{}", complex.name()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Hash, Eq)]
+pub struct ComplexT {
+    hir_id: HirId,
+    name: String,
+}
+
+impl PartialEq for ComplexT {
+    fn eq(&self, other: &Self) -> bool {
+        self.hir_id == other.hir_id
+    }
+}
+
+impl ComplexT {
+    pub fn new(hir_id: HirId, name: String) -> Self {
+        ComplexT { hir_id, name }
+    }
+    pub fn hir_id(&self) -> HirId {
+        self.hir_id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
     }
 }
 
@@ -2078,6 +2130,7 @@ pub enum Callable {
     Function(FunctionItem),
     Constructor(ConstructorItem),
     Primitive(PrimitiveItem),
+    FieldAccess(FieldAccessItem),
 }
 
 #[derive(Debug, Clone)]
@@ -2103,17 +2156,18 @@ impl Hash for EnumType {
 
 impl EnumType {
     pub fn new(syn_item_enum: ItemEnum, mut path: Vec<Ident>) -> Self {
-        path.push(syn_item_enum.ident.clone());
-        let variants = syn_item_enum
-            .variants
-            .iter()
-            .map(|v| v.ident.to_string())
-            .collect();
-        EnumType {
+        //path.push(syn_item_enum.ident.clone());
+        /*let variants = syn_item_enum
+        .variants
+        .iter()
+        .map(|v| v.ident.to_string())
+        .collect();*/
+        todo!()
+        /*EnumType {
             ty: T::new(path),
             variants,
             syn_item_enum,
-        }
+        }*/
     }
 
     pub fn name(&self) -> String {
@@ -2143,11 +2197,12 @@ impl Hash for StructType {
 
 impl StructType {
     pub fn new(syn_item_struct: ItemStruct, mut path: Vec<Ident>) -> Self {
-        path.push(syn_item_struct.ident.clone());
+        todo!()
+        /*path.push(syn_item_struct.ident.clone());
         StructType {
-            ty: T::new(path),
+            ty: T::new(),
             syn_item_struct,
-        }
+        }*/
     }
 
     pub fn name(&self) -> String {
@@ -2155,7 +2210,7 @@ impl StructType {
     }
 
     pub fn ident(&self) -> &Ident {
-        self.ty.path.last().unwrap()
+        todo!()
     }
 }
 

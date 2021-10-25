@@ -69,11 +69,12 @@ where
                         items.insert(0, self.use_all_star.clone());
                     }
 
-                    if !self.test_cases.is_empty() {
+                    todo!()
+                    /*if !self.test_cases.is_empty() {
                         let mut code: Vec<Item> =
                             self.test_cases.iter().map(|t| t.to_syn()).collect();
                         items.append(&mut code);
-                    }
+                    }*/
                 } else {
                     todo!()
                 }
@@ -82,39 +83,3 @@ where
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct TestRunner {}
-
-impl TestRunner {
-    pub fn new() -> Self {
-        TestRunner {}
-    }
-
-    pub fn run(&self) -> io::Result<()> {
-        let cargo = self.cargo_path()?;
-        let mut cmd = Command::new(&*cargo);
-        let log_file = fs::File::create("out.log")?;
-        let err_file = fs::File::create("err.log")?;
-        cmd.stdin(Stdio::piped())
-            .stdout(Stdio::from(log_file))
-            .stderr(Stdio::from(err_file));
-
-        // TODO extract package and bin files
-        cmd.args(&["test", "--package", "additions", "testify_tests"])
-            .current_dir("/Users/tim/Documents/master-thesis/testify/src/examples/additions");
-        match cmd.status() {
-            Ok(_) => {
-                //println!("Test {}: OK", test_case.name());
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
-    }
-
-    fn cargo_path(&self) -> io::Result<PathBuf> {
-        match which::which("cargo") {
-            Ok(p) => Ok(p),
-            Err(e) => Err(io::Error::new(io::ErrorKind::Other, format!("{}", e))),
-        }
-    }
-}

@@ -1,8 +1,9 @@
 use proc_macro2::{Ident, Span};
 use quote::ToTokens;
+use std::error::Error;
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
-use std::io::Write;
+use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::{fs, io};
@@ -16,6 +17,7 @@ use syn::{
     UseTree,
 };
 use toml::value::Table;
+use toml::Value;
 
 use crate::chromosome::{
     Callable, Chromosome, ConstructorItem, Container, EnumType, FitnessValue, FnInvStmt,
@@ -25,15 +27,10 @@ use crate::parser::TraceParser;
 use crate::util;
 use crate::util::type_name;
 
-fn fmt_path() -> io::Result<PathBuf> {
-    match which::which("rustfmt") {
-        Ok(p) => Ok(p),
-        Err(e) => Err(io::Error::new(io::ErrorKind::Other, format!("{}", e))),
-    }
-}
+const OUTPUT_ROOT: &'static str = "/Users/tim/Documents/master-thesis/testify/benchmarks";
 
 fn fmt_string(source: &str) -> io::Result<String> {
-    let rustfmt = fmt_path()?;
+    let rustfmt = util::fmt_path()?;
     let mut cmd = Command::new(&*rustfmt);
     cmd.stdin(Stdio::piped()).stdout(Stdio::piped());
 
@@ -69,39 +66,223 @@ fn fmt_string(source: &str) -> io::Result<String> {
     }
 }
 
+pub struct Toml {
+    lib: FileType,
+    executables: Vec<FileType>,
+    package_name: String,
+}
+
+impl Toml {
+    pub fn lib(&self) -> &FileType {
+        &self.lib
+    }
+    pub fn executables(&self) -> &Vec<FileType> {
+        &self.executables
+    }
+    pub fn package_name(&self) -> &str {
+        &self.package_name
+    }
+}
+
+struct TomlScanner {}
+
+impl TomlScanner {
+    fn executables(toml: &Table) -> Vec<FileType> {
+        match toml.get("bin") {
+            None => {
+                // Default path
+                let path = PathBuf::from("src/bin.rs");
+                // TODO set default name from the project name
+                let name = "".to_owned();
+                vec![FileType::Executable(name, path)]
+            }
+            Some(bin) => {
+                if let Value::Array(bin_array) = bin {
+                    bin_array
+                        .iter()
+                        .map(|b| TomlScanner::parse_executable(b))
+                        .collect()
+                } else {
+                    panic!("Should be an array")
+                }
+            }
+        }
+    }
+
+    fn parse_executable(bin: &Value) -> FileType {
+        let name = if let Some(name) = bin.get("name") {
+            if let Value::String(name) = name {
+                name.to_string()
+            } else {
+                panic!("Name is not a string");
+            }
+        } else {
+            "".to_owned()
+        };
+
+        let path = if let Some(path) = bin.get("path") {
+            if let Value::String(path) = path {
+                PathBuf::from(path)
+            } else {
+                panic!("Path is not a string");
+            }
+        } else {
+            PathBuf::from("src/main.rs")
+        };
+
+        FileType::Executable(name, path)
+    }
+
+    fn library(toml: &Table) -> FileType {
+        match toml.get("lib") {
+            None => {
+                // Default lib.rs
+                let name = "".to_owned();
+                let path = PathBuf::from("src/lib.rs");
+
+                FileType::Library(name, path)
+            }
+            Some(lib) => {
+                let name = if let Some(name) = lib.get("name") {
+                    if let Value::String(name) = name {
+                        name.to_string()
+                    } else {
+                        panic!("Should be a string");
+                    }
+                } else {
+                    "".to_owned()
+                };
+
+                let path = if let Some(path) = lib.get("path") {
+                    if let Value::String(path) = path {
+                        PathBuf::from(path)
+                    } else {
+                        panic!("Should be a string");
+                    }
+                } else {
+                    // Default path
+                    PathBuf::from("src/lib.rs")
+                };
+
+                FileType::Library(name, path)
+            }
+        }
+    }
+
+    fn package_name(toml: &Table) -> String {
+        return match toml.get("package") {
+            None => {
+                unimplemented!()
+            }
+            Some(package) => {
+                let name = if let Some(name) = package.get("name") {
+                    if let Value::String(name) = name {
+                        name.to_string()
+                    } else {
+                        panic!("Should be string");
+                    }
+                } else {
+                    panic!("Huh, no package name?")
+                };
+                name
+            }
+        };
+    }
+}
+
 pub struct ProjectScanner {}
 
 impl ProjectScanner {
     pub fn open(project_root: &str) -> Project {
         let project_root = PathBuf::from(project_root);
         let toml_path = project_root.join("Cargo.toml");
-        let toml = ProjectScanner::parse_toml(toml_path.as_path());
+        let toml_table = ProjectScanner::parse_toml(toml_path.as_path());
 
         let source_dir = project_root.join("src");
         let mut source_files = vec![];
 
-        ProjectScanner::read_file_tree(source_dir.as_path(), &mut source_files);
-        Project {
-            toml,
-            source_files,
-            project_root,
-        }
+        let executables = TomlScanner::executables(&toml_table);
+        let lib = TomlScanner::library(&toml_table);
+        let package_name = TomlScanner::package_name(&toml_table);
+
+        let toml = Toml {
+            executables,
+            lib,
+            package_name,
+        };
+
+        ProjectScanner::read_file_tree(
+            project_root.as_path(),
+            source_dir.as_path(),
+            &mut source_files,
+            &toml,
+        );
+
+        Project::new(project_root, PathBuf::from(OUTPUT_ROOT), toml, source_files)
     }
 
-    fn read_file_tree(src_dir: &Path, source_files: &mut Vec<SourceFile>) -> io::Result<()> {
+    fn read_file_tree(
+        project_root: &Path,
+        src_dir: &Path,
+        source_files: &mut Vec<SourceFile>,
+        toml: &Toml,
+    ) -> io::Result<()> {
         for entry in fs::read_dir(src_dir)? {
             let entry = entry?;
             let path = entry.path();
             if path.is_dir() {
-                ProjectScanner::read_file_tree(&path, source_files);
+                ProjectScanner::read_file_tree(project_root, &path, source_files, toml);
             } else if let Some(extension) = path.extension() {
                 if extension.eq("rs") {
-                    let source_file = SourceFile::new(path.as_path());
+                    // Check whether it is an executable, a library, or a regular source file
+
+                    let relative_to_root = path.strip_prefix(project_root).unwrap();
+                    let file_type = if ProjectScanner::is_library(relative_to_root, &toml.lib) {
+                        toml.lib.clone()
+                    } else if let Some(executable) =
+                        ProjectScanner::is_executable(relative_to_root, &toml.executables)
+                    {
+                        executable.clone()
+                    } else {
+                        FileType::SourceCode(path.to_path_buf())
+                    };
+
+                    let source_file = SourceFile::new(path.as_path(), file_type);
                     source_files.push(source_file);
                 }
             }
         }
         Ok(())
+    }
+
+    fn is_library(relative_path: &Path, library: &FileType) -> bool {
+        if let FileType::Library(_, lib_path) = library {
+            relative_path == lib_path
+        } else {
+            panic!("Is not a library");
+        }
+    }
+
+    fn is_executable<'a>(
+        relative_path: &Path,
+        executables: &'a Vec<FileType>,
+    ) -> Option<&'a FileType> {
+        for executable in executables {
+            if let FileType::Executable(_, exec_path) = executable {
+                let exec_path = if !exec_path.has_root() && exec_path.starts_with(Path::new("./")) {
+                    exec_path.strip_prefix("./").unwrap()
+                } else {
+                    exec_path
+                };
+                if exec_path == relative_path {
+                    return Some(executable);
+                }
+            } else {
+                panic!("Not an executable");
+            }
+        }
+
+        None
     }
 
     fn parse_toml(toml_path: &Path) -> Table {
@@ -115,12 +296,99 @@ impl ProjectScanner {
 
 pub struct Project {
     project_root: PathBuf,
-    toml: Table,
+    output_root: PathBuf,
+    toml: Toml,
     source_files: Vec<SourceFile>,
+    cargo_path: PathBuf
 }
 
 impl Project {
-    pub fn open(&self) {}
+    fn new(project_root: PathBuf, output_root: PathBuf, toml: Toml, source_files: Vec<SourceFile>) -> Self {
+        let cargo_path = util::cargo_path().unwrap();
+        Project {
+           project_root,
+            output_root,
+            toml,
+            source_files,
+            cargo_path
+        }
+    }
+
+    pub fn open(&self) {
+        unimplemented!()
+    }
+
+    pub fn source_files(&self) -> &Vec<SourceFile> {
+        &self.source_files
+    }
+
+    pub fn project_root(&self) -> &Path {
+        self.project_root.as_path()
+    }
+
+    pub fn source_files_mut(&mut self) -> &mut Vec<SourceFile> {
+        &mut self.source_files
+    }
+
+    pub fn write(&self) {
+        // Clear the target dir
+        fs::remove_dir_all(self.output_root.as_path()).unwrap();
+
+        // Write source files
+        for file in &self.source_files {
+            let tokens = file.ast.to_token_stream();
+            let instrumented_src_code = tokens.to_string();
+
+            // Put the instrumented file under the same relative path structure
+            let relative_path = file
+                .file_path()
+                .strip_prefix(self.project_root.as_path())
+                .unwrap();
+
+            let mut output_path = self.output_root.to_path_buf();
+            output_path.push(relative_path);
+
+            let parent_dir = output_path.parent().unwrap();
+            fs::create_dir_all(parent_dir).unwrap();
+
+            let mut file =
+                fs::File::create(output_path).expect("Could not create output source file");
+            file.write_all(&instrumented_src_code.as_bytes()).unwrap();
+        }
+
+        // Copy monitor module
+        let monitor_source_path =
+            PathBuf::from("/Users/tim/Documents/master-thesis/testify/src/monitor.rs");
+        let monitor_target_path = self.output_root.join("src/testify_monitor.rs");
+        fs::copy(monitor_source_path, monitor_target_path).unwrap();
+
+        // Copy toml
+        let original_toml_path = self.project_root.join("Cargo.toml");
+        let output_toml_path = self.output_root.join("Cargo.toml");
+        fs::copy(original_toml_path, output_toml_path).unwrap();
+    }
+    pub fn toml(&self) -> &Toml {
+        &self.toml
+    }
+
+    pub fn run_tests(&self) {
+        let mut cmd = Command::new(self.cargo_path.as_path());
+        let log_file = fs::File::create("out.log").unwrap();
+        let err_file = fs::File::create("err.log").unwrap();
+        cmd.stdin(Stdio::piped())
+            .stdout(Stdio::from(log_file))
+            .stderr(Stdio::from(err_file));
+
+        // Run the tests
+        cmd.args(&["test", "--package", &self.toml.package_name, "testify_tests"])
+            .current_dir(self.output_root.as_path());
+        match cmd.status() {
+            Ok(_) => {
+                //println!("Test {}: OK", test_case.name());
+            }
+            Err(e) => panic!("{}", e),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -146,6 +414,16 @@ impl VisitState {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum FileType {
+    // Name of the executable, path
+    Executable(String, PathBuf),
+    // Name of the library, path
+    Library(String, PathBuf),
+    // Path
+    SourceCode(PathBuf),
+}
+
 #[derive(Debug, Clone)]
 pub struct SourceFile {
     file_path: PathBuf,
@@ -155,10 +433,11 @@ pub struct SourceFile {
     containers: Vec<Container>,
     imports: Vec<Import>,
     visit_state: VisitState,
+    file_type: FileType,
 }
 
 impl SourceFile {
-    pub fn new(src_path: &Path) -> SourceFile {
+    pub fn new(src_path: &Path, file_type: FileType) -> SourceFile {
         let content = fs::read_to_string(src_path.clone())
             .expect(&format!("Could not read {}", src_path.to_str().unwrap()));
         let ast = syn::parse_file(&content)
@@ -178,30 +457,13 @@ impl SourceFile {
             containers: vec![],
             imports: vec![],
             visit_state,
+            file_type,
         };
-        source_file.visit_file(&ast);
+        /*source_file.visit_file(&ast);
 
-        source_file.make_paths_explicit();
+        source_file.make_paths_explicit();*/
 
         source_file
-    }
-
-    fn make_paths_explicit(&mut self) {
-        for callable in &mut self.callables {
-            for param in callable.params_mut() {
-                let ty = param.ty_mut();
-
-                let path_prefix = self.imports.iter().find(|&i| i.contains(ty));
-
-                if let Some(prefix) = path_prefix {
-                    // In some cases, the absolute path might already be specified
-                    let mut prefix = prefix.path();
-                    prefix.remove(prefix.len() - 1);
-                    prefix.append(ty.path_mut());
-                    ty.set_path(prefix);
-                }
-            }
-        }
     }
 
     pub fn structs(&self) -> Vec<&StructType> {
@@ -258,6 +520,17 @@ impl SourceFile {
     pub fn file_path(&self) -> &Path {
         self.file_path.as_path()
     }
+
+    pub fn ast(&self) -> &File {
+        &self.ast
+    }
+
+    pub fn set_ast(&mut self, ast: File) {
+        self.ast = ast;
+    }
+    pub fn file_type(&self) -> &FileType {
+        &self.file_type
+    }
 }
 
 impl PartialEq for SourceFile {
@@ -274,7 +547,7 @@ impl Hash for SourceFile {
     }
 }
 
-impl Visit<'_> for SourceFile {
+/*impl Visit<'_> for SourceFile {
     fn visit_impl_item_method(&mut self, i: &ImplItemMethod) {
         let container = self.containers.last_mut().unwrap();
 
@@ -386,7 +659,7 @@ impl Visit<'_> for SourceFile {
         Visit::visit_visibility(self, &i.vis);
         Visit::visit_use_tree(self, &i.tree);
     }
-}
+}*/
 
 #[derive(Clone, Builder)]
 pub struct Branch {
@@ -520,23 +793,6 @@ pub enum Import {
     Mod(Mod),
 }
 
-impl Import {
-    pub fn contains(&self, ty: &T) -> bool {
-        let first_ident = ty.path().first().unwrap();
-        match self {
-            Import::Use(u) => u.ends_with(first_ident),
-            Import::Mod(m) => m.ident() == first_ident,
-        }
-    }
-
-    pub fn path(&self) -> Vec<Ident> {
-        match self {
-            Import::Use(u) => u.path.clone(),
-            Import::Mod(m) => vec![m.ident().clone()],
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct Use {
     syn_item_use: ItemUse,
@@ -617,47 +873,110 @@ mod tests {
     }
 
     #[test]
-    fn test_toml_parsing() {
+    fn test_toml_parse_library() {
         let table: Table = toml::from_str(
             r#"
             [package]
             name = "additions"
-            version = "0.1.0"
-            edition = "2018"
-            
-            
-            [[bin]]
-            name = "additions"
-            path = "./src/main.rs"
-            
-            [dependencies]
-            lazy_static = "1.4.0"
+
+            [lib]
+            name = "additions-lib"
+            path = "./src/lib.rs"
         "#,
         )
         .unwrap();
 
-        println!("{:?}", table);
-        let first_binary = table.get("bin").unwrap();
-        assert!(std::matches!(first_binary, Value::Array(..)));
+        let lib = TomlScanner::library(&table);
+        let expected_lib =
+            FileType::Library("additions-lib".to_string(), PathBuf::from("./src/lib.rs"));
+        assert_eq!(expected_lib, lib);
+    }
+
+    #[test]
+    fn test_toml_parse_executables() {
+        let table: Table = toml::from_str(
+            r#"
+            [package]
+            name = "additions"
+            
+            [[bin]]
+            name = "additions"
+            path = "./src/bin/main.rs"
+            
+            [[bin]]
+            name = "some-other-bin"
+        "#,
+        )
+        .unwrap();
+
+        let executables = TomlScanner::executables(&table);
+        let expected_additions =
+            FileType::Executable("additions".to_string(), PathBuf::from("./src/bin/main.rs"));
+        let expected_other_bin =
+            FileType::Executable("some-other-bin".to_string(), PathBuf::from("src/main.rs"));
+        assert_eq!(executables.len(), 2);
+        assert!(executables.contains(&expected_additions));
+        assert!(executables.contains(&expected_other_bin));
+    }
+
+    #[test]
+    fn test_toml_parse_package() {
+        let table: Table = toml::from_str(
+            r#"
+            [package]
+            name = "additions"
+            
+            [[bin]]
+            name = "bin"
+            path = "./src/bin/main.rs"
+        "#,
+        )
+        .unwrap();
+
+        let package_name = TomlScanner::package_name(&table);
+        assert_eq!(String::from("additions"), package_name);
     }
 
     #[test]
     fn test_project_scanner_directory_tree() {
-        let mut source_files = vec![];
-        let path =
-            PathBuf::from("/Users/tim/Documents/master-thesis/testify/tests/examples");
+        let path = "/Users/tim/Documents/master-thesis/testify/tests/examples";
 
-        ProjectScanner::read_file_tree(path.as_path(), &mut source_files);
+        let project = ProjectScanner::open(path);
 
-        assert_eq!(source_files.len(), 2);
+        assert_eq!(project.source_files().len(), 2);
+
+        let main_file = project
+            .source_files()
+            .iter()
+            .find(|&sf| sf.file_path().ends_with(Path::new("main.rs")))
+            .unwrap();
+
+        assert!(if let FileType::Executable(_, _) = main_file.file_type() {
+            true
+        } else {
+            false
+        });
+
+        let dependency_file = project
+            .source_files()
+            .iter()
+            .find(|&sf| sf.file_path().ends_with(Path::new("dependency.rs")))
+            .unwrap();
+        assert!(
+            if let FileType::SourceCode(_) = dependency_file.file_type() {
+                true
+            } else {
+                false
+            }
+        );
     }
 
     #[test]
     fn test_main_contains_3_structs() {
-        let main_path = Path::new(
-            "/Users/tim/Documents/master-thesis/testify/tests/examples/src/main.rs",
-        );
-        let main = SourceFile::new(&main_path);
+        let main_path =
+            Path::new("/Users/tim/Documents/master-thesis/testify/tests/examples/src/main.rs");
+        let file_type = FileType::Executable("".to_owned(), main_path.to_path_buf());
+        let main = SourceFile::new(&main_path, file_type);
 
         assert_eq!(main.containers.len(), 3);
 
@@ -675,10 +994,10 @@ mod tests {
 
     #[test]
     fn test_area_calculator_has_2_methods() {
-        let main_path = Path::new(
-            "/Users/tim/Documents/master-thesis/testify/tests/examples/src/main.rs",
-        );
-        let main = SourceFile::new(&main_path);
+        let main_path =
+            Path::new("/Users/tim/Documents/master-thesis/testify/tests/examples/src/main.rs");
+        let file_type = FileType::Executable("".to_owned(), main_path.to_path_buf());
+        let main = SourceFile::new(&main_path, file_type);
 
         assert_eq!(main.containers.len(), 3);
 
@@ -690,10 +1009,10 @@ mod tests {
 
     #[test]
     fn test_dependency_has_full_path() {
-        let main_path = Path::new(
-            "/Users/tim/Documents/master-thesis/testify/tests/examples/src/main.rs",
-        );
-        let main = SourceFile::new(&main_path);
+        let main_path =
+            Path::new("/Users/tim/Documents/master-thesis/testify/tests/examples/src/main.rs");
+        let file_type = FileType::Executable("".to_owned(), main_path.to_path_buf());
+        let main = SourceFile::new(&main_path, file_type);
 
         assert_eq!(main.containers.len(), 3);
 
@@ -720,17 +1039,17 @@ mod tests {
             .unwrap()
             .params()
             .iter()
-            .find(|&p| p.ty() == &dependency_ty);
+            .find(|&p| p.real_ty() == &dependency_ty);
 
         assert!(dep_param.is_some());
     }
 
     #[test]
     fn test_nested_dependency() {
-        let main_path = Path::new(
-            "/Users/tim/Documents/master-thesis/testify/tests/examples/src/main.rs",
-        );
-        let main = SourceFile::new(&main_path);
+        let main_path =
+            Path::new("/Users/tim/Documents/master-thesis/testify/tests/examples/src/main.rs");
+        let file_type = FileType::Executable("".to_owned(), main_path.to_path_buf());
+        let main = SourceFile::new(&main_path, file_type);
 
         assert_eq!(main.containers.len(), 3);
 
@@ -752,16 +1071,15 @@ mod tests {
             ident("dependency"),
             ident("nested_mod"),
             ident("sub_mod"),
-            ident("NestedStruct")
+            ident("NestedStruct"),
         ]);
 
         let dep_param = dep_method
             .unwrap()
             .params()
             .iter()
-            .find(|&p| p.ty() == &nested_dependency_ty);
+            .find(|&p| p.real_ty() == &nested_dependency_ty);
 
         assert!(dep_param.is_some())
     }
-
 }

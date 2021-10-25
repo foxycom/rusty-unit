@@ -1,4 +1,11 @@
-use crate::chromosome::{Param, RegularParam, SelfParam, T};
+use crate::chromosome::{ComplexT, Param, T};
+use rustc_hir::def::Res;
+use rustc_hir::def_id::DefId;
+use rustc_hir::{FnRetTy, HirId, Impl, Item, ItemKind, Mutability, Node, PrimTy, QPath, Ty, TyKind};
+use rustc_middle::ty::{TyCtxt, TypeckResults};
+use std::io;
+use std::option::Option::Some;
+use std::path::PathBuf;
 use syn::{FnArg, ImplItemMethod, Path, ReturnType, Type};
 
 pub(crate) fn is_constructor(method: &ImplItemMethod) -> bool {
@@ -44,31 +51,7 @@ pub fn merge_path(path: &Path) -> String {
 }
 
 pub(crate) fn fn_arg_to_param(fn_arg: &FnArg, ty: &T) -> Param {
-    match fn_arg {
-        FnArg::Receiver(recv) => {
-            let self_param = SelfParam::new(
-                ty.clone(),
-                fn_arg.clone(),
-                recv.reference.is_some(),
-                recv.mutability.is_some()
-            );
-
-            Param::Self_(self_param)
-        }
-        FnArg::Typed(typed) => {
-            let syn_type = typed.ty.clone();
-            let t = T::from(syn_type.as_ref());
-
-            // TODO this is not always true, self can also be typed, see doc about FnArg
-            let regular_param = RegularParam::new(
-                t,
-                fn_arg.clone(),
-                by_reference(&typed.ty),
-                mutable(&typed.ty)
-            );
-            Param::Regular(regular_param)
-        }
-    }
+    unimplemented!()
 }
 
 pub fn by_reference(ty: &Box<Type>) -> bool {
@@ -81,7 +64,147 @@ pub fn by_reference(ty: &Box<Type>) -> bool {
 pub fn mutable(ty: &Box<Type>) -> bool {
     match ty.as_ref() {
         Type::Reference(type_reference) => type_reference.mutability.is_some(),
-        _ => false
+        _ => false,
+    }
+}
+
+pub fn cargo_path() -> io::Result<PathBuf> {
+    match which::which("cargo") {
+        Ok(p) => Ok(p),
+        Err(e) => Err(io::Error::new(io::ErrorKind::Other, format!("{}", e))),
+    }
+}
+
+pub fn fmt_path() -> io::Result<PathBuf> {
+    match which::which("rustfmt") {
+        Ok(p) => Ok(p),
+        Err(e) => Err(io::Error::new(io::ErrorKind::Other, format!("{}", e))),
+    }
+}
+
+pub fn ty_to_param(ty: &Ty, self_hir_id: HirId, tcx: &TyCtxt<'_>) -> Param {
+    let (by_reference, mutable) = if let TyKind::Rptr(_, mut_ty) = &ty.kind {
+        let mutable = mut_ty.mutbl == Mutability::Mut;
+        (true, mutable)
+    } else {
+        (false, false)
+    };
+
+    let real_ty = ty_to_t(ty, self_hir_id, tcx);
+    let original_ty = T::Complex(ComplexT::new(ty.hir_id, real_ty.name()));
+    Param::new(real_ty, original_ty, by_reference, mutable)
+}
+
+pub fn ty_to_t(ty: &Ty, self_: HirId, tcx: &TyCtxt<'_>) -> T {
+    match &ty.kind {
+        TyKind::Rptr(_, mut_ty) => ty_to_t(mut_ty.ty, self_, tcx),
+        TyKind::Path(q_path) => {
+            match q_path {
+                QPath::Resolved(_, path) => {
+                    match path.res {
+                        Res::Def(_, def_id) => {
+                            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+                            let name = join_path_to_str(path);
+                            let complex_ty = ComplexT::new(hir_id, name);
+                            T::Complex(complex_ty)
+                        }
+                        Res::PrimTy(prim_ty) => T::from(prim_ty),
+                        Res::SelfTy(trait_def_id, impl_) => {
+                            // Self type, so replace it with the parent id
+                            let name = node_to_name(&tcx.hir().get(self_));
+                            T::Complex(ComplexT::new(self_, name))
+                        }
+                        _ => {
+                            unimplemented!()
+                        }
+                    }
+                }
+                _ => unimplemented!(),
+            }
+        }
+        _ => unimplemented!(),
+    }
+}
+
+pub fn node_to_t(node: &Node<'_>, tcx: &TyCtxt<'_>) -> T {
+    match node {
+        Node::Item(item) => item_to_t(item, tcx),
+        _ => unimplemented!(),
+    }
+}
+
+pub fn item_to_t(item: &Item<'_>, tcx: &TyCtxt<'_>) -> T {
+    match &item.kind {
+        ItemKind::Impl(im) => ty_to_t(im.self_ty, item.hir_id(),  tcx),
+        _ => unimplemented!(),
+    }
+}
+
+pub fn fn_ret_ty_to_t(ret_ty: &FnRetTy, self_hir_id: HirId, tcx: &TyCtxt<'_>) -> Option<T> {
+    match ret_ty {
+        FnRetTy::DefaultReturn(_) => None,
+        FnRetTy::Return(ty) => Some(ty_to_t(ty, self_hir_id, tcx)),
+    }
+}
+
+pub fn join_path_to_str(path: &rustc_hir::Path) -> String {
+    path.segments
+        .iter()
+        .map(|s| s.ident.to_string())
+        .collect::<Vec<String>>()
+        .join("::")
+}
+
+pub fn node_to_name(node: &Node<'_>) -> String {
+    match node {
+        Node::Item(item) => item_to_name(item),
+        _ => {
+            println!("Returning {:?}", node);
+            unimplemented!()
+        },
+    }
+}
+
+pub fn item_to_name(item: &Item<'_>) -> String {
+
+    match &item.kind {
+        ItemKind::Impl(im) => ty_to_name(im.self_ty),
+        ItemKind::Struct(_,_) => item.ident.name.to_string(),
+        _ => unimplemented!(),
+    }
+}
+
+pub fn ty_to_name(ty: &Ty<'_>) -> String {
+    match &ty.kind {
+        TyKind::Path(path) => qpath_to_name(path),
+        _ => unimplemented!(),
+    }
+}
+
+pub fn qpath_to_name(qpath: &QPath<'_>) -> String {
+    match qpath {
+        QPath::Resolved(_, path) => path
+            .segments
+            .iter()
+            .map(|s| s.ident.name.to_string())
+            .collect::<Vec<String>>()
+            .join("::"),
+        _ => unimplemented!(),
+    }
+}
+
+pub fn impl_to_struct_id(im: &Impl) -> DefId {
+    let self_ty = im.self_ty;
+    match &self_ty.kind {
+        TyKind::Path(qpath) => {
+            match qpath {
+                QPath::Resolved(_, path) => {
+                    path.res.def_id()
+                }
+                _ => unimplemented!()
+            }
+        }
+        _ => unimplemented!()
     }
 }
 

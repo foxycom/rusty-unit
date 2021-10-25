@@ -1,5 +1,19 @@
+#![feature(rustc_private)]
+extern crate rustc_data_structures;
+extern crate rustc_driver;
+extern crate rustc_hir;
+extern crate rustc_interface;
+extern crate rustc_middle;
+extern crate rustc_session;
+extern crate rustc_span;
+
 use std::cell::RefCell;
+use std::collections::HashMap;
+use std::io::{Read, Write};
+use std::net::TcpStream;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::time::Duration;
 
 use clap::Clap;
 
@@ -7,20 +21,27 @@ use testify::algorithm::{DynaMOSA, OffspringGenerator, TestSuite};
 use testify::chromosome::{Chromosome, TestCase};
 use testify::instrument::Instrumenter;
 use testify::operators::{BasicMutation, RankSelection, SinglePointCrossover};
-use testify::source::{BranchManager, SourceFile};
+use testify::source::{BranchManager, ProjectScanner, SourceFile};
+use testify::compiler;
 
 #[derive(Clap)]
 struct CliOpts {
     #[clap(short, long)]
-    file: String,
+    path: String,
 }
 
 fn main() {
     let opts: CliOpts = CliOpts::parse();
 
-    let mut source_file = SourceFile::new(&opts.file);
-    let mut instrumenter = Instrumenter::new();
-    instrumenter.instrument(&source_file);
+    /*let mut project = ProjectScanner::open(&opts.path);*/
+
+    compiler::run_compiler();
+
+
+    /*let mut instrumenter = Instrumenter::new();
+    instrumenter.instrument(&mut project);
+    project.write();
+    project.run_tests();*/
 
     /*let mut source_file = Rc::new(source_file);
 
@@ -70,5 +91,48 @@ fn main() {
             println!("{}", err);
         }
     }*/
+}
+
+pub struct Client {
+    connection: TcpStream,
+}
+
+impl Client {
+    pub fn get(&mut self) -> HashMap<usize, Vec<String>> {
+        self.connection.write(b"get").unwrap();
+        println!("Started reading");
+
+        let mut data = [0 as u8; 1024];
+        match self.connection.read(&mut data) {
+            Ok(size) => {
+                if size == 0 {
+                    // connection closed
+                    panic!("Connection closed");
+                } else {
+                    let response = String::from_utf8_lossy(&data[0..size]);
+                    println!("{}", response);
+
+                    let traces: HashMap<usize, Vec<String>> = serde_json::from_str(response.as_ref()).unwrap();
+                    return traces;
+                }
+            }
+            Err(_) => {
+                panic!("Could not read traces from server");
+            }
+        }
+    }
+
+    pub fn new() -> Self {
+        let connection = match TcpStream::connect("localhost:3333") {
+            Ok(stream) => {
+                stream
+            }
+            Err(e) => {
+                println!("Failed to connect: {}", e);
+                panic!()
+            }
+        };
+        Client { connection }
+    }
 }
 

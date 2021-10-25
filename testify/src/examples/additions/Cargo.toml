@@ -9,4 +9,7 @@ name = "additions"
 path = "./src/main.rs"
 
 [dependencies]
-lazy_static = "1.4.0"
+
+# Those need to be set dynamically
+#lazy_static = "1.4.0"
+#serde = { version = "1.0", features = ["derive"] }

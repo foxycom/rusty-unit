@@ -30,6 +30,16 @@ petgraph = "0.6.0"
 uuid = { version = "0.8", features = ["v4"] }
 toml = "0.5.8"
 
+[target.'cfg(NOT_A_PLATFORM)'.dependencies]
+rustc_driver = {path = "/Users/tim/rust/compiler/rustc_driver"}
+rustc_interface = {path = "/Users/tim/rust/compiler/rustc_interface"}
+rustc_middle = {path = "/Users/tim/rust/compiler/rustc_middle"}
+rustc_session = {path = "/Users/tim/rust/compiler/rustc_session"}
+rustc_data_structures = {path = "/Users/tim/rust/compiler/rustc_data_structures"}
+rustc_span = {path = "/Users/tim/rust/compiler/rustc_span"}
+rustc_hir = {path = "/Users/tim/rust/compiler/rustc_hir"}
+rustc_mir = {path = "/Users/tim/rust/compiler/rustc_mir"}
+
 [dev-dependencies]
 mockall = "0.10.2"
 

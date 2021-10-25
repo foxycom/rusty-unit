@@ -9,6 +9,12 @@ pub mod nested_mod {
         pub struct NestedStruct {
 
         }
+
+        impl NestedStruct {
+            pub fn nested_fn() {
+
+            }
+        }
     }
 
 }

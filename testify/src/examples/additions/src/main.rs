@@ -1,13 +1,27 @@
 use crate::dependency::DependencyStruct;
 use crate::dependency::nested_mod;
 mod dependency;
+use std::env;
 
-fn main() {}
+fn main() {
+    let args: Vec<i32> = env::args().map(|a| a.parse::<i32>().unwrap()).collect();
+
+    let mut x = *args.get(0).unwrap();
+    let mut y = *args.get(1).unwrap();
+
+    if x < y {
+        x = 10;
+    } else {
+        y = 15;
+    }
+}
+
 struct SomeStruct {
     a: u8,
     b: u8,
     dependency: dependency::DependencyStruct,
 }
+
 impl SomeStruct {
     pub fn new(a: u8, b: u8) -> SomeStruct {
         SomeStruct {
@@ -63,5 +77,21 @@ impl AreaCalculator {
         rect.height as f64 * rect.width as f64
     }
 }
+
 #[cfg(test)]
-mod testify_tests {}
+mod tests {
+    #[test]
+    fn do_something() {
+        if 2 < 3 {
+            println!("Hello");
+        }
+    }
+}
+
+#[cfg(test)]
+mod testify_tests {
+    #[test]
+    fn hello() {
+
+    }
+}
