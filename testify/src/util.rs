@@ -6,6 +6,8 @@ use rustc_middle::ty::{TyCtxt, TypeckResults};
 use std::io;
 use std::option::Option::Some;
 use std::path::PathBuf;
+use rustc_middle::dep_graph::DepContext;
+use rustc_span::{FileName, RealFileName, Span};
 use syn::{FnArg, ImplItemMethod, Path, ReturnType, Type};
 
 pub(crate) fn is_constructor(method: &ImplItemMethod) -> bool {
@@ -118,7 +120,7 @@ pub fn ty_to_t(ty: &Ty, self_: HirId, tcx: &TyCtxt<'_>) -> T {
                         Res::PrimTy(prim_ty) => T::from(prim_ty),
                         Res::SelfTy(trait_def_id, impl_) => {
                             // Self type, so replace it with the parent id
-                            let name = node_to_name(&tcx.hir().get(self_));
+                            let name = node_to_name(&tcx.hir().get(self_), tcx);
                             let def_id = tcx.hir().local_def_id(self_).to_def_id();
                             T::Complex(ComplexT::new(self_, def_id, name))
                         }
@@ -163,9 +165,9 @@ pub fn join_path_to_str(path: &rustc_hir::Path) -> String {
         .join("::")
 }
 
-pub fn node_to_name(node: &Node<'_>) -> String {
+pub fn node_to_name(node: &Node<'_>, tcx: &TyCtxt<'_>) -> String {
     match node {
-        Node::Item(item) => item_to_name(item),
+        Node::Item(item) => item_to_name(item, tcx),
         _ => {
             println!("Returning {:?}", node);
             unimplemented!()
@@ -173,31 +175,45 @@ pub fn node_to_name(node: &Node<'_>) -> String {
     }
 }
 
-pub fn item_to_name(item: &Item<'_>) -> String {
+pub fn item_to_name(item: &Item<'_>, tcx: &TyCtxt<'_>) -> String {
 
     match &item.kind {
-        ItemKind::Impl(im) => ty_to_name(im.self_ty),
-        ItemKind::Struct(_,_) => item.ident.name.to_string(),
+        ItemKind::Impl(im) => ty_to_name(im.self_ty, tcx),
+        ItemKind::Struct(_,_) => {
+            tcx.def_path_str(item.def_id.to_def_id())
+        },
         _ => unimplemented!(),
     }
 }
 
-pub fn ty_to_name(ty: &Ty<'_>) -> String {
+pub fn ty_to_name(ty: &Ty<'_>, tcx: &TyCtxt<'_>) -> String {
     match &ty.kind {
-        TyKind::Path(path) => qpath_to_name(path),
+        TyKind::Path(path) => qpath_to_name(path, tcx),
         _ => unimplemented!(),
     }
 }
 
-pub fn qpath_to_name(qpath: &QPath<'_>) -> String {
+pub fn qpath_to_name(qpath: &QPath<'_>, tcx: &TyCtxt<'_>) -> String {
     match qpath {
-        QPath::Resolved(_, path) => path
-            .segments
-            .iter()
-            .map(|s| s.ident.name.to_string())
-            .collect::<Vec<String>>()
-            .join("::"),
+        QPath::Resolved(_, path) => {
+            res_to_name(&path.res, tcx)
+            /*path
+                .segments
+                .iter()
+                .map(|s| s.ident.name.to_string())
+                .collect::<Vec<String>>()
+                .join("::")*/
+        },
         _ => unimplemented!(),
+    }
+}
+
+pub fn res_to_name(res: &Res, tcx: &TyCtxt<'_>) -> String {
+    match res {
+        Res::Def(_, def_id) => {
+            tcx.def_path_str(*def_id)
+        }
+        _ => unimplemented!()
     }
 }
 
@@ -216,3 +232,15 @@ pub fn impl_to_struct_id(im: &Impl) -> DefId {
     }
 }
 
+pub fn span_to_path(span: &Span, tcx: &TyCtxt<'_>) -> PathBuf {
+    let file_name = tcx.sess().source_map().span_to_filename(span.clone());
+    match file_name {
+        FileName::Real(real_file_name) => {
+            match real_file_name {
+                RealFileName::LocalPath(path) => path,
+                RealFileName::Remapped { .. } => unimplemented!()
+            }
+        }
+        _ => unimplemented!()
+    }
+}

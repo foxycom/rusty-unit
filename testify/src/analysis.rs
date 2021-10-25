@@ -5,10 +5,14 @@ pub struct Analysis {
 }
 
 impl Analysis {
-    pub fn new(callables: Vec<Callable>) -> Self {
+    pub fn new() -> Self {
         Analysis {
-            callables
+            callables: vec![]
         }
+    }
+
+    pub fn set_callables(&mut self, callables: Vec<Callable>) {
+        self.callables = callables;
     }
 
     pub fn callables_of(&self, ty: &T) -> Vec<&Callable> {

@@ -1,5 +1,6 @@
 use proc_macro2::{Ident, Span};
 use quote::ToTokens;
+use rustc_middle::ty::TyCtxt;
 use std::error::Error;
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
@@ -11,6 +12,7 @@ use syn::ext::IdentExt;
 use syn::punctuated::Punctuated;
 use syn::token::Else;
 use syn::visit::Visit;
+use syn::visit_mut::VisitMut;
 use syn::{
     Attribute, BinOp, Block, Expr, ExprIf, Fields, File, FnArg, ImplItemMethod, Item, ItemEnum,
     ItemExternCrate, ItemFn, ItemImpl, ItemMacro, ItemMod, ItemStruct, ItemUse, Stmt, Type,
@@ -21,8 +23,9 @@ use toml::Value;
 
 use crate::chromosome::{
     Callable, Chromosome, ConstructorItem, Container, EnumType, FitnessValue, FnInvStmt,
-    FunctionItem, MethodItem, Param, PrimitiveItem, StaticFnItem, StructType, TestCase, T,
+    FunctionItem, MethodItem, Param, PrimitiveItem, StaticFnItem, StructType, TestCase, ToSyn, T,
 };
+use crate::fs_util;
 use crate::parser::TraceParser;
 use crate::util;
 use crate::util::type_name;
@@ -247,7 +250,17 @@ impl ProjectScanner {
                         FileType::SourceCode(path.to_path_buf())
                     };
 
-                    let source_file = SourceFile::new(path.as_path(), file_type);
+                    // Put the copy file under the same relative path structure
+                    let relative_path = path.strip_prefix(project_root).unwrap();
+
+                    let mut output_path = PathBuf::from(OUTPUT_ROOT);
+                    output_path.push(relative_path);
+
+                    let parent_dir = output_path.parent().unwrap();
+                    fs::create_dir_all(parent_dir).unwrap();
+
+                    let source_file =
+                        SourceFile::new(path.as_path(), output_path.as_path(), file_type);
                     source_files.push(source_file);
                 }
             }
@@ -299,18 +312,23 @@ pub struct Project {
     output_root: PathBuf,
     toml: Toml,
     source_files: Vec<SourceFile>,
-    cargo_path: PathBuf
+    cargo_path: PathBuf,
 }
 
 impl Project {
-    fn new(project_root: PathBuf, output_root: PathBuf, toml: Toml, source_files: Vec<SourceFile>) -> Self {
+    fn new(
+        project_root: PathBuf,
+        output_root: PathBuf,
+        toml: Toml,
+        source_files: Vec<SourceFile>,
+    ) -> Self {
         let cargo_path = util::cargo_path().unwrap();
         Project {
-           project_root,
+            project_root,
             output_root,
             toml,
             source_files,
-            cargo_path
+            cargo_path,
         }
     }
 
@@ -330,30 +348,13 @@ impl Project {
         &mut self.source_files
     }
 
-    pub fn write(&self) {
+    pub fn write(&mut self) {
         // Clear the target dir
         fs::remove_dir_all(self.output_root.as_path()).unwrap();
 
         // Write source files
-        for file in &self.source_files {
-            let tokens = file.ast.to_token_stream();
-            let instrumented_src_code = tokens.to_string();
-
-            // Put the instrumented file under the same relative path structure
-            let relative_path = file
-                .file_path()
-                .strip_prefix(self.project_root.as_path())
-                .unwrap();
-
-            let mut output_path = self.output_root.to_path_buf();
-            output_path.push(relative_path);
-
-            let parent_dir = output_path.parent().unwrap();
-            fs::create_dir_all(parent_dir).unwrap();
-
-            let mut file =
-                fs::File::create(output_path).expect("Could not create output source file");
-            file.write_all(&instrumented_src_code.as_bytes()).unwrap();
+        for file in &mut self.source_files {
+            file.write();
         }
 
         // Copy monitor module
@@ -366,9 +367,22 @@ impl Project {
         let original_toml_path = self.project_root.join("Cargo.toml");
         let output_toml_path = self.output_root.join("Cargo.toml");
         fs::copy(original_toml_path, output_toml_path).unwrap();
+
+        let deps_path = self.output_root.join("target/debug/deps");
+        fs::create_dir_all(deps_path).unwrap();
     }
+
     pub fn toml(&self) -> &Toml {
         &self.toml
+    }
+
+    pub fn add_tests(&mut self, test_cases: &Vec<TestCase>, tcx: &TyCtxt<'_>) {
+        let first_source_file = self.source_files.first_mut().unwrap();
+        for test_case in test_cases {
+            first_source_file.add_test(test_case, tcx);
+        }
+
+        first_source_file.write();
     }
 
     pub fn run_tests(&self) {
@@ -380,14 +394,102 @@ impl Project {
             .stderr(Stdio::from(err_file));
 
         // Run the tests
-        cmd.args(&["test", "--package", &self.toml.package_name, "testify_tests"])
-            .current_dir(self.output_root.as_path());
+        cmd.args(&[
+            "test",
+           /* "--package",
+            &self.toml.package_name,*/
+            "testify_tests",
+        ])
+        .current_dir(self.output_root.as_path());
         match cmd.status() {
             Ok(_) => {
                 //println!("Test {}: OK", test_case.name());
             }
             Err(e) => panic!("{}", e),
         }
+    }
+
+    pub fn clear_tests(&mut self) {
+        for file in &mut self.source_files {
+            file.clear_tests();
+            file.write();
+        }
+    }
+
+    pub fn clear_build_dirs(&self) {
+        let target_path = self.project_root.join("target");
+        let debug_path = self.project_root.join("debug");
+
+        fs_util::remove_dir_all(target_path.as_path()).unwrap();
+        fs_util::remove_dir_all(debug_path.as_path()).unwrap();
+
+        let deps_path = self.project_root.join("target/debug/deps");
+        fs::create_dir_all(deps_path.as_path()).unwrap();
+    }
+
+    pub fn build_args(&self) -> Vec<String> {
+        let args = [
+            "rustc",
+            "--crate-name",
+            "additions",
+            "--edition=2018",
+            "/Users/tim/Documents/master-thesis/testify/src/examples/additions/src/main.rs",
+            "--error-format=json",
+            "--json=diagnostic-rendered-ansi",
+            "--crate-type",
+            "bin",
+            "--emit=dep-info,link",
+            "-C",
+            "embed-bitcode=no",
+            "-C",
+            "split-debuginfo=unpacked",
+            "-C",
+            "debuginfo=2",
+            "-C",
+            "metadata=5978598c4741d9d6",
+            "--out-dir",
+            "/Users/tim/Documents/master-thesis/testify/src/examples/additions/target/debug/deps",
+            "-C",
+            "incremental=/Users/tim/Documents/master-thesis/testify/src/examples/additions/debug/incremental",
+            "-L",
+            "dependency=/Users/tim/Documents/master-thesis/testify/src/examples/additions/target/debug/deps",
+            "--sysroot",
+            &fs_util::sysroot(),
+        ];
+        args.iter().map(|a| a.to_string()).collect()
+    }
+
+    pub fn test_build_args(&self) -> Vec<String> {
+        let args = [
+            "rustc",
+            "--crate-name",
+            "additions",
+            "--edition=2018",
+            "/Users/tim/Documents/master-thesis/testify/benchmarks/src/main.rs",
+            "--error-format=json",
+            "--json=diagnostic-rendered-ansi",
+            "--crate-type",
+            "bin",
+            "--emit=dep-info,link",
+            "-C",
+            "embed-bitcode=no",
+            "-C",
+            "split-debuginfo=unpacked",
+            "-C",
+            "debuginfo=2",
+            "-C",
+            "metadata=5978598c4741d9d6",
+            "--out-dir",
+            "/Users/tim/Documents/master-thesis/testify/benchmarks/target/debug/deps",
+            "-C",
+            "incremental=/Users/tim/Documents/master-thesis/testify/benchmarks/debug/incremental",
+            "-L",
+            "dependency=/Users/tim/Documents/master-thesis/testify/benchmarks/target/debug/deps",
+            "--sysroot",
+            &fs_util::sysroot(),
+        ];
+        args.iter().map(|a| a.to_string()).collect::<Vec<String>>();
+        todo!()
     }
 }
 
@@ -424,9 +526,20 @@ pub enum FileType {
     SourceCode(PathBuf),
 }
 
+impl FileType {
+    pub fn to_path_buf(&self) -> PathBuf {
+        match self {
+            FileType::Executable(_, path) => path.clone(),
+            FileType::Library(_, path) => path.clone(),
+            FileType::SourceCode(path) => path.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SourceFile {
     file_path: PathBuf,
+    output_path: PathBuf,
     ast: File,
     callables: Vec<Callable>,
     branches: Vec<Branch>,
@@ -437,7 +550,7 @@ pub struct SourceFile {
 }
 
 impl SourceFile {
-    pub fn new(src_path: &Path, file_type: FileType) -> SourceFile {
+    pub fn new(src_path: &Path, output_path: &Path, file_type: FileType) -> SourceFile {
         let content = fs::read_to_string(src_path.clone())
             .expect(&format!("Could not read {}", src_path.to_str().unwrap()));
         let ast = syn::parse_file(&content)
@@ -450,6 +563,7 @@ impl SourceFile {
             .expect("File name contains unsupported encoding");
         let visit_state = VisitState::new(file_name);
         let mut source_file = SourceFile {
+            output_path: output_path.to_path_buf(),
             file_path: src_path.to_path_buf(),
             ast: ast.clone(),
             callables: vec![],
@@ -459,9 +573,6 @@ impl SourceFile {
             visit_state,
             file_type,
         };
-        /*source_file.visit_file(&ast);
-
-        source_file.make_paths_explicit();*/
 
         source_file
     }
@@ -476,41 +587,6 @@ impl SourceFile {
 
     pub fn types(&self) -> &Vec<Container> {
         &self.containers
-    }
-
-    pub fn generators(&self, ty: &T) -> Vec<Callable> {
-        self.callables
-            .iter()
-            .filter(|&c| {
-                let return_type = c.return_type();
-                match return_type {
-                    None => false,
-                    Some(return_ty) => return_ty == ty,
-                }
-            })
-            .cloned()
-            .collect()
-    }
-
-    pub fn callables_of(&self, ty: &T) -> Vec<&Callable> {
-        self.callables
-            .iter()
-            .filter(|&c| {
-                if let Some(parent) = c.parent() {
-                    return parent == ty;
-                } else {
-                    false
-                }
-            })
-            .collect()
-    }
-
-    pub fn callables(&self) -> &Vec<Callable> {
-        &self.callables
-    }
-
-    pub fn callables_mut(&mut self) -> &mut Vec<Callable> {
-        &mut self.callables
     }
 
     pub fn branches(&self) -> &Vec<Branch> {
@@ -531,6 +607,94 @@ impl SourceFile {
     pub fn file_type(&self) -> &FileType {
         &self.file_type
     }
+
+    pub fn add_test(&mut self, test_case: &TestCase, tcx: &TyCtxt<'_>) {
+        let tests_mod = self
+            .ast
+            .items
+            .iter_mut()
+            .find_map(|i| {
+                if let Item::Mod(item_mod) = i {
+                    if item_mod.ident.to_string() == "testify_tests" {
+                        return Some(item_mod);
+                    }
+                }
+                None
+            });
+
+        let code = test_case.to_syn(tcx);
+        if let Some(tests_mod) = tests_mod {
+            let (_, ref mut content) = tests_mod.content.as_mut().unwrap();
+            content.push(code);
+        } else {
+            let tests_mod: Item = syn::parse_quote! {
+                #[cfg(test)]
+                mod testify_tests {
+                    use super::*;
+                    #code
+                }
+            };
+
+            self.ast.items.push(tests_mod);
+        }
+    }
+
+    pub fn imports_monitor(&self) -> bool {
+        let monitor_mod = self.ast.items.iter().find(|i| {
+            if let Item::Mod(item_mod) = i {
+                return item_mod.ident.to_string() == "testify_monitor";
+            }
+            false
+        });
+
+        monitor_mod.is_some()
+    }
+
+    pub fn write(&mut self) {
+        match &self.file_type {
+            FileType::Executable(_, _) | FileType::Library(_, _) => {
+                if !self.imports_monitor() {
+                    let import: Item = syn::parse_quote! {
+                        pub mod testify_monitor;
+                    };
+                    self.ast.items.insert(0, import);
+                }
+            }
+            _ => {}
+        }
+
+        let token_stream = self.ast.to_token_stream();
+        let code = token_stream.to_string();
+
+        let parent = self.output_path.parent().unwrap();
+        fs::create_dir_all(parent);
+
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .create(true)
+            .open(&self.output_path)
+            .unwrap();
+        file.write_all(&code.as_bytes());
+    }
+
+    pub fn clear_tests(&mut self) {
+        self.ast.items.retain(|i| {
+            if let Item::Mod(item_mod) = i {
+                return item_mod.ident.to_string() != "testify_tests";
+            }
+            true
+        });
+
+        let tests_mod: Item = syn::parse_quote! {
+                #[cfg(test)]
+                mod testify_tests {
+                    use super::*;
+                }
+            };
+
+        self.ast.items.push(tests_mod);
+    }
 }
 
 impl PartialEq for SourceFile {
@@ -546,120 +710,6 @@ impl Hash for SourceFile {
         self.file_path.hash(state);
     }
 }
-
-/*impl Visit<'_> for SourceFile {
-    fn visit_impl_item_method(&mut self, i: &ImplItemMethod) {
-        let container = self.containers.last_mut().unwrap();
-
-        // FIXME here two copies of the same thing are created
-        if util::is_constructor(i) {
-            let constructor = ConstructorItem::new(i.clone(), container.ty().clone());
-            //container.add_callable(Callable::Constructor(constructor.clone()));
-            self.callables.push(Callable::Constructor(constructor));
-        } else if util::is_method(i) {
-            let method = MethodItem::new(i.clone(), container.ty().clone());
-            //container.add_callable(Callable::Method(method.clone()));
-            self.callables.push(Callable::Method(method));
-        } else {
-            let func = StaticFnItem::new(i.clone(), container.ty().clone());
-            //container.add_callable(Callable::StaticFunction(func.clone()));
-            self.callables.push(Callable::StaticFunction(func));
-        }
-
-        for it in &i.attrs {
-            Visit::visit_attribute(self, it);
-        }
-
-        Visit::visit_visibility(self, &i.vis);
-        Visit::visit_signature(self, &i.sig);
-        Visit::visit_block(self, &i.block);
-    }
-
-    fn visit_item_enum(&mut self, i: &ItemEnum) {
-        let container = Container::Enum(EnumType::new(
-            i.clone(),
-            self.visit_state.current_path.to_vec(),
-        ));
-        self.containers.push(container);
-
-        for it in &i.attrs {
-            Visit::visit_attribute(self, it);
-        }
-        Visit::visit_visibility(self, &i.vis);
-        Visit::visit_ident(self, &i.ident);
-        Visit::visit_generics(self, &i.generics);
-        for el in Punctuated::pairs(&i.variants) {
-            let (it, p) = el.into_tuple();
-            Visit::visit_variant(self, it);
-        }
-    }
-
-    fn visit_item_fn(&mut self, i: &ItemFn) {
-        for at in &i.attrs {
-            Visit::visit_attribute(self, at);
-        }
-
-        let func = FunctionItem::new(i.clone());
-        self.callables.push(Callable::Function(func));
-
-        Visit::visit_visibility(self, &i.vis);
-        Visit::visit_signature(self, &i.sig);
-        Visit::visit_block(self, &i.block);
-    }
-
-    fn visit_item_mod(&mut self, i: &'_ ItemMod) {
-        if i.content.is_none() {
-            // The mod is imported
-            let import = Import::Mod(Mod::new(i.clone()));
-            self.imports.push(import);
-        } else {
-            // The mod is defined here
-            self.visit_state.push_path(&i.ident);
-        }
-
-        for it in &i.attrs {
-            Visit::visit_attribute(self, it);
-        }
-        Visit::visit_visibility(self, &i.vis);
-        Visit::visit_ident(self, &i.ident);
-        if let Some(it) = &i.content {
-            for it in &(it).1 {
-                Visit::visit_item(self, it);
-            }
-        };
-
-        if i.content.is_some() {
-            self.visit_state.pop_path();
-        }
-    }
-
-    fn visit_item_struct(&mut self, i: &ItemStruct) {
-        let container = Container::Struct(StructType::new(
-            i.clone(),
-            self.visit_state.current_path.to_vec(),
-        ));
-        self.containers.push(container);
-
-        for it in &i.attrs {
-            Visit::visit_attribute(self, it);
-        }
-        Visit::visit_visibility(self, &i.vis);
-        Visit::visit_ident(self, &i.ident);
-        Visit::visit_generics(self, &i.generics);
-        Visit::visit_fields(self, &i.fields);
-    }
-
-    fn visit_item_use(&mut self, i: &'_ ItemUse) {
-        let import = Import::Use(Use::new(i.clone()));
-        self.imports.push(import);
-
-        for it in &i.attrs {
-            Visit::visit_attribute(self, it);
-        }
-        Visit::visit_visibility(self, &i.vis);
-        Visit::visit_use_tree(self, &i.tree);
-    }
-}*/
 
 #[derive(Clone, Builder)]
 pub struct Branch {
@@ -976,7 +1026,8 @@ mod tests {
         let main_path =
             Path::new("/Users/tim/Documents/master-thesis/testify/tests/examples/src/main.rs");
         let file_type = FileType::Executable("".to_owned(), main_path.to_path_buf());
-        let main = SourceFile::new(&main_path, file_type);
+        let output_dir = std::env::temp_dir();
+        let main = SourceFile::new(&main_path, output_dir.as_path(), file_type);
 
         assert_eq!(main.containers.len(), 3);
 
@@ -997,7 +1048,8 @@ mod tests {
         let main_path =
             Path::new("/Users/tim/Documents/master-thesis/testify/tests/examples/src/main.rs");
         let file_type = FileType::Executable("".to_owned(), main_path.to_path_buf());
-        let main = SourceFile::new(&main_path, file_type);
+        let output_dir = std::env::temp_dir();
+        let main = SourceFile::new(&main_path, output_dir.as_path(), file_type);
 
         assert_eq!(main.containers.len(), 3);
 
@@ -1012,7 +1064,9 @@ mod tests {
         let main_path =
             Path::new("/Users/tim/Documents/master-thesis/testify/tests/examples/src/main.rs");
         let file_type = FileType::Executable("".to_owned(), main_path.to_path_buf());
-        let main = SourceFile::new(&main_path, file_type);
+        let output_dir = std::env::temp_dir();
+
+        let main = SourceFile::new(&main_path, output_dir.as_path(), file_type);
 
         assert_eq!(main.containers.len(), 3);
 
@@ -1049,7 +1103,8 @@ mod tests {
         let main_path =
             Path::new("/Users/tim/Documents/master-thesis/testify/tests/examples/src/main.rs");
         let file_type = FileType::Executable("".to_owned(), main_path.to_path_buf());
-        let main = SourceFile::new(&main_path, file_type);
+        let output_dir = std::env::temp_dir();
+        let main = SourceFile::new(&main_path, output_dir.as_path(), file_type);
 
         assert_eq!(main.containers.len(), 3);
 

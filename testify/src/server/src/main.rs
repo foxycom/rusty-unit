@@ -14,6 +14,7 @@ pub fn listen(port: u16, n_workers: usize) {
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
+                println!("Connected");
                 let traces = traces.clone();
                 pool.execute(move || {
                     handle_client(stream, traces);

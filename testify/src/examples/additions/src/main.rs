@@ -16,6 +16,10 @@ fn main() {
     }
 }
 
+fn test(dep: DependencyStruct) {
+
+}
+
 struct SomeStruct {
     a: u8,
     b: u8,
@@ -80,6 +84,7 @@ impl AreaCalculator {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     #[test]
     fn do_something() {
         if 2 < 3 {
@@ -88,10 +93,3 @@ mod tests {
     }
 }
 
-#[cfg(test)]
-mod testify_tests {
-    #[test]
-    fn hello() {
-
-    }
-}

@@ -10,12 +10,17 @@ thread_local! {
 
 pub struct Monitor {
     connection: TcpStream,
+    test_id: u64
 }
 
 pub const ROOT_BRANCH: &'static str = "root[{}, {}]";
 pub const BRANCH: &'static str = "branch[{}, {}, {}]";
 
 impl Monitor {
+    pub fn set_test_id(&mut self, test_id: u64) {
+        self.test_id = test_id;
+    }
+
     pub fn trace_fn(&mut self, name: &str, id: u64) {
         let msg = format!("root[{}, {}]", name, id);
         self.send(&msg);
@@ -37,6 +42,6 @@ impl Monitor {
                 panic!()
             }
         };
-        Monitor { connection }
+        Monitor { connection, test_id: 0 }
     }
 }

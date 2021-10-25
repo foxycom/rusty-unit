@@ -33,9 +33,10 @@ struct CliOpts {
 fn main() {
     let opts: CliOpts = CliOpts::parse();
 
-    /*let mut project = ProjectScanner::open(&opts.path);*/
-
-    compiler::run_compiler();
+    let mut project = ProjectScanner::open(&opts.path);
+    project.clear_build_dirs();
+    project.write();
+    compiler::start(project);
 
 
     /*let mut instrumenter = Instrumenter::new();
