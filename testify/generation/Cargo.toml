@@ -1,43 +1,28 @@
 [package]
-name = "testify"
+name = "generation"
 version = "0.1.0"
 edition = "2018"
 
-[lib]
-name = "testify"
-path = "src/lib.rs"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [[bin]]
-name = "testify"
-path = "src/bin/main.rs"
-
-[workspace]
-members = [
-    "server",
-    "examples",
-    "instrumentation",
-    "generation",
-    "common"
-]
-
-exclude = [
-    "benchmarks"
-]
+name = "generation"
+path = "./src/bin/main.rs"
 
 [dependencies]
-clap = "3.0.0-beta.2"
+pbr = "1.0.4"
 fastrand = "1.4.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 syn = { version = "1.0.73", features = ["parsing", "printing", "full", "extra-traits", "visit-mut", "visit"] }
 quote = "1.0.9"
 proc-macro2 = { version = "1.0.27", features = ["span-locations"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-derive_builder = "0.10.2"
-pbr = "1.0.4"
-petgraph = "0.6.0"
 uuid = { version = "0.8", features = ["v4"] }
-instrumentation = {path = "./instrumentation"}
-generation = {path = "./generation"}
+toml = "0.5.8"
+petgraph = "0.6.0"
+lazy_static = "1.4.0"
+regex = "1.5"
+which = "4.1.0"
 
 [target.'cfg(NOT_A_PLATFORM)'.dependencies]
 rustc_driver = {path = "/Users/tim/rust/compiler/rustc_driver"}
@@ -48,7 +33,4 @@ rustc_data_structures = {path = "/Users/tim/rust/compiler/rustc_data_structures"
 rustc_span = {path = "/Users/tim/rust/compiler/rustc_span"}
 rustc_hir = {path = "/Users/tim/rust/compiler/rustc_hir"}
 rustc_mir = {path = "/Users/tim/rust/compiler/rustc_mir"}
-
-[dev-dependencies]
-mockall = "0.10.2"
-
+rustc_serialize = {path = "/Users/tim/rust/compiler/rustc_serialize"}

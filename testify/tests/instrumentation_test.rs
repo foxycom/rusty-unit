@@ -1,5 +1,5 @@
 use testify::chromosome::TestCase;
-use testify::source::SourceFile;
+use generation::source::SourceFile;
 
 #[test]
 fn test_structs() {

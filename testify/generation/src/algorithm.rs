@@ -1,8 +1,3 @@
-use crate::chromosome::{Chromosome, FitnessValue};
-use crate::generators::TestIdGenerator;
-use crate::operators::{Crossover, Mutation, RankSelection};
-use crate::selection::Selection;
-use crate::source::{Branch, BranchManager, SourceFile};
 use pbr::ProgressBar;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -14,7 +9,10 @@ use std::iter::FromIterator;
 use std::option::Option::Some;
 use std::rc::Rc;
 use std::time::Instant;
-use crate::test::TestWriter;
+use crate::branch::{Branch, BranchManager};
+use crate::chromosome::Chromosome;
+use crate::fitness::FitnessValue;
+use crate::operators::{Crossover, Mutation, Selection};
 
 pub struct DynaMOSA<C: Chromosome, M: Mutation, Cr: Crossover> {
     population_size: u64,
@@ -64,10 +62,9 @@ impl<C: Chromosome, M: Mutation<C = C>, Cr: Crossover<C = C>> DynaMOSA<C, M, Cr>
     }
     pub fn run(
         &mut self,
-        mut source_file: SourceFile,
         initial_population: Vec<C>,
     ) -> Result<TestSuite<C>, Box<dyn Error>> {
-        let mut test_writer = TestWriter::<C>::new();
+        //let mut test_writer = TestWriter::<C>::new();
         //test_writer.add_tests();
         todo!();
 
@@ -139,7 +136,7 @@ impl<C: Chromosome, M: Mutation<C = C>, Cr: Crossover<C = C>> DynaMOSA<C, M, Cr>
             let branches = bm.branches();
             let fitness = branches
                 .iter()
-                .map(|b| format!("b = {}, f = {}", b.id(), b.fitness(t)))
+                .map(|b| format!("b = {}, f = {}", b.id(), t.fitness(b)))
                 .fold(String::new(), |acc, b| acc + &b.to_string() + ", ");
             let line = format!("Test {} => ({})\n", t.id(), fitness);
             tmp_file.write_all(&line.as_bytes());
@@ -240,7 +237,7 @@ impl PreferenceSorter {
                 }
             }
 
-            if min_dist != FitnessValue::Zero {
+            if !min_dist.is_zero() {
                 uncovered_branches.push(objective);
                 if let Some(individual) = best_individual {
                     front_0.insert(individual.clone());
@@ -416,9 +413,9 @@ impl<C: Chromosome> Archive<C> {
             }
 
             for test_case in population {
-                let score = branch.fitness(test_case);
+                let score = test_case.fitness(branch);
                 let length = test_case.size();
-                if score == FitnessValue::Zero && length <= best_length {
+                if score.is_zero() && length <= best_length {
                     if let Some(best_test_case) = best_test_case {
                         let i = self
                             .test_cases
@@ -439,7 +436,7 @@ impl<C: Chromosome> Archive<C> {
     fn test_that_covers(&self, branch: &Branch) -> Option<&C> {
         self.test_cases
             .iter()
-            .filter(|&t| branch.fitness(t) == FitnessValue::Zero)
+            .filter(|&t| t.fitness(branch).is_zero())
             .nth(0)
     }
 }

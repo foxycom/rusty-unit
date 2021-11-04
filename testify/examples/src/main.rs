@@ -1,23 +1,27 @@
-use crate::dependency::DependencyStruct;
 use crate::dependency::nested_mod;
+use crate::dependency::DependencyStruct;
 mod dependency;
+use std::cell::RefCell;
 use std::env;
+use std::rc::Rc;
+mod testify_monitor;
 
 fn main() {
-    let args: Vec<i32> = env::args().map(|a| a.parse::<i32>().unwrap()).collect();
 
-    let mut x = *args.get(0).unwrap();
-    let mut y = *args.get(1).unwrap();
-
-    if x < y {
-        x = 10;
+    let x = fastrand::u64(..);
+    let y = fastrand::u64(..);
+    if x > y {
+        println!("x > y");
     } else {
-        y = 15;
+        let mut st = SomeStruct::new(2, 3);
+        println!("x <= y");
+        println!("{}", SomeStruct::test_reference(4));
     }
+
 }
 
 fn test(dep: DependencyStruct) {
-
+    crate::testify_monitor::trace_fn("test", 2u64);
 }
 
 struct SomeStruct {
@@ -41,19 +45,18 @@ impl SomeStruct {
             self.a = 3;
         }
     }
-    pub fn test_reference(&mut self, x: u8) {
+    pub fn test_reference(x: u8) -> u8 {
         if x == 3 {
-            self.a = 4;
+            return x * 2;
         }
+        x
     }
 
     pub fn something_with_dependency(&self, dep: &mut DependencyStruct) {
         dep.value = 8;
     }
 
-    pub fn invoke_nested_dependency(&self, dep: &mut nested_mod::sub_mod::NestedStruct) {
-
-    }
+    pub fn invoke_nested_dependency(&self, dep: &mut nested_mod::sub_mod::NestedStruct) {}
 }
 
 struct Rectangle {
@@ -92,4 +95,3 @@ mod tests {
         }
     }
 }
-

@@ -1,0 +1,2 @@
+pub const MIR_LOG_PATH: &'static str = "/Users/tim/Documents/master-thesis/testify/results/mir.log";
+pub const HIR_LOG_PATH: &'static str = "/Users/tim/Documents/master-thesis/testify/results/hir.log";

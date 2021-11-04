@@ -1,9 +1,9 @@
-use crate::chromosome::ToSyn;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::{fs, io};
 use syn::visit_mut::VisitMut;
 use syn::{File, Item, ItemMod};
+use crate::chromosome::ToSyn;
 
 #[derive(Debug, Clone)]
 pub struct TestClearer {

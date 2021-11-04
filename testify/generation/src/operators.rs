@@ -1,17 +1,16 @@
-use crate::algorithm::{PreferenceSorter, SVD};
-use crate::chromosome::{
-    Arg, Chromosome, ConstructorStmt, FnInvStmt, MethodInvStmt, Param, Primitive, Statement,
-    TestCase, Var, VarArg,
-};
-use crate::selection::Selection;
-use crate::source::{BranchManager, SourceFile};
-use quote::ToTokens;
 use std::cell::RefCell;
-use std::env::var;
 use std::fmt::Debug;
 use std::rc::Rc;
-use syn::Stmt;
-use uuid::Uuid;
+use crate::algorithm::{PreferenceSorter, SVD};
+use crate::branch::BranchManager;
+use crate::chromosome::{Arg, Chromosome, Statement, TestCase, Var, VarArg};
+use crate::source::SourceFile;
+
+pub trait Selection: Debug {
+    type C;
+
+    fn apply(&self, population: &[Self::C]) -> Self::C;
+}
 
 pub trait Crossover: Debug {
     type C: Chromosome;
@@ -24,6 +23,9 @@ pub trait Mutation: Debug {
 
     fn apply(&self, chromosome: &Self::C) -> Self::C;
 }
+
+
+
 
 #[derive(Debug, Clone)]
 pub struct SinglePointCrossover {}

@@ -9,20 +9,20 @@ extern crate rustc_span;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::io::{Read, Write};
+use std::error::Error;
+use std::io::{ErrorKind, Read, Write};
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
+use std::process;
 use std::rc::Rc;
 use std::time::Duration;
 
 use clap::Clap;
+use rustc_driver::args::Error::IOError;
+use generation::compiler;
+use generation::source::{Project, ProjectScanner};
+use instrumentation::INSTRUMENTATION_LOG_PATH;
 
-use testify::algorithm::{DynaMOSA, OffspringGenerator, TestSuite};
-use testify::chromosome::{Chromosome, TestCase};
-use testify::instrument::Instrumenter;
-use testify::operators::{BasicMutation, RankSelection, SinglePointCrossover};
-use testify::source::{BranchManager, ProjectScanner, SourceFile};
-use testify::compiler;
 
 #[derive(Clap)]
 struct CliOpts {
@@ -30,13 +30,24 @@ struct CliOpts {
     path: String,
 }
 
+struct AnalysisError {
+    msg: String
+}
+
 fn main() {
+
     let opts: CliOpts = CliOpts::parse();
 
     let mut project = ProjectScanner::open(&opts.path);
     project.clear_build_dirs();
-    project.write();
-    compiler::start(project);
+    project.make_copy();
+    if let Err(AnalysisError { msg }) = analyze_project(&project) {
+        eprintln!("{}", msg);
+        panic!();
+    }
+
+
+    //compiler::start(project);
 
 
     /*let mut instrumenter = Instrumenter::new();
@@ -92,6 +103,36 @@ fn main() {
             println!("{}", err);
         }
     }*/
+}
+
+fn analyze_project(project: &Project) -> Result<(), AnalysisError> {
+    if let Err(err) = std::fs::remove_file(INSTRUMENTATION_LOG_PATH) {
+        match err.kind() {
+            ErrorKind::NotFound => {}
+            _ => panic!("{}", err)
+        }
+    }
+
+    let out = process::Command::new("cargo")
+        .env("RUSTC_WRAPPER", "/Users/tim/Documents/master-thesis/testify/target/debug/instrumentation")
+        .arg("+nightly-aarch64-apple-darwin")
+        .arg("rustc")
+        .arg("--")
+        .arg("--testify-stage=analyze")
+        .current_dir(project.output_root())
+        .output()
+        .unwrap();
+
+    let output = String::from_utf8(out.stdout).unwrap();
+    let output = output.trim();
+
+    if !out.status.success() {
+        let err = String::from_utf8(out.stderr).unwrap();
+        let err = AnalysisError {msg: format!("Analysis failed!\n{}", err)};
+        return Err(err);
+    }
+
+    Ok(())
 }
 
 pub struct Client {

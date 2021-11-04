@@ -1,4 +1,3 @@
-use crate::chromosome::{Arg, Param};
 use syn::{Expr, FnArg, Lit, Type};
 
 #[derive(Debug, Default, Clone)]

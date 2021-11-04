@@ -14,7 +14,6 @@ pub fn listen(port: u16, n_workers: usize) {
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
-                println!("Connected");
                 let traces = traces.clone();
                 pool.execute(move || {
                     handle_client(stream, traces);
@@ -43,6 +42,7 @@ fn handle_client(mut stream: TcpStream, traces: Trace) {
                     let mut lock = traces.lock();
                     let traces = lock.as_mut().unwrap();
                     traces.entry(0).and_modify(|e| e.push(msg.to_string())).or_insert(vec![msg.to_string()]);
+                    println!("Visited {}", msg.to_string());
                 }
             },
             Err(e) if e.kind() == ErrorKind::WouldBlock => {

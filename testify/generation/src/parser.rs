@@ -1,5 +1,3 @@
-use crate::chromosome::FitnessValue;
-use crate::source::{Branch, BranchType};
 use proc_macro2::Span;
 use regex::Regex;
 use std::collections::HashMap;
@@ -7,6 +5,9 @@ use std::fs;
 use std::io;
 use std::io::BufRead;
 use std::path::Path;
+use crate::branch::Branch;
+use crate::fitness::FitnessValue;
+
 
 lazy_static! {
     static ref ROOT_REGEX: Regex = Regex::new(r"root\[.+, (?P<branch_id>\d+)\]").unwrap();
@@ -19,27 +20,15 @@ pub struct TraceParser {}
 
 impl TraceParser {
     pub fn parse(path: &str) -> Result<HashMap<Branch, FitnessValue>, io::Error> {
-        let mut coverage = HashMap::new();
+        //let mut coverage = HashMap::new();
 
+        let mut state = State::None;
         match TraceParser::lines(path) {
             Ok(lines) => {
                 for line in lines {
                     if let Ok(trace_line) = line {
-                        let data = TraceParser::parse_line(&trace_line)
-                            .ok_or(io::Error::new(io::ErrorKind::Other, "Could not read data"))?;
-                        coverage.insert(
-                            Branch::new(data.branch_id, data.branch_type.clone(), Span::call_site()),
-                            FitnessValue::Zero,
-                        );
-                        if let Some(other_branch) = data.other_branch_id {
-                            let dist = data.distance.ok_or(io::Error::new(
-                                io::ErrorKind::Other,
-                                "No distance to other branch known",
-                            ))?;
-                            coverage.insert(
-                                Branch::new(other_branch, data.branch_type, Span::call_site()),
-                                FitnessValue::Val(dist),
-                            );
+                        if trace_line.starts_with(">>") {
+
                         }
                     }
                 }
@@ -48,7 +37,7 @@ impl TraceParser {
             }
             Err(err) => Err(err)
         }
-
+        todo!()
     }
 
     fn lines<P>(path: P) -> io::Result<io::Lines<io::BufReader<fs::File>>>
@@ -59,8 +48,8 @@ impl TraceParser {
         Ok(io::BufReader::new(file).lines())
     }
 
-    fn parse_line(line: &str) -> Option<TraceData> {
-        return if line.starts_with("root") {
+    fn parse_line(line: &str, state: State) -> Line {
+        /*return if line.starts_with("root") {
             let cap = ROOT_REGEX.captures(line)?;
             Some(TraceData {
                 branch_type: BranchType::Root,
@@ -77,20 +66,44 @@ impl TraceParser {
                 other_branch_id: cap["other_branch_id"].parse::<u64>().ok(),
                 distance: cap["distance"].parse::<f64>().ok(),
             })
-        };
+        };*/
+        todo!()
     }
+
+    fn parse_method_desc(line: &str) ->
 }
 
-struct TraceData {
-    branch_type: BranchType,
+enum State {
+    Branches,
+    Locals,
+    CDG,
+    BasicBlocks,
+    None
+}
+
+pub enum Line {
+    Branch(BranchData),
+    Local(LocalData),
+    CDG,
+    BasicBlock(BasicBlockData)
+}
+struct BranchData {
     branch_id: u64,
     other_branch_id: Option<u64>,
     distance: Option<f64>,
 }
 
+struct LocalData {
+
+}
+
+struct BasicBlockData {
+
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::parser::TraceParser;
+    use generation::parser::TraceParser;
     use std::collections::HashMap;
 
 

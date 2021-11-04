@@ -5,16 +5,24 @@ use std::rc::Rc;
 use std::str::from_utf8;
 
 thread_local! {
-    pub static MONITOR: Rc<RefCell<Monitor>> = Rc::new(RefCell::new(Monitor::new()));
+    static MONITOR: Rc<RefCell<Monitor>> = Rc::new(RefCell::new(Monitor::new()));
 }
 
-pub struct Monitor {
+pub enum Op {
+    GT,
+    LT,
+    LE,
+    GE,
+    EQ,
+}
+
+struct Monitor {
     connection: TcpStream,
-    test_id: u64
+    test_id: u64,
 }
 
-pub const ROOT_BRANCH: &'static str = "root[{}, {}]";
-pub const BRANCH: &'static str = "branch[{}, {}, {}]";
+const ROOT_BRANCH: &'static str = "root[{}, {}]";
+const BRANCH: &'static str = "branch[{}, {}, {}]";
 
 impl Monitor {
     pub fn set_test_id(&mut self, test_id: u64) {
@@ -42,6 +50,21 @@ impl Monitor {
                 panic!()
             }
         };
-        Monitor { connection, test_id: 0 }
+        Monitor {
+            connection,
+            test_id: 0,
+        }
     }
+}
+
+pub fn trace_fn(name: &str, id: u64) {
+    MONITOR.with(|m| m.borrow_mut().trace_fn(name, id));
+}
+
+pub fn trace_test(id: u64, op: Op) {
+    MONITOR.with(|m| m.borrow_mut().trace_fn("hlelo", id));
+}
+
+pub fn trace_branch(self_branch: u64, other_branch: u64, dist: f64) {
+    MONITOR.with(|m| m.borrow_mut().trace_branch(self_branch, other_branch, dist));
 }

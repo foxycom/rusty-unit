@@ -20,52 +20,31 @@ use syn::{
 };
 use toml::value::Table;
 use toml::Value;
+use crate::branch::Branch;
+use crate::chromosome::{Container, EnumType, StructType, TestCase, ToSyn};
+use crate::{fs_util, util};
+use crate::types::Callable;
 
-use crate::chromosome::{
-    Callable, Chromosome, ConstructorItem, Container, EnumType, FitnessValue, FnInvStmt,
-    FunctionItem, MethodItem, Param, PrimitiveItem, StaticFnItem, StructType, TestCase, ToSyn, T,
-};
-use crate::fs_util;
-use crate::parser::TraceParser;
-use crate::util;
-use crate::util::type_name;
 
 const OUTPUT_ROOT: &'static str = "/Users/tim/Documents/master-thesis/testify/benchmarks";
 
-fn fmt_string(source: &str) -> io::Result<String> {
-    let rustfmt = util::fmt_path()?;
-    let mut cmd = Command::new(&*rustfmt);
-    cmd.stdin(Stdio::piped()).stdout(Stdio::piped());
+#[derive(Debug, Clone, PartialEq)]
+pub enum FileType {
+    // Name of the executable, path
+    Executable(String, PathBuf),
+    // Name of the library, path
+    Library(String, PathBuf),
+    // Path
+    SourceCode(PathBuf),
+}
 
-    let mut child = cmd.spawn()?;
-    let mut child_stdin = child.stdin.take().unwrap();
-    let mut child_stdout = child.stdout.take().unwrap();
-
-    let source = source.to_owned();
-    let stdin_handle = std::thread::spawn(move || {
-        let _ = child_stdin.write_all(source.as_bytes());
-        source
-    });
-
-    let mut output = vec![];
-    io::copy(&mut child_stdout, &mut output)?;
-    let status = child.wait()?;
-    let source = stdin_handle.join().unwrap();
-
-    match String::from_utf8(output) {
-        Ok(source) => match status.code() {
-            Some(0) => Ok(source),
-            Some(2) => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Rustfmt parsing errors".to_string(),
-            )),
-            Some(3) => Ok(source),
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Internal rustfmt error".to_string(),
-            )),
-        },
-        Err(_) => Ok(source),
+impl FileType {
+    pub fn to_path_buf(&self) -> PathBuf {
+        match self {
+            FileType::Executable(_, path) => path.clone(),
+            FileType::Library(_, path) => path.clone(),
+            FileType::SourceCode(path) => path.clone(),
+        }
     }
 }
 
@@ -219,7 +198,7 @@ impl ProjectScanner {
             source_dir.as_path(),
             &mut source_files,
             &toml,
-        );
+        ).unwrap();
 
         Project::new(project_root, PathBuf::from(OUTPUT_ROOT), toml, source_files)
     }
@@ -348,7 +327,7 @@ impl Project {
         &mut self.source_files
     }
 
-    pub fn write(&mut self) {
+    pub fn make_copy(&mut self) {
         // Clear the target dir
         fs::remove_dir_all(self.output_root.as_path()).unwrap();
 
@@ -433,7 +412,7 @@ impl Project {
             "--crate-name",
             "additions",
             "--edition=2018",
-            "/Users/tim/Documents/master-thesis/testify/src/examples/additions/src/main.rs",
+            "/Users/tim/Documents/master-thesis/testify/benchmarks/src/main.rs",
             "--error-format=json",
             "--json=diagnostic-rendered-ansi",
             "--crate-type",
@@ -448,11 +427,11 @@ impl Project {
             "-C",
             "metadata=5978598c4741d9d6",
             "--out-dir",
-            "/Users/tim/Documents/master-thesis/testify/src/examples/additions/target/debug/deps",
+            "/Users/tim/Documents/master-thesis/testify/benchmarks/target/debug/deps",
             "-C",
-            "incremental=/Users/tim/Documents/master-thesis/testify/src/examples/additions/debug/incremental",
+            "incremental=/Users/tim/Documents/master-thesis/testify/benchmarks/debug/incremental",
             "-L",
-            "dependency=/Users/tim/Documents/master-thesis/testify/src/examples/additions/target/debug/deps",
+            "dependency=/Users/tim/Documents/master-thesis/testify/benchmarks/target/debug/deps",
             "--sysroot",
             &fs_util::sysroot(),
         ];
@@ -491,6 +470,9 @@ impl Project {
         args.iter().map(|a| a.to_string()).collect::<Vec<String>>();
         todo!()
     }
+    pub fn output_root(&self) -> &Path {
+        self.output_root.as_path()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -516,25 +498,7 @@ impl VisitState {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum FileType {
-    // Name of the executable, path
-    Executable(String, PathBuf),
-    // Name of the library, path
-    Library(String, PathBuf),
-    // Path
-    SourceCode(PathBuf),
-}
 
-impl FileType {
-    pub fn to_path_buf(&self) -> PathBuf {
-        match self {
-            FileType::Executable(_, path) => path.clone(),
-            FileType::Library(_, path) => path.clone(),
-            FileType::SourceCode(path) => path.clone(),
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct SourceFile {
@@ -711,131 +675,6 @@ impl Hash for SourceFile {
     }
 }
 
-#[derive(Clone, Builder)]
-pub struct Branch {
-    id: u64,
-    branch_type: BranchType,
-    span: Span,
-}
-
-impl Debug for Branch {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "Branch (id: {}, line: {}:{})",
-            self.id,
-            self.span.start().line,
-            self.span.start().column
-        ))
-    }
-}
-
-impl Hash for Branch {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
-        self.branch_type.hash(state);
-    }
-}
-
-impl PartialEq for Branch {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && self.branch_type == other.branch_type
-    }
-}
-
-impl Eq for Branch {}
-
-impl Branch {
-    pub fn new(id: u64, branch_type: BranchType, span: Span) -> Self {
-        Branch {
-            id,
-            branch_type,
-            span,
-        }
-    }
-
-    // TODO return fitness as enum with ZERO value
-    pub fn fitness<C: Chromosome>(&self, test_case: &C) -> FitnessValue {
-        test_case
-            .coverage()
-            .get(self)
-            .unwrap_or(&FitnessValue::Max)
-            .to_owned()
-    }
-
-    pub fn id(&self) -> &u64 {
-        &self.id
-    }
-
-    pub fn branch_type(&self) -> &BranchType {
-        &self.branch_type
-    }
-}
-
-impl Default for Branch {
-    fn default() -> Self {
-        Branch {
-            id: Default::default(),
-            branch_type: BranchType::Root,
-            span: Span::call_site(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum BranchType {
-    Root,
-    Decision,
-}
-
-#[derive(Debug, Clone)]
-pub struct BranchManager {
-    branches: Vec<Branch>,
-    uncovered_branches: Vec<Branch>,
-}
-
-impl BranchManager {
-    pub fn new(branches: &[Branch]) -> Self {
-        BranchManager {
-            branches: branches.to_vec(),
-            uncovered_branches: branches.to_vec(),
-        }
-    }
-
-    pub fn branches(&self) -> &Vec<Branch> {
-        &self.branches
-    }
-    pub fn uncovered_branches(&self) -> &Vec<Branch> {
-        &self.uncovered_branches
-    }
-
-    pub fn set_branches(&mut self, branches: &[Branch]) {
-        self.branches = branches.to_vec();
-    }
-
-    pub fn set_current_population<C: Chromosome>(&mut self, population: &[C]) {
-        let uncovered_branches = self.compute_uncovered_branches(population);
-        self.uncovered_branches = uncovered_branches;
-    }
-
-    fn compute_uncovered_branches<C: Chromosome>(&self, population: &[C]) -> Vec<Branch> {
-        let mut uncovered_branches = vec![];
-        for branch in &self.branches {
-            let mut covered = false;
-            for individual in population {
-                if individual.fitness(branch) == FitnessValue::Zero {
-                    covered = true;
-                    break;
-                }
-            }
-
-            if !covered {
-                uncovered_branches.push(branch.clone());
-            }
-        }
-
-        uncovered_branches
-    }
-}
 
 #[derive(Debug, Clone)]
 pub enum Import {
@@ -919,7 +758,7 @@ mod tests {
     fn test_use_contains_path() {
         let import: ItemUse = syn::parse_quote! {use something::from::Hello;};
 
-        let us = crate::source::Use::new(import);
+        let us = common::source::Use::new(import);
     }
 
     #[test]
@@ -948,11 +787,11 @@ mod tests {
             r#"
             [package]
             name = "additions"
-            
+
             [[bin]]
             name = "additions"
             path = "./src/bin/main.rs"
-            
+
             [[bin]]
             name = "some-other-bin"
         "#,
@@ -975,7 +814,7 @@ mod tests {
             r#"
             [package]
             name = "additions"
-            
+
             [[bin]]
             name = "bin"
             path = "./src/bin/main.rs"

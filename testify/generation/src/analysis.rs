@@ -1,4 +1,5 @@
-use crate::chromosome::{Callable, T};
+use crate::types::{Callable, T};
+
 #[derive(Debug)]
 pub struct Analysis {
     callables: Vec<Callable>
@@ -37,6 +38,5 @@ impl Analysis {
                 }
             })
             .collect()
-
     }
 }
