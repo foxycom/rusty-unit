@@ -15,7 +15,7 @@ use rustc_middle::ty::TyCtxt;
 use syn::{Expr, ImplItemMethod, Item, ItemEnum, ItemStruct, Stmt, Type};
 use uuid::Uuid;
 use std::sync::{Mutex, Arc};
-use crate::analysis::Analysis;
+use crate::analysis::HirAnalysis;
 use crate::branch::Branch;
 use crate::fitness::FitnessValue;
 use crate::operators::{Crossover, Mutation};
@@ -30,7 +30,7 @@ lazy_static! {
 const TEST_FN_PREFIX: &'static str = "testify";
 
 pub trait ToSyn {
-    fn to_syn(&self, tcx: &TyCtxt<'_>) -> Item;
+    fn to_syn(&self) -> Item;
 }
 
 pub trait Chromosome: Clone + Debug + ToSyn + PartialEq + Eq + Hash {
@@ -53,7 +53,7 @@ pub trait Chromosome: Clone + Debug + ToSyn + PartialEq + Eq + Hash {
             Self: Sized;
 
     /// Generates a random chromosome
-    fn random(analysis: Rc<Analysis>) -> Self;
+    fn random(analysis: Rc<HirAnalysis>) -> Self;
 
     fn size(&self) -> usize;
 }
@@ -79,7 +79,7 @@ pub struct TestCase {
     /// Stores ids of statement to be able to retrieve dd graph nodes later by their index
     node_index_table: HashMap<Uuid, NodeIndex>,
     var_counters: HashMap<String, usize>,
-    analysis: Rc<Analysis>,
+    analysis: Rc<HirAnalysis>,
 }
 
 impl Clone for TestCase {
@@ -117,7 +117,7 @@ impl Hash for TestCase {
 }
 
 impl TestCase {
-    pub fn new(id: u64, analysis: Rc<Analysis>) -> Self {
+    pub fn new(id: u64, analysis: Rc<HirAnalysis>) -> Self {
         TestCase {
             id,
             stmts: Vec::new(),
@@ -619,37 +619,19 @@ impl TestCase {
             .map(|p| {
                 // TODO instantiate new object with a 10% probability even if there is a free ones
                 // already in the test case
-                if !self.instantiated_types().contains(p.real_ty()) {
+
+                let usable_variables = self.unconsumed_variables_typed(p.real_ty());
+
+                if !self.instantiated_types().contains(p.real_ty()) || usable_variables.is_empty() {
                     let mut types_to_generate = types_to_generate.clone();
                     types_to_generate.insert(param.real_ty().clone());
                     self.generate_arg_inner(p, types_to_generate)
                 } else {
                     // TODO check if those are used
-                    let typed_variables = self.variables_typed(p.real_ty());
-                    let variables: Vec<&Var> = typed_variables
-                        .iter()
-                        .filter_map(|(var, _)| {
-                            if !self.is_consumed(var) {
-                                return Some(var);
-                            }
-                            None
-                        })
-                        .collect();
 
-                    let var_i = fastrand::usize(0..variables.len());
-                    let var = *variables.get(var_i).unwrap();
+                    let var_i = fastrand::usize(0..usable_variables.len());
+                    let (var, pos) = usable_variables.get(var_i).unwrap();
                     Arg::Var(VarArg::new(var.clone(), p.clone()))
-
-                    /*println!("Unimplemented: Param type: {}", param.real_ty().to_string());
-                    println!(
-                        "Params: {:?}",
-                        generator
-                            .params()
-                            .iter()
-                            .map(|p| p.real_ty().to_string())
-                            .collect::<Vec<String>>()
-                    );
-                    unimplemented!()*/
                 }
             })
             .collect();
@@ -660,7 +642,7 @@ impl TestCase {
 
         Arg::Var(VarArg::new(return_var, param.clone()))
     }
-    pub fn analysis(&self) -> Rc<Analysis> {
+    pub fn analysis(&self) -> Rc<HirAnalysis> {
         self.analysis.clone()
     }
 
@@ -718,22 +700,22 @@ impl TestCase {
         );
     }*/
 
-    pub fn to_string(&self, tcx: &TyCtxt<'_>) -> String {
-        let syn_item = self.to_syn(tcx);
+    pub fn to_string(&self) -> String {
+        let syn_item = self.to_syn();
         let token_stream = syn_item.to_token_stream();
         token_stream.to_string()
     }
 }
 
 impl ToSyn for TestCase {
-    fn to_syn(&self, tcx: &TyCtxt<'_>) -> Item {
+    fn to_syn(&self) -> Item {
         let ident = Ident::new(
             &format!("{}_{}", TEST_FN_PREFIX, self.id),
             Span::call_site(),
         );
         let id = self.id;
 
-        let stmts: Vec<Stmt> = self.stmts.iter().map(|s| s.to_syn(tcx)).collect();
+        let stmts: Vec<Stmt> = self.stmts.iter().map(|s| s.to_syn()).collect();
 
         let set_test_id: Stmt = syn::parse_quote! {
             testify_monitor::MONITOR.with(|l| l.borrow_mut().set_test_id(#id));
@@ -790,7 +772,7 @@ impl Chromosome for TestCase {
         (left, right)
     }
 
-    fn random(analysis: Rc<Analysis>) -> Self {
+    fn random(analysis: Rc<HirAnalysis>) -> Self {
         let test_id = CHROMOSOME_ID_GENERATOR.lock().as_mut().unwrap().next_id();
 
         let mut test_case = TestCase::new(test_id, analysis.clone());
@@ -940,17 +922,17 @@ pub enum Statement {
 }
 
 impl Statement {
-    pub fn to_syn(&self, tcx: &TyCtxt<'_>) -> Stmt {
+    pub fn to_syn(&self) -> Stmt {
         match self {
-            Statement::PrimitiveAssignment(primitive_stmt) => primitive_stmt.to_syn(tcx),
-            Statement::Constructor(constructor_stmt) => constructor_stmt.to_syn(tcx),
+            Statement::PrimitiveAssignment(primitive_stmt) => primitive_stmt.to_syn(),
+            Statement::Constructor(constructor_stmt) => constructor_stmt.to_syn(),
             Statement::AttributeAccess(_) => {
                 unimplemented!()
             }
-            Statement::StaticFnInvocation(fn_inv_stmt) => fn_inv_stmt.to_syn(tcx),
-            Statement::MethodInvocation(method_inv_stmt) => method_inv_stmt.to_syn(tcx),
-            Statement::FunctionInvocation(fn_inv_stmt) => fn_inv_stmt.to_syn(tcx),
-            Statement::FieldAccess(field_access_stmt) => field_access_stmt.to_syn(tcx),
+            Statement::StaticFnInvocation(fn_inv_stmt) => fn_inv_stmt.to_syn(),
+            Statement::MethodInvocation(method_inv_stmt) => method_inv_stmt.to_syn(),
+            Statement::FunctionInvocation(fn_inv_stmt) => fn_inv_stmt.to_syn(),
+            Statement::FieldAccess(field_access_stmt) => field_access_stmt.to_syn(),
         }
     }
 
@@ -1046,28 +1028,28 @@ impl Statement {
         match self {
             Statement::PrimitiveAssignment(_) => unimplemented!(),
             Statement::Constructor(c) => {
-                let syn_item = c.to_syn(tcx);
+                let syn_item = c.to_syn();
                 let token_stream = syn_item.to_token_stream();
                 token_stream.to_string()
             }
             Statement::AttributeAccess(_) => unimplemented!(),
             Statement::MethodInvocation(m) => {
-                let syn_item = m.to_syn(tcx);
+                let syn_item = m.to_syn();
                 let token_stream = syn_item.to_token_stream();
                 token_stream.to_string()
             }
             Statement::StaticFnInvocation(func) => {
-                let syn_item = func.to_syn(tcx);
+                let syn_item = func.to_syn();
                 let token_stream = syn_item.to_token_stream();
                 token_stream.to_string()
             }
             Statement::FunctionInvocation(func) => {
-                let syn_item = func.to_syn(tcx);
+                let syn_item = func.to_syn();
                 let token_stream = syn_item.to_token_stream();
                 token_stream.to_string()
             }
             Statement::FieldAccess(field) => {
-                let syn_item = field.to_syn(tcx);
+                let syn_item = field.to_syn();
                 let token_stream = syn_item.to_token_stream();
                 token_stream.to_string()
             }
@@ -1091,7 +1073,7 @@ impl FieldAccessStmt {
         }
     }
 
-    pub fn to_syn(&self, tcx: &TyCtxt<'_>) -> Stmt {
+    pub fn to_syn(&self) -> Stmt {
         todo!()
     }
 
@@ -1149,7 +1131,7 @@ impl StaticFnInvStmt {
         self.func.return_type.is_some()
     }
 
-    pub fn to_syn(&self, tcx: &TyCtxt<'_>) -> Stmt {
+    pub fn to_syn(&self) -> Stmt {
         let func_ident = Ident::new(self.func.name(), Span::call_site());
         let args: Vec<Expr> = self.args().iter().map(|a| a.to_syn()).collect();
         let parent_path: Vec<Ident> = self
@@ -1171,7 +1153,7 @@ impl StaticFnInvStmt {
             }
         } else {
             syn::parse_quote! {
-                #(#parent_path::)*::#func_ident(#(#args),*);
+                #(#parent_path::)*#func_ident(#(#args),*);
             }
         }
     }
@@ -1232,7 +1214,7 @@ impl AssignStmt {
         self.id
     }
 
-    pub fn to_syn(&self, tcx: &TyCtxt<'_>) -> Stmt {
+    pub fn to_syn(&self) -> Stmt {
         unimplemented!()
     }
 }
@@ -1276,7 +1258,7 @@ impl ConstructorStmt {
         }
     }
 
-    pub fn to_syn(&self, tcx: &TyCtxt<'_>) -> Stmt {
+    pub fn to_syn(&self) -> Stmt {
         if let Some(var) = &self.var {
             let ident = Ident::new(&var.to_string(), Span::call_site());
 
@@ -1404,7 +1386,7 @@ impl MethodInvStmt {
         }
     }
 
-    pub fn to_syn(&self, tcx: &TyCtxt<'_>) -> Stmt {
+    pub fn to_syn(&self) -> Stmt {
         let method_ident = Ident::new(self.method.name(), Span::call_site());
         let args: Vec<Expr> = self.args().iter().map(|a| a.to_syn()).collect();
         let parent_path: Vec<Ident> = self
@@ -1547,7 +1529,7 @@ impl FnInvStmt {
         self.args = args;
     }
 
-    pub fn to_syn(&self, tcx: &TyCtxt<'_>) -> Stmt {
+    pub fn to_syn(&self) -> Stmt {
         let fn_ident = Ident::new(self.func.name(), Span::call_site());
         let args: Vec<Expr> = self.args.iter().map(Arg::to_syn).collect();
 

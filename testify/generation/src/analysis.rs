@@ -1,13 +1,17 @@
+use std::collections::HashMap;
+use petgraph::Graph;
 use crate::types::{Callable, T};
+use serde::{Serialize, Deserialize};
+use crate::branch::Branch;
 
-#[derive(Debug)]
-pub struct Analysis {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HirAnalysis {
     callables: Vec<Callable>
 }
 
-impl Analysis {
+impl HirAnalysis {
     pub fn new() -> Self {
-        Analysis {
+        HirAnalysis {
             callables: vec![]
         }
     }
@@ -38,5 +42,30 @@ impl Analysis {
                 }
             })
             .collect()
+    }
+}
+
+pub struct MirAnalysis {
+    pub bodies: HashMap<u32, MirBody>
+}
+
+impl MirAnalysis {
+    pub fn new() -> Self {
+        MirAnalysis { bodies: HashMap::new() }
+    }
+}
+
+
+#[derive(Debug, Clone)]
+pub struct MirBody {
+    pub branches: Vec<Branch>,
+    pub cdg: Graph<usize, usize>
+}
+
+impl MirBody {
+    pub fn new() -> Self {
+        MirBody {
+            branches: vec![], cdg: Default::default()
+        }
     }
 }

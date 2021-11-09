@@ -1,3 +1,8 @@
+use crate::branch::Branch;
+use crate::chromosome::{Container, EnumType, StructType, TestCase, ToSyn};
+use crate::types::Callable;
+use crate::{fs_util, util};
+use dircpy_stable::copy_dir;
 use proc_macro2::{Ident, Span};
 use quote::ToTokens;
 use rustc_middle::ty::TyCtxt;
@@ -20,13 +25,8 @@ use syn::{
 };
 use toml::value::Table;
 use toml::Value;
-use crate::branch::Branch;
-use crate::chromosome::{Container, EnumType, StructType, TestCase, ToSyn};
-use crate::{fs_util, util};
-use crate::types::Callable;
 
-
-const OUTPUT_ROOT: &'static str = "/Users/tim/Documents/master-thesis/testify/benchmarks";
+const OUTPUT_ROOT: &'static str = "/Users/tim/Documents/master-thesis/evaluation/current";
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum FileType {
@@ -48,6 +48,7 @@ impl FileType {
     }
 }
 
+#[derive(Debug)]
 pub struct Toml {
     lib: FileType,
     executables: Vec<FileType>,
@@ -69,14 +70,20 @@ impl Toml {
 struct TomlScanner {}
 
 impl TomlScanner {
-    fn executables(toml: &Table) -> Vec<FileType> {
+    fn executables(toml: &Table, source_dir: &Path) -> Vec<FileType> {
         match toml.get("bin") {
             None => {
                 // Default path
                 let path = PathBuf::from("src/bin.rs");
                 // TODO set default name from the project name
                 let name = "".to_owned();
-                vec![FileType::Executable(name, path)]
+
+                let absolute_path = source_dir.join("bin.rs");
+                if absolute_path.exists() {
+                    vec![FileType::Executable(name, path)]
+                } else {
+                    vec![]
+                }
             }
             Some(bin) => {
                 if let Value::Array(bin_array) = bin {
@@ -115,7 +122,7 @@ impl TomlScanner {
         FileType::Executable(name, path)
     }
 
-    fn library(toml: &Table) -> FileType {
+    fn library(toml: &Table, source_dir: &Path) -> FileType {
         match toml.get("lib") {
             None => {
                 // Default lib.rs
@@ -177,14 +184,16 @@ pub struct ProjectScanner {}
 impl ProjectScanner {
     pub fn open(project_root: &str) -> Project {
         let project_root = PathBuf::from(project_root);
+        let source_dir = project_root.join("src");
+
         let toml_path = project_root.join("Cargo.toml");
         let toml_table = ProjectScanner::parse_toml(toml_path.as_path());
 
         let source_dir = project_root.join("src");
         let mut source_files = vec![];
 
-        let executables = TomlScanner::executables(&toml_table);
-        let lib = TomlScanner::library(&toml_table);
+        let executables = TomlScanner::executables(&toml_table, source_dir.as_path());
+        let lib = TomlScanner::library(&toml_table, source_dir.as_path());
         let package_name = TomlScanner::package_name(&toml_table);
 
         let toml = Toml {
@@ -198,7 +207,8 @@ impl ProjectScanner {
             source_dir.as_path(),
             &mut source_files,
             &toml,
-        ).unwrap();
+        )
+        .unwrap();
 
         Project::new(project_root, PathBuf::from(OUTPUT_ROOT), toml, source_files)
     }
@@ -286,6 +296,7 @@ impl ProjectScanner {
     }
 }
 
+#[derive(Debug)]
 pub struct Project {
     project_root: PathBuf,
     output_root: PathBuf,
@@ -327,38 +338,44 @@ impl Project {
         &mut self.source_files
     }
 
+    pub fn rel_file_names(&self) -> Vec<PathBuf> {
+        self.source_files
+            .iter()
+            .map(|sf| sf.file_path())
+            .map(|path| {
+                path.strip_prefix(self.project_root.to_path_buf())
+                    .unwrap()
+                    .to_path_buf()
+            })
+            .collect::<Vec<_>>()
+    }
+
     pub fn make_copy(&mut self) {
         // Clear the target dir
         fs::remove_dir_all(self.output_root.as_path()).unwrap();
-
+        fs::create_dir_all(self.output_root.as_path()).unwrap();
+        copy_dir(self.project_root.as_path(), self.output_root.as_path()).unwrap();
         // Write source files
         for file in &mut self.source_files {
             file.write();
         }
 
-        // Copy monitor module
-        let monitor_source_path =
-            PathBuf::from("/Users/tim/Documents/master-thesis/testify/src/monitor.rs");
-        let monitor_target_path = self.output_root.join("src/testify_monitor.rs");
-        fs::copy(monitor_source_path, monitor_target_path).unwrap();
+        let monitor_path = PathBuf::from("/Users/tim/Documents/master-thesis/testify/src/monitor.rs");
+        let monitor_out_path = self.output_root.join("src/testify_monitor.rs");
+        fs::copy(monitor_path.as_path(), monitor_out_path.as_path()).unwrap();
 
-        // Copy toml
-        let original_toml_path = self.project_root.join("Cargo.toml");
-        let output_toml_path = self.output_root.join("Cargo.toml");
-        fs::copy(original_toml_path, output_toml_path).unwrap();
-
-        let deps_path = self.output_root.join("target/debug/deps");
-        fs::create_dir_all(deps_path).unwrap();
+        /*let deps_path = self.output_root.join("target/debug/deps");
+        fs::create_dir_all(deps_path).unwrap();*/
     }
 
     pub fn toml(&self) -> &Toml {
         &self.toml
     }
 
-    pub fn add_tests(&mut self, test_cases: &Vec<TestCase>, tcx: &TyCtxt<'_>) {
+    pub fn add_tests(&mut self, test_cases: &Vec<TestCase>) {
         let first_source_file = self.source_files.first_mut().unwrap();
         for test_case in test_cases {
-            first_source_file.add_test(test_case, tcx);
+            first_source_file.add_test(test_case);
         }
 
         first_source_file.write();
@@ -375,7 +392,7 @@ impl Project {
         // Run the tests
         cmd.args(&[
             "test",
-           /* "--package",
+            /* "--package",
             &self.toml.package_name,*/
             "testify_tests",
         ])
@@ -406,72 +423,12 @@ impl Project {
         fs::create_dir_all(deps_path.as_path()).unwrap();
     }
 
-    pub fn build_args(&self) -> Vec<String> {
-        let args = [
-            "rustc",
-            "--crate-name",
-            "additions",
-            "--edition=2018",
-            "/Users/tim/Documents/master-thesis/testify/benchmarks/src/main.rs",
-            "--error-format=json",
-            "--json=diagnostic-rendered-ansi",
-            "--crate-type",
-            "bin",
-            "--emit=dep-info,link",
-            "-C",
-            "embed-bitcode=no",
-            "-C",
-            "split-debuginfo=unpacked",
-            "-C",
-            "debuginfo=2",
-            "-C",
-            "metadata=5978598c4741d9d6",
-            "--out-dir",
-            "/Users/tim/Documents/master-thesis/testify/benchmarks/target/debug/deps",
-            "-C",
-            "incremental=/Users/tim/Documents/master-thesis/testify/benchmarks/debug/incremental",
-            "-L",
-            "dependency=/Users/tim/Documents/master-thesis/testify/benchmarks/target/debug/deps",
-            "--sysroot",
-            &fs_util::sysroot(),
-        ];
-        args.iter().map(|a| a.to_string()).collect()
-    }
-
-    pub fn test_build_args(&self) -> Vec<String> {
-        let args = [
-            "rustc",
-            "--crate-name",
-            "additions",
-            "--edition=2018",
-            "/Users/tim/Documents/master-thesis/testify/benchmarks/src/main.rs",
-            "--error-format=json",
-            "--json=diagnostic-rendered-ansi",
-            "--crate-type",
-            "bin",
-            "--emit=dep-info,link",
-            "-C",
-            "embed-bitcode=no",
-            "-C",
-            "split-debuginfo=unpacked",
-            "-C",
-            "debuginfo=2",
-            "-C",
-            "metadata=5978598c4741d9d6",
-            "--out-dir",
-            "/Users/tim/Documents/master-thesis/testify/benchmarks/target/debug/deps",
-            "-C",
-            "incremental=/Users/tim/Documents/master-thesis/testify/benchmarks/debug/incremental",
-            "-L",
-            "dependency=/Users/tim/Documents/master-thesis/testify/benchmarks/target/debug/deps",
-            "--sysroot",
-            &fs_util::sysroot(),
-        ];
-        args.iter().map(|a| a.to_string()).collect::<Vec<String>>();
-        todo!()
-    }
     pub fn output_root(&self) -> &Path {
         self.output_root.as_path()
+    }
+
+    pub fn crate_name(&self) -> &str {
+        &self.toml.package_name
     }
 }
 
@@ -497,8 +454,6 @@ impl VisitState {
         self.current_path.pop().expect("Path is already empty")
     }
 }
-
-
 
 #[derive(Debug, Clone)]
 pub struct SourceFile {
@@ -572,21 +527,17 @@ impl SourceFile {
         &self.file_type
     }
 
-    pub fn add_test(&mut self, test_case: &TestCase, tcx: &TyCtxt<'_>) {
-        let tests_mod = self
-            .ast
-            .items
-            .iter_mut()
-            .find_map(|i| {
-                if let Item::Mod(item_mod) = i {
-                    if item_mod.ident.to_string() == "testify_tests" {
-                        return Some(item_mod);
-                    }
+    pub fn add_test(&mut self, test_case: &TestCase) {
+        let tests_mod = self.ast.items.iter_mut().find_map(|i| {
+            if let Item::Mod(item_mod) = i {
+                if item_mod.ident.to_string() == "testify_tests" {
+                    return Some(item_mod);
                 }
-                None
-            });
+            }
+            None
+        });
 
-        let code = test_case.to_syn(tcx);
+        let code = test_case.to_syn();
         if let Some(tests_mod) = tests_mod {
             let (_, ref mut content) = tests_mod.content.as_mut().unwrap();
             content.push(code);
@@ -651,11 +602,11 @@ impl SourceFile {
         });
 
         let tests_mod: Item = syn::parse_quote! {
-                #[cfg(test)]
-                mod testify_tests {
-                    use super::*;
-                }
-            };
+            #[cfg(test)]
+            mod testify_tests {
+                use super::*;
+            }
+        };
 
         self.ast.items.push(tests_mod);
     }
@@ -674,7 +625,6 @@ impl Hash for SourceFile {
         self.file_path.hash(state);
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub enum Import {

@@ -29,8 +29,8 @@ impl Monitor {
         self.test_id = test_id;
     }
 
-    pub fn trace_fn(&mut self, name: &str, id: u64) {
-        let msg = format!("root[{}, {}]", name, id);
+    pub fn trace_fn(&mut self, global_id: u64, id: u64) {
+        let msg = format!("root[{}, {}]", global_id, id);
         self.send(&msg);
     }
     pub fn trace_branch(&mut self, self_branch: u64, other_branch: u64, dist: f64) {
@@ -57,12 +57,12 @@ impl Monitor {
     }
 }
 
-pub fn trace_fn(name: &str, id: u64) {
-    MONITOR.with(|m| m.borrow_mut().trace_fn(name, id));
+pub fn trace_fn(global_id: u64, id: u64) {
+    MONITOR.with(|m| m.borrow_mut().trace_fn(global_id, id));
 }
 
-pub fn trace_test(id: u64, op: Op) {
-    MONITOR.with(|m| m.borrow_mut().trace_fn("hlelo", id));
+pub fn trace_test(global_id: u64, id: u64, op: Op) {
+    MONITOR.with(|m| m.borrow_mut().trace_fn(global_id, id));
 }
 
 pub fn trace_branch(self_branch: u64, other_branch: u64, dist: f64) {

@@ -1,116 +1,160 @@
-use crate::data_structures::{cdg, cfg, immediate_post_dominators, post_dominators};
-use crate::writer::InstrumentationWriter;
-use crate::Stage;
-use generation::branch::Branch;
+use crate::data_structures::{cdg, immediate_post_dominators, post_dominators, truncated_cfg};
+use crate::util::get_cut_name;
+use crate::writer::MirWriter;
+use crate::{get_testify_flags, Stage};
+use generation::branch::{Branch, DecisionBranch};
+use generation::util::{node_to_name, ty_to_name};
 use instrumentation::MIR_LOG_PATH;
 use petgraph::algo::dominators::simple_fast;
 use petgraph::dot::Dot;
 use petgraph::visit::Reversed;
 use rustc_data_structures::graph::WithSuccessors;
+use rustc_driver::Compilation;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{HirId, ItemKind};
+use rustc_hir::{HirId, ItemKind, Mutability};
+use rustc_interface::interface::Compiler;
 use rustc_interface::{Config, Queries};
-use rustc_middle::mir::interpret::{ConstValue, Scalar};
+use rustc_middle::hir::map::ParentHirIterator;
+use rustc_middle::mir::interpret::{Allocation, ConstValue, Scalar};
 use rustc_middle::mir::visit::MutVisitor;
-use rustc_middle::mir::StatementKind::SetDiscriminant;
+use rustc_middle::mir::StatementKind::{Assign, SetDiscriminant};
 use rustc_middle::mir::{
     BasicBlock, BasicBlockData, BinOp, Body, Constant, ConstantKind, Local, LocalDecl, LocalDecls,
     Operand, Place, Rvalue, SourceInfo, SourceScope, Statement, StatementKind, Terminator,
     TerminatorKind, START_BLOCK,
 };
 use rustc_middle::ty::layout::HasTyCtxt;
-use rustc_middle::ty::{Const, ConstKind, List, ScalarInt, Ty, TyCtxt, UintTy};
+use rustc_middle::ty::{Const, ConstKind, ConstVid, List, ScalarInt, Ty, TyCtxt, UintTy};
 use rustc_span::{Span, Symbol};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{Align, VariantIdx};
 use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Arguments;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::iter::FromIterator;
 use std::path::PathBuf;
-use rustc_driver::Compilation;
-use rustc_interface::interface::Compiler;
+use uuid::Uuid;
 
 type CutPoint<'tcx> = (BasicBlock, usize, BasicBlockData<'tcx>);
 
-const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<'tcx> =
+pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<'tcx> =
     |tcx, def| {
         let opt_mir = rustc_interface::DEFAULT_QUERY_PROVIDERS
             .borrow()
             .optimized_mir;
-        let mut body = opt_mir(tcx, def).clone();
+        let body = opt_mir(tcx, def).clone();
         let crate_name = tcx.crate_name(def.krate);
         let hir_id = tcx.hir().local_def_id_to_hir_id(def.expect_local());
 
-        if crate_name.as_str() != "additions" || is_testify_monitor(hir_id, &tcx) {
+        let testify_flags = get_testify_flags();
+        let cut_name = get_cut_name(&testify_flags);
+
+        if crate_name.as_str() != cut_name || is_testify_monitor(hir_id, &tcx) {
             // Don't instrument extern crates
             return tcx.arena.alloc(body);
         }
 
-        let cdg = cdg(&body);
-        let mut writer = InstrumentationWriter::new(MIR_LOG_PATH);
-        writer.new_body(&format!("{:?}", def));
-        writer.write_cdg(serde_json::to_string(&cdg).as_ref().unwrap());
+        println!("Analyzing {:?}", def);
 
-        // INSTRUMENT
-        let mut mir_visitor = MirVisitor::new(body.clone(), tcx);
+        let mut writer = MirWriter::new(MIR_LOG_PATH);
+        let item_name = tcx.hir().opt_name(hir_id);
+        if let None = item_name {
+            return tcx.arena.alloc(body);
+        };
 
-        let mut instrumented_body = mir_visitor.visit();
-        let (basic_blocks, local_decls) = instrumented_body.basic_blocks_and_local_decls_mut();
-
-        let locals = local_decls
-            .iter_enumerated()
-            .map(|(local, decl)| {
-                format!("{:?} -> {:?}", local, decl)
-            })
-            .collect::<Vec<_>>();
-        writer.write_locals(&locals);
-
+        let global_id: u32 = def.index.into();
+        writer.new_body(&format!("{}", global_id));
+        let basic_blocks = body.basic_blocks();
         let blocks = basic_blocks
             .iter_enumerated()
             .map(|(block, data)| format!("{} -> {:?}", block.as_usize(), data))
             .collect::<Vec<_>>();
         writer.write_basic_blocks(&blocks);
 
+        let cdg = cdg(&body);
+        writer.write_cdg(serde_json::to_string(&cdg).as_ref().unwrap());
+
+        // INSTRUMENT
+        let mut mir_visitor = MirVisitor::new(global_id as u64, body.clone(), tcx);
+
+        let mut instrumented_body = mir_visitor.visit();
+        let (basic_blocks, local_decls) = instrumented_body.basic_blocks_and_local_decls_mut();
+
+        let locals = local_decls
+            .iter_enumerated()
+            .map(|(local, decl)| format!("{:?} -> {:?}", local, decl))
+            .collect::<Vec<_>>();
+        writer.write_locals(&locals);
+
+        /*let blocks = basic_blocks
+        .iter_enumerated()
+        .map(|(block, data)| format!("{} -> {:?}", block.as_usize(), data))
+        .collect::<Vec<_>>();*/
+        //writer.write_basic_blocks(&blocks);
+
+        let branches = serde_json::to_string(&mir_visitor.branches).unwrap();
+        writer.write_branches(&branches);
+
         let op_enum = get_op_enum_def_id(&tcx);
         return tcx.arena.alloc(instrumented_body);
     };
 
-const CUSTOM_OPT_MIR_INSTRUMENTATION: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<'tcx> =
-    |tcx, def| {
-        let opt_mir = rustc_interface::DEFAULT_QUERY_PROVIDERS
-            .borrow()
-            .optimized_mir;
-        let mut body = opt_mir(tcx, def).clone();
-        let crate_name = tcx.crate_name(def.krate);
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def.expect_local());
+pub const CUSTOM_OPT_MIR_INSTRUMENTATION: for<'tcx> fn(
+    _: TyCtxt<'tcx>,
+    _: DefId,
+) -> &'tcx Body<'tcx> = |tcx, def| {
+    let opt_mir = rustc_interface::DEFAULT_QUERY_PROVIDERS
+        .borrow()
+        .optimized_mir;
+    let mut body = opt_mir(tcx, def).clone();
+    let crate_name = tcx.crate_name(def.krate);
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def.expect_local());
+    let testify_flags = get_testify_flags();
+    let cut_name = get_cut_name(&testify_flags);
 
-        if crate_name.as_str() != "additions" || is_testify_monitor(hir_id, &tcx) {
-            // Don't instrument extern crates
-            return tcx.arena.alloc(body);
-        }
+    if crate_name.as_str() != cut_name || is_testify_monitor(hir_id, &tcx) {
+        // Don't instrument extern crates
+        return tcx.arena.alloc(body);
+    }
 
-        // INSTRUMENT
-        let mut mir_visitor = MirVisitor::new(body.clone(), tcx);
+    println!(">> Instrumenting {:?}", def);
 
-        let mut instrumented_body = mir_visitor.visit();
-        return tcx.arena.alloc(instrumented_body);
-    };
+    let global_id: u32 = def.index.into();
 
+    // INSTRUMENT
+    let mut mir_visitor = MirVisitor::new(global_id as u64, body.clone(), tcx);
+    let mut instrumented_body = mir_visitor.visit();
+
+    let (basic_blocks, local_decls) = instrumented_body.basic_blocks_and_local_decls_mut();
+
+    /* local_decls.iter_enumerated().for_each(|(local, decl)| {
+        println!("{:?} -> {:?}\n", local, decl);
+    });
+
+    basic_blocks.iter_enumerated().for_each(|(block, data)| {
+        print!("{:?} -> {:?}\n", block, data);
+    });*/
+
+    return tcx.arena.alloc(instrumented_body);
+};
 
 pub struct MirVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     body: Body<'tcx>,
+    // We need this to pretend this to be a global id since we cannot access anything outside
+    // of the optimized_mir function
+    global_id: u64,
     locals_num: usize,
     branch_counter: u64,
     branches: Vec<Branch>,
 }
 
 impl<'tcx> MirVisitor<'tcx> {
-    fn new(body: Body<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+    fn new(global_id: u64, body: Body<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         MirVisitor {
             tcx,
+            global_id,
             locals_num: body.local_decls.len(),
             body,
             branch_counter: 0,
@@ -229,6 +273,7 @@ impl<'tcx> MirVisitor<'tcx> {
         }
     }
 
+
     fn mk_enum_var_stmt(&self, place_idx: usize, variant_idx: u32) -> Statement<'tcx> {
         let stmt_kind = SetDiscriminant {
             place: Box::new(self.mk_place(place_idx)),
@@ -274,7 +319,6 @@ impl<'tcx> MirVisitor<'tcx> {
         let trace_block = self.mk_basic_block(stmts, args, target_block, place);
 
         cut_points.push((source_block, path_idx, trace_block));
-        self.branch_counter += 1;
     }
 
     fn store_unit_local_decl(&mut self, local_decls: &mut LocalDecls<'tcx>) -> Local {
@@ -296,12 +340,14 @@ impl<'tcx> MirVisitor<'tcx> {
     ) {
         let op_enum_def_id = get_op_enum_def_id(&self.tcx);
         let op_enum_ty = self.tcx.type_of(op_enum_def_id);
-        let local = self.store_local_decl(op_enum_ty, local_decls);
-        let stmts = vec![self.mk_enum_var_stmt(local.index(), 0)];
+        let op_enum_local = self.store_local_decl(op_enum_ty, local_decls);
+
+        let stmts = vec![self.mk_enum_var_stmt(op_enum_local.index(), 0)];
         let branch_id = self.next_branch_id();
         let args = vec![
+            self.mk_const_int_operand(self.global_id),
             self.mk_const_int_operand(branch_id),
-            self.mk_move_operand(local),
+            self.mk_move_operand(op_enum_local),
         ];
         self.store_basic_block(
             cut_points,
@@ -313,7 +359,12 @@ impl<'tcx> MirVisitor<'tcx> {
         );
         self.store_unit_local_decl(local_decls);
 
-        //let branch = Branch::new(branch_id, BranchType::Decision);
+        let branch = Branch::Decision(DecisionBranch::new(
+            branch_id,
+            source_block.as_usize(),
+            target_block.as_usize(),
+        ));
+        self.branches.push(branch);
     }
 
     fn store_local_decl(&mut self, ty: Ty<'tcx>, local_decls: &mut LocalDecls<'tcx>) -> Local {
@@ -331,69 +382,6 @@ impl<'tcx> MirVisitor<'tcx> {
             _ => unimplemented!(),
         }
     }
-
-    fn switch(
-        &self,
-        terminator: &mut Terminator<'tcx>,
-        stmts: &mut Vec<Statement<'tcx>>,
-    ) -> Vec<Local> {
-        let operand = match &mut terminator.kind {
-            TerminatorKind::SwitchInt { discr, .. } => discr,
-            _ => unimplemented!(),
-        };
-        let mut local_delcs = vec![];
-        match operand {
-            Operand::Move(place) => {
-                let (pos, assign_stmt) = self.find_assign_stmt_for(place, stmts).unwrap();
-                if let StatementKind::Assign(b) = &assign_stmt.kind {
-                    let (var, expr) = b.as_ref();
-                    if let Rvalue::BinaryOp(_, operands) = expr {
-                        let (left, right) = operands.as_ref();
-
-                        let mut left_place = var.clone();
-                        left_place.local = Local::from(self.locals_num as u32 + 1);
-                        let mut left_assignment = assign_stmt.clone();
-                        left_assignment.kind = StatementKind::Assign(Box::new((
-                            left_place,
-                            Rvalue::Use(left.clone()),
-                        )));
-                        stmts.push(left_assignment);
-
-                        local_delcs.push(self.get_local(left));
-                        local_delcs.push(self.get_local(left));
-
-                        let mut right_place = var.clone();
-                        right_place.local = Local::from(self.locals_num as u32 + 2);
-                        let mut right_assignment = assign_stmt.clone();
-                        right_assignment.kind = StatementKind::Assign(Box::new((
-                            right_place,
-                            Rvalue::Use(right.clone()),
-                        )));
-                        stmts.push(right_assignment);
-
-                        local_delcs.push(self.get_local(right));
-                        local_delcs.push(self.get_local(right));
-
-                        let mut result_place = var.clone();
-                        result_place.local = Local::from(self.locals_num as u32 + 3);
-                        let mut result_assignment = assign_stmt.clone();
-                        let sub_op = Rvalue::BinaryOp(
-                            BinOp::Sub,
-                            Box::new((Operand::Move(left_place), Operand::Move(right_place))),
-                        );
-                        result_assignment.kind =
-                            StatementKind::Assign(Box::new((result_place, sub_op)));
-                        stmts.push(result_assignment);
-
-                        //*operand = Operand::Move(result_place);
-                    }
-                }
-            }
-            _ => {}
-        }
-
-        local_delcs
-    }
 }
 
 impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
@@ -401,6 +389,10 @@ impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
 
         let mut cut_points = vec![];
+
+        if basic_blocks.is_empty() {
+            return;
+        }
 
         for (basic_block, data) in basic_blocks.iter_enumerated_mut() {
             if let Some(terminator) = &mut data.terminator {
@@ -411,6 +403,7 @@ impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
                         targets,
                     } => match targets.all_targets_mut() {
                         [true_branch, false_branch] => {
+                            println!("instrumenting switch int");
                             self.instr_for_branch(
                                 &mut cut_points,
                                 local_decls,
@@ -439,8 +432,8 @@ impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
                         Operand::Copy(_) => {}
                         Operand::Move(_) => {}
                         Operand::Constant(constant) => {
-                            println!("Func {:?}", func);
-                            println!("Args:");
+                            /*println!("Func {:?}", func);
+                            println!("Args:");*/
                         }
                     },
                     _ => {}
@@ -489,7 +482,7 @@ fn is_testify_monitor(hir_id: HirId, tcx: &TyCtxt<'_>) -> bool {
         is_testify_monitor(tcx.hir().local_def_id_to_hir_id(parent), tcx)
     }*/
     let name = format!("{:?}", hir_id);
-    name.contains("testify_monitor")
+    name.contains("monitor")
 }
 
 fn get_op_enum_def_id(tcx: &TyCtxt<'_>) -> DefId {

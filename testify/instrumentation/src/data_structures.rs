@@ -1,17 +1,75 @@
 use petgraph::algo::dominators::{simple_fast, Dominators};
 use petgraph::algo::has_path_connecting;
+use petgraph::dot::Dot;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::{GraphBase, IntoNeighbors, Reversed, Visitable};
 use petgraph::Graph;
 use rustc_data_structures::graph::WithSuccessors;
-use rustc_middle::mir::{BasicBlock, Body};
+use rustc_hir::Path;
+use rustc_middle::mir::{BasicBlock, Body, Successors, TerminatorKind};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use std::iter::FromIterator;
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::iter::{Chain, FromIterator};
+use std::{iter, option, slice};
+use std::slice::Iter;
 
 pub const ENTRY: usize = usize::MAX;
 
-pub fn cfg(body: &Body<'_>) -> (Graph<usize, usize>, HashMap<BasicBlock, NodeIndex>) {
+pub fn truncated_cfg(body: &Body<'_>) -> (Graph<usize, usize>, HashMap<BasicBlock, NodeIndex>) {
+    let mut graph = Graph::new();
+    let mut table = HashMap::new();
+
+    let basic_blocks: Vec<BasicBlock> = body
+        .basic_blocks()
+        .iter_enumerated()
+        .map(|(block, data)| block)
+        .collect();
+
+    let mut queue = VecDeque::new();
+    let bb0 = basic_blocks.first().unwrap();
+    // Insert it as is, there may be methods with only one basic block
+    table.entry(*bb0).or_insert_with(|| graph.add_node(bb0.as_usize()));
+
+    successors(body, *bb0)
+        .iter()
+        .map(|successor| (*bb0, *successor))
+        .for_each(|pair| {
+            queue.push_back(pair);
+        });
+    while !queue.is_empty() {
+        let next = queue.pop_front();
+        if let Some((from, to)) = next {
+            let from_index = *table
+                .entry(from)
+                .or_insert_with(|| graph.add_node(from.as_usize()));
+            let to_index = *table
+                .entry(to)
+                .or_insert_with(|| graph.add_node(to.as_usize()));
+
+            let edge_already_exists = graph
+                .edges_connecting(from_index, to_index)
+                .peekable()
+                .peek()
+                .is_some();
+
+            if !edge_already_exists {
+                graph.add_edge(from_index, to_index, 1);
+                successors(body, to)
+                    .iter()
+                    .map(|successor| (to, *successor))
+                    .for_each(|pair| {
+                        queue.push_back(pair);
+                    });
+            }
+        }
+    }
+
+    (graph, table)
+}
+
+pub fn original_cfg(body: &Body<'_>) -> (Graph<usize, usize>, HashMap<BasicBlock, NodeIndex>) {
     let mut graph = Graph::new();
     let mut table = HashMap::new();
 
@@ -34,6 +92,151 @@ pub fn cfg(body: &Body<'_>) -> (Graph<usize, usize>, HashMap<BasicBlock, NodeInd
     }
 
     (graph, table)
+}
+
+pub fn successors<'tcx>(body: &'tcx Body<'tcx>, block: BasicBlock) -> Vec<BasicBlock> {
+    let terminator = body.basic_blocks().get(block).unwrap().terminator();
+
+    if let TerminatorKind::Unreachable = &terminator.kind {
+        let block_data = body.basic_blocks().get(block).unwrap();
+        let stmts = &block_data.statements;
+        assert!(stmts.is_empty());
+    }
+
+    successors_of_terminator_kind(body, &terminator.kind)
+}
+
+pub fn successors_of_terminator_kind<'tcx>(
+    body: &'tcx Body<'tcx>,
+    kind: &'tcx TerminatorKind<'tcx>,
+) -> Vec<BasicBlock> {
+    use self::TerminatorKind::*;
+    match *kind {
+        Resume
+        | Abort
+        | GeneratorDrop
+        | Return
+        | Unreachable
+        | Call {
+            destination: None,
+            cleanup: None,
+            ..
+        }
+        | InlineAsm {
+            destination: None, ..
+        } => vec![],
+        Goto { target: ref t }
+        | Call {
+            destination: None,
+            cleanup: Some(ref t),
+            ..
+        }
+        | Call {
+            destination: Some((_, ref t)),
+            cleanup: None,
+            ..
+        }
+        | Yield {
+            resume: ref t,
+            drop: None,
+            ..
+        }
+        | DropAndReplace {
+            target: ref t,
+            unwind: None,
+            ..
+        }
+        | Drop {
+            target: ref t,
+            unwind: None,
+            ..
+        }
+        | Assert {
+            target: ref t,
+            cleanup: None,
+            ..
+        }
+        | FalseUnwind {
+            real_target: ref t,
+            unwind: None,
+        }
+        | InlineAsm {
+            destination: Some(ref t),
+            ..
+        } => {
+            if is_reachable(body, *t) {
+                vec![*t]
+            } else {
+                vec![]
+            }
+        }
+        Call {
+            destination: Some((_, ref t)),
+            cleanup: Some(ref u),
+            ..
+        }
+        | Yield {
+            resume: ref t,
+            drop: Some(ref u),
+            ..
+        }
+        | DropAndReplace {
+            target: ref t,
+            unwind: Some(ref u),
+            ..
+        }
+        | Drop {
+            target: ref t,
+            unwind: Some(ref u),
+            ..
+        }
+        | Assert {
+            target: ref t,
+            cleanup: Some(ref u),
+            ..
+        }
+        | FalseUnwind {
+            real_target: ref t,
+            unwind: Some(ref u),
+        } => {
+            if is_reachable(body, *t) {
+                vec![*t]
+            } else {
+                vec![]
+            }
+        }
+        SwitchInt { ref targets, .. } => {
+            let targets = targets
+                .all_targets()
+                .iter()
+                .filter_map(|t| {
+                    if is_reachable(body, *t) {
+                        Some(*t)
+                    } else {
+                        None
+                    }
+                }).collect::<Vec<_>>();
+            targets
+        }
+        FalseEdge {
+            ref real_target,
+            ref imaginary_target,
+        } => {
+            // TODO prolly also check for reachability?
+            vec![*real_target, *imaginary_target]
+        }
+    }
+}
+
+fn is_reachable<'tcx>(body: &'tcx Body<'tcx>, block: BasicBlock) -> bool {
+    let block_data = body.basic_blocks().get(block).unwrap();
+    let terminator = block_data.terminator.as_ref();
+    if let Some(terminator) = terminator {
+        if let TerminatorKind::Unreachable = &terminator.kind {
+            return false;
+        }
+    }
+    true
 }
 
 /*
@@ -145,19 +348,45 @@ fn map_to_graph(m: HashMap<usize, HashSet<usize>>) -> Graph<usize, usize> {
     graph
 }
 
-pub fn predecessors(graph: Graph<usize, usize>, node: NodeIndex) -> Vec<NodeIndex> {
-    todo!()
+pub fn log_graph_to<P>(graph: &Graph<usize, usize>, path: P)
+where
+    P: AsRef<std::path::Path>,
+{
+    let dot = Dot::new(graph);
+    let mut file = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .create(true)
+        .open(path)
+        .unwrap();
+    let output = format!("{}", dot);
+    file.write_all(output.as_bytes()).unwrap();
 }
 
 pub fn cdg(body: &Body<'_>) -> Graph<usize, usize> {
-    let (cfg, cfg_table) = cfg(body);
+    let (cfg, cfg_table) = truncated_cfg(body);
+    let (original_cfg, _) = original_cfg(body);
+    log_graph_to(
+        &cfg,
+        "/Users/tim/Documents/master-thesis/testify/truncated_cfg.dot",
+    );
+    log_graph_to(
+        &original_cfg,
+        "/Users/tim/Documents/master-thesis/testify/original_cfg.dot",
+    );
+
     let mut reversed_cfg = cfg.clone();
     reversed_cfg.reverse();
 
     // TODO this may be not always the case
-    let exit_block = body.basic_blocks().last().unwrap();
-    let root = cfg_table.get(&exit_block).unwrap();
-    let dominators = simple_fast(&reversed_cfg, *root);
+    //let exit_block = body.basic_blocks().last().unwrap();
+    let root = cfg
+        .node_indices()
+        .find(|i| cfg.neighbors(*i).peekable().peek().is_none())
+        .unwrap();
+    //println!("Root is {}", cfg.node_weight(root).unwrap());
+    //let root = cfg_table.get(&exit_block).unwrap();
+    let dominators = simple_fast(&reversed_cfg, root);
 
     //let post_dominators = post_dominators(body);
     //let immediate_post_dominators = immediate_post_dominators(&post_dominators);
@@ -176,7 +405,11 @@ pub fn cdg(body: &Body<'_>) -> Graph<usize, usize> {
 
     let mut cdg = Graph::new();
     let mut cdg_table = HashMap::new();
-    let entry_index = *cdg_table.entry(ENTRY).or_insert_with(|| cdg.add_node(ENTRY));
+    let entry_index = *cdg_table
+        .entry(ENTRY)
+        .or_insert_with(|| cdg.add_node(ENTRY));
+
+    //println!("CFG: {}", Dot::new(&cfg));
 
     let mut dependent_nodes = HashSet::new();
     for edge in &cfg_edges {
@@ -187,34 +420,45 @@ pub fn cdg(body: &Body<'_>) -> Graph<usize, usize> {
         let lca = lca(&a_dominators, &b_dominators).unwrap();
 
         let a_name = *cfg.node_weight(a).unwrap();
-        // Insert a
-        let a_index = *cdg_table.entry(a_name).or_insert_with(|| cdg.add_node(a_name));
-        dominators.dominators(b).unwrap().take_while(|d| d != &lca).for_each(|b_d| {
-            let b_name = *cfg.node_weight(b_d).unwrap();
-            let b_index = *cdg_table.entry(b_name).or_insert_with(|| cdg.add_node(b_name));
-            cdg.add_edge(a_index, b_index, 1usize);
-            dependent_nodes.insert(b_name);
-        });
+        let a_index = *cdg_table
+            .entry(a_name)
+            .or_insert_with(|| cdg.add_node(a_name));
+        dominators
+            .dominators(b)
+            .unwrap()
+            .take_while(|d| d != &lca)
+            .for_each(|b_d| {
+                let b_name = *cfg.node_weight(b_d).unwrap();
+                let b_index = *cdg_table
+                    .entry(b_name)
+                    .or_insert_with(|| cdg.add_node(b_name));
+                cdg.add_edge(a_index, b_index, 1usize);
+                dependent_nodes.insert(b_name);
+            });
 
         if lca == a {
             let lca_name = *cfg.node_weight(lca).unwrap();
-            let lca_index = *cdg_table.entry(lca_name).or_insert_with(|| cdg.add_node(lca_name));
+            let lca_index = *cdg_table
+                .entry(lca_name)
+                .or_insert_with(|| cdg.add_node(lca_name));
             cdg.add_edge(a_index, lca_index, 1usize);
             dependent_nodes.insert(lca_name);
         }
     }
 
-    cfg.node_indices().filter_map(|n| {
-        let name = cfg.node_weight(n).unwrap();
-        if dependent_nodes.contains(name) {
-            None
-        } else {
-            Some(*name)
-        }
-    }).for_each(|n| {
-        let index = *cdg_table.entry(n).or_insert_with(|| cdg.add_node(n));
-        cdg.add_edge(entry_index, index, 1usize);
-    });
+    cfg.node_indices()
+        .filter_map(|n| {
+            let name = cfg.node_weight(n).unwrap();
+            if dependent_nodes.contains(name) {
+                None
+            } else {
+                Some(*name)
+            }
+        })
+        .for_each(|n| {
+            let index = *cdg_table.entry(n).or_insert_with(|| cdg.add_node(n));
+            cdg.add_edge(entry_index, index, 1usize);
+        });
 
     cdg
 }

@@ -10,6 +10,7 @@ extern crate rustc_span;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::error::Error;
+use std::fs::OpenOptions;
 use std::io::{ErrorKind, Read, Write};
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
@@ -18,11 +19,13 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use clap::Clap;
-use rustc_driver::args::Error::IOError;
-use generation::compiler;
+use generation::chromosome::{Chromosome, TestCase};
+use generation::parser::{HirParser, MirParser};
 use generation::source::{Project, ProjectScanner};
-use instrumentation::INSTRUMENTATION_LOG_PATH;
+use instrumentation::{HIR_LOG_PATH, MIR_LOG_PATH};
+use rustc_driver::args::Error::IOError;
 
+static LOG_DIR: &'static str = "/Users/tim/Documents/master-thesis/testify/log";
 
 #[derive(Clap)]
 struct CliOpts {
@@ -31,11 +34,10 @@ struct CliOpts {
 }
 
 struct AnalysisError {
-    msg: String
+    msg: String,
 }
 
 fn main() {
-
     let opts: CliOpts = CliOpts::parse();
 
     let mut project = ProjectScanner::open(&opts.path);
@@ -46,14 +48,45 @@ fn main() {
         panic!();
     }
 
+    std::fs::create_dir_all(LOG_DIR);
+    let hir_analysis = HirParser::parse(HIR_LOG_PATH);
+    let mir_analysis = MirParser::parse(MIR_LOG_PATH);
 
-    //compiler::start(project);
+    let callables_log_path = PathBuf::from(LOG_DIR).join("callables.txt");
+    let mut callables_log = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(callables_log_path.as_path())
+        .unwrap();
+    hir_analysis.callables().iter().for_each(|c| {
+        callables_log.write_all(format!("{:?}\n", c).as_bytes());
+    });
 
+    let mut bodies_log_path = PathBuf::from(LOG_DIR).join("bodies.txt");
+    let mut bodies_log = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(bodies_log_path.as_path())
+        .unwrap();
 
-    /*let mut instrumenter = Instrumenter::new();
-    instrumenter.instrument(&mut project);
-    project.write();
-    project.run_tests();*/
+    mir_analysis.bodies.iter().for_each(|b| {
+        bodies_log.write_all(format!("{:?}\n", b).as_bytes());
+    });
+
+    let hir_analysis = Rc::new(hir_analysis);
+    /*let mut file = OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open("./tests.rs")
+        .unwrap();
+    (0..10).for_each(|_| {
+        let test_case = TestCase::random(hir_analysis.clone());
+        let test_str = test_case.to_string();
+        file.write_fmt(format_args!("{}\n", test_str)).unwrap();
+    })*/
 
     /*let mut source_file = Rc::new(source_file);
 
@@ -106,19 +139,35 @@ fn main() {
 }
 
 fn analyze_project(project: &Project) -> Result<(), AnalysisError> {
-    if let Err(err) = std::fs::remove_file(INSTRUMENTATION_LOG_PATH) {
+    if let Err(err) = std::fs::remove_file(MIR_LOG_PATH) {
         match err.kind() {
             ErrorKind::NotFound => {}
-            _ => panic!("{}", err)
+            _ => panic!("{}", err),
+        }
+    }
+
+    if let Err(err) = std::fs::remove_file(HIR_LOG_PATH) {
+        match err.kind() {
+            ErrorKind::NotFound => {}
+            _ => panic!("{}", err),
         }
     }
 
     let out = process::Command::new("cargo")
-        .env("RUSTC_WRAPPER", "/Users/tim/Documents/master-thesis/testify/target/debug/instrumentation")
+        .env(
+            "RUSTC_WRAPPER",
+            "/Users/tim/Documents/master-thesis/testify/target/debug/instrumentation",
+        )
+        .env(
+            "TESTIFY_FLAGS",
+            &format!(
+                "--stage=analyze --crate={} --crate-name={}",
+                project.project_root().to_str().unwrap(),
+                project.crate_name()
+            ),
+        )
         .arg("+nightly-aarch64-apple-darwin")
-        .arg("rustc")
-        .arg("--")
-        .arg("--testify-stage=analyze")
+        .arg("build")
         .current_dir(project.output_root())
         .output()
         .unwrap();
@@ -126,9 +175,21 @@ fn analyze_project(project: &Project) -> Result<(), AnalysisError> {
     let output = String::from_utf8(out.stdout).unwrap();
     let output = output.trim();
 
+    let log_path = PathBuf::from(LOG_DIR).join("analysis.log");
+
+    let mut log_file = OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(log_path.as_path())
+        .unwrap();
+    log_file.write_all(output.as_bytes());
+
     if !out.status.success() {
         let err = String::from_utf8(out.stderr).unwrap();
-        let err = AnalysisError {msg: format!("Analysis failed!\n{}", err)};
+        let err = AnalysisError {
+            msg: format!("Analysis failed!\n{}", err),
+        };
         return Err(err);
     }
 
@@ -154,7 +215,8 @@ impl Client {
                     let response = String::from_utf8_lossy(&data[0..size]);
                     println!("{}", response);
 
-                    let traces: HashMap<usize, Vec<String>> = serde_json::from_str(response.as_ref()).unwrap();
+                    let traces: HashMap<usize, Vec<String>> =
+                        serde_json::from_str(response.as_ref()).unwrap();
                     return traces;
                 }
             }
@@ -166,9 +228,7 @@ impl Client {
 
     pub fn new() -> Self {
         let connection = match TcpStream::connect("localhost:3333") {
-            Ok(stream) => {
-                stream
-            }
+            Ok(stream) => stream,
             Err(e) => {
                 println!("Failed to connect: {}", e);
                 panic!()
@@ -177,4 +237,3 @@ impl Client {
         Client { connection }
     }
 }
-

@@ -6,6 +6,7 @@ extern crate rustc_interface;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_ast;
 extern crate rustc_serialize;
 #[macro_use]
 extern crate lazy_static;
@@ -13,7 +14,6 @@ extern crate lazy_static;
 
 pub mod parser;
 pub mod test;
-pub mod compiler;
 pub mod analysis;
 pub mod types;
 pub mod algorithm;

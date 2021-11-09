@@ -1,11 +1,13 @@
 use std::fmt::{Display, Formatter};
 use rustc_hir::{BodyId, FnSig, HirId, PrimTy};
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{TyCtxt};
+use rustc_ast::{IntTy, FloatTy, UintTy};
 use syn::Type;
+use serde::{Serialize, Deserialize};
 use crate::chromosome::{Arg, AssignStmt, ConstructorStmt, FieldAccessStmt, FnInvStmt, MethodInvStmt, Statement, StaticFnInvStmt};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Callable {
     Method(MethodItem),
     StaticFunction(StaticFnItem),
@@ -95,7 +97,7 @@ impl Callable {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrimitiveItem {
     pub ty: T,
     pub params: Vec<Param>,
@@ -112,14 +114,15 @@ impl PrimitiveItem {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MethodItem {
     pub params: Vec<Param>,
     pub return_type: Option<T>,
     pub parent: T,
-    pub body_id: BodyId,
     pub name: String,
-    pub fn_id: HirId,
+
+    #[serde(skip)]
+    pub fn_id: Option<HirId>,
     pub src_file_id: usize,
 }
 
@@ -129,7 +132,6 @@ impl MethodItem {
         params: Vec<Param>,
         return_type: Option<T>,
         parent: T,
-        body_id: BodyId,
         fn_id: HirId,
         tcx: &TyCtxt<'_>,
     ) -> Self {
@@ -141,9 +143,8 @@ impl MethodItem {
             params,
             parent,
             return_type,
-            body_id,
             name,
-            fn_id,
+            fn_id: Some(fn_id)
         }
     }
 
@@ -167,12 +168,12 @@ impl MethodItem {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FunctionItem {
     pub params: Vec<Param>,
     pub return_type: Option<T>,
-    pub body_id: BodyId,
-    pub fn_id: HirId,
+    #[serde(skip)]
+    pub fn_id: Option<HirId>,
     pub name: String,
     pub src_file_id: usize,
 }
@@ -182,7 +183,6 @@ impl FunctionItem {
         src_file_id: usize,
         params: Vec<Param>,
         return_type: Option<T>,
-        body_id: BodyId,
         fn_id: HirId,
         tcx: &TyCtxt<'_>,
     ) -> Self {
@@ -194,9 +194,8 @@ impl FunctionItem {
             src_file_id,
             params,
             return_type,
-            body_id,
             name,
-            fn_id,
+            fn_id: Some(fn_id)
         }
     }
 
@@ -205,13 +204,13 @@ impl FunctionItem {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StaticFnItem {
     pub params: Vec<Param>,
     pub return_type: Option<T>,
     pub parent: T,
-    pub body_id: BodyId,
-    pub fn_id: HirId,
+    #[serde(skip)]
+    pub fn_id: Option<HirId>,
     pub name: String,
     pub src_file_id: usize,
 }
@@ -222,7 +221,6 @@ impl StaticFnItem {
         params: Vec<Param>,
         return_type: Option<T>,
         parent: T,
-        body_id: BodyId,
         fn_id: HirId,
         tcx: &TyCtxt<'_>,
     ) -> Self {
@@ -234,8 +232,7 @@ impl StaticFnItem {
             params,
             parent,
             return_type,
-            body_id,
-            fn_id,
+            fn_id: Some(fn_id),
             name,
         }
     }
@@ -255,10 +252,11 @@ impl StaticFnItem {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FieldAccessItem {
     pub ty: T,
-    pub field_id: HirId,
+    #[serde(skip)]
+    pub field_id: Option<HirId>,
     pub parent: T,
     pub name: String,
     pub src_file_id: usize,
@@ -280,17 +278,17 @@ impl FieldAccessItem {
             name,
             ty,
             parent,
-            field_id,
+            field_id: Some(field_id)
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConstructorItem {
     pub params: Vec<Param>,
     pub parent: T,
-    pub body_id: BodyId,
-    pub fn_id: HirId,
+    #[serde(skip)]
+    pub fn_id: Option<HirId>,
     pub src_file_id: usize,
 }
 
@@ -298,7 +296,6 @@ impl ConstructorItem {
     pub fn new(
         src_file_id: usize,
         fn_sig: &FnSig,
-        body_id: BodyId,
         fn_id: HirId,
         parent_hir_id: HirId,
         tcx: &TyCtxt<'_>,
@@ -324,9 +321,9 @@ impl ConstructorItem {
     }
 }
 
-#[derive(Debug, Clone, Hash, Eq)]
+#[derive(Debug, Clone, Hash, Eq, Serialize, Deserialize)]
 pub enum T {
-    Prim(PrimTy),
+    Prim(PrimT),
     Complex(ComplexT),
 }
 
@@ -347,6 +344,40 @@ impl PartialEq for T {
 
 impl From<PrimTy> for T {
     fn from(ty: PrimTy) -> Self {
+        let ty = match ty {
+            PrimTy::Int(int_ty) => {
+                let int_ty = match int_ty {
+                    IntTy::Isize => IntT::Isize,
+                    IntTy::I8 => IntT::I8,
+                    IntTy::I16 => IntT::I16,
+                    IntTy::I32 => IntT::I32,
+                    IntTy::I64 => IntT::I64,
+                    IntTy::I128 => IntT::I128
+                };
+                PrimT::Int(int_ty)
+            }
+            PrimTy::Uint(uint_ty) => {
+                let uint_ty = match uint_ty {
+                    UintTy::Usize => UintT::Usize,
+                    UintTy::U8 => UintT::U8,
+                    UintTy::U16 => UintT::U16,
+                    UintTy::U32 => UintT::U32,
+                    UintTy::U64 => UintT::U64,
+                    UintTy::U128 => UintT::U128,
+                };
+                PrimT::Uint(uint_ty)
+            }
+            PrimTy::Float(float_ty) => {
+                let float_ty = match float_ty {
+                    FloatTy::F32 => FloatT::F32,
+                    FloatTy::F64 => FloatT::F64
+                };
+                PrimT::Float(float_ty)
+            }
+            PrimTy::Str => PrimT::Str,
+            PrimTy::Bool => PrimT::Bool,
+            PrimTy::Char => PrimT::Char
+        };
         T::Prim(ty)
     }
 }
@@ -373,10 +404,17 @@ impl T {
         }
     }
 
-    pub fn id(&self) -> HirId {
+    pub fn id(&self) -> Option<HirId> {
         match self {
             T::Prim(_) => unimplemented!(),
             T::Complex(complex) => complex.hir_id(),
+        }
+    }
+
+    pub fn expect_id(&self) -> HirId {
+        match self {
+            T::Prim(_) => unimplemented!(),
+            T::Complex(complex) => complex.hir_id().unwrap()
         }
     }
 
@@ -404,10 +442,13 @@ impl Display for T {
     }
 }
 
-#[derive(Debug, Clone, Hash, Eq)]
+#[derive(Debug, Clone, Hash, Eq, Serialize, Deserialize)]
 pub struct ComplexT {
-    hir_id: HirId,
-    def_id: DefId,
+    #[serde(skip)]
+    hir_id: Option<HirId>,
+
+    #[serde(skip)]
+    def_id: Option<DefId>,
     name: String,
 }
 
@@ -420,12 +461,12 @@ impl PartialEq for ComplexT {
 impl ComplexT {
     pub fn new(hir_id: HirId, def_id: DefId, name: String) -> Self {
         ComplexT {
-            hir_id,
+            hir_id: Some(hir_id),
             name,
-            def_id,
+            def_id: Some(def_id),
         }
     }
-    pub fn hir_id(&self) -> HirId {
+    pub fn hir_id(&self) -> Option<HirId> {
         self.hir_id
     }
 
@@ -433,12 +474,12 @@ impl ComplexT {
         &self.name
     }
 
-    pub fn def_id(&self) -> DefId {
+    pub fn def_id(&self) -> Option<DefId> {
         self.def_id
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Param {
     real_ty: T,
     original_ty: T,
@@ -480,6 +521,90 @@ impl Param {
         match self.real_ty {
             T::Prim(_) => true,
             T::Complex(_) => false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, Eq, PartialEq)]
+pub enum PrimT {
+    Int(IntT),
+    Uint(UintT),
+    Float(FloatT),
+    Str,
+    Bool,
+    Char,
+}
+
+impl PrimT {
+    pub fn name_str(self) -> &'static str {
+        match self {
+            PrimT::Int(i) => i.name_str(),
+            PrimT::Uint(u) => u.name_str(),
+            PrimT::Float(f) => f.name_str(),
+            PrimT::Str => "str",
+            PrimT::Bool => "bool",
+            PrimT::Char => "char",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, Eq, PartialEq)]
+pub enum IntT {
+    Isize,
+    I8,
+    I16,
+    I32,
+    I64,
+    I128,
+}
+
+impl IntT {
+    pub fn name_str(&self) -> &'static str {
+        match *self {
+            IntT::Isize => "isize",
+            IntT::I8 => "i8",
+            IntT::I16 => "i16",
+            IntT::I32 => "i32",
+            IntT::I64 => "i64",
+            IntT::I128 => "i128",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, Eq, PartialEq)]
+pub enum UintT {
+    Usize,
+    U8,
+    U16,
+    U32,
+    U64,
+    U128,
+}
+
+impl UintT {
+    pub fn name_str(&self) -> &'static str {
+        match *self {
+            UintT::Usize => "usize",
+            UintT::U8 => "u8",
+            UintT::U16 => "u16",
+            UintT::U32 => "u32",
+            UintT::U64 => "u64",
+            UintT::U128 => "u128",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, Eq, PartialEq)]
+pub enum FloatT {
+    F32,
+    F64,
+}
+
+impl FloatT {
+    pub fn name_str(self) -> &'static str {
+        match self {
+            FloatT::F32 => "f32",
+            FloatT::F64 => "f64",
         }
     }
 }

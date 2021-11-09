@@ -38,7 +38,7 @@ pub fn ty_to_param(ty: &Ty, self_hir_id: HirId, tcx: &TyCtxt<'_>) -> Option<Para
 
     let real_ty = ty_to_t(ty, self_hir_id, tcx)?;
     if real_ty.is_complex() {
-        let def_id = tcx.hir().local_def_id(real_ty.id()).to_def_id();
+        let def_id = tcx.hir().local_def_id(real_ty.expect_id()).to_def_id();
         let original_ty = T::Complex(ComplexT::new(ty.hir_id, def_id, real_ty.name()));
         Some(Param::new(real_ty, original_ty, by_reference, mutable))
     } else {
@@ -52,7 +52,7 @@ pub fn ty_to_t(ty: &Ty, self_: HirId, tcx: &TyCtxt<'_>) -> Option<T> {
         TyKind::Path(q_path) => {
             match q_path {
                 QPath::Resolved(_, path) => {
-                    match path.res {
+                    match &path.res {
                         Res::Def(_, def_id) => {
                             let local_def_id = def_id.as_local()?;
 
@@ -62,19 +62,23 @@ pub fn ty_to_t(ty: &Ty, self_: HirId, tcx: &TyCtxt<'_>) -> Option<T> {
                             let complex_ty = ComplexT::new(hir_id, def_id, name);
                             Some(T::Complex(complex_ty))
                         }
-                        Res::PrimTy(prim_ty) => Some(T::from(prim_ty)),
+                        Res::PrimTy(prim_ty) => Some(T::from(*prim_ty)),
                         Res::SelfTy(trait_def_id, impl_) => {
                             // Self type, so replace it with the parent id
-                            let name = node_to_name(&tcx.hir().get(self_), tcx);
+                            let name = node_to_name(&tcx.hir().get(self_), tcx).unwrap();
                             let def_id = tcx.hir().local_def_id(self_).to_def_id();
                             Some(T::Complex(ComplexT::new(self_, def_id, name)))
                         }
                         _ => {
-                            unimplemented!()
+                            unimplemented!("{:?}", &path.res)
                         }
                     }
                 }
-                _ => unimplemented!(),
+                QPath::TypeRelative(ty, path_segement) => {
+                    println!("TODO parse type relative");
+                    None
+                }
+                _ => unimplemented!("{:?}", q_path),
             }
         }
         _ => unimplemented!(),
@@ -110,12 +114,19 @@ pub fn join_path_to_str(path: &rustc_hir::Path) -> String {
         .join("::")
 }
 
-pub fn node_to_name(node: &Node<'_>, tcx: &TyCtxt<'_>) -> String {
+pub fn node_to_name(node: &Node<'_>, tcx: &TyCtxt<'_>) -> Option<String> {
     match node {
-        Node::Item(item) => item_to_name(item, tcx),
+        Node::Item(item) => Some(item_to_name(item, tcx)),
+        Node::Crate(_) => Some("crate".to_string()),
+        Node::ForeignItem(fi) => Some(fi.ident.name.to_ident_string()),
+        Node::ImplItem(ii) => Some(ii.ident.name.to_ident_string()),
+        Node::TraitItem(ti) => Some(ti.ident.name.to_ident_string()),
+        Node::Variant(v) => Some(v.ident.name.to_ident_string()),
+        Node::Field(f) => Some(f.ident.name.to_ident_string()),
+        Node::Lifetime(lt) => Some(lt.name.ident().name.to_ident_string()),
+        Node::GenericParam(param) => Some(param.name.ident().name.to_ident_string()),
         _ => {
-            println!("Returning {:?}", node);
-            unimplemented!()
+            None
         }
     }
 }
@@ -124,14 +135,16 @@ pub fn item_to_name(item: &Item<'_>, tcx: &TyCtxt<'_>) -> String {
     match &item.kind {
         ItemKind::Impl(im) => ty_to_name(im.self_ty, tcx),
         ItemKind::Struct(_, _) => tcx.def_path_str(item.def_id.to_def_id()),
-        _ => unimplemented!(),
+        ItemKind::Enum(_, _) => tcx.def_path_str(item.def_id.to_def_id()),
+        _ => item.ident.name.to_ident_string(),
     }
 }
 
 pub fn ty_to_name(ty: &Ty<'_>, tcx: &TyCtxt<'_>) -> String {
     match &ty.kind {
         TyKind::Path(path) => qpath_to_name(path, tcx),
-        _ => unimplemented!(),
+        TyKind::Rptr(_, mut_ty) => ty_to_name(mut_ty.ty, tcx),
+        _ => unimplemented!("Trying to convert ty to name: {:?}", ty),
     }
 }
 
@@ -159,21 +172,30 @@ pub fn res_to_name(res: &Res, tcx: &TyCtxt<'_>) -> String {
 
 pub fn impl_to_struct_id(im: &Impl) -> DefId {
     let self_ty = im.self_ty;
-    match &self_ty.kind {
+    ty_kind_to_struct_id(&self_ty.kind)
+}
+
+pub fn ty_kind_to_struct_id(kind: &TyKind<'_>) -> DefId {
+    match kind {
         TyKind::Path(qpath) => match qpath {
             QPath::Resolved(_, path) => path.res.def_id(),
             _ => unimplemented!(),
         },
-        _ => unimplemented!(),
+        TyKind::Rptr(lifetime, mut_ty) => {
+            let ty = mut_ty.ty;
+            ty_kind_to_struct_id(&ty.kind)
+
+        }
+        _ => unimplemented!("Trying to convert to struct: {:?}", kind),
     }
 }
 
-pub fn span_to_path(span: &Span, tcx: &TyCtxt<'_>) -> PathBuf {
+pub fn span_to_path(span: &Span, tcx: &TyCtxt<'_>) -> Option<PathBuf> {
     let file_name = tcx.sess().source_map().span_to_filename(span.clone());
     match file_name {
         FileName::Real(real_file_name) => match real_file_name {
-            RealFileName::LocalPath(path) => path,
-            RealFileName::Remapped { .. } => unimplemented!(),
+            RealFileName::LocalPath(path) => Some(path),
+            RealFileName::Remapped { .. } => None,
         },
         _ => unimplemented!(),
     }

@@ -1,8 +1,12 @@
 #![feature(rustc_private)]
-mod mir;
 mod data_structures;
-mod writer;
 mod hir;
+mod mir;
+mod writer;
+mod util;
+
+#[macro_use]
+extern crate lazy_static;
 
 extern crate rustc_data_structures;
 extern crate rustc_driver;
@@ -13,22 +17,19 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 
+use crate::hir::hir_analysis;
+use crate::mir::{CUSTOM_OPT_MIR_ANALYSIS, CUSTOM_OPT_MIR_INSTRUMENTATION};
+use generation::source::{Project, ProjectScanner};
+use rustc_driver::Compilation;
+use rustc_interface::interface::Compiler;
+use rustc_interface::{Config, Queries};
+use rustc_middle::ty::TyCtxt;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
 use std::process;
 use std::process::exit;
-use rustc_driver::Compilation;
-use rustc_interface::{Config, Queries};
-use rustc_interface::interface::Compiler;
-use rustc_middle::ty::TyCtxt;
-use crate::hir::{enter_with_fn, hir_analysis};
-use crate::mir::CompilerCallbacks;
-
-pub enum Stage {
-    Analyze,
-    Instrument
-}
+use crate::util::{get_crate_root, get_testify_flags, get_stage, Stage, get_cut_name};
 
 pub struct CompilerCallbacks {
     stage: Stage,
@@ -41,8 +42,8 @@ impl CompilerCallbacks {
 }
 
 fn enter_with_fn<'tcx, TyCtxtFn>(queries: &'tcx rustc_interface::Queries<'tcx>, enter_fn: TyCtxtFn)
-    where
-        TyCtxtFn: Fn(TyCtxt),
+where
+    TyCtxtFn: Fn(TyCtxt),
 {
     queries.global_ctxt().unwrap().peek_mut().enter(enter_fn);
 }
@@ -63,7 +64,11 @@ impl rustc_driver::Callbacks for CompilerCallbacks {
         }
     }
 
-    fn after_analysis<'tcx>(&mut self, _compiler: &Compiler, _queries: &'tcx Queries<'tcx>) -> Compilation {
+    fn after_analysis<'tcx>(
+        &mut self,
+        _compiler: &Compiler,
+        _queries: &'tcx Queries<'tcx>,
+    ) -> Compilation {
         if self.stage == Stage::Analyze {
             enter_with_fn(_queries, hir_analysis);
         }
@@ -116,17 +121,12 @@ pub fn sysroot() -> String {
     sysroot.to_string()
 }
 
-fn get_stage(args: &[String]) -> Stage {
-    let stage_arg = args.iter().find(|&a| {
-        a.starts_with("--testify-stage")
-    });
-
-    if let Some(stage_arg) = stage_arg {
-        let stage = stage_arg.split("=").last().unwrap();
-        Stage::from(stage)
-    } else {
-        Stage::Instrument
+pub fn set_source_files(project: &Project) {
+    let mut source_file_map = hir::SOURCE_FILE_MAP.lock().unwrap();
+    for (pos, path) in project.rel_file_names().iter().enumerate() {
+        source_file_map.insert(path.to_path_buf(), pos);
     }
+    drop(source_file_map);
 }
 
 pub fn get_compiler_args(args: &[String]) -> Vec<String> {
@@ -139,12 +139,15 @@ pub fn get_compiler_args(args: &[String]) -> Vec<String> {
 
     if wrapper_mode {
         // we still want to be able to invoke it normally though
-        rustc_args = args.iter().skip(1).filter(|&a| !a.starts_with("--testify-stage")).map(|s| s.to_string()).collect();
+        rustc_args = args
+            .iter()
+            .skip(1)
+            .map(|s| s.to_string())
+            .collect();
     } else {
         rustc_args = args
             .iter()
             .skip(1)
-            .filter(|&a| !a.starts_with("--testify-stage"))
             .take_while(|s| *s != "--")
             .map(|s| s.to_string())
             .collect();
@@ -158,20 +161,26 @@ pub fn get_compiler_args(args: &[String]) -> Vec<String> {
         rustc_args.push("--sysroot".to_owned());
         rustc_args.push(sysroot());
     }
-    rustc_args.push("--allow".to_owned());
-    rustc_args.push("dead_code".to_owned());
+    /*rustc_args.push("--allow".to_owned());
+    rustc_args.push("dead_code".to_owned());*/
     rustc_args.push("--allow".to_owned());
     rustc_args.push("deprecated".to_owned());
-    rustc_args.push("--allow".to_owned());
-    rustc_args.push("unused".to_owned());
+    /*rustc_args.push("--allow".to_owned());
+    rustc_args.push("unused".to_owned());*/
 
     rustc_args
 }
 
-
 fn run_rustc() -> Result<(), i32> {
-    let mut std_env_args: Vec<String> = std::env::args().collect();
-    let stage = get_stage(&std_env_args);
+    let std_env_args: Vec<String> = std::env::args().collect();
+
+    let testify_env_flags = get_testify_flags();
+    let stage = get_stage(&testify_env_flags);
+    let crate_root = get_crate_root(&testify_env_flags);
+    let cut_name = get_cut_name(&testify_env_flags);
+
+    let project = ProjectScanner::open(&crate_root);
+    set_source_files(&project);
     let rustc_args = get_compiler_args(&std_env_args);
     pass_to_rustc(&rustc_args, stage);
     return Ok(());
@@ -180,8 +189,7 @@ fn run_rustc() -> Result<(), i32> {
 pub fn pass_to_rustc(rustc_args: &[String], stage: Stage) {
     let mut callbacks = CompilerCallbacks::new(stage);
 
-    let err = rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks)
-        .run();
+    let err = rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run();
     if err.is_err() {
         eprintln!("Error while compiling dependency");
         std::process::exit(-1);
@@ -189,10 +197,5 @@ pub fn pass_to_rustc(rustc_args: &[String], stage: Stage) {
 }
 
 fn main() {
-    exit(
-        run_rustc()
-            .err()
-            .unwrap_or(0),
-    )
-
+    exit(run_rustc().err().unwrap_or(0))
 }

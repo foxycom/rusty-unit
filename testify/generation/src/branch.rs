@@ -43,7 +43,9 @@ pub struct DecisionBranch {
 }
 
 impl DecisionBranch {
-
+    pub fn new(id: u64, source: usize, target: usize) -> Self {
+        DecisionBranch { id, source, target }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
