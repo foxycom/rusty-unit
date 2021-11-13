@@ -11,5 +11,4 @@ extern crate rustc_span;
 extern crate derive_builder;
 
 
-pub mod monitor;
 pub mod serialization;

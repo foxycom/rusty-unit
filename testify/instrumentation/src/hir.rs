@@ -9,11 +9,11 @@ use std::sync::{Arc, Mutex};
 
 use crate::writer::HirWriter;
 use generation::analysis::HirAnalysis;
+use generation::HIR_LOG_PATH;
 use generation::types::{
     Callable, ComplexT, FieldAccessItem, FunctionItem, MethodItem, StaticFnItem, T,
 };
 use generation::util::{fn_ret_ty_to_t, impl_to_struct_id, item_to_name, node_to_name, span_to_path, ty_to_param, ty_to_t};
-use instrumentation::HIR_LOG_PATH;
 use crate::util::{get_cut_name, get_testify_flags};
 lazy_static! {
     pub static ref SOURCE_FILE_MAP: Arc<Mutex<HashMap<PathBuf, usize>>> =
@@ -45,8 +45,6 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
         if file_path.as_ref().unwrap().ends_with("testify_monitor.rs") {
             continue;
         }
-
-
 
         match &item.kind {
             ItemKind::Fn(sig, generics, body_id) => {

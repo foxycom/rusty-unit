@@ -23,3 +23,4 @@ rustc_span = {path = "/Users/tim/rust/compiler/rustc_span"}
 rustc_hir = {path = "/Users/tim/rust/compiler/rustc_hir"}
 rustc_mir = {path = "/Users/tim/rust/compiler/rustc_mir"}
 rustc_target = {path = "/Users/tim/rust/compiler/rustc_target"}
+rustc_index = {path = "/Users/tim/rust/compiler/rustc_index"}

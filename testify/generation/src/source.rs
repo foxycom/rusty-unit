@@ -1,18 +1,19 @@
 use crate::branch::Branch;
 use crate::chromosome::{Container, EnumType, StructType, TestCase, ToSyn};
 use crate::types::Callable;
-use crate::{fs_util, util};
+use crate::{fs_util, util, HIR_LOG_PATH, MIR_LOG_PATH};
 use dircpy_stable::copy_dir;
 use proc_macro2::{Ident, Span};
 use quote::ToTokens;
 use rustc_middle::ty::TyCtxt;
 use std::error::Error;
 use std::fmt::{Debug, Formatter};
+use std::fs::OpenOptions;
 use std::hash::{Hash, Hasher};
 use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::{fs, io};
+use std::{fs, io, process};
 use syn::ext::IdentExt;
 use syn::punctuated::Punctuated;
 use syn::token::Else;
@@ -26,7 +27,10 @@ use syn::{
 use toml::value::Table;
 use toml::Value;
 
-const OUTPUT_ROOT: &'static str = "/Users/tim/Documents/master-thesis/evaluation/current";
+pub const OUTPUT_ROOT: &'static str = "/Users/tim/Documents/master-thesis/evaluation/current";
+pub const LOG_DIR: &'static str = "/Users/tim/Documents/master-thesis/testify/log";
+
+pub struct AnalysisError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum FileType {
@@ -360,7 +364,8 @@ impl Project {
             file.write();
         }
 
-        let monitor_path = PathBuf::from("/Users/tim/Documents/master-thesis/testify/src/monitor.rs");
+        let monitor_path =
+            PathBuf::from("/Users/tim/Documents/master-thesis/testify/instrumentation/src/monitor.rs");
         let monitor_out_path = self.output_root.join("src/testify_monitor.rs");
         fs::copy(monitor_path.as_path(), monitor_out_path.as_path()).unwrap();
 
@@ -381,28 +386,111 @@ impl Project {
         first_source_file.write();
     }
 
-    pub fn run_tests(&self) {
-        let mut cmd = Command::new(self.cargo_path.as_path());
-        let log_file = fs::File::create("out.log").unwrap();
-        let err_file = fs::File::create("err.log").unwrap();
-        cmd.stdin(Stdio::piped())
-            .stdout(Stdio::from(log_file))
-            .stderr(Stdio::from(err_file));
+    pub fn run_tests(&self) -> Result<(), AnalysisError> {
+        let log_path = PathBuf::from(LOG_DIR).join("tests_log.log");
+        let error_path = PathBuf::from(LOG_DIR).join("tests_error.log");
+        let mut log_file = OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(log_path.as_path())
+            .unwrap();
+        let mut err_file = OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(error_path.as_path())
+            .unwrap();
 
-        // Run the tests
-        cmd.args(&[
-            "test",
-            /* "--package",
-            &self.toml.package_name,*/
-            "testify_tests",
-        ])
-        .current_dir(self.output_root.as_path());
-        match cmd.status() {
-            Ok(_) => {
-                //println!("Test {}: OK", test_case.name());
-            }
-            Err(e) => panic!("{}", e),
+        let cmd = process::Command::new("cargo")
+            .env(
+                "RUSTC_WRAPPER",
+                "/Users/tim/Documents/master-thesis/testify/target/debug/instrumentation",
+            )
+            .env(
+                "TESTIFY_FLAGS",
+                &format!(
+                    "--stage=instrument --crate={} --crate-name={}",
+                    self.project_root().to_str().unwrap(),
+                    self.crate_name()
+                ),
+            )
+            .arg("+nightly-aarch64-apple-darwin")
+            .arg("test")
+            .arg("testify_tests")
+            .current_dir(self.output_root())
+            .stdin(Stdio::piped())
+            .stdout(Stdio::from(log_file))
+            .stderr(Stdio::from(err_file))
+            .status()
+            .unwrap();
+
+        if !cmd.success() {
+            let err = AnalysisError {};
+            return Err(err);
         }
+
+        Ok(())
+    }
+
+    pub fn analyze(&self) -> Result<(), AnalysisError> {
+        if let Err(err) = std::fs::remove_file(MIR_LOG_PATH) {
+            match err.kind() {
+                ErrorKind::NotFound => {}
+                _ => panic!("{}", err),
+            }
+        }
+
+        if let Err(err) = std::fs::remove_file(HIR_LOG_PATH) {
+            match err.kind() {
+                ErrorKind::NotFound => {}
+                _ => panic!("{}", err),
+            }
+        }
+
+        let log_path = PathBuf::from(LOG_DIR).join("analysis.log");
+        let error_path = PathBuf::from(LOG_DIR).join("analysis_err.log");
+
+        let mut log_file = OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(log_path.as_path())
+            .unwrap();
+        let mut err_file = OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(error_path.as_path())
+            .unwrap();
+
+        let cmd = process::Command::new("cargo")
+            .env(
+                "RUSTC_WRAPPER",
+                "/Users/tim/Documents/master-thesis/testify/target/debug/instrumentation",
+            )
+            .env(
+                "TESTIFY_FLAGS",
+                &format!(
+                    "--stage=analyze --crate={} --crate-name={}",
+                    self.project_root().to_str().unwrap(),
+                    self.crate_name()
+                ),
+            )
+            .arg("+nightly-aarch64-apple-darwin")
+            .arg("build")
+            .current_dir(self.output_root())
+            .stdout(Stdio::from(log_file))
+            .stderr(Stdio::from(err_file))
+            .status()
+            .unwrap();
+
+        if !cmd.success() {
+            let err = AnalysisError {};
+            return Err(err);
+        }
+
+        Ok(())
     }
 
     pub fn clear_tests(&mut self) {
@@ -681,249 +769,5 @@ impl Mod {
 
     pub fn ident(&self) -> &Ident {
         &self.syn_item_mod.ident
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use proc_macro2::Ident;
-    use toml::value::Table;
-    use toml::Value;
-
-    fn ident(name: &str) -> Ident {
-        Ident::new(name, Span::call_site())
-    }
-
-    #[test]
-    fn test_use_contains_basic_ident() {
-        let import: ItemUse = syn::parse_quote! {use something::from::Hello;};
-        let use_item = Use::new(import);
-
-        let ident = Ident::new("Hello", Span::call_site());
-        assert!(use_item.ends_with(&ident));
-    }
-
-    #[test]
-    fn test_use_contains_path() {
-        let import: ItemUse = syn::parse_quote! {use something::from::Hello;};
-
-        let us = common::source::Use::new(import);
-    }
-
-    #[test]
-    fn test_toml_parse_library() {
-        let table: Table = toml::from_str(
-            r#"
-            [package]
-            name = "additions"
-
-            [lib]
-            name = "additions-lib"
-            path = "./src/lib.rs"
-        "#,
-        )
-        .unwrap();
-
-        let lib = TomlScanner::library(&table);
-        let expected_lib =
-            FileType::Library("additions-lib".to_string(), PathBuf::from("./src/lib.rs"));
-        assert_eq!(expected_lib, lib);
-    }
-
-    #[test]
-    fn test_toml_parse_executables() {
-        let table: Table = toml::from_str(
-            r#"
-            [package]
-            name = "additions"
-
-            [[bin]]
-            name = "additions"
-            path = "./src/bin/main.rs"
-
-            [[bin]]
-            name = "some-other-bin"
-        "#,
-        )
-        .unwrap();
-
-        let executables = TomlScanner::executables(&table);
-        let expected_additions =
-            FileType::Executable("additions".to_string(), PathBuf::from("./src/bin/main.rs"));
-        let expected_other_bin =
-            FileType::Executable("some-other-bin".to_string(), PathBuf::from("src/main.rs"));
-        assert_eq!(executables.len(), 2);
-        assert!(executables.contains(&expected_additions));
-        assert!(executables.contains(&expected_other_bin));
-    }
-
-    #[test]
-    fn test_toml_parse_package() {
-        let table: Table = toml::from_str(
-            r#"
-            [package]
-            name = "additions"
-
-            [[bin]]
-            name = "bin"
-            path = "./src/bin/main.rs"
-        "#,
-        )
-        .unwrap();
-
-        let package_name = TomlScanner::package_name(&table);
-        assert_eq!(String::from("additions"), package_name);
-    }
-
-    #[test]
-    fn test_project_scanner_directory_tree() {
-        let path = "/Users/tim/Documents/master-thesis/testify/tests/examples";
-
-        let project = ProjectScanner::open(path);
-
-        assert_eq!(project.source_files().len(), 2);
-
-        let main_file = project
-            .source_files()
-            .iter()
-            .find(|&sf| sf.file_path().ends_with(Path::new("main.rs")))
-            .unwrap();
-
-        assert!(if let FileType::Executable(_, _) = main_file.file_type() {
-            true
-        } else {
-            false
-        });
-
-        let dependency_file = project
-            .source_files()
-            .iter()
-            .find(|&sf| sf.file_path().ends_with(Path::new("dependency.rs")))
-            .unwrap();
-        assert!(
-            if let FileType::SourceCode(_) = dependency_file.file_type() {
-                true
-            } else {
-                false
-            }
-        );
-    }
-
-    #[test]
-    fn test_main_contains_3_structs() {
-        let main_path =
-            Path::new("/Users/tim/Documents/master-thesis/testify/tests/examples/src/main.rs");
-        let file_type = FileType::Executable("".to_owned(), main_path.to_path_buf());
-        let output_dir = std::env::temp_dir();
-        let main = SourceFile::new(&main_path, output_dir.as_path(), file_type);
-
-        assert_eq!(main.containers.len(), 3);
-
-        let area_calculator = T::new(vec![ident("main"), ident("AreaCalculator")]);
-        let rectangle = T::new(vec![ident("main"), ident("Rectangle")]);
-        let some_struct = T::new(vec![ident("main"), ident("SomeStruct")]);
-
-        let structs = vec![area_calculator, rectangle, some_struct];
-        let contains_all_structs = structs
-            .iter()
-            .map(|s| main.containers.iter().find(|&c| c.ty() == s).is_some())
-            .all(|r| r);
-        assert!(contains_all_structs);
-    }
-
-    #[test]
-    fn test_area_calculator_has_2_methods() {
-        let main_path =
-            Path::new("/Users/tim/Documents/master-thesis/testify/tests/examples/src/main.rs");
-        let file_type = FileType::Executable("".to_owned(), main_path.to_path_buf());
-        let output_dir = std::env::temp_dir();
-        let main = SourceFile::new(&main_path, output_dir.as_path(), file_type);
-
-        assert_eq!(main.containers.len(), 3);
-
-        let path = vec![ident("main"), ident("AreaCalculator")];
-        let area_calculator_ty = T::new(path);
-
-        assert_eq!(main.callables_of(&area_calculator_ty).len(), 3);
-    }
-
-    #[test]
-    fn test_dependency_has_full_path() {
-        let main_path =
-            Path::new("/Users/tim/Documents/master-thesis/testify/tests/examples/src/main.rs");
-        let file_type = FileType::Executable("".to_owned(), main_path.to_path_buf());
-        let output_dir = std::env::temp_dir();
-
-        let main = SourceFile::new(&main_path, output_dir.as_path(), file_type);
-
-        assert_eq!(main.containers.len(), 3);
-
-        let path = vec![ident("main"), ident("SomeStruct")];
-        let some_struct_ty = T::new(path);
-
-        let callables = main.callables_of(&some_struct_ty);
-
-        let mut dep_method = None;
-        for c in callables {
-            if c.name() == "something_with_dependency" {
-                dep_method = Some(c);
-                break;
-            }
-        }
-
-        let dependency_ty = T::new(vec![
-            ident("crate"),
-            ident("dependency"),
-            ident("DependencyStruct"),
-        ]);
-
-        let dep_param = dep_method
-            .unwrap()
-            .params()
-            .iter()
-            .find(|&p| p.real_ty() == &dependency_ty);
-
-        assert!(dep_param.is_some());
-    }
-
-    #[test]
-    fn test_nested_dependency() {
-        let main_path =
-            Path::new("/Users/tim/Documents/master-thesis/testify/tests/examples/src/main.rs");
-        let file_type = FileType::Executable("".to_owned(), main_path.to_path_buf());
-        let output_dir = std::env::temp_dir();
-        let main = SourceFile::new(&main_path, output_dir.as_path(), file_type);
-
-        assert_eq!(main.containers.len(), 3);
-
-        let path = vec![ident("main"), ident("SomeStruct")];
-        let some_struct_ty = T::new(path);
-
-        let callables = main.callables_of(&some_struct_ty);
-
-        let mut dep_method = None;
-        for c in callables {
-            if c.name() == "invoke_nested_dependency" {
-                dep_method = Some(c);
-                break;
-            }
-        }
-
-        let nested_dependency_ty = T::new(vec![
-            ident("crate"),
-            ident("dependency"),
-            ident("nested_mod"),
-            ident("sub_mod"),
-            ident("NestedStruct"),
-        ]);
-
-        let dep_param = dep_method
-            .unwrap()
-            .params()
-            .iter()
-            .find(|&p| p.real_ty() == &nested_dependency_ty);
-
-        assert!(dep_param.is_some())
     }
 }

@@ -26,3 +26,5 @@ pub mod generators;
 pub mod fs_util;
 pub mod operators;
 
+pub const MIR_LOG_PATH: &'static str = "/Users/tim/Documents/master-thesis/testify/log/mir.log";
+pub const HIR_LOG_PATH: &'static str = "/Users/tim/Documents/master-thesis/testify/log/hir.json";
