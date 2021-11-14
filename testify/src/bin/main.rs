@@ -20,16 +20,15 @@ use std::time::Duration;
 
 use clap::Clap;
 use generation::chromosome::{Chromosome, TestCase};
-use generation::{HIR_LOG_PATH, MIR_LOG_PATH};
 use generation::parser::{HirParser, MirParser};
-use generation::source::{AnalysisError, LOG_DIR, Project, ProjectScanner};
+use generation::source::{AnalysisError, Project, ProjectScanner, LOG_DIR};
+use generation::{HIR_LOG_PATH, MIR_LOG_PATH};
 
 #[derive(Clap)]
 struct CliOpts {
     #[clap(short, long)]
     path: String,
 }
-
 
 fn main() {
     let opts: CliOpts = CliOpts::parse();
@@ -38,7 +37,7 @@ fn main() {
     project.clear_build_dirs();
     project.make_copy();
 
-    if let Err(AnalysisError {  }) = project.analyze() {
+    if let Err(AnalysisError {}) = project.analyze() {
         eprintln!("Analysis failed!");
         panic!();
     }
@@ -55,7 +54,9 @@ fn main() {
         .open(callables_log_path.as_path())
         .unwrap();
     hir_analysis.callables().iter().for_each(|c| {
-        callables_log.write_all(format!("{:?}\n", c).as_bytes()).unwrap();
+        callables_log
+            .write_all(format!("{:?}\n", c).as_bytes())
+            .unwrap();
     });
 
     let mut bodies_log_path = PathBuf::from(LOG_DIR).join("bodies.txt");
@@ -66,15 +67,23 @@ fn main() {
         .open(bodies_log_path.as_path())
         .unwrap();
 
+    // Only for debugging
     mir_analysis.bodies.iter().for_each(|b| {
-        bodies_log.write_all(format!("{:?}\n", b).as_bytes()).unwrap();
+        bodies_log
+            .write_all(format!("{:?}\n", b).as_bytes())
+            .unwrap();
     });
 
     let hir_analysis = Rc::new(hir_analysis);
+
+    (0..10)
+        .map(|_| TestCase::random(hir_analysis.clone()))
+        .for_each(|t| println!("{}", rustfmt_wrapper::rustfmt(t.to_string()).unwrap()));
+    /*project.add_tests(&tests);
+
     if let Err(_) = project.run_tests() {
         panic!("Tests were unsuccessful");
-    }
-
+    }*/
 
     /*let mut file = OpenOptions::new()
         .create(true)
@@ -137,9 +146,6 @@ fn main() {
         }
     }*/
 }
-
-
-
 
 pub struct Client {
     connection: TcpStream,

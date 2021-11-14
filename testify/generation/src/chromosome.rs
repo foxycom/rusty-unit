@@ -717,8 +717,12 @@ impl ToSyn for TestCase {
 
         let stmts: Vec<Stmt> = self.stmts.iter().map(|s| s.to_syn()).collect();
 
-        let set_test_id: Stmt = syn::parse_quote! {
-            testify_monitor::MONITOR.with(|l| l.borrow_mut().set_test_id(#id));
+        //let set_test_id: Stmt = syn::parse_quote! {
+        //    testify_monitor::MONITOR.with(|l| l.borrow_mut().set_test_id(#id));
+        //};
+
+        let set_test_id_stmt: Stmt = syn::parse_quote! {
+            testify_monitor::set_test_id(#id);
         };
         /*let wait: Stmt = syn::parse_quote! {
             testify_monitor::MONITOR.with(|l| l.borrow_mut().wait());
@@ -727,7 +731,7 @@ impl ToSyn for TestCase {
         syn::parse_quote! {
             #[test]
             fn #ident() {
-                #set_test_id
+                #set_test_id_stmt
                 #(#stmts)*
                 //#wait
             }
@@ -781,8 +785,6 @@ impl Chromosome for TestCase {
         while test_case.size() < 5 {
             test_case.insert_random_stmt();
         }
-
-        //test_case.to_file();
 
         assert_eq!(test_case.size(), test_case.ddg.node_count());
         test_case

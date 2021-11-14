@@ -150,7 +150,6 @@ pub fn trace_branch_bool(
     MONITOR.with(|m| m.borrow_mut().trace_branch(global_id, local_id, block, dist));
 }
 
-
 fn distance(left: f64, right: f64, op: BinaryOp, branch_value: bool, is_hit: bool) -> f64 {
     if is_hit {
         return 0.0;
@@ -220,3 +219,6 @@ fn distance(left: f64, right: f64, op: BinaryOp, branch_value: bool, is_hit: boo
     }
 }
 
+pub fn set_test_id(id: u64) {
+    MONITOR.with (|m| m.borrow_mut().set_test_id (id));
+}

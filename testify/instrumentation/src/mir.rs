@@ -21,7 +21,7 @@ use rustc_middle::hir::map::ParentHirIterator;
 use rustc_middle::mir::interpret::{Allocation, ConstValue, Scalar};
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::StatementKind::{Assign, SetDiscriminant};
-use rustc_middle::mir::{BasicBlock, BasicBlockData, BinOp, Body, CastKind, Constant, ConstantKind, Local, LocalDecl, LocalDecls, Operand, Place, Rvalue, SourceInfo, SourceScope, Statement, StatementKind, SwitchTargets, Terminator, TerminatorKind, START_BLOCK, UnOp};
+use rustc_middle::mir::{BasicBlock, BasicBlockData, BinOp, Body, CastKind, Constant, ConstantKind, Local, LocalDecl, LocalDecls, Operand, Place, Rvalue, SourceInfo, SourceScope, Statement, StatementKind, SwitchTargets, Terminator, TerminatorKind, UnOp, START_BLOCK, PlaceElem};
 use rustc_middle::ty;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{Const, ConstKind, ConstVid, List, ScalarInt, Ty, TyCtxt, UintTy};
@@ -50,12 +50,13 @@ pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'
         let testify_flags = get_testify_flags();
         let cut_name = get_cut_name(&testify_flags);
 
-        if crate_name.as_str() != cut_name || is_testify_monitor(hir_id, &tcx) {
+        if crate_name.as_str() != cut_name || is_testify_monitor(hir_id, &tcx) || !allowed_item(def) {
             // Don't instrument extern crates
             return tcx.arena.alloc(body);
         }
 
         println!("Analyzing {:?}", def);
+
 
         let mut writer = MirWriter::new(MIR_LOG_PATH);
         let item_name = tcx.hir().opt_name(hir_id);
@@ -70,6 +71,10 @@ pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'
             .iter_enumerated()
             .map(|(block, data)| format!("{} -> {:?}", block.as_usize(), data))
             .collect::<Vec<_>>();
+
+        for block in &blocks {
+            println!("{}", block);
+        }
         writer.write_basic_blocks(&blocks);
 
         let cdg = cdg(&body);
@@ -113,7 +118,7 @@ pub const CUSTOM_OPT_MIR_INSTRUMENTATION: for<'tcx> fn(
     let testify_flags = get_testify_flags();
     let cut_name = get_cut_name(&testify_flags);
 
-    if crate_name.as_str() != cut_name || is_testify_monitor(hir_id, &tcx) {
+    if crate_name.as_str() != cut_name || is_testify_monitor(hir_id, &tcx) || !allowed_item(def) {
         // Don't instrument extern crates
         return tcx.arena.alloc(body);
     }
@@ -146,6 +151,11 @@ pub const CUSTOM_OPT_MIR_INSTRUMENTATION: for<'tcx> fn(
 
     return tcx.arena.alloc(instrumented_body);
 };
+
+fn allowed_item(id: DefId) -> bool {
+    let name = format!("{:?}", id);
+    !(name.contains("serialize") || name.contains("deserialize"))
+}
 
 pub struct MirVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -211,6 +221,13 @@ impl<'tcx> MirVisitor<'tcx> {
         const_arg
     }
 
+    fn mk_const(&self, ty: Ty<'tcx>, val: ConstKind<'tcx>) -> &'tcx Const<'tcx> {
+        let constant = Const { ty, val };
+
+        let interned_constant = self.tcx.mk_const(constant);
+        interned_constant
+    }
+
     fn mk_const_bool(&self, flag: bool) -> &'tcx Const<'tcx> {
         let bool_ty = self.tcx.types.bool;
         let data = ConstKind::Value(ConstValue::Scalar(Scalar::Int(ScalarInt::from(flag))));
@@ -228,9 +245,10 @@ impl<'tcx> MirVisitor<'tcx> {
         Operand::Move(Place::from(local))
     }
 
-    fn mk_move_as_f64_stmt(&self, from: Local, to: Local) -> Statement<'tcx> {
+    fn mk_cast_local_as_f64_stmt(&self, from: Local, to: Local) -> Statement<'tcx> {
         let to_place = self.mk_place(to.index());
         let f64_ty = self.tcx.types.f64;
+
         let stmt_kind = StatementKind::Assign(Box::new((
             to_place,
             Rvalue::Cast(CastKind::Misc, self.mk_move_operand(from), f64_ty),
@@ -239,6 +257,28 @@ impl<'tcx> MirVisitor<'tcx> {
         Statement {
             source_info: self.mk_dummy_source_info(),
             kind: stmt_kind,
+        }
+    }
+
+    fn mk_cast_const_as_f64_stmt(&self, operand: Operand<'tcx>, to: Local) -> Statement<'tcx> {
+        let to_place = self.mk_place(to.index());
+        let f64_ty = self.tcx.types.f64;
+
+        let stmt_kind = StatementKind::Assign(Box::new((
+            to_place,
+            Rvalue::Cast(CastKind::Misc, operand, f64_ty),
+        )));
+
+        Statement {
+            source_info: self.mk_dummy_source_info(),
+            kind: stmt_kind,
+        }
+    }
+
+    fn mk_move_stmt(&self) -> Statement<'tcx> {
+        Statement {
+            source_info: self.mk_dummy_source_info(),
+            kind: StatementKind::Nop
         }
     }
 
@@ -255,6 +295,14 @@ impl<'tcx> MirVisitor<'tcx> {
             span: Default::default(),
             user_ty: None,
             literal: ConstantKind::Ty(self.mk_const_bool(flag)),
+        }))
+    }
+
+    fn mk_const_operand(&self, ty: Ty<'tcx>, val: ConstKind<'tcx>) -> Operand<'tcx> {
+        Operand::Constant(Box::new(Constant {
+            span: Default::default(),
+            user_ty: None,
+            literal: ConstantKind::Ty(self.mk_const(ty, val)),
         }))
     }
 
@@ -381,24 +429,61 @@ impl<'tcx> MirVisitor<'tcx> {
         local_decls: &mut LocalDecls<'tcx>,
         block_id: usize,
         branch_id: u64,
-        operand_def: ValueDef<'tcx>,
+        value_def: &ValueDef<'tcx>,
         switch_value: Option<&'tcx Const>,
         is_hit: bool,
     ) -> (Vec<Statement<'tcx>>, Vec<Operand<'tcx>>) {
-        match operand_def {
+        match value_def {
             ValueDef::BinaryOp(op, left, right) => {
                 let op_def_id = get_binary_op_def_id(&self.tcx);
                 let op_ty = self.tcx.type_of(op_def_id);
                 let op_enum_local = self.store_local_decl(local_decls, op_ty);
-                let op_def_stmt = self.mk_enum_var_stmt(op_enum_local, op.into());
+                let op_def_stmt = self.mk_enum_var_stmt(op_enum_local, (*op).into());
 
-                let left_ty = self.get_local_ty(local_decls, left.local);
-                let left_local = self.store_local_decl(local_decls, left_ty);
-                let left_operand_stmt = self.mk_move_as_f64_stmt(left.local, left_local);
+                // If operand is a variable, then we have to create a new one and move the value
+                // to use it later in the trace call. If it's a const, we can use it directly
+                // as argument
+                let (left_operand_stmt, left_local) = match left.as_ref() {
+                    ValueDef::Const(ty, val) => {
+                        let left_local = self.store_local_decl(local_decls, ty);
+                        let operand = self.mk_const_operand(*ty, *val);
 
-                let right_ty = self.get_local_ty(local_decls, right.local);
-                let right_local = self.store_local_decl(local_decls, right_ty);
-                let right_operand_stmt = self.mk_move_as_f64_stmt(right.local, right_local);
+                        (
+                            self.mk_cast_const_as_f64_stmt(operand, left_local),
+                            left_local,
+                        )
+                    }
+                    ValueDef::Var(place) => {
+                        let left_ty = self.get_local_ty(local_decls, place.local);
+                        let left_local = self.store_local_decl(local_decls, left_ty);
+                        (
+                            self.mk_cast_local_as_f64_stmt(place.local, left_local),
+                            left_local,
+                        )
+                    }
+                    _ => todo!("Operand is {:?}", left),
+                };
+
+                let (right_operand_stmt, right_local) = match right.as_ref() {
+                    ValueDef::Const(ty, val) => {
+                        let right_local = self.store_local_decl(local_decls, ty);
+                        let operand = self.mk_const_operand(*ty, *val);
+
+                        (
+                            self.mk_cast_const_as_f64_stmt(operand, right_local),
+                            right_local,
+                        )
+                    }
+                    ValueDef::Var(place) => {
+                        let right_ty = self.get_local_ty(local_decls, place.local);
+                        let right_local = self.store_local_decl(local_decls, right_ty);
+                        (
+                            self.mk_cast_local_as_f64_stmt(place.local, right_local),
+                            right_local,
+                        )
+                    }
+                    _ => todo!("Operand is {:?}", right),
+                };
 
                 // We need to know whether we are executing a true or a false branch
                 let branch_value_arg = if let Some(switch_value) = switch_value {
@@ -428,10 +513,43 @@ impl<'tcx> MirVisitor<'tcx> {
             ValueDef::Const(ty, val) => {
                 todo!("Const (ty: {:?}, val: {:?})", ty, val)
             }
-            ValueDef::Discriminant(_) => {
 
+            ValueDef::Discriminant(_) => {
                 let stmts = vec![];
 
+                let trace_call_args = vec![
+                    // Global id
+                    self.mk_const_int_operand(self.global_id),
+                    // Local id
+                    self.mk_const_int_operand(branch_id),
+                    // Block id
+                    self.mk_const_int_operand(block_id as u64),
+                    self.mk_const_bool_operand(is_hit),
+                ];
+
+                (stmts, trace_call_args)
+            }
+            ValueDef::UnaryOp(op, inner_value_def) => match op {
+                UnaryOp::Not => {
+                    self.mk_trace_statements(local_decls, block_id, branch_id, inner_value_def, switch_value, !is_hit)
+                },
+                UnaryOp::Neg => todo!("Neg unary op"),
+            },
+            ValueDef::Call => {
+                let stmts = vec![];
+                let trace_call_args = vec![
+                    // Global id
+                    self.mk_const_int_operand(self.global_id),
+                    // Local id
+                    self.mk_const_int_operand(branch_id),
+                    // Block id
+                    self.mk_const_int_operand(block_id as u64),
+                    self.mk_const_bool_operand(is_hit),
+                ];
+                (stmts, trace_call_args)
+            }
+            ValueDef::Field(place, deref) => {
+                let stmts = vec![];
                 let trace_call_args = vec![
                     // Global id
                     self.mk_const_int_operand(self.global_id),
@@ -444,14 +562,14 @@ impl<'tcx> MirVisitor<'tcx> {
 
                 (stmts, trace_call_args)
             }
-            _ => todo!("Value def is {:?}", operand_def)
+            _ => todo!("Value def is {:?}", value_def),
         }
     }
 
     fn binary_branch(
         &mut self,
         local_decls: &mut LocalDecls<'tcx>,
-        operand_def: ValueDef<'tcx>,
+        operand_def: &ValueDef<'tcx>,
         targets: &SwitchTargets,
         branch_ids: &Vec<u64>,
         my_branch_id: u64,
@@ -460,7 +578,6 @@ impl<'tcx> MirVisitor<'tcx> {
         source_block: BasicBlock,
         target_block: BasicBlock,
     ) -> Vec<(BasicBlock, BasicBlockData<'tcx>)> {
-
         let mut blocks_sequence = Vec::with_capacity(targets.all_targets().len());
         let trace_fn = find_trace_fn_for(&self.tcx, &operand_def);
 
@@ -480,9 +597,7 @@ impl<'tcx> MirVisitor<'tcx> {
             self.basic_blocks_num += 1;
             let next_block = BasicBlock::from(self.basic_blocks_num);
 
-
             let terminator = self.mk_call_terminator(local_decls, args, next_block, trace_fn);
-
             let trace_block = self.mk_basic_block(stmts, terminator);
             blocks_sequence.push((current_block, trace_block));
         }
@@ -537,38 +652,47 @@ impl<'tcx> MirVisitor<'tcx> {
                 match value {
                     Rvalue::BinaryOp(op, operands) => {
                         let (left, right) = operands.as_ref();
-                        let left_place = self.get_place(left).unwrap();
-                        let right_place = self.get_place(right).unwrap();
                         return Some(ValueDef::BinaryOp(
                             to_binary_op(op),
-                            left_place.clone(),
-                            right_place.clone(),
+                            Box::new(ValueDef::from(left)),
+                            Box::new(ValueDef::from(right)),
                         ));
                     }
                     Rvalue::UnaryOp(op, operand) => {
-                        let place = self.get_place(operand).unwrap();
-
-                        return Some(ValueDef::UnaryOp(
-                            to_unary_op(op),
-                            place.clone()
-                        ));
-                    }
-                    Rvalue::Use(operand) => {
-                        match operand {
-                            Operand::Constant(constant) => {
-                                match &constant.literal {
-                                    ConstantKind::Ty(c) => {
-                                        return Some(ValueDef::Const(c.ty, c.val));
-                                    }
-                                    ConstantKind::Val(_, _) => {}
+                        return match operand {
+                            Operand::Copy(place) | Operand::Move(place) => {
+                                let inner_value_def = self.get_place_definition(place);
+                                if let ValueDef::BinaryOp(op, left, right) = inner_value_def {
+                                    return Some(ValueDef::BinaryOp(
+                                        invert_binary_op(&op),
+                                        left,
+                                        right,
+                                    ));
                                 }
+                                Some(ValueDef::UnaryOp(
+                                    to_unary_op(op),
+                                    Box::new(inner_value_def),
+                                ))
                             }
-                            _ => {
-                                let place = self.get_place(operand).unwrap();
-                                return Some(ValueDef::Var(place.clone()))
-                            }
+                            Operand::Constant(_) => Some(ValueDef::UnaryOp(
+                                to_unary_op(op),
+                                Box::new(ValueDef::from(operand)),
+                            )),
                         }
                     }
+                    Rvalue::Use(operand) => match operand {
+                        Operand::Constant(constant) => match &constant.literal {
+                            ConstantKind::Ty(c) => {
+                                return Some(ValueDef::Const(c.ty, c.val));
+                            }
+                            ConstantKind::Val(_, _) => todo!(),
+                        },
+                        Operand::Move(place) | Operand::Copy(place) => {
+                            //let place = self.get_place(operand).unwrap();
+                            //return Some(ValueDef::Var(place.clone()));
+                            return Some(self.get_place_definition(place));
+                        }
+                    },
                     Rvalue::Discriminant(place) => {
                         return Some(ValueDef::Discriminant(*place));
                     }
@@ -591,7 +715,7 @@ impl<'tcx> MirVisitor<'tcx> {
         var: &Place<'tcx>,
         terminator: &Terminator<'tcx>,
     ) -> Option<ValueDef<'tcx>> {
-        if let TerminatorKind::Call { destination, ..} = &terminator.kind {
+        if let TerminatorKind::Call { destination, .. } = &terminator.kind {
             if let Some((place, _)) = destination {
                 if place == var {
                     return Some(ValueDef::Call);
@@ -602,7 +726,30 @@ impl<'tcx> MirVisitor<'tcx> {
         None
     }
 
+    fn get_from_place_projection(&self, place: &Place<'tcx>) -> Option<ValueDef<'tcx>> {
+        let projection = place.projection;
+        let mut deref = projection.iter().any(|p| p == PlaceElem::Deref);
+        let mut value_def = None;
+        for p in projection {
+            match p {
+                PlaceElem::Field(_, _) => {
+                    value_def = Some(ValueDef::Field(*place, deref));
+                }
+                _ => { }
+            }
+        }
+
+        value_def
+    }
+
     fn get_place_definition(&self, place: &Place<'tcx>) -> ValueDef<'tcx> {
+        // TODO projection
+        if !place.projection.is_empty() {
+            if let Some(value_def) = self.get_from_place_projection(place) {
+                return value_def;
+            }
+        }
+
         for data in self.body.basic_blocks() {
             let value_def = data
                 .statements
@@ -621,7 +768,9 @@ impl<'tcx> MirVisitor<'tcx> {
             }
         }
 
-        todo!()
+
+
+        todo!("No place definition found for {:?}, projection: {:?}", place, place.projection)
     }
 }
 
@@ -640,8 +789,7 @@ impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
                         let operand_place = self
                             .get_place(discr)
                             .expect("Local has been defined in a previous block");
-                        let operand_def =
-                            self.get_place_definition(operand_place);
+                        let operand_def = self.get_place_definition(operand_place);
 
                         if operand_def.is_const() {
                             let (ty, val) = operand_def.expect_const();
@@ -662,7 +810,7 @@ impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
                             let branch_id = *branch_ids.get(target_index).unwrap();
                             let tracing_blocks = self.binary_branch(
                                 local_decls,
-                                operand_def,
+                                &operand_def,
                                 targets,
                                 &branch_ids,
                                 branch_id,
@@ -680,7 +828,7 @@ impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
                         let branch_id = *branch_ids.last().unwrap();
                         let tracing_blocks = self.binary_branch(
                             local_decls,
-                            operand_def,
+                            &operand_def,
                             targets,
                             &branch_ids,
                             branch_id,
@@ -738,12 +886,11 @@ fn find_trace_enum_fn(tcx: &TyCtxt<'_>) -> DefId {
 
 fn find_trace_fn_for(tcx: &TyCtxt<'_>, value_def: &ValueDef<'_>) -> DefId {
     match value_def {
-        ValueDef::BinaryOp(_, _, _) => {
-            find_trace_bool_fn(tcx)
-        }
-        ValueDef::Discriminant(_) => {
-            find_trace_enum_fn(tcx)
-        }
+        ValueDef::BinaryOp(_, _, _) => find_trace_bool_fn(tcx),
+        ValueDef::Discriminant(_) => find_trace_enum_fn(tcx),
+        ValueDef::UnaryOp(_, inner_value_def) => find_trace_fn_for(tcx, inner_value_def.as_ref()),
+        ValueDef::Field(_, _) => find_trace_enum_fn(tcx),
+        ValueDef::Call => find_trace_enum_fn(tcx),
         _ => {
             todo!("Value def is {:?}", value_def)
         }
@@ -837,7 +984,19 @@ fn to_binary_op(op: &BinOp) -> BinaryOp {
 fn to_unary_op(op: &UnOp) -> UnaryOp {
     match op {
         UnOp::Not => UnaryOp::Not,
-        UnOp::Neg => UnaryOp::Neg
+        UnOp::Neg => UnaryOp::Neg,
+    }
+}
+
+fn invert_binary_op(op: &BinaryOp) -> BinaryOp {
+    match op {
+        BinaryOp::Eq => BinaryOp::Ne,
+        BinaryOp::Lt => BinaryOp::Ge,
+        BinaryOp::Le => BinaryOp::Gt,
+        BinaryOp::Ne => BinaryOp::Eq,
+        BinaryOp::Ge => BinaryOp::Lt,
+        BinaryOp::Gt => BinaryOp::Le,
+        _ => todo!("Should never happpen"),
     }
 }
 
@@ -846,15 +1005,16 @@ enum SwitchPath {
     Otherwise,
 }
 
-
-#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum ValueDef<'a> {
-    BinaryOp(BinaryOp, Place<'a>, Place<'a>),
-    UnaryOp(UnaryOp, Place<'a>),
+    BinaryOp(BinaryOp, Box<ValueDef<'a>>, Box<ValueDef<'a>>),
+    UnaryOp(UnaryOp, Box<ValueDef<'a>>),
     Const(Ty<'a>, ConstKind<'a>),
     Var(Place<'a>),
     Discriminant(Place<'a>),
     Call,
+    // Deref?
+    Field(Place<'a>, bool)
 }
 
 impl<'a> ValueDef<'a> {
@@ -871,5 +1031,37 @@ impl<'a> ValueDef<'a> {
         }
 
         false
+    }
+
+    fn is_var(&self) -> bool {
+        if let ValueDef::Var(_) = self {
+            return true;
+        }
+
+        false
+    }
+
+    fn expect_var(&self) -> Place<'a> {
+        if let ValueDef::Var(place) = self {
+            return *place;
+        }
+
+        panic!("Is not var");
+    }
+}
+
+impl<'a> From<&Operand<'a>> for ValueDef<'a> {
+    fn from(operand: &Operand<'a>) -> Self {
+        match operand {
+            Operand::Copy(place) | Operand::Move(place) => ValueDef::Var(*place),
+            Operand::Constant(constant) => match &constant.literal {
+                ConstantKind::Ty(constant_ty) => {
+                    let ty = constant_ty.ty;
+                    let val = constant_ty.val;
+                    ValueDef::Const(ty, val)
+                }
+                ConstantKind::Val(_, _) => todo!(),
+            },
+        }
     }
 }

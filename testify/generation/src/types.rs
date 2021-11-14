@@ -454,7 +454,7 @@ pub struct ComplexT {
 
 impl PartialEq for ComplexT {
     fn eq(&self, other: &Self) -> bool {
-        self.hir_id == other.hir_id
+        self.name == other.name
     }
 }
 

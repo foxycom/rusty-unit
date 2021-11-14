@@ -1,10 +1,13 @@
+use crate::types::{ComplexT, Param, T};
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
+use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_hir::{
     FnRetTy, HirId, Impl, Item, ItemKind, Mutability, Node, PrimTy, QPath, Ty, TyKind,
 };
 use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::{TyCtxt, TypeckResults};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{FileName, RealFileName, Span};
 use std::io;
 use std::io::Write;
@@ -12,7 +15,6 @@ use std::option::Option::Some;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use syn::{FnArg, ImplItemMethod, Path, ReturnType, Type};
-use crate::types::{ComplexT, Param, T};
 
 pub fn cargo_path() -> io::Result<PathBuf> {
     match which::which("cargo") {
@@ -56,9 +58,11 @@ pub fn ty_to_t(ty: &Ty, self_: HirId, tcx: &TyCtxt<'_>) -> Option<T> {
                         Res::Def(_, def_id) => {
                             let local_def_id = def_id.as_local()?;
 
-                            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-                            let name = join_path_to_str(path);
-                            let def_id = tcx.hir().local_def_id(hir_id).to_def_id();
+                            let hir_id = tcx.hir().local_def_id_to_hir_id(local_def_id);
+                            //let name = join_path_to_str(path);
+                            let name = def_path_to_name(local_def_id, tcx);
+
+                            let def_id = local_def_id.to_def_id();
                             let complex_ty = ComplexT::new(hir_id, def_id, name);
                             Some(T::Complex(complex_ty))
                         }
@@ -125,9 +129,7 @@ pub fn node_to_name(node: &Node<'_>, tcx: &TyCtxt<'_>) -> Option<String> {
         Node::Field(f) => Some(f.ident.name.to_ident_string()),
         Node::Lifetime(lt) => Some(lt.name.ident().name.to_ident_string()),
         Node::GenericParam(param) => Some(param.name.ident().name.to_ident_string()),
-        _ => {
-            None
-        }
+        _ => None,
     }
 }
 
@@ -184,9 +186,34 @@ pub fn ty_kind_to_struct_id(kind: &TyKind<'_>) -> DefId {
         TyKind::Rptr(lifetime, mut_ty) => {
             let ty = mut_ty.ty;
             ty_kind_to_struct_id(&ty.kind)
-
         }
         _ => unimplemented!("Trying to convert to struct: {:?}", kind),
+    }
+}
+
+pub fn def_path_to_name(def_id: LocalDefId, tcx: &TyCtxt<'_>) -> String {
+    let def_path = &tcx.hir().def_path(def_id).data;
+
+    def_path
+        .iter()
+        .filter_map(|d| def_path_data(&d.data))
+        .collect::<Vec<_>>()
+        .join("::")
+}
+
+fn def_path_data(data: &DefPathData) -> Option<String> {
+    match data {
+        DefPathData::CrateRoot => Some("crate".to_string()),
+        DefPathData::Misc => None,
+        DefPathData::Impl => None,
+        DefPathData::TypeNs(ty) => Some(ty.to_ident_string()),
+        DefPathData::ValueNs(value) => Some(value.to_ident_string()),
+        DefPathData::MacroNs(mac) => Some(mac.to_ident_string()),
+        DefPathData::LifetimeNs(_) => None,
+        DefPathData::ClosureExpr => None,
+        DefPathData::Ctor => None,
+        DefPathData::AnonConst => None,
+        DefPathData::ImplTrait => None,
     }
 }
 
