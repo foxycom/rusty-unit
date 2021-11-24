@@ -23,6 +23,7 @@ use generation::chromosome::{Chromosome, TestCase};
 use generation::parser::{HirParser, MirParser};
 use generation::source::{AnalysisError, Project, ProjectScanner, LOG_DIR};
 use generation::{HIR_LOG_PATH, MIR_LOG_PATH};
+use generation::types::{STD_CALLABLES, TYPES};
 
 #[derive(Clap)]
 struct CliOpts {
@@ -37,9 +38,11 @@ fn main() {
     project.clear_build_dirs();
     project.make_copy();
 
+    TYPES.iter().for_each(|(k, v)| println!("Key: {:?}, value: {:?}", k, v));
+    STD_CALLABLES.iter().for_each(|callable| println!("Callable: {:?}", callable));
+
     if let Err(AnalysisError {}) = project.analyze() {
-        eprintln!("Analysis failed!");
-        panic!();
+        panic!("Analysis failed");
     }
 
     std::fs::create_dir_all(LOG_DIR).unwrap();

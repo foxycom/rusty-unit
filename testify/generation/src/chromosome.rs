@@ -1,26 +1,29 @@
+use crate::analysis::HirAnalysis;
+use crate::branch::Branch;
+use crate::fitness::FitnessValue;
+use crate::generators::{generate_random_prim, TestIdGenerator};
+use crate::operators::{Crossover, Mutation};
+use crate::types::{
+    Callable, ConstructorItem, FieldAccessItem, FunctionItem, MethodItem, Param, PrimT,
+    PrimitiveItem, StaticFnItem, StructInitItem, Trait, STD_CALLABLES, T, TYPES,
+};
+use petgraph::prelude::StableDiGraph;
+use petgraph::stable_graph::NodeIndex;
+use petgraph::Direction;
+use proc_macro2::{Ident, Span};
+use quote::ToTokens;
+use rustc_hir::def_id::DefId;
+use rustc_hir::{BodyId, FnSig, HirId, PrimTy};
+use rustc_middle::ty::{TyCtxt, TypeFoldable};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
-use petgraph::Direction;
-use petgraph::prelude::StableDiGraph;
-use petgraph::stable_graph::NodeIndex;
-use proc_macro2::{Ident, Span};
-use quote::ToTokens;
-use rustc_hir::def_id::DefId;
-use rustc_hir::{BodyId, FnSig, HirId, PrimTy};
-use rustc_middle::ty::TyCtxt;
+use std::sync::{Arc, Mutex};
 use syn::{Expr, ImplItemMethod, Item, ItemEnum, ItemStruct, Stmt, Type};
 use uuid::Uuid;
-use std::sync::{Mutex, Arc};
-use crate::analysis::HirAnalysis;
-use crate::branch::Branch;
-use crate::fitness::FitnessValue;
-use crate::operators::{Crossover, Mutation};
-use crate::types::{Callable, ConstructorItem, FieldAccessItem, FunctionItem, MethodItem, Param, PrimitiveItem, StaticFnItem, T};
-use crate::generators::TestIdGenerator;
 
 lazy_static! {
     static ref CHROMOSOME_ID_GENERATOR: Arc<Mutex<TestIdGenerator>> =
@@ -49,8 +52,8 @@ pub trait Chromosome: Clone + Debug + ToSyn + PartialEq + Eq + Hash {
 
     /// Applies crossover to this and other chromosome and returns a pair of offsprings
     fn crossover<C: Crossover<C = Self>>(&self, other: &Self, crossover: &C) -> (Self, Self)
-        where
-            Self: Sized;
+    where
+        Self: Sized;
 
     /// Generates a random chromosome
     fn random(analysis: Rc<HirAnalysis>) -> Self;
@@ -64,7 +67,6 @@ pub enum Dependency {
     Consumes,
     Borrows,
 }
-
 
 #[derive(Debug)]
 pub struct TestCase {
@@ -552,74 +554,164 @@ impl TestCase {
 
     /// Generates a random statement and all its dependencies, even if the
     /// test already contains some definitions that can be reused.
-    pub fn insert_random_stmt(&mut self) {
+    pub fn insert_random_stmt(&mut self) -> bool {
         // TODO primitive statements are not being generated yet
         let callables = self.analysis.callables();
         let i = fastrand::usize(0..callables.len());
         let callable = (*(callables.get(i).unwrap())).clone();
-        println!("Selected callable: {:?}", callable);
 
         let args: Vec<Arg> = callable
             .params()
             .iter()
-            .map(|p| self.generate_arg(p))
+            .filter_map(|p| self.generate_arg(p))
             .collect();
+
+        if args.len() != callable.params().len() {
+            println!("Could not generate args for callable: \n{:?}", callable);
+            return false;
+        }
+
         let stmt = callable.to_stmt(args);
         self.add_stmt(stmt);
+        true
     }
 
-    pub fn generate_arg(&mut self, param: &Param) -> Arg {
+    pub fn generate_arg(&mut self, param: &Param) -> Option<Arg> {
         self.generate_arg_inner(param, HashSet::new())
     }
 
-    fn generate_arg_inner(&mut self, param: &Param, mut types_to_generate: HashSet<T>) -> Arg {
-        let mut generator = None;
-        if param.is_primitive() {
-            return Arg::Primitive(Primitive::U8(fastrand::u8(..)));
-        } else {
-            let mut generators = self.analysis.generators(param.real_ty());
+    fn generate_generic_arg(
+        &mut self,
+        param: &Param,
+        types_to_generate: HashSet<T>,
+    ) -> Option<Arg> {
+        // Generated arg should comply to generic trait bounds
+        let generic_ty = param.real_ty().expect_generic();
+        let bounds = generic_ty.bounds();
 
-            // TODO remove
-            println!("Generators for {:?}", param.real_ty());
-            println!("{:?}", generators);
-
-            let mut retry = true;
-            while retry && !generators.is_empty() {
-                retry = false;
-
-                // Pick a random generator
-                let i = fastrand::usize(0..generators.len());
-                let candidate = generators.get(i).unwrap().clone();
-                let params =
-                    HashSet::from_iter(candidate.params().iter().map(Param::real_ty).cloned());
-
-                let intersection = Vec::from_iter(params.intersection(&types_to_generate));
-                if !intersection.is_empty() {
-                    // We already try to generate a type which is needed as an argument for the call
-                    // Hence, this would probably lead to infinite recursive chain. Remove the
-                    // generator and retry with another one.
-                    generators.remove(i);
-                    retry = true;
-                } else {
-                    generator = Some(candidate);
-                }
+        println!(
+            "Generating generic arg for param: {:?}\n{}",
+            param,
+            serde_json::to_string(param.real_ty()).unwrap()
+        );
+        let mut possible_primitives: Option<HashSet<PrimT>> = None;
+        for bound in bounds {
+            let implementors = PrimT::implementors_of(bound);
+            if let Some(primitives) = &possible_primitives {
+                let intersection = primitives
+                    .intersection(&implementors)
+                    .cloned()
+                    .collect::<HashSet<_>>();
+                possible_primitives = Some(intersection);
+            } else {
+                possible_primitives = Some(implementors);
             }
         }
 
-        if generator.is_none() {
-            // No appropriate generator found
-            println!("Panic! Param type: {}", param.real_ty().to_string());
-            panic!("No generator")
+        // Try to generate simple primitives first
+        if let Some(possible_primitives) = possible_primitives {
+            if !possible_primitives.is_empty() {
+                let primitives = Vec::from_iter(possible_primitives.iter());
+                let primitive_i = fastrand::usize(0..primitives.len());
+                let primitive = *primitives.get(primitive_i).unwrap();
+
+                let arg = Arg::Primitive(generate_random_prim(primitive, param));
+                return Some(arg);
+            }
         }
 
-        let generator = generator.unwrap().clone();
+        let possible_complex_types = TYPES
+            .iter()
+            .filter_map(|(ty, impl_trait)| {
+                if bounds.iter().all(|b| impl_trait.contains(b)) {
+                    return Some(ty);
+                }
+                None
+            })
+            .collect::<Vec<_>>();
+
+        if possible_complex_types.is_empty() {
+            return None;
+        }
+
+        let complex_i = fastrand::usize(0..possible_complex_types.len());
+        let complex_ty = *possible_complex_types.get(complex_i).unwrap();
+        // TODO lookup if a custom defined struct implements the needed traits
+
+        let generators = STD_CALLABLES
+            .iter()
+            .filter(|callable| {
+                if let Some(return_ty) = callable.return_type() {
+                    return_ty == complex_ty
+                } else {
+                    false
+                }
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+
+        self.generate_arg_from_generators(param, generators, types_to_generate)
+    }
+
+    fn generate_arg_inner(&mut self, param: &Param, types_to_generate: HashSet<T>) -> Option<Arg> {
+        if param.is_primitive() {
+            println!("Generating primitive for param: {:?}", param);
+            let ty = param.real_ty().expect_primitive();
+            return Some(Arg::Primitive(generate_random_prim(ty, param)));
+        } else if param.is_generic() {
+            return self.generate_generic_arg(param, types_to_generate);
+        } else {
+            let generators = self
+                .analysis
+                .generators(param.real_ty())
+                .iter()
+                .map(|&c| c.clone())
+                .collect();
+            self.generate_arg_from_generators(param, generators, types_to_generate)
+        }
+    }
+
+    fn generate_arg_from_generators(
+        &mut self,
+        param: &Param,
+        mut generators: Vec<Callable>,
+        types_to_generate: HashSet<T>,
+    ) -> Option<Arg> {
+        println!(
+            "Trying to generate {:?}, generators: {:?}",
+            param.real_ty(),
+            generators
+        );
+
+        let mut generator = None;
+        let mut retry = true;
+        while retry && !generators.is_empty() {
+            retry = false;
+
+            // Pick a random generator
+            let i = fastrand::usize(0..generators.len());
+            let candidate = generators.get(i).unwrap().clone();
+            let params = HashSet::from_iter(candidate.params().iter().map(Param::real_ty).cloned());
+
+            let intersection = Vec::from_iter(params.intersection(&types_to_generate));
+            if !intersection.is_empty() {
+                // We already try to generate a type which is needed as an argument for the call
+                // Hence, this would probably lead to infinite recursive chain. Remove the
+                // generator and retry with another one.
+                generators.remove(i);
+                retry = true;
+            } else {
+                generator = Some(candidate);
+            }
+        }
+
+        let generator = generator?.clone();
         let args: Vec<Arg> = generator
             .params()
             .iter()
-            .map(|p| {
+            .filter_map(|p| {
                 // TODO instantiate new object with a 10% probability even if there is a free ones
                 // already in the test case
-
                 let usable_variables = self.unconsumed_variables_typed(p.real_ty());
 
                 if !self.instantiated_types().contains(p.real_ty()) || usable_variables.is_empty() {
@@ -628,20 +720,24 @@ impl TestCase {
                     self.generate_arg_inner(p, types_to_generate)
                 } else {
                     // TODO check if those are used
-
                     let var_i = fastrand::usize(0..usable_variables.len());
                     let (var, pos) = usable_variables.get(var_i).unwrap();
-                    Arg::Var(VarArg::new(var.clone(), p.clone()))
+                    Some(Arg::Var(VarArg::new(var.clone(), p.clone())))
                 }
             })
             .collect();
+
+        if args.len() != generator.params().len() {
+            return None;
+        }
 
         let stmt = generator.to_stmt(args);
 
         let return_var = self.add_stmt(stmt).unwrap();
 
-        Arg::Var(VarArg::new(return_var, param.clone()))
+        Some(Arg::Var(VarArg::new(return_var, param.clone())))
     }
+
     pub fn analysis(&self) -> Rc<HirAnalysis> {
         self.analysis.clone()
     }
@@ -767,8 +863,8 @@ impl Chromosome for TestCase {
     }
 
     fn crossover<C: Crossover<C = Self>>(&self, other: &Self, crossover: &C) -> (Self, Self)
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         let (mut left, mut right) = crossover.apply(self, other);
         left.id = CHROMOSOME_ID_GENERATOR.lock().unwrap().next_id();
@@ -824,34 +920,123 @@ impl Arg {
 
 #[derive(Debug, Clone)]
 pub enum Primitive {
-    U8(u8),
+    UInt(Param, UInt),
+    Int(Param, Int),
+    Bool(Param, bool),
+    Str(Param, String),
+    Float(Param, Float),
+    Char(Param, char),
 }
 
 impl Primitive {
     pub fn ty(&self) -> Box<Type> {
         match self {
-            Primitive::U8(_) => Box::new(syn::parse_quote!(u8)),
+            Primitive::UInt(_, u) => u.ty(),
+            Primitive::Int(_, i) => i.ty(),
+            Primitive::Bool(_, _) => Box::new(syn::parse_quote!(bool)),
+            Primitive::Str(_, _) => Box::new(syn::parse_quote!(&str)),
+            Primitive::Float(_, f) => f.ty(),
+            Primitive::Char(_, _) => Box::new(syn::parse_quote!(char)),
         }
     }
 
     pub fn to_syn(&self) -> Expr {
         match self {
-            Primitive::U8(val) => syn::parse_quote! {#val},
+            Primitive::UInt(_, u) => u.to_syn(),
+            Primitive::Int(_, i) => i.to_syn(),
+            Primitive::Float(_, f) => f.to_syn(),
+            Primitive::Bool(_, b) => syn::parse_quote! {#b},
+            Primitive::Str(_, s) => syn::parse_quote! {#s},
+            Primitive::Char(_, c) => syn::parse_quote! {#c},
         }
     }
 
     pub fn mutate(&self) -> Primitive {
-        match self {
-            Primitive::U8(value) => {
+        /*match self {
+            Primitive::U8(param, value) => {
                 let new_value;
                 if fastrand::f64() < 0.5 {
                     new_value = value.wrapping_add(fastrand::u8(..))
                 } else {
                     new_value = value.wrapping_sub(fastrand::u8(..))
                 }
-                Primitive::U8(new_value)
+                Primitive::U8(param.clone(), new_value)
             }
+        }*/
+        todo!()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum UInt {
+    Usize(usize),
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    U64(u64),
+    U128(u128),
+}
+
+impl UInt {
+    pub fn to_syn(&self) -> Expr {
+        match self {
+            UInt::Usize(val) => syn::parse_quote!(#val),
+            UInt::U8(val) => syn::parse_quote!(#val),
+            UInt::U16(val) => syn::parse_quote!(#val),
+            UInt::U32(val) => syn::parse_quote!(#val),
+            UInt::U64(val) => syn::parse_quote!(#val),
+            UInt::U128(val) => syn::parse_quote!(#val),
         }
+    }
+
+    pub fn ty(&self) -> Box<Type> {
+        todo!()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Int {
+    Isize(isize),
+    I8(i8),
+    I16(i16),
+    I32(i32),
+    I64(i64),
+    I128(i128),
+}
+
+impl Int {
+    pub fn to_syn(&self) -> Expr {
+        match self {
+            Int::Isize(val) => syn::parse_quote!(#val),
+            Int::I8(val) => syn::parse_quote!(#val),
+            Int::I16(val) => syn::parse_quote!(#val),
+            Int::I32(val) => syn::parse_quote!(#val),
+            Int::I64(val) => syn::parse_quote!(#val),
+            Int::I128(val) => syn::parse_quote!(#val),
+        }
+    }
+
+    pub fn ty(&self) -> Box<Type> {
+        todo!()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Float {
+    F32(f32),
+    F64(f64),
+}
+
+impl Float {
+    pub fn to_syn(&self) -> Expr {
+        match self {
+            Float::F32(val) => syn::parse_quote!(#val),
+            Float::F64(val) => syn::parse_quote!(#val),
+        }
+    }
+
+    pub fn ty(&self) -> Box<Type> {
+        todo!()
     }
 }
 
@@ -921,6 +1106,7 @@ pub enum Statement {
     StaticFnInvocation(StaticFnInvStmt),
     FunctionInvocation(FnInvStmt),
     FieldAccess(FieldAccessStmt),
+    StructInit(StructInitStmt)
 }
 
 impl Statement {
@@ -935,6 +1121,7 @@ impl Statement {
             Statement::MethodInvocation(method_inv_stmt) => method_inv_stmt.to_syn(),
             Statement::FunctionInvocation(fn_inv_stmt) => fn_inv_stmt.to_syn(),
             Statement::FieldAccess(field_access_stmt) => field_access_stmt.to_syn(),
+            Statement::StructInit(struct_init_stmt) => struct_init_stmt.to_syn(),
         }
     }
 
@@ -946,7 +1133,9 @@ impl Statement {
             Statement::FunctionInvocation(func) => func.returns_value(),
             Statement::MethodInvocation(m) => m.returns_value(),
             Statement::FieldAccess(_) => true,
-            _ => unimplemented!(),
+
+            Statement::AttributeAccess(_) => unimplemented!(),
+            Statement::StructInit(s) => s.returns_value()
         }
     }
 
@@ -958,7 +1147,8 @@ impl Statement {
             Statement::FunctionInvocation(func) => func.var(),
             Statement::PrimitiveAssignment(a) => a.var(),
             Statement::FieldAccess(f_stmt) => f_stmt.var(),
-            _ => unimplemented!(),
+            Statement::AttributeAccess(_) => unimplemented!(),
+            Statement::StructInit(s) => s.var()
         }
     }
 
@@ -971,6 +1161,7 @@ impl Statement {
             Statement::FunctionInvocation(f) => f.return_type(),
             Statement::AttributeAccess(a) => a.return_type(),
             Statement::FieldAccess(f) => Some(f.return_type()),
+            Statement::StructInit(s) => Some(s.return_type())
         }
     }
 
@@ -987,6 +1178,7 @@ impl Statement {
             Statement::StaticFnInvocation(ref mut f) => f.set_var(var),
             Statement::FunctionInvocation(ref mut f) => f.set_var(var),
             Statement::FieldAccess(ref mut f) => f.set_var(var),
+            Statement::StructInit(ref mut s) => s.set_var(var)
         }
     }
 
@@ -999,6 +1191,7 @@ impl Statement {
             Statement::StaticFnInvocation(f) => Some(f.args()),
             Statement::FunctionInvocation(f) => Some(f.args()),
             Statement::FieldAccess(f) => unimplemented!(),
+            Statement::StructInit(s) => Some(s.args())
         }
     }
 
@@ -1011,6 +1204,7 @@ impl Statement {
             Statement::StaticFnInvocation(f) => f.set_arg(arg, idx),
             Statement::FunctionInvocation(f) => f.set_arg(arg, idx),
             Statement::FieldAccess(_) => unimplemented!(),
+            Statement::StructInit(s) => s.set_arg(arg, idx)
         }
     }
 
@@ -1023,6 +1217,7 @@ impl Statement {
             Statement::StaticFnInvocation(f) => f.id(),
             Statement::FunctionInvocation(f) => f.id(),
             Statement::FieldAccess(f) => f.id(),
+            Statement::StructInit(s) => s.id()
         }
     }
 
@@ -1054,6 +1249,11 @@ impl Statement {
                 let syn_item = field.to_syn();
                 let token_stream = syn_item.to_token_stream();
                 token_stream.to_string()
+            }
+            Statement::StructInit(s) => {
+                let syn_item = s.to_syn();
+                let token_streanm = syn_item.to_token_stream();
+                token_streanm.to_string()
             }
         }
     }
@@ -1096,23 +1296,71 @@ impl FieldAccessStmt {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub struct StructInitStmt {
+    id: Uuid,
+    args: Vec<Arg>,
+    struct_init_item: StructInitItem,
+    var: Option<Var>,
+}
+
+impl StructInitStmt {
+    pub fn new(struct_init_item: StructInitItem, args: Vec<Arg>) -> Self {
+        StructInitStmt {
+            id: Uuid::new_v4(),
+            struct_init_item,
+            args,
+            var: None,
+        }
+    }
+
+    pub fn return_type(&self) -> &T {
+        self.struct_init_item.return_type()
+    }
+
+    pub fn returns_value(&self) -> bool {
+        true
+    }
+
+    pub fn to_syn(&self) -> Stmt {
+        todo!()
+    }
+
+    pub fn id(&self) -> Uuid {
+        self.id
+    }
+
+    pub fn var(&self) -> Option<&Var> {
+        self.var.as_ref()
+    }
+
+    pub fn set_var(&mut self, var: Var) {
+        self.var = Some(var);
+    }
+
+    pub fn args(&self) -> &Vec<Arg> {
+        &self.args
+    }
+
+    pub fn set_args(&mut self, args: Vec<Arg>) {
+        self.args = args;
+    }
+
+    pub fn set_arg(&mut self, arg: Arg, idx: usize) {
+        self.args[idx] = arg;
+    }
+
+    pub fn struct_init_item(&self) -> &StructInitItem {
+        &self.struct_init_item
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct StaticFnInvStmt {
     id: Uuid,
     args: Vec<Arg>,
     func: StaticFnItem,
     var: Option<Var>,
-}
-
-impl Clone for StaticFnInvStmt {
-    fn clone(&self) -> Self {
-        StaticFnInvStmt {
-            id: self.id.clone(),
-            args: self.args.clone(),
-            func: self.func.clone(),
-            var: self.var.clone(),
-        }
-    }
 }
 
 impl StaticFnInvStmt {

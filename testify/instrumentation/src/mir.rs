@@ -55,8 +55,7 @@ pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'
             return tcx.arena.alloc(body);
         }
 
-        println!("Analyzing {:?}", def);
-
+        //println!("Analyzing {:?}", def);
 
         let mut writer = MirWriter::new(MIR_LOG_PATH);
         let item_name = tcx.hir().opt_name(hir_id);
@@ -72,9 +71,9 @@ pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'
             .map(|(block, data)| format!("{} -> {:?}", block.as_usize(), data))
             .collect::<Vec<_>>();
 
-        for block in &blocks {
+        /*for block in &blocks {
             println!("{}", block);
-        }
+        }*/
         writer.write_basic_blocks(&blocks);
 
         let cdg = cdg(&body);

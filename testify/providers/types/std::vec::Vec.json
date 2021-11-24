@@ -1,0 +1,13 @@
+{
+  "Complex": {
+    "name": "std::vec::Vec",
+    "generics": [{
+      "Generic": {
+        "name": "T",
+        "bounds": []
+      }
+    }]
+  }
+}
+
+

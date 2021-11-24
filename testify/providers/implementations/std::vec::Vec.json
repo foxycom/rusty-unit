@@ -1,0 +1,20 @@
+[
+  {
+    "name": "std::iter::IntoIterator"
+  },
+  {
+    "name": "std::default::Default"
+  },
+  {
+    "name": "std::cmp::Eq"
+  },
+  {
+    "name": "std::cmp::PartialEq"
+  },
+  {
+    "name": "std::cmp::PartialOrd"
+  },
+  {
+    "name": "std::cmp::Ord"
+  }
+]

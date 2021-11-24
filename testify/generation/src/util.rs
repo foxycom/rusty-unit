@@ -1,11 +1,14 @@
-use crate::types::{ComplexT, Param, T};
-use rustc_hir::def::Res;
+use crate::types::{ComplexT, Generic, Param, Trait, T};
+use petgraph::visit::Walker;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_hir::{
-    FnRetTy, HirId, Impl, Item, ItemKind, Mutability, Node, PrimTy, QPath, Ty, TyKind,
+    FnRetTy, GenericBound, GenericParam, GenericParamKind, Generics, HirId, Impl, Item, ItemKind,
+    Mutability, Node, ParamName, PathSegment, PrimTy, QPath, Ty, TyKind, WherePredicate,
 };
 use rustc_middle::dep_graph::DepContext;
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{TyCtxt, TypeckResults};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{FileName, RealFileName, Span};
@@ -30,7 +33,13 @@ pub fn fmt_path() -> io::Result<PathBuf> {
     }
 }
 
-pub fn ty_to_param(ty: &Ty, self_hir_id: HirId, tcx: &TyCtxt<'_>) -> Option<Param> {
+pub fn ty_to_param(
+    name: &str,
+    ty: &Ty,
+    self_hir_id: HirId,
+    parent_generics: &Vec<T>,
+    tcx: &TyCtxt<'_>,
+) -> Option<Param> {
     let (by_reference, mutable) = if let TyKind::Rptr(_, mut_ty) = &ty.kind {
         let mutable = mut_ty.mutbl == Mutability::Mut;
         (true, mutable)
@@ -38,54 +47,198 @@ pub fn ty_to_param(ty: &Ty, self_hir_id: HirId, tcx: &TyCtxt<'_>) -> Option<Para
         (false, false)
     };
 
-    let real_ty = ty_to_t(ty, self_hir_id, tcx)?;
+    let real_ty = ty_to_t(ty, Some(self_hir_id), parent_generics, tcx)?;
     if real_ty.is_complex() {
-        let def_id = tcx.hir().local_def_id(real_ty.expect_id()).to_def_id();
-        let original_ty = T::Complex(ComplexT::new(ty.hir_id, def_id, real_ty.name()));
-        Some(Param::new(real_ty, original_ty, by_reference, mutable))
+        let def_id = real_ty.expect_id();
+
+        //let original_ty = T::Complex(ComplexT::new(def_id, real_ty.name()));
+        let original_ty = def_id_to_complex(def_id, tcx)?;
+        Some(Param::new(name, real_ty, original_ty, by_reference, mutable))
     } else {
-        Some(Param::new(real_ty.clone(), real_ty, by_reference, mutable))
+        Some(Param::new(name,real_ty.clone(), real_ty, by_reference, mutable))
     }
 }
 
-pub fn ty_to_t(ty: &Ty, self_: HirId, tcx: &TyCtxt<'_>) -> Option<T> {
+pub fn ty_to_t(
+    ty: &Ty,
+    self_: Option<HirId>,
+    defined_generics: &Vec<T>,
+    tcx: &TyCtxt<'_>,
+) -> Option<T> {
+    println!("Ty: {:?}", ty);
     match &ty.kind {
-        TyKind::Rptr(_, mut_ty) => ty_to_t(mut_ty.ty, self_, tcx),
+        TyKind::Rptr(_, mut_ty) => ty_to_t(mut_ty.ty, self_, defined_generics, tcx),
         TyKind::Path(q_path) => {
             match q_path {
                 QPath::Resolved(_, path) => {
                     match &path.res {
-                        Res::Def(_, def_id) => {
-                            let local_def_id = def_id.as_local()?;
+                        Res::Def(def_kind, def_id) => {
+                            if let DefKind::TyParam = def_kind {
+                                let name = path
+                                    .segments
+                                    .iter()
+                                    .map(|s| s.ident.name.to_ident_string())
+                                    .collect::<Vec<_>>()
+                                    .join("::");
 
-                            let hir_id = tcx.hir().local_def_id_to_hir_id(local_def_id);
-                            //let name = join_path_to_str(path);
-                            let name = def_path_to_name(local_def_id, tcx);
+                                let bounds = if let Some(bounds) = defined_generics
+                                    .iter()
+                                    .find(|g| g.name() == name)
+                                    .map(|g| g.expect_generic().bounds())
+                                {
+                                    bounds.clone()
+                                } else {
+                                    vec![]
+                                };
 
-                            let def_id = local_def_id.to_def_id();
-                            let complex_ty = ComplexT::new(hir_id, def_id, name);
-                            Some(T::Complex(complex_ty))
+                                return Some(T::Generic(Generic::new(&name, bounds)));
+                            }
+                            def_id_to_complex(*def_id, tcx)
                         }
                         Res::PrimTy(prim_ty) => Some(T::from(*prim_ty)),
                         Res::SelfTy(trait_def_id, impl_) => {
                             // Self type, so replace it with the parent id
-                            let name = node_to_name(&tcx.hir().get(self_), tcx).unwrap();
-                            let def_id = tcx.hir().local_def_id(self_).to_def_id();
-                            Some(T::Complex(ComplexT::new(self_, def_id, name)))
+                            //let name = node_to_name(&tcx.hir().get(self_), tcx).unwrap();
+                            let def_id = tcx.hir().local_def_id(self_.unwrap()).to_def_id();
+                            //Some(T::Complex(ComplexT::new(def_id, name)))
+                            def_id_to_complex(def_id, tcx)
                         }
                         _ => {
                             unimplemented!("{:?}", &path.res)
                         }
                     }
+
+                    // TODO parse generic args of the type
                 }
-                QPath::TypeRelative(ty, path_segement) => {
-                    println!("TODO parse type relative");
-                    None
-                }
+                QPath::TypeRelative(ty, _) => ty_to_t(ty, self_, defined_generics, tcx),
                 _ => unimplemented!("{:?}", q_path),
             }
         }
-        _ => unimplemented!(),
+        TyKind::Slice(ty) => None,
+        TyKind::OpaqueDef(item, generic_args) => {
+            println!("Skipping opaquedef of {:?} with generic args {:?}", item, generic_args);
+            None
+        }
+        TyKind::Tup(tys) => {
+            println!("Skipping tuple type def {:?}", tys);
+            None
+        }
+        _ => todo!("Ty kind is: {:?}", &ty.kind),
+    }
+}
+
+pub fn def_id_to_complex(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<T> {
+    let ty = tcx.type_of(def_id);
+    match ty.kind() {
+        rustc_middle::ty::TyKind::Adt(_, substs) => {
+            let generics = substs
+                .non_erasable_generics()
+                .filter_map(|kind| generic_to_t(kind, tcx))
+                .collect::<Vec<_>>();
+
+            if generics.len() != substs_len(substs) {
+                println!("Not all generics could be parsed: {:?}", substs);
+                return None;
+            }
+            let name = tcx.def_path_str(def_id);
+            let t = T::Complex(ComplexT::new(Some(def_id), &name, generics));
+
+            Some(t)
+        }
+        _ => todo!(),
+    }
+}
+
+pub fn substs_len(substs: SubstsRef) -> usize {
+    substs.non_erasable_generics().filter(|kind| match kind {
+        GenericArgKind::Type(_) => true,
+        _ => false
+    }).count()
+}
+
+pub fn generic_to_t(generic_kind: GenericArgKind, tcx: &TyCtxt<'_>) -> Option<T> {
+    match generic_kind {
+        GenericArgKind::Lifetime(_) => None,
+        GenericArgKind::Type(ty) => tys_to_t(ty, tcx),
+        GenericArgKind::Const(c) => {
+            todo!("Const is {:?}", c)
+        }
+    }
+}
+
+pub fn tys_to_t(ty: rustc_middle::ty::Ty, tcx: &TyCtxt<'_>) -> Option<T> {
+    match ty.kind() {
+        rustc_middle::ty::TyKind::Param(param) => {
+            let name = param.name.to_string();
+            Some(T::Generic(Generic::new(&name, vec![])))
+        }
+        _ => todo!("Ty is {:?}", ty),
+    }
+}
+
+pub fn generics_to_ts(generics: &Generics, tcx: &TyCtxt<'_>) -> Vec<T> {
+    if !generics.where_clause.predicates.is_empty() {
+        let predicates = generics.where_clause.predicates;
+        let bounds_generic_param = predicates.iter().filter_map(|p| match p {
+            WherePredicate::BoundPredicate(p) => Some(p.bound_generic_params.is_empty()),
+            _ => None,
+        }).any(|bounds| bounds);
+        // We do not handle bound generic params in where clause at the moment
+        if bounds_generic_param {
+            println!("TODO bound generic params not handled in where clause");
+            return vec![];
+        }
+
+        let where_generics = predicates.iter().filter_map(|p| match p {
+            WherePredicate::BoundPredicate(p) => {
+                let defined_generics = vec![];
+                println!("Parsing where bounds: {:?}", &p.bounds);
+                let ty = ty_to_t(p.bounded_ty, None, &defined_generics, tcx);
+                let bounds = p.bounds.iter().filter_map(|b| generic_bound_to_trait(b, tcx)).collect::<Vec<_>>();
+                if let Some(ty) = ty {
+                    return Some((ty, bounds));
+                } else {
+                    return None;
+                }
+            }
+            _ => None
+        }).collect::<Vec<_>>();
+        todo!("Where generics: {:?}", &where_generics);
+    }
+
+    generics
+        .params
+        .iter()
+        .filter_map(|g| generic_param_to_t(g, tcx))
+        .collect::<Vec<_>>()
+}
+
+pub fn generic_param_to_t(param: &GenericParam<'_>, tcx: &TyCtxt<'_>) -> Option<T> {
+    if let GenericParamKind::Type { .. } = &param.kind {
+        if let ParamName::Plain(ident) = &param.name {
+            let name = ident.name.to_ident_string();
+
+            let bounds = param
+                .bounds
+                .iter()
+                .filter_map(|b| generic_bound_to_trait(b, tcx))
+                .collect::<Vec<_>>();
+            return Some(T::Generic(Generic::new(&name, bounds)));
+        }
+    }
+
+    None
+}
+
+pub fn generic_bound_to_trait(bound: &GenericBound<'_>, tcx: &TyCtxt<'_>) -> Option<Trait> {
+    match bound {
+        GenericBound::Trait(trait_ref, _) => {
+            let def_id = trait_ref.trait_ref.trait_def_id()?;
+            let name = tcx.def_path_str(def_id);
+            Some(Trait::new(&name))
+        }
+        GenericBound::LangItemTrait(_, _, _, _) => todo!(),
+        GenericBound::Outlives(_) => None,
     }
 }
 
@@ -97,16 +250,18 @@ pub fn node_to_t(node: &Node<'_>, tcx: &TyCtxt<'_>) -> Option<T> {
 }
 
 pub fn item_to_t(item: &Item<'_>, tcx: &TyCtxt<'_>) -> Option<T> {
+    let generics = vec![];
     match &item.kind {
-        ItemKind::Impl(im) => ty_to_t(im.self_ty, item.hir_id(), tcx),
+        ItemKind::Impl(im) => ty_to_t(im.self_ty, Some(item.hir_id()), &generics, tcx),
         _ => unimplemented!(),
     }
 }
 
 pub fn fn_ret_ty_to_t(ret_ty: &FnRetTy, self_hir_id: HirId, tcx: &TyCtxt<'_>) -> Option<T> {
+    let generics = vec![];
     match ret_ty {
         FnRetTy::DefaultReturn(_) => None,
-        FnRetTy::Return(ty) => ty_to_t(ty, self_hir_id, tcx),
+        FnRetTy::Return(ty) => ty_to_t(ty, Some(self_hir_id), &generics, tcx),
     }
 }
 
@@ -189,16 +344,6 @@ pub fn ty_kind_to_struct_id(kind: &TyKind<'_>) -> DefId {
         }
         _ => unimplemented!("Trying to convert to struct: {:?}", kind),
     }
-}
-
-pub fn def_path_to_name(def_id: LocalDefId, tcx: &TyCtxt<'_>) -> String {
-    let def_path = &tcx.hir().def_path(def_id).data;
-
-    def_path
-        .iter()
-        .filter_map(|d| def_path_data(&d.data))
-        .collect::<Vec<_>>()
-        .join("::")
 }
 
 fn def_path_data(data: &DefPathData) -> Option<String> {

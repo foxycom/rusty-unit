@@ -1,0 +1,31 @@
+[
+  {
+    "StaticFunction": {
+      "params": [],
+      "return_type": {
+        "Complex": {
+          "name": "std::vec::Vec",
+          "generics": [{
+            "Generic": {
+              "name": "T",
+              "bounds": []
+            }
+          }]
+        }
+      },
+      "parent": {
+        "Complex": {
+          "name": "std::vec::Vec",
+          "generics": [{
+            "Generic": {
+              "name": "T",
+              "bounds": []
+            }
+          }]
+        }
+      },
+      "name": "new",
+      "src_file_id": 10000
+    }
+  }
+]

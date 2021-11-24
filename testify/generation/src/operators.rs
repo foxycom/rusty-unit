@@ -193,8 +193,11 @@ impl BasicMutation {
                     let args: Vec<Arg> = generator
                         .params()
                         .iter()
-                        .map(|p| test_case.generate_arg(p))
+                        .filter_map(|p| test_case.generate_arg(p))
                         .collect();
+                    if args.len() != generator.params().len() {
+                        todo!()
+                    }
                     new_stmt = generator.to_stmt(args);
                 } else {
                     unimplemented!()
@@ -244,7 +247,7 @@ impl BasicMutation {
             args.push(self_arg);
 
             callable_tuple.1.params()[1..].iter().for_each(|p| {
-                let arg = copy.generate_arg(p);
+                let arg = copy.generate_arg(p).unwrap();
                 args.push(arg);
             });
 
@@ -256,7 +259,11 @@ impl BasicMutation {
             let types = copy.instantiated_types();
             if types.is_empty() {
                 // TODO There is nothing defined, why?
-                copy.insert_random_stmt();
+                loop {
+                    if copy.insert_random_stmt() {
+                        break;
+                    }
+                }
             } else {
                 let ty = types.get(fastrand::usize(0..types.len())).unwrap();
                 let source_file = copy.analysis();
@@ -270,8 +277,12 @@ impl BasicMutation {
                 let args = callable
                     .params()
                     .iter()
-                    .map(|p| copy.generate_arg(p))
-                    .collect();
+                    .filter_map(|p| copy.generate_arg(p))
+                    .collect::<Vec<_>>();
+
+                if args.len() != callable.params().len() {
+                    todo!()
+                }
                 let stmt = callable.to_stmt(args);
                 copy.add_stmt(stmt);
             }
