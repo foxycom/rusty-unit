@@ -6,27 +6,6 @@ use crate::branch::BranchManager;
 use crate::chromosome::{Arg, Chromosome, Statement, TestCase, Var, VarArg};
 use crate::source::SourceFile;
 
-pub trait Selection: Debug {
-    type C;
-
-    fn apply(&self, population: &[Self::C]) -> Self::C;
-}
-
-pub trait Crossover: Debug {
-    type C: Chromosome;
-
-    fn apply(&self, a: &Self::C, b: &Self::C) -> (Self::C, Self::C);
-}
-
-pub trait Mutation: Debug {
-    type C: Chromosome;
-
-    fn apply(&self, chromosome: &Self::C) -> Self::C;
-}
-
-
-
-
 #[derive(Debug, Clone)]
 pub struct SinglePointCrossover {}
 
@@ -34,13 +13,8 @@ impl SinglePointCrossover {
     pub fn new() -> Self {
         SinglePointCrossover {}
     }
-}
 
-impl Crossover for SinglePointCrossover {
-    // TODO this is really bad
-    type C = TestCase;
-
-    fn apply(&self, a: &Self::C, b: &Self::C) -> (Self::C, Self::C) {
+    pub fn apply<'test>(&self, a: &TestCase<'test>, b: &TestCase<'test>) -> (TestCase<'test>, TestCase<'test>) {
         let mut child_a = a.clone();
         let mut child_b = b.clone();
 
@@ -65,16 +39,25 @@ impl Crossover for SinglePointCrossover {
     }
 }
 
+
 #[derive(Debug, Clone)]
 pub struct BasicMutation {
     branch_manager: Rc<RefCell<BranchManager>>,
     source_file: Rc<SourceFile>,
 }
 
-impl Mutation for BasicMutation {
-    type C = TestCase;
+impl BasicMutation {
+    pub fn new(
+        source_file: Rc<SourceFile>,
+        branch_manager: Rc<RefCell<BranchManager>>,
+    ) -> BasicMutation {
+        BasicMutation {
+            branch_manager,
+            source_file,
+        }
+    }
 
-    fn apply(&self, chromosome: &Self::C) -> Self::C {
+    pub fn apply<'test>(&self, chromosome: &TestCase<'test>) -> TestCase<'test> {
         let mut copy = chromosome.clone();
         if fastrand::f64() < 0.3 {
             // Modify statement
@@ -98,18 +81,6 @@ impl Mutation for BasicMutation {
         }
 
         copy
-    }
-}
-
-impl BasicMutation {
-    pub fn new(
-        source_file: Rc<SourceFile>,
-        branch_manager: Rc<RefCell<BranchManager>>,
-    ) -> BasicMutation {
-        BasicMutation {
-            branch_manager,
-            source_file,
-        }
     }
 
     pub fn mutate_invocation(&self, test_case: &mut TestCase, stmt: Statement) {
@@ -209,7 +180,7 @@ impl BasicMutation {
         test_case.insert_stmt(stmt_i, new_stmt);
     }
 
-    fn insert_statement(&self, test_case: &<Self as Mutation>::C) -> <Self as Mutation>::C {
+    fn insert_statement<'test>(&self, test_case: &TestCase<'test>) -> TestCase<'test> {
         let mut copy = test_case.clone();
 
         /*if self.source_files.len() > 1 {
@@ -287,7 +258,7 @@ impl BasicMutation {
         copy
     }
 
-    fn delete_statement(&self, test_case: &<Self as Mutation>::C) -> <Self as Mutation>::C {
+    fn delete_statement<'test>(&self, test_case: &TestCase<'test>) -> TestCase<'test> {
         let mut copy = test_case.clone();
 
         let stmts = copy.stmts();
@@ -303,14 +274,6 @@ pub struct RankSelection {
     bias: f64,
 }
 
-impl Selection for RankSelection {
-    type C = TestCase;
-
-    fn apply(&self, population: &[Self::C]) -> Self::C {
-        self.select(population)
-    }
-}
-
 impl RankSelection {
     pub fn new(branch_manager: Rc<RefCell<BranchManager>>) -> RankSelection {
         RankSelection {
@@ -319,7 +282,11 @@ impl RankSelection {
         }
     }
 
-    fn sort<C: Chromosome>(&self, population: &[C]) -> Vec<C> {
+    pub fn apply<'test>(&self, population: &[TestCase<'test>]) -> TestCase<'test> {
+        self.select(population)
+    }
+
+    fn sort<'test>(&self, population: &[TestCase<'test>]) -> Vec<TestCase<'test>> {
         let mut sorted = vec![];
         let mut fronts =
             PreferenceSorter::sort(population, self.branch_manager.borrow().branches());
@@ -332,7 +299,7 @@ impl RankSelection {
         sorted
     }
 
-    pub fn select<C: Chromosome>(&self, population: &[C]) -> C {
+    pub fn select<'test>(&self, population: &[TestCase<'test>]) -> TestCase<'test> {
         let population = self.sort(population);
         let probabilities: Vec<f64> = (0..population.len())
             .map(|i| {

@@ -2,7 +2,6 @@ use crate::analysis::HirAnalysis;
 use crate::branch::Branch;
 use crate::fitness::FitnessValue;
 use crate::generators::{generate_random_prim, TestIdGenerator};
-use crate::operators::{Crossover, Mutation};
 use crate::types::{Callable, FieldAccessItem, FunctionItem, MethodItem, Param, PrimT, PrimitiveItem, StaticFnItem, StructInitItem, Trait, STD_CALLABLES, T, TYPES, ComplexT, Generic};
 use petgraph::prelude::StableDiGraph;
 use petgraph::stable_graph::NodeIndex;
@@ -21,6 +20,7 @@ use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use syn::{Expr, FieldValue, ImplItemMethod, Item, ItemEnum, ItemStruct, Stmt, Type};
 use uuid::Uuid;
+use crate::operators::{BasicMutation, SinglePointCrossover};
 
 lazy_static! {
     static ref CHROMOSOME_ID_GENERATOR: Arc<Mutex<TestIdGenerator>> =
@@ -42,13 +42,13 @@ pub trait Chromosome: Clone + Debug + ToSyn + PartialEq + Eq + Hash {
     fn set_coverage(&mut self, coverage: HashMap<Branch, FitnessValue>);
 
     /// Applies mutation to the chromosome
-    fn mutate<M: Mutation<C=Self>>(&self, mutation: &M) -> Self;
+    fn mutate(&self, mutation: &BasicMutation) -> Self;
 
     /// Returns the fitness of the chromosome with respect to a certain branch
     fn fitness(&self, objective: &Branch) -> FitnessValue;
 
     /// Applies crossover to this and other chromosome and returns a pair of offsprings
-    fn crossover<C: Crossover<C=Self>>(&self, other: &Self, crossover: &C) -> (Self, Self)
+    fn crossover(&self, other: &Self, crossover: &SinglePointCrossover) -> (Self, Self)
         where
             Self: Sized;
 
@@ -63,15 +63,24 @@ pub enum Dependency {
     Owns,
     Consumes,
     Borrows,
+    Defines
+}
+
+#[derive(Debug, Clone)]
+pub enum Node {
+    TypeBinding(Generic, T),
+    Var(Var),
+    Statement(Statement)
 }
 
 #[derive(Debug)]
-pub struct TestCase {
+pub struct TestCase<'test> {
     id: u64,
     stmts: Vec<Statement>,
     coverage: HashMap<Branch, FitnessValue>,
     ddg: StableDiGraph<Uuid, Dependency>,
-
+    cfg: StableDiGraph<&'test Node, usize>,
+    nodes: Vec<Node>,
     /// Stores connection of variables and the appropriate statements
     var_table: HashMap<Var, Uuid>,
 
@@ -81,13 +90,15 @@ pub struct TestCase {
     analysis: Rc<HirAnalysis>,
 }
 
-impl Clone for TestCase {
+impl<'test> Clone for TestCase<'test> {
     fn clone(&self) -> Self {
         TestCase {
             id: self.id.clone(),
             stmts: self.stmts.clone(),
             coverage: self.coverage.clone(),
             ddg: self.ddg.clone(),
+            cfg: self.cfg.clone(),
+            nodes: self.nodes.clone(),
             node_index_table: self.node_index_table.clone(),
             var_table: self.var_table.clone(),
             var_counters: self.var_counters.clone(),
@@ -96,7 +107,7 @@ impl Clone for TestCase {
     }
 }
 
-impl PartialEq for TestCase {
+impl<'test> PartialEq for TestCase<'test> {
     fn eq(&self, other: &Self) -> bool {
         /*self.stmts == other.stmts && self.objective == other.objective*/
 
@@ -105,9 +116,9 @@ impl PartialEq for TestCase {
     }
 }
 
-impl Eq for TestCase {}
+impl<'test> Eq for TestCase<'test> {}
 
-impl Hash for TestCase {
+impl<'test> Hash for TestCase<'test> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
         /*self.objective.hash(state);
@@ -115,14 +126,16 @@ impl Hash for TestCase {
     }
 }
 
-impl TestCase {
+impl<'test> TestCase<'test> {
     pub fn new(id: u64, analysis: Rc<HirAnalysis>) -> Self {
         TestCase {
             id,
             stmts: Vec::new(),
             coverage: HashMap::new(),
             ddg: StableDiGraph::new(),
+            cfg: StableDiGraph::new(),
             var_table: HashMap::new(),
+            nodes: Vec::new(),
             node_index_table: HashMap::new(),
             var_counters: HashMap::new(),
             analysis,
@@ -160,6 +173,7 @@ impl TestCase {
         let uuid = stmt.id();
 
         // Save to DDG
+        //let node = Node::Statement(stmt.clone);
         let node_index = self.ddg.add_node(uuid);
         self.node_index_table.insert(uuid, node_index.clone());
 
@@ -319,7 +333,8 @@ impl TestCase {
                         return true;
                     }
                     false
-                }
+                },
+                _ => todo!()
             }
         });
 
@@ -563,7 +578,7 @@ impl TestCase {
             .filter_map(|p| self.generate_arg(p))
             .collect();
 
-        let bounded_generics = self.bound_generics(&callable, &args);
+        let bounded_generics = self.bind_generics(&callable, &args);
 
         if args.len() != callable.params().len() {
             println!("Could not generate args for callable: \n{:?}", callable);
@@ -684,7 +699,7 @@ impl TestCase {
         }
     }
 
-    fn bound_generics(&self, callable: &Callable, args: &Vec<Arg>) -> Vec<T> {
+    fn bind_generics(&self, callable: &Callable, args: &Vec<Arg>) -> Vec<T> {
         // Now look which generic parameters are already bounded by arguments and bound the rest
         let return_ty = callable.return_type();
         let bounded_generics = if let Some(return_ty) = return_ty {
@@ -802,7 +817,7 @@ impl TestCase {
             return None;
         }
 
-        let bounded_generics = self.bound_generics(&generator, &args);
+        let bounded_generics = self.bind_generics(&generator, &args);
 
         let stmt = generator.to_stmt(args, bounded_generics);
 
@@ -876,7 +891,7 @@ impl TestCase {
     }
 }
 
-impl ToSyn for TestCase {
+impl<'test> ToSyn for TestCase<'test> {
     fn to_syn(&self) -> Item {
         let ident = Ident::new(
             &format!("{}_{}", TEST_FN_PREFIX, self.id),
@@ -908,7 +923,7 @@ impl ToSyn for TestCase {
     }
 }
 
-impl Chromosome for TestCase {
+impl<'test> Chromosome for TestCase<'test> {
     fn id(&self) -> u64 {
         self.id
     }
@@ -921,7 +936,7 @@ impl Chromosome for TestCase {
         self.coverage = coverage;
     }
 
-    fn mutate<M: Mutation<C=Self>>(&self, mutation: &M) -> Self {
+    fn mutate(&self, mutation: &BasicMutation) -> Self {
         let mut mutated_test = mutation.apply(self);
         mutated_test.id = CHROMOSOME_ID_GENERATOR.lock().unwrap().next_id();
         mutated_test
@@ -935,7 +950,7 @@ impl Chromosome for TestCase {
         }
     }
 
-    fn crossover<C: Crossover<C=Self>>(&self, other: &Self, crossover: &C) -> (Self, Self)
+    fn crossover(&self, other: &Self, crossover: &SinglePointCrossover) -> (Self, Self)
         where
             Self: Sized,
     {
