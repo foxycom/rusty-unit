@@ -12,9 +12,7 @@ use std::sync::{Arc, Mutex};
 use crate::util::{get_cut_name, get_testify_flags};
 use crate::writer::HirWriter;
 use generation::analysis::HirAnalysis;
-use generation::types::{
-    Callable, ComplexT, FieldAccessItem, FunctionItem, MethodItem, StaticFnItem, T,
-};
+use generation::types::{Callable, ComplexT, FieldAccessItem, FunctionItem, MethodItem, StaticFnItem, StructInitItem, T};
 use generation::util::{
     def_id_to_complex, fn_ret_ty_to_t, generics_to_ts, impl_to_struct_id, item_to_name,
     node_to_name, span_to_path, ty_to_param, ty_to_t,
@@ -73,7 +71,7 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
             }
             ItemKind::Struct(s, g) => {
                 if allowed_item(item, &tcx) {
-                    analyze_struct(item.def_id, s, g, file_path.unwrap(), &tcx);
+                    analyze_struct(item.def_id, s, g, file_path.unwrap(), &mut callables, &tcx);
                 }
             }
             _ => {}
@@ -113,7 +111,7 @@ fn analyze_fn(
     // self_hir_id must never be used, so just pass a dummy value
     let mut params = Vec::with_capacity(fn_decl.inputs.len());
     for input in fn_decl.inputs.iter() {
-        if let Some(param) = ty_to_param(input, hir_id, &generics, tcx) {
+        if let Some(param) = ty_to_param(None, input, hir_id, &generics, tcx) {
             params.push(param);
         } else {
             return;
@@ -132,10 +130,9 @@ fn analyze_struct(
     vd: &VariantData,
     g: &Generics,
     file_path: PathBuf,
+    callables: &mut Vec<Callable>,
     tcx: &TyCtxt<'_>,
 ) {
-
-
     println!(">> U8 type: {:?}", tcx.types.u8.kind());
     //let adt_def = tcx.adt_def(struct_local_def_id.to_def_id());
     let src_file_map = SOURCE_FILE_MAP.lock().unwrap();
@@ -153,7 +150,7 @@ fn analyze_struct(
         VariantData::Struct(fields, _) => {
             let def_id = tcx.hir().local_def_id(struct_hir_id).to_def_id();
             let parent = def_id_to_complex(def_id, tcx).unwrap();
-            let parent_name = node_to_name(&tcx.hir().get(parent_hir_id), tcx).unwrap();
+            let parent_name = node_to_name(&tcx.hir().get(struct_hir_id), tcx).unwrap();
             if parent_name.contains("serde") {
                 // Skip too hard stuff
                 return;
@@ -170,9 +167,10 @@ fn analyze_struct(
                 }
             }
 
-            let mut params = Vec::with_capacity(sig.decl.inputs.len());
+            let mut params = Vec::with_capacity(fields.len());
             for field in fields.iter() {
-                let param = ty_to_param(field.ty, struct_hir_id, &struct_generics, tcx);
+                let name = field.ident.name.to_ident_string();
+                let param = ty_to_param(Some(&name), field.ty, struct_hir_id, &struct_generics, tcx);
                 if let Some(param) = param {
                     params.push(param);
                 } else {
@@ -182,8 +180,8 @@ fn analyze_struct(
                 }
             }
 
-
-            todo!()
+            println!("Fields in struct {}: {:?}", parent_name, params);
+            callables.push(Callable::StructInit(StructInitItem::new(src_file_id, params, parent)));
         }
         _ => {}
     }
@@ -235,7 +233,7 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
 
                         let mut params = Vec::with_capacity(sig.decl.inputs.len());
                         for input in sig.decl.inputs.iter() {
-                            let param = ty_to_param(input, parent_hir_id, &overall_generics, tcx);
+                            let param = ty_to_param(None, input, parent_hir_id, &overall_generics, tcx);
                             if let Some(param) = param {
                                 params.push(param);
                             } else {
@@ -251,8 +249,10 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                         let return_type = fn_ret_ty_to_t(&sig.decl.output, parent_hir_id, tcx);
 
                         if let Some(return_type) = return_type.as_ref() {
-                            println!(">> Return type is {:?}", &sig.decl.output);
+                            println!(">> HIR Output: {:?}", &sig.decl.output);
+                            println!(">> Return type is: {:?}", &return_type);
                         }
+
                         if !sig.decl.implicit_self.has_implicit_self() {
                             // Static method
                             let static_method_item = StaticFnItem::new(
@@ -287,6 +287,5 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
             }
             _ => {}
         }
-
     }
 }

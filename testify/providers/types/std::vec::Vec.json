@@ -6,7 +6,8 @@
         "name": "T",
         "bounds": []
       }
-    }]
+    }],
+    "is_local": false
   }
 }
 

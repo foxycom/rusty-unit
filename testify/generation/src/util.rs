@@ -3,12 +3,9 @@ use petgraph::visit::Walker;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
-use rustc_hir::{
-    FnRetTy, GenericBound, GenericParam, GenericParamKind, Generics, HirId, Impl, Item, ItemKind,
-    Mutability, Node, ParamName, PathSegment, PrimTy, QPath, Ty, TyKind, WherePredicate,
-};
+use rustc_hir::{FnRetTy, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, HirId, Impl, Item, ItemKind, Mutability, MutTy, Node, ParamName, PathSegment, PrimTy, QPath, Ty, TyKind, WherePredicate};
 use rustc_middle::dep_graph::DepContext;
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
+use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{TyCtxt, TypeckResults};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{FileName, RealFileName, Span};
@@ -34,29 +31,19 @@ pub fn fmt_path() -> io::Result<PathBuf> {
 }
 
 pub fn ty_to_param(
-    name: &str,
+    name: Option<&str>,
     ty: &Ty,
     self_hir_id: HirId,
     parent_generics: &Vec<T>,
     tcx: &TyCtxt<'_>,
 ) -> Option<Param> {
-    let (by_reference, mutable) = if let TyKind::Rptr(_, mut_ty) = &ty.kind {
-        let mutable = mut_ty.mutbl == Mutability::Mut;
-        (true, mutable)
-    } else {
-        (false, false)
+    let mutability = match &ty.kind {
+        TyKind::Rptr(_, mut_ty) => mut_ty.mutbl == Mutability::Mut,
+        _ => false
     };
 
     let real_ty = ty_to_t(ty, Some(self_hir_id), parent_generics, tcx)?;
-    if real_ty.is_complex() {
-        let def_id = real_ty.expect_id();
-
-        //let original_ty = T::Complex(ComplexT::new(def_id, real_ty.name()));
-        let original_ty = def_id_to_complex(def_id, tcx)?;
-        Some(Param::new(name, real_ty, original_ty, by_reference, mutable))
-    } else {
-        Some(Param::new(name,real_ty.clone(), real_ty, by_reference, mutable))
-    }
+    Some(Param::new(name, real_ty, mutability))
 }
 
 pub fn ty_to_t(
@@ -65,9 +52,10 @@ pub fn ty_to_t(
     defined_generics: &Vec<T>,
     tcx: &TyCtxt<'_>,
 ) -> Option<T> {
-    println!("Ty: {:?}", ty);
     match &ty.kind {
-        TyKind::Rptr(_, mut_ty) => ty_to_t(mut_ty.ty, self_, defined_generics, tcx),
+        TyKind::Rptr(_, mut_ty) => ty_to_t(mut_ty.ty, self_, defined_generics, tcx).map(|t| {
+            T::Ref(Box::new(t))
+        }),
         TyKind::Path(q_path) => {
             match q_path {
                 QPath::Resolved(_, path) => {
@@ -93,7 +81,8 @@ pub fn ty_to_t(
 
                                 return Some(T::Generic(Generic::new(&name, bounds)));
                             }
-                            def_id_to_complex(*def_id, tcx)
+                            //def_id_to_complex(*def_id, tcx)
+                            path_to_t(*def_id, path, defined_generics, tcx)
                         }
                         Res::PrimTy(prim_ty) => Some(T::from(*prim_ty)),
                         Res::SelfTy(trait_def_id, impl_) => {
@@ -127,7 +116,46 @@ pub fn ty_to_t(
     }
 }
 
+pub fn path_to_t(def_id: DefId, path: &rustc_hir::Path<'_>, defined_generics: &Vec<T>, tcx: &TyCtxt<'_>) -> Option<T> {
+    let name = tcx.def_path_str(def_id);
+    let generics = path.segments.iter().filter_map(|s| if let Some(args) = s.args {
+        Some(args.args.iter().filter_map(|a| generic_arg_to_t(a, defined_generics, tcx)).collect::<Vec<_>>())
+    } else {
+        None
+    }).flatten().collect::<Vec<_>>();
+
+
+    Some(T::Complex(ComplexT::new(Some(def_id), &name, generics)))
+}
+
+pub fn generic_arg_to_t(generic_arg: &GenericArg, defined_generics: &Vec<T>, tcx: &TyCtxt<'_>) -> Option<T> {
+    match generic_arg {
+        GenericArg::Type(ty) => ty_to_t(ty, None, defined_generics, tcx),
+        _ => None
+    }
+}
+
 pub fn def_id_to_complex(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<T> {
+    /*let ty = tcx.type_of(def_id);
+    match ty.kind() {
+        rustc_middle::ty::TyKind::Adt(_, substs) => {
+            let generics = substs
+                .non_erasable_generics()
+                .filter_map(|kind| generic_to_t(kind, tcx))
+                .collect::<Vec<_>>();
+
+            if generics.len() != substs_len(substs) {
+                println!("Not all generics could be parsed: {:?}", substs);
+                return None;
+            }
+            let name = tcx.def_path_str(def_id);
+            let t = T::Complex(ComplexT::new(Some(def_id), &name, generics));
+
+            Some(t)
+        }
+        _ => todo!(),
+    }*/
+
     let ty = tcx.type_of(def_id);
     match ty.kind() {
         rustc_middle::ty::TyKind::Adt(_, substs) => {
@@ -170,7 +198,14 @@ pub fn tys_to_t(ty: rustc_middle::ty::Ty, tcx: &TyCtxt<'_>) -> Option<T> {
     match ty.kind() {
         rustc_middle::ty::TyKind::Param(param) => {
             let name = param.name.to_string();
-            Some(T::Generic(Generic::new(&name, vec![])))
+            let generic_param = T::Generic(Generic::new(&name, vec![]));
+            if ty.is_region_ptr() {
+                println!("GENERIC PTR //: {:?}", ty);
+
+                Some(T::Ref(Box::new(generic_param)))
+            } else {
+                Some(generic_param)
+            }
         }
         _ => todo!("Ty is {:?}", ty),
     }
@@ -261,7 +296,9 @@ pub fn fn_ret_ty_to_t(ret_ty: &FnRetTy, self_hir_id: HirId, tcx: &TyCtxt<'_>) ->
     let generics = vec![];
     match ret_ty {
         FnRetTy::DefaultReturn(_) => None,
-        FnRetTy::Return(ty) => ty_to_t(ty, Some(self_hir_id), &generics, tcx),
+        FnRetTy::Return(ty) => {
+            ty_to_t(ty, Some(self_hir_id), &generics, tcx)
+        }
     }
 }
 

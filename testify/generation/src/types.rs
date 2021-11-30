@@ -1,15 +1,16 @@
 use std::collections::HashSet;
 use std::collections::HashMap;
-use crate::chromosome::{Arg, AssignStmt, ConstructorStmt, FieldAccessStmt, FnInvStmt, MethodInvStmt, Statement, StaticFnInvStmt, StructInitStmt};
+use crate::chromosome::{Arg, AssignStmt, FieldAccessStmt, FnInvStmt, MethodInvStmt, Statement, StaticFnInvStmt, StructInitStmt};
 use rustc_ast::{FloatTy, IntTy, UintTy};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BodyId, FnSig, HirId, PrimTy};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{TyCtxt, TypeFoldable};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Display, Formatter};
 use std::fs;
 use std::path::PathBuf;
-use syn::Type;
+use proc_macro2::{Ident, Span};
+use syn::{Expr, Type};
 
 lazy_static! {
     pub static ref STR_TRAITS: HashSet<Trait> = {
@@ -143,10 +144,9 @@ pub enum Callable {
     Method(MethodItem),
     StaticFunction(StaticFnItem),
     Function(FunctionItem),
-    Constructor(ConstructorItem),
     Primitive(PrimitiveItem),
     FieldAccess(FieldAccessItem),
-    StructInit(StructInitItem)
+    StructInit(StructInitItem),
 }
 
 impl Callable {
@@ -155,7 +155,6 @@ impl Callable {
             Callable::Method(method_item) => &method_item.params,
             Callable::StaticFunction(fn_item) => &fn_item.params,
             Callable::Function(fn_item) => &fn_item.params,
-            Callable::Constructor(constructor_item) => &constructor_item.params,
             Callable::Primitive(primitive_item) => primitive_item.params(),
             Callable::FieldAccess(_) => unimplemented!(),
             Callable::StructInit(struct_init_item) => struct_init_item.params(),
@@ -167,7 +166,6 @@ impl Callable {
             Callable::Method(m) => &mut m.params,
             Callable::StaticFunction(f) => &mut f.params,
             Callable::Function(f) => &mut f.params,
-            Callable::Constructor(c) => &mut c.params,
             Callable::Primitive(p) => &mut p.params,
             Callable::FieldAccess(_) => unimplemented!(),
             Callable::StructInit(s) => &mut s.fields,
@@ -179,7 +177,6 @@ impl Callable {
             Callable::Method(method_item) => method_item.return_type.as_ref(),
             Callable::StaticFunction(fn_item) => fn_item.return_type.as_ref(),
             Callable::Function(fn_item) => fn_item.return_type.as_ref(),
-            Callable::Constructor(constructor_item) => Some(&constructor_item.return_type()),
             Callable::Primitive(primitive_item) => Some(&primitive_item.ty),
             Callable::FieldAccess(field_access_item) => Some(&field_access_item.ty),
             Callable::StructInit(struct_init_item) => Some(struct_init_item.return_type())
@@ -191,35 +188,31 @@ impl Callable {
             Callable::Method(method_item) => Some(&method_item.parent),
             Callable::StaticFunction(fn_item) => Some(&fn_item.parent),
             Callable::Function(_) => None,
-            Callable::Constructor(constructor) => Some(&constructor.parent),
             Callable::Primitive(_) => None,
             Callable::FieldAccess(field_access_item) => Some(&field_access_item.parent),
             Callable::StructInit(struct_init_item) => Some(struct_init_item.return_type())
         }
     }
 
-    pub fn to_stmt(&self, args: Vec<Arg>) -> Statement {
+    pub fn to_stmt(&self, args: Vec<Arg>, bounded_generics: Vec<T>) -> Statement {
         match self {
             Callable::Method(method_item) => {
-                Statement::MethodInvocation(MethodInvStmt::new(method_item.clone(), args))
+                Statement::MethodInvocation(MethodInvStmt::new(method_item.clone(), args, bounded_generics))
             }
             Callable::StaticFunction(fn_item) => {
-                Statement::StaticFnInvocation(StaticFnInvStmt::new(fn_item.clone(), args))
+                Statement::StaticFnInvocation(StaticFnInvStmt::new(fn_item.clone(), args, bounded_generics))
             }
             Callable::Function(fn_item) => {
-                Statement::FunctionInvocation(FnInvStmt::new(fn_item.clone(), args))
-            }
-            Callable::Constructor(constructor_item) => {
-                Statement::Constructor(ConstructorStmt::new(constructor_item.clone(), args))
+                Statement::FunctionInvocation(FnInvStmt::new(fn_item.clone(), args, bounded_generics))
             }
             Callable::Primitive(primitive_item) => {
-                Statement::PrimitiveAssignment(AssignStmt::new(primitive_item.clone()))
+                Statement::PrimitiveAssignment(AssignStmt::new(primitive_item.clone(), bounded_generics))
             }
             Callable::FieldAccess(field_access_item) => {
-                Statement::FieldAccess(FieldAccessStmt::new(field_access_item.clone()))
+                Statement::FieldAccess(FieldAccessStmt::new(field_access_item.clone(), bounded_generics))
             }
             Callable::StructInit(struct_init_item) => {
-                Statement::StructInit(StructInitStmt::new(struct_init_item.clone(), args))
+                Statement::StructInit(StructInitStmt::new(struct_init_item.clone(), args, bounded_generics))
             }
         }
     }
@@ -229,7 +222,6 @@ impl Callable {
             Callable::Method(m) => m.name(),
             Callable::StaticFunction(f) => f.name(),
             Callable::Function(f) => f.name(),
-            Callable::Constructor(c) => "new",
             Callable::Primitive(_) => unimplemented!(),
             Callable::FieldAccess(_) => unimplemented!(),
             Callable::StructInit(_) => unimplemented!()
@@ -259,7 +251,6 @@ pub struct StructInitItem {
     pub fields: Vec<Param>,
     pub return_type: T,
 
-
     pub src_file_id: usize,
 }
 
@@ -275,7 +266,6 @@ impl StructInitItem {
     pub fn return_type(&self) -> &T {
         &self.return_type
     }
-
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -441,69 +431,54 @@ impl FieldAccessItem {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConstructorItem {
-    pub params: Vec<Param>,
-    pub parent: T,
-    #[serde(skip)]
-    pub fn_id: Option<HirId>,
-    pub src_file_id: usize,
-}
-
-impl ConstructorItem {
-    pub fn new(
-        src_file_id: usize,
-        fn_sig: &FnSig,
-        fn_id: HirId,
-        parent_hir_id: HirId,
-        tcx: &TyCtxt<'_>,
-    ) -> Self {
-        todo!()
-        /*
-        ConstructorItem {
-            parent,
-            params,
-            body_id,
-            fn_id
-        }*/
-    }
-
-    pub fn params(&self) -> &Vec<Param> {
-        self.params.as_ref()
-    }
-    pub fn return_type(&self) -> &T {
-        &self.parent
-    }
-    pub fn parent(&self) -> &T {
-        &self.parent
-    }
-}
-
-#[derive(Debug, Clone, Hash, Eq, Serialize, Deserialize)]
+#[derive(Clone, Hash, Eq, Serialize, Deserialize)]
 pub enum T {
+    Ref(Box<T>),
     Prim(PrimT),
     Complex(ComplexT),
     Generic(Generic),
 }
+
+impl Debug for T {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            T::Ref(ty) => {
+                write!(f, "&");
+                Debug::fmt(ty, f)
+            }
+            T::Prim(prim_ty) => {
+                Debug::fmt(prim_ty, f)
+            }
+            T::Complex(complex_ty) => {
+                Debug::fmt(complex_ty, f)
+            }
+            T::Generic(generic_ty) => {
+                Debug::fmt(generic_ty, f)
+            }
+        }
+    }
+}
+
 
 impl PartialEq for T {
     fn eq(&self, other: &Self) -> bool {
         match self {
             T::Prim(prim) => match other {
                 T::Prim(other_prim) => prim == other_prim,
-                T::Complex(_) => false,
-                T::Generic(_) => false,
+                _ => false
             },
             T::Complex(comp) => match other {
-                T::Prim(_) => false,
                 T::Complex(other_comp) => comp == other_comp,
-                T::Generic(_) => false,
+                _ => false
             },
             T::Generic(generic) => match other {
-                T::Prim(_) => false,
-                T::Complex(_) => false,
                 T::Generic(other_generic) => generic == other_generic,
+                _ => false
             },
+            T::Ref(r) => match other {
+                T::Ref(other_r) => r == other_r,
+                _ => false
+            }
         }
     }
 }
@@ -555,12 +530,19 @@ impl T {
 
     pub fn name(&self) -> String {
         match self {
-            T::Prim(prim) => {
-                // TODO only for debugging
-                format!("{:?}", prim)
-            }
+            T::Prim(prim) => prim.name_str().to_string(),
             T::Complex(complex) => complex.name().to_string(),
             T::Generic(generic) => generic.name().to_string(),
+            T::Ref(r) => r.name()
+        }
+    }
+
+    pub fn full_name(&self) -> String {
+        match self {
+            T::Prim(prim) => prim.name_str().to_string(),
+            T::Complex(complex) => complex.full_name(),
+            T::Generic(generic) => generic.name().to_string(),
+            T::Ref(r) => r.full_name()
         }
     }
 
@@ -569,6 +551,7 @@ impl T {
             T::Prim(prim) => prim.name_str().to_string(),
             T::Complex(complex) => complex.name().split("::").last().unwrap().to_string(),
             T::Generic(generic) => todo!(),
+            T::Ref(r) => r.var_string()
         }
     }
 
@@ -577,6 +560,7 @@ impl T {
             T::Prim(_) => unimplemented!(),
             T::Complex(complex) => complex.def_id(),
             T::Generic(generic) => unimplemented!(),
+            T::Ref(r) => r.id()
         }
     }
 
@@ -585,6 +569,7 @@ impl T {
             T::Prim(_) => unimplemented!(),
             T::Complex(complex) => complex.def_id().unwrap(),
             T::Generic(generic) => unimplemented!(),
+            T::Ref(r) => r.expect_id(),
         }
     }
 
@@ -593,6 +578,7 @@ impl T {
             T::Prim(_) => true,
             T::Complex(_) => false,
             T::Generic(_) => false,
+            T::Ref(r) => r.is_prim()
         }
     }
 
@@ -601,6 +587,7 @@ impl T {
             T::Prim(_) => false,
             T::Complex(_) => true,
             T::Generic(_) => false,
+            T::Ref(r) => r.is_complex()
         }
     }
 
@@ -609,12 +596,14 @@ impl T {
             T::Prim(_) => false,
             T::Complex(_) => false,
             T::Generic(_) => true,
+            T::Ref(r) => r.is_generic()
         }
     }
 
     pub fn expect_generic(&self) -> &Generic {
         match self {
             T::Generic(generic) => generic,
+            T::Ref(r) => r.expect_generic(),
             _ => panic!("Is not generic"),
         }
     }
@@ -622,6 +611,7 @@ impl T {
     pub fn expect_complex(&self) -> &ComplexT {
         match self {
             T::Complex(complex) => complex,
+            T::Ref(r) => r.expect_complex(),
             _ => panic!("Is not complex"),
         }
     }
@@ -629,7 +619,33 @@ impl T {
     pub fn expect_primitive(&self) -> &PrimT {
         match self {
             T::Prim(prim) => prim,
+            T::Ref(r) => r.expect_primitive(),
             _ => panic!()
+        }
+    }
+
+    pub fn generics(&self) -> Option<&Vec<T>> {
+        match self {
+            T::Prim(_) => None,
+            T::Complex(complex) => Some(complex.generics()),
+            T::Generic(generic) => None,
+            T::Ref(r) => r.generics(),
+        }
+    }
+
+    pub fn to_ident(&self) -> Expr {
+        let name = self.full_name();
+
+        let ident = name.split("::").map(|segment| Ident::new(segment, Span::call_site())).collect::<Vec<_>>();
+        let expr = syn::parse_quote! {
+            #(#ident)::*
+        };
+
+        return match self {
+            T::Ref(_) => syn::parse_quote! {
+                &#expr
+            },
+            _ => expr
         }
     }
 }
@@ -640,16 +656,27 @@ impl Display for T {
             T::Prim(prim) => write!(f, "{}", prim.name_str()),
             T::Complex(complex) => Display::fmt(complex, f),
             T::Generic(generic) => Display::fmt(generic, f),
+            T::Ref(r) => {
+                write!(f, "&");
+                Display::fmt(r.as_ref(), f)
+            }
         }
     }
 }
 
-#[derive(Debug, Clone, Hash, Eq, Serialize, Deserialize)]
+#[derive(Clone, Hash, Eq, Serialize, Deserialize)]
 pub struct ComplexT {
     #[serde(skip)]
     def_id: Option<DefId>,
     name: String,
     generics: Vec<T>,
+    is_local: bool
+}
+
+impl Debug for ComplexT {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(self, f)
+    }
 }
 
 impl Display for ComplexT {
@@ -679,8 +706,14 @@ impl PartialEq for ComplexT {
 
 impl ComplexT {
     pub fn new(def_id: Option<DefId>, name: &str, generics: Vec<T>) -> Self {
+        let is_local = if let Some(def_id) = def_id {
+                def_id.is_local()
+            } else {
+                false
+            };
         ComplexT {
             name: name.to_string(),
+            is_local,
             def_id,
             generics,
         }
@@ -693,12 +726,30 @@ impl ComplexT {
     pub fn def_id(&self) -> Option<DefId> {
         self.def_id
     }
+
+    pub fn generics(&self) -> &Vec<T> {
+        &self.generics
+    }
+
+    pub fn full_name(&self) -> String {
+        if self.is_local {
+            format!("crate::{}", &self.name)
+        } else {
+            self.name.to_string()
+        }
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Generic {
     name: String,
     bounds: Vec<Trait>,
+}
+
+impl Debug for Generic {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(self, f)
+    }
 }
 
 impl Generic {
@@ -755,22 +806,31 @@ impl Display for Trait {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Param {
-    real_ty: T,
-    original_ty: T,
-    by_reference: bool,
+    ty: T,
     mutable: bool,
-    name: String
+    name: Option<String>,
+}
+
+impl Debug for Param {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if let Some(name) = &self.name {
+            write!(f, "{}: ", name);
+        }
+
+        if self.mutable {
+            write!(f, "mut ");
+        }
+        write!(f, "{:?}", &self.ty)
+    }
 }
 
 impl Param {
-    pub fn new(name: &str, real_ty: T, original_ty: T, by_reference: bool, mutable: bool) -> Self {
+    pub fn new(name: Option<&str>, ty: T,  mutable: bool) -> Self {
         Param {
-            name: name.to_string(),
-            real_ty,
-            original_ty,
-            by_reference,
+            name: name.map(|s| s.to_string()),
+            ty,
             mutable,
         }
     }
@@ -780,7 +840,10 @@ impl Param {
     }
 
     pub fn by_reference(&self) -> bool {
-        self.by_reference
+        match &self.ty {
+            T::Ref(_) => true,
+            _ => false
+        }
     }
 
     pub fn mutable(&self) -> bool {
@@ -788,7 +851,10 @@ impl Param {
     }
 
     pub fn real_ty(&self) -> &T {
-        &self.real_ty
+        match &self.ty {
+            T::Ref(ty) => ty.as_ref(),
+            _ => &self.ty
+        }
     }
 
     pub fn real_ty_mut(&mut self) -> &mut T {
@@ -796,23 +862,22 @@ impl Param {
     }
 
     pub fn is_primitive(&self) -> bool {
-        self.real_ty.is_prim()
+        self.ty.is_prim()
     }
 
     pub fn is_generic(&self) -> bool {
-        self.real_ty.is_generic()
+        self.ty.is_generic()
     }
-
 
     pub fn original_ty(&self) -> &T {
-        &self.original_ty
+        &self.ty
     }
-    pub fn name(&self) -> &str {
-        &self.name
+    pub fn name(&self) -> Option<&String> {
+        self.name.as_ref()
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, Eq, PartialEq)]
+#[derive(Clone, Copy, Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub enum PrimT {
     Int(IntT),
     Uint(UintT),
@@ -820,6 +885,12 @@ pub enum PrimT {
     Str,
     Bool,
     Char,
+}
+
+impl Debug for PrimT {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name_str())
+    }
 }
 
 impl PrimT {
@@ -857,7 +928,7 @@ impl PrimT {
                 UintT::U16,
                 UintT::U32,
                 UintT::U64,
-                UintT::U128
+                UintT::U128,
             ].iter().for_each(|t| {
                 let _ = implementators.insert(PrimT::Uint(*t));
             });
@@ -910,7 +981,7 @@ pub enum IntT {
     I16,
     I32,
     I64,
-    I128
+    I128,
 }
 
 impl IntT {
@@ -924,7 +995,6 @@ impl IntT {
             IntT::I128 => "i128",
         }
     }
-
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, Eq, PartialEq)]
@@ -948,7 +1018,6 @@ impl UintT {
             UintT::U128 => "u128",
         }
     }
-
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, Eq, PartialEq)]

@@ -81,9 +81,6 @@ impl Mutation for BasicMutation {
             let stmts = copy.stmts();
             let stmt = stmts.get(fastrand::usize(0..stmts.len())).unwrap().clone();
             match stmt {
-                Statement::Constructor(_) => {
-                    self.mutate_invocation(&mut copy, stmt.clone());
-                }
                 Statement::MethodInvocation(_) => {
                     self.mutate_invocation(&mut copy, stmt.clone());
                 }
@@ -198,7 +195,7 @@ impl BasicMutation {
                     if args.len() != generator.params().len() {
                         todo!()
                     }
-                    new_stmt = generator.to_stmt(args);
+                    new_stmt = generator.to_stmt(args, vec![]);
                 } else {
                     unimplemented!()
                 }
@@ -232,7 +229,6 @@ impl BasicMutation {
 
             let self_param = match callable_tuple.1.params().first() {
                 None => {
-                    //test_case.to_file();
                     panic!(
                         "\nFailing test: {}, callable: {:?}",
                         test_case.id(),
@@ -251,7 +247,7 @@ impl BasicMutation {
                 args.push(arg);
             });
 
-            let stmt = callable_tuple.1.to_stmt(args);
+            let stmt = callable_tuple.1.to_stmt(args, vec![]);
             let stmt_i = fastrand::usize(callable_tuple.2.clone());
             copy.insert_stmt(stmt_i, stmt);
         } else {
@@ -283,7 +279,7 @@ impl BasicMutation {
                 if args.len() != callable.params().len() {
                     todo!()
                 }
-                let stmt = callable.to_stmt(args);
+                let stmt = callable.to_stmt(args, vec![]);
                 copy.add_stmt(stmt);
             }
         }

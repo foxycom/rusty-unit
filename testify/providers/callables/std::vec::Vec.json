@@ -10,7 +10,8 @@
               "name": "T",
               "bounds": []
             }
-          }]
+          }],
+          "is_local": false
         }
       },
       "parent": {
@@ -21,7 +22,8 @@
               "name": "T",
               "bounds": []
             }
-          }]
+          }],
+          "is_local": false
         }
       },
       "name": "new",

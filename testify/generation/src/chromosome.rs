@@ -3,10 +3,7 @@ use crate::branch::Branch;
 use crate::fitness::FitnessValue;
 use crate::generators::{generate_random_prim, TestIdGenerator};
 use crate::operators::{Crossover, Mutation};
-use crate::types::{
-    Callable, ConstructorItem, FieldAccessItem, FunctionItem, MethodItem, Param, PrimT,
-    PrimitiveItem, StaticFnItem, StructInitItem, Trait, STD_CALLABLES, T, TYPES,
-};
+use crate::types::{Callable, FieldAccessItem, FunctionItem, MethodItem, Param, PrimT, PrimitiveItem, StaticFnItem, StructInitItem, Trait, STD_CALLABLES, T, TYPES, ComplexT, Generic};
 use petgraph::prelude::StableDiGraph;
 use petgraph::stable_graph::NodeIndex;
 use petgraph::Direction;
@@ -22,7 +19,7 @@ use std::iter::FromIterator;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
-use syn::{Expr, ImplItemMethod, Item, ItemEnum, ItemStruct, Stmt, Type};
+use syn::{Expr, FieldValue, ImplItemMethod, Item, ItemEnum, ItemStruct, Stmt, Type};
 use uuid::Uuid;
 
 lazy_static! {
@@ -45,15 +42,15 @@ pub trait Chromosome: Clone + Debug + ToSyn + PartialEq + Eq + Hash {
     fn set_coverage(&mut self, coverage: HashMap<Branch, FitnessValue>);
 
     /// Applies mutation to the chromosome
-    fn mutate<M: Mutation<C = Self>>(&self, mutation: &M) -> Self;
+    fn mutate<M: Mutation<C=Self>>(&self, mutation: &M) -> Self;
 
     /// Returns the fitness of the chromosome with respect to a certain branch
     fn fitness(&self, objective: &Branch) -> FitnessValue;
 
     /// Applies crossover to this and other chromosome and returns a pair of offsprings
-    fn crossover<C: Crossover<C = Self>>(&self, other: &Self, crossover: &C) -> (Self, Self)
-    where
-        Self: Sized;
+    fn crossover<C: Crossover<C=Self>>(&self, other: &Self, crossover: &C) -> (Self, Self)
+        where
+            Self: Sized;
 
     /// Generates a random chromosome
     fn random(analysis: Rc<HirAnalysis>) -> Self;
@@ -566,12 +563,14 @@ impl TestCase {
             .filter_map(|p| self.generate_arg(p))
             .collect();
 
+        let bounded_generics = self.bound_generics(&callable, &args);
+
         if args.len() != callable.params().len() {
             println!("Could not generate args for callable: \n{:?}", callable);
             return false;
         }
 
-        let stmt = callable.to_stmt(args);
+        let stmt = callable.to_stmt(args, bounded_generics);
         self.add_stmt(stmt);
         true
     }
@@ -580,20 +579,10 @@ impl TestCase {
         self.generate_arg_inner(param, HashSet::new())
     }
 
-    fn generate_generic_arg(
-        &mut self,
-        param: &Param,
-        types_to_generate: HashSet<T>,
-    ) -> Option<Arg> {
+    fn get_primitive_type_for_generic(&self, generic_ty: &Generic) -> Option<PrimT> {
         // Generated arg should comply to generic trait bounds
-        let generic_ty = param.real_ty().expect_generic();
         let bounds = generic_ty.bounds();
 
-        println!(
-            "Generating generic arg for param: {:?}\n{}",
-            param,
-            serde_json::to_string(param.real_ty()).unwrap()
-        );
         let mut possible_primitives: Option<HashSet<PrimT>> = None;
         for bound in bounds {
             let implementors = PrimT::implementors_of(bound);
@@ -615,10 +604,15 @@ impl TestCase {
                 let primitive_i = fastrand::usize(0..primitives.len());
                 let primitive = *primitives.get(primitive_i).unwrap();
 
-                let arg = Arg::Primitive(generate_random_prim(primitive, param));
-                return Some(arg);
+                return Some(*primitive);
             }
         }
+        None
+    }
+
+    fn get_complex_type_for_generic(&self, generic_ty: &Generic) -> Option<T> {
+        // Generated arg should comply to generic trait bounds
+        let bounds = generic_ty.bounds();
 
         let possible_complex_types = TYPES
             .iter()
@@ -636,13 +630,30 @@ impl TestCase {
 
         let complex_i = fastrand::usize(0..possible_complex_types.len());
         let complex_ty = *possible_complex_types.get(complex_i).unwrap();
-        // TODO lookup if a custom defined struct implements the needed traits
+
+
+        Some(complex_ty.clone())
+    }
+
+    fn generate_generic_arg(
+        &mut self,
+        param: &Param,
+        types_to_generate: HashSet<T>,
+    ) -> Option<Arg> {
+        let generic_ty = param.real_ty().expect_generic();
+        let primitive_ty = self.get_primitive_type_for_generic(generic_ty);
+        if let Some(primitive) = primitive_ty {
+            let arg = Arg::Primitive(generate_random_prim(&primitive, param));
+            return Some(arg);
+        }
+
+        let complex_ty = self.get_complex_type_for_generic(generic_ty)?;
 
         let generators = STD_CALLABLES
             .iter()
             .filter(|callable| {
                 if let Some(return_ty) = callable.return_type() {
-                    return_ty == complex_ty
+                    return_ty == &complex_ty
                 } else {
                     false
                 }
@@ -659,8 +670,10 @@ impl TestCase {
             let ty = param.real_ty().expect_primitive();
             return Some(Arg::Primitive(generate_random_prim(ty, param)));
         } else if param.is_generic() {
+            println!("Generating generic for param: {:?}", param);
             return self.generate_generic_arg(param, types_to_generate);
         } else {
+            println!("Generating complex for param: {:?}", param);
             let generators = self
                 .analysis
                 .generators(param.real_ty())
@@ -669,6 +682,63 @@ impl TestCase {
                 .collect();
             self.generate_arg_from_generators(param, generators, types_to_generate)
         }
+    }
+
+    fn bound_generics(&self, callable: &Callable, args: &Vec<Arg>) -> Vec<T> {
+        // Now look which generic parameters are already bounded by arguments and bound the rest
+        let return_ty = callable.return_type();
+        let bounded_generics = if let Some(return_ty) = return_ty {
+            if let Some(generics) = return_ty.generics() {
+                let mut all_generics = generics.iter().map(|g| match g {
+                    T::Generic(generic) => (generic, None),
+                    T::Ref(ty) => (ty.expect_generic(), None),
+                    _ => todo!("T is {:?}", g)
+                }).collect::<HashMap<_, _>>();
+
+                args.iter().filter(|a| a.is_generic()).for_each(|a| {
+                    // This can on ly be a complex object at the moment
+                    let var_arg = a.expect_var();
+                    let generic = var_arg.param().real_ty().expect_generic();
+
+                    // Check if the generic type is global or just defined in the func
+                    if all_generics.contains_key(generic) {
+                        all_generics.insert(generic, Some(var_arg.param().real_ty().clone()));
+                    }
+                });
+
+                assert_eq!(all_generics.len(), generics.len());
+
+                // Set still unbounded generics
+                all_generics.iter_mut().filter(|(generic, t)| t.is_none()).for_each(|(generic, t)| {
+                    // TODO generate some type
+
+                    let primitive = self.get_primitive_type_for_generic(generic);
+                    if let Some(primitive) = primitive {
+                        *t = Some(T::Prim(primitive));
+                    } else {
+                        let complex = self.get_complex_type_for_generic(generic);
+                        if let Some(complex) = complex {
+                            *t = Some(complex);
+                        }
+                    }
+                });
+
+                generics.iter().map(|g| match g {
+                    T::Generic(generic) => all_generics.get(generic).unwrap().as_ref().unwrap().clone(),
+                    T::Ref(ref_generic) => {
+                        let ty = all_generics.get(ref_generic.as_ref().expect_generic()).unwrap().as_ref().unwrap();
+                        T::Ref(Box::new(ty.clone()))
+                    },
+                    _ => todo!()
+                }).collect::<Vec<_>>()
+            } else {
+                vec![]
+            }
+        } else {
+            vec![]
+        };
+
+        bounded_generics
     }
 
     fn generate_arg_from_generators(
@@ -728,10 +798,13 @@ impl TestCase {
             .collect();
 
         if args.len() != generator.params().len() {
+            println!("Could not generate param: {:?}", param);
             return None;
         }
 
-        let stmt = generator.to_stmt(args);
+        let bounded_generics = self.bound_generics(&generator, &args);
+
+        let stmt = generator.to_stmt(args, bounded_generics);
 
         let return_var = self.add_stmt(stmt).unwrap();
 
@@ -848,7 +921,7 @@ impl Chromosome for TestCase {
         self.coverage = coverage;
     }
 
-    fn mutate<M: Mutation<C = Self>>(&self, mutation: &M) -> Self {
+    fn mutate<M: Mutation<C=Self>>(&self, mutation: &M) -> Self {
         let mut mutated_test = mutation.apply(self);
         mutated_test.id = CHROMOSOME_ID_GENERATOR.lock().unwrap().next_id();
         mutated_test
@@ -862,9 +935,9 @@ impl Chromosome for TestCase {
         }
     }
 
-    fn crossover<C: Crossover<C = Self>>(&self, other: &Self, crossover: &C) -> (Self, Self)
-    where
-        Self: Sized,
+    fn crossover<C: Crossover<C=Self>>(&self, other: &Self, crossover: &C) -> (Self, Self)
+        where
+            Self: Sized,
     {
         let (mut left, mut right) = crossover.apply(self, other);
         left.id = CHROMOSOME_ID_GENERATOR.lock().unwrap().next_id();
@@ -902,6 +975,48 @@ impl Arg {
         match self {
             Arg::Var(var_arg) => var_arg.to_syn(),
             Arg::Primitive(primitive_arg) => primitive_arg.to_syn(),
+        }
+    }
+
+    pub fn param_name(&self) -> Option<&String> {
+        match self {
+            Arg::Var(var) => var.param.name(),
+            Arg::Primitive(prim) => prim.name(),
+        }
+    }
+
+    pub fn is_generic(&self) -> bool {
+        match self {
+            Arg::Var(var_arg) => var_arg.param.is_generic(),
+            Arg::Primitive(_) => false,
+        }
+    }
+
+    pub fn is_var(&self) -> bool {
+        match self {
+            Arg::Var(_) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_primitive(&self) -> bool {
+        match self {
+            Arg::Primitive(_) => true,
+            _ => false
+        }
+    }
+
+    pub fn expect_var(&self) -> &VarArg {
+        match self {
+            Arg::Var(var_arg) => var_arg,
+            _ => panic!("Is no var")
+        }
+    }
+
+    pub fn expect_primitive(&self) -> &Primitive {
+        match self {
+            Arg::Primitive(primitive) => primitive,
+            _ => panic!("Is no primitive")
         }
     }
 
@@ -964,6 +1079,17 @@ impl Primitive {
             }
         }*/
         todo!()
+    }
+
+    pub fn name(&self) -> Option<&String> {
+        match self {
+            Primitive::UInt(param, _) => param.name(),
+            Primitive::Int(param, _) => param.name(),
+            Primitive::Bool(param, _) => param.name(),
+            Primitive::Str(param, _) => param.name(),
+            Primitive::Float(param, _) => param.name(),
+            Primitive::Char(param, _) => param.name()
+        }
     }
 }
 
@@ -1100,20 +1226,18 @@ impl VarArg {
 #[derive(Clone, Debug)]
 pub enum Statement {
     PrimitiveAssignment(AssignStmt),
-    Constructor(ConstructorStmt),
     AttributeAccess(AttrStmt),
     MethodInvocation(MethodInvStmt),
     StaticFnInvocation(StaticFnInvStmt),
     FunctionInvocation(FnInvStmt),
     FieldAccess(FieldAccessStmt),
-    StructInit(StructInitStmt)
+    StructInit(StructInitStmt),
 }
 
 impl Statement {
     pub fn to_syn(&self) -> Stmt {
         match self {
             Statement::PrimitiveAssignment(primitive_stmt) => primitive_stmt.to_syn(),
-            Statement::Constructor(constructor_stmt) => constructor_stmt.to_syn(),
             Statement::AttributeAccess(_) => {
                 unimplemented!()
             }
@@ -1127,7 +1251,6 @@ impl Statement {
 
     pub fn returns_value(&self) -> bool {
         match self {
-            Statement::Constructor(_) => true,
             Statement::StaticFnInvocation(func) => func.returns_value(),
             Statement::PrimitiveAssignment(_) => true,
             Statement::FunctionInvocation(func) => func.returns_value(),
@@ -1141,7 +1264,6 @@ impl Statement {
 
     pub fn var(&self) -> Option<&Var> {
         match self {
-            Statement::Constructor(c) => c.var(),
             Statement::MethodInvocation(m) => m.var(),
             Statement::StaticFnInvocation(func) => func.var(),
             Statement::FunctionInvocation(func) => func.var(),
@@ -1155,7 +1277,6 @@ impl Statement {
     pub fn return_type(&self) -> Option<&T> {
         match self {
             Statement::PrimitiveAssignment(a) => Some(a.return_type()),
-            Statement::Constructor(c) => Some(c.return_type()),
             Statement::MethodInvocation(m) => m.return_type(),
             Statement::StaticFnInvocation(f) => f.return_type(),
             Statement::FunctionInvocation(f) => f.return_type(),
@@ -1172,7 +1293,6 @@ impl Statement {
 
         match self {
             Statement::PrimitiveAssignment(ref mut p) => p.set_var(var),
-            Statement::Constructor(ref mut c) => c.set_var(var),
             Statement::AttributeAccess(ref mut a) => a.set_var(var),
             Statement::MethodInvocation(ref mut m) => m.set_var(var),
             Statement::StaticFnInvocation(ref mut f) => f.set_var(var),
@@ -1185,7 +1305,6 @@ impl Statement {
     pub fn args(&self) -> Option<&Vec<Arg>> {
         match self {
             Statement::PrimitiveAssignment(_) => None,
-            Statement::Constructor(c) => Some(c.args()),
             Statement::AttributeAccess(_) => None,
             Statement::MethodInvocation(m) => Some(m.args()),
             Statement::StaticFnInvocation(f) => Some(f.args()),
@@ -1198,7 +1317,6 @@ impl Statement {
     pub fn set_arg(&mut self, arg: Arg, idx: usize) {
         match self {
             Statement::PrimitiveAssignment(_) => panic!("Primitives do not have args"),
-            Statement::Constructor(c) => c.set_arg(arg, idx),
             Statement::AttributeAccess(_) => panic!("Attribute access cannot have args"),
             Statement::MethodInvocation(m) => m.set_arg(arg, idx),
             Statement::StaticFnInvocation(f) => f.set_arg(arg, idx),
@@ -1211,7 +1329,6 @@ impl Statement {
     pub fn id(&self) -> Uuid {
         match self {
             Statement::PrimitiveAssignment(p) => p.id(),
-            Statement::Constructor(c) => c.id(),
             Statement::AttributeAccess(a) => a.id(),
             Statement::MethodInvocation(m) => m.id(),
             Statement::StaticFnInvocation(f) => f.id(),
@@ -1224,11 +1341,6 @@ impl Statement {
     pub fn to_string(&self, tcx: &TyCtxt<'_>) -> String {
         match self {
             Statement::PrimitiveAssignment(_) => unimplemented!(),
-            Statement::Constructor(c) => {
-                let syn_item = c.to_syn();
-                let token_stream = syn_item.to_token_stream();
-                token_stream.to_string()
-            }
             Statement::AttributeAccess(_) => unimplemented!(),
             Statement::MethodInvocation(m) => {
                 let syn_item = m.to_syn();
@@ -1267,7 +1379,7 @@ pub struct FieldAccessStmt {
 }
 
 impl FieldAccessStmt {
-    pub fn new(field: FieldAccessItem) -> Self {
+    pub fn new(field: FieldAccessItem, bounded_generics: Vec<T>) -> Self {
         FieldAccessStmt {
             id: Uuid::new_v4(),
             field,
@@ -1302,15 +1414,17 @@ pub struct StructInitStmt {
     args: Vec<Arg>,
     struct_init_item: StructInitItem,
     var: Option<Var>,
+    bounded_generics: Vec<T>,
 }
 
 impl StructInitStmt {
-    pub fn new(struct_init_item: StructInitItem, args: Vec<Arg>) -> Self {
+    pub fn new(struct_init_item: StructInitItem, args: Vec<Arg>, bounded_generics: Vec<T>) -> Self {
         StructInitStmt {
             id: Uuid::new_v4(),
             struct_init_item,
             args,
             var: None,
+            bounded_generics,
         }
     }
 
@@ -1323,7 +1437,29 @@ impl StructInitStmt {
     }
 
     pub fn to_syn(&self) -> Stmt {
-        todo!()
+        if let Some(var) = self.var.as_ref() {
+            let ident = Ident::new(&var.to_string(), Span::call_site());
+
+            let type_name = self.struct_init_item.return_type.to_ident();
+            let args: Vec<FieldValue> = self.args
+                .iter()
+                .map(|a| {
+                    let field_name = a.param_name().unwrap();
+                    let field_ident = Ident::new(field_name, Span::call_site());
+                    let val = a.to_syn();
+
+                    syn::parse_quote! {
+                        #field_ident : #val
+                    }
+                })
+                .collect();
+
+            syn::parse_quote! {
+                let mut #ident = #type_name { #(#args),* };
+            }
+        } else {
+            panic!("Name must have been set until here")
+        }
     }
 
     pub fn id(&self) -> Uuid {
@@ -1361,15 +1497,17 @@ pub struct StaticFnInvStmt {
     args: Vec<Arg>,
     func: StaticFnItem,
     var: Option<Var>,
+    bounded_generics: Vec<T>,
 }
 
 impl StaticFnInvStmt {
-    pub fn new(func: StaticFnItem, args: Vec<Arg>) -> Self {
+    pub fn new(func: StaticFnItem, args: Vec<Arg>, bounded_generics: Vec<T>) -> Self {
         StaticFnInvStmt {
             id: Uuid::new_v4(),
             args,
             func,
             var: None,
+            bounded_generics,
         }
     }
 
@@ -1384,26 +1522,34 @@ impl StaticFnInvStmt {
     pub fn to_syn(&self) -> Stmt {
         let func_ident = Ident::new(self.func.name(), Span::call_site());
         let args: Vec<Expr> = self.args().iter().map(|a| a.to_syn()).collect();
-        let parent_path: Vec<Ident> = self
+        let parent_path = self
             .func
             .parent()
-            .name()
-            .split("::")
-            .map(|segment| Ident::new(segment, Span::call_site()))
-            .collect();
+            .to_ident();
 
         if self.returns_value() {
             if let Some(var) = &self.var {
-                let ident = Ident::new(&var.to_string(), Span::call_site());
-                return syn::parse_quote! {
-                    let mut #ident = #(#parent_path::)*#func_ident(#(#args),*);
-                };
+                let var_name = Ident::new(&var.to_string(), Span::call_site());
+                let return_type_name = self.func.return_type
+                    .as_ref()
+                    .unwrap()
+                    .to_ident();
+                return if self.bounded_generics.is_empty() {
+                    syn::parse_quote! {
+                        let mut #var_name: #return_type_name = #parent_path::#func_ident(#(#args),*);
+                    }
+                } else {
+                    let bounded_generics_idents = self.bounded_generics.iter().map(|g| g.to_ident()).collect::<Vec<_>>();
+                    syn::parse_quote! {
+                        let mut #var_name: #return_type_name<#(#bounded_generics_idents),*> = #parent_path::#func_ident(#(#args),*);
+                    }
+                }
             } else {
                 panic!("Name must have been set before")
             }
         } else {
             syn::parse_quote! {
-                #(#parent_path::)*#func_ident(#(#args),*);
+                #parent_path::#func_ident(#(#args),*);
             }
         }
     }
@@ -1432,7 +1578,7 @@ impl StaticFnInvStmt {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AssignStmt {
     pub id: Uuid,
     pub var: Option<Var>,
@@ -1440,7 +1586,7 @@ pub struct AssignStmt {
 }
 
 impl AssignStmt {
-    pub fn new(primitive: PrimitiveItem) -> Self {
+    pub fn new(primitive: PrimitiveItem, bounded_generics: Vec<T>) -> Self {
         AssignStmt {
             id: Uuid::new_v4(),
             var: None,
@@ -1466,101 +1612,6 @@ impl AssignStmt {
 
     pub fn to_syn(&self) -> Stmt {
         unimplemented!()
-    }
-}
-
-impl Clone for AssignStmt {
-    fn clone(&self) -> Self {
-        AssignStmt {
-            id: self.id.clone(),
-            var: self.var.clone(),
-            primitive: self.primitive.clone(),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct ConstructorStmt {
-    id: Uuid,
-    var: Option<Var>,
-    constructor: ConstructorItem,
-    args: Vec<Arg>,
-}
-
-impl Clone for ConstructorStmt {
-    fn clone(&self) -> Self {
-        ConstructorStmt {
-            id: self.id.clone(),
-            var: self.var.clone(),
-            constructor: self.constructor.clone(),
-            args: self.args.clone(),
-        }
-    }
-}
-
-impl ConstructorStmt {
-    pub fn new(constructor: ConstructorItem, args: Vec<Arg>) -> Self {
-        ConstructorStmt {
-            var: None,
-            constructor,
-            args,
-            id: Uuid::new_v4(),
-        }
-    }
-
-    pub fn to_syn(&self) -> Stmt {
-        if let Some(var) = &self.var {
-            let ident = Ident::new(&var.to_string(), Span::call_site());
-
-            let type_name = Ident::new(&self.constructor.parent.to_string(), Span::call_site());
-            let args: Vec<Expr> = self.args.iter().map(|a| a.to_syn()).collect();
-            syn::parse_quote! {
-                let mut #ident = #type_name::new(#(#args),*);
-            }
-        } else {
-            panic!("Name must have been set until here")
-        }
-    }
-
-    pub fn id(&self) -> Uuid {
-        self.id
-    }
-    pub fn name(&self) -> Option<&Var> {
-        self.var.as_ref()
-    }
-
-    pub fn params(&self) -> &Vec<Param> {
-        self.constructor.params()
-    }
-    pub fn args(&self) -> &Vec<Arg> {
-        &self.args
-    }
-
-    pub fn set_arg(&mut self, arg: Arg, idx: usize) {
-        self.args[idx] = arg;
-    }
-
-    pub fn set_args(&mut self, args: Vec<Arg>) {
-        self.args = args;
-    }
-
-    pub fn set_var(&mut self, var: Var) {
-        self.var = Some(var.clone());
-    }
-
-    pub fn var(&self) -> Option<&Var> {
-        self.var.as_ref()
-    }
-    pub fn constructor(&self) -> &ConstructorItem {
-        &self.constructor
-    }
-
-    pub fn returns_value(&self) -> bool {
-        true
-    }
-
-    pub fn return_type(&self) -> &T {
-        self.constructor.parent()
     }
 }
 
@@ -1594,32 +1645,23 @@ impl AttrStmt {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MethodInvStmt {
     id: Uuid,
     var: Option<Var>,
     method: MethodItem,
     args: Vec<Arg>,
-}
-
-impl Clone for MethodInvStmt {
-    fn clone(&self) -> Self {
-        MethodInvStmt {
-            id: self.id.clone(),
-            var: self.var.clone(),
-            method: self.method.clone(),
-            args: self.args.clone(),
-        }
-    }
+    bounded_generics: Vec<T>,
 }
 
 impl MethodInvStmt {
-    pub fn new(method: MethodItem, args: Vec<Arg>) -> Self {
+    pub fn new(method: MethodItem, args: Vec<Arg>, bounded_generics: Vec<T>) -> Self {
         MethodInvStmt {
             method,
             args,
             id: Uuid::new_v4(),
             var: None,
+            bounded_generics,
         }
     }
 
@@ -1637,28 +1679,46 @@ impl MethodInvStmt {
     }
 
     pub fn to_syn(&self) -> Stmt {
+        /*return if self.bounded_generics.is_empty() {
+            syn::parse_quote! {
+                        let mut #var_name: #return_type_name = #parent_path::#func_ident(#(#args),*);
+                    }
+        } else {
+            let bounded_generics_idents = self.bounded_generics.iter().map(|g| g.to_ident()).collect::<Vec<_>>();
+            println!("Generic idents: {:?}", bounded_generics_idents);
+            syn::parse_quote! {
+                        let mut #var_name: #return_type_name<#(#bounded_generics_idents),*> = #parent_path::#func_ident(#(#args),*);
+                    }
+        }*/
+
+
         let method_ident = Ident::new(self.method.name(), Span::call_site());
         let args: Vec<Expr> = self.args().iter().map(|a| a.to_syn()).collect();
-        let parent_path: Vec<Ident> = self
+        let parent_path = self
             .method
             .parent()
-            .name()
-            .split("::")
-            .map(|segment| Ident::new(segment, Span::call_site()))
-            .collect();
+            .to_ident();
 
         if self.returns_value() {
             if let Some(var) = &self.var {
-                let ident = Ident::new(&var.to_string(), Span::call_site());
-                syn::parse_quote! {
-                    let mut #ident = #(#parent_path::)*#method_ident(#(#args),*);
+                let var_name = Ident::new(&var.to_string(), Span::call_site());
+                let return_type_name = self.return_type().unwrap().to_ident();
+                return if self.bounded_generics.is_empty() {
+                    syn::parse_quote! {
+                        let mut #var_name: #return_type_name = #parent_path::#method_ident(#(#args),*);
+                    }
+                } else {
+                    let bounded_generics_idents = self.bounded_generics.iter().map(|g| g.to_ident()).collect::<Vec<_>>();
+                    syn::parse_quote! {
+                        let mut #var_name: #return_type_name<#(#bounded_generics_idents),*> = #parent_path::#method_ident(#(#args),*);
+                    }
                 }
             } else {
                 panic!("Name must have been set before")
             }
         } else {
             syn::parse_quote! {
-                #(#parent_path::)*#method_ident(#(#args),*);
+                #parent_path::#method_ident(#(#args),*);
             }
         }
     }
@@ -1717,6 +1777,7 @@ pub struct FnInvStmt {
     args: Vec<Arg>,
     func: FunctionItem,
     var: Option<Var>,
+    bounded_generics: Vec<T>,
 }
 
 impl Clone for FnInvStmt {
@@ -1726,17 +1787,19 @@ impl Clone for FnInvStmt {
             args: self.args.clone(),
             func: self.func.clone(),
             var: self.var.clone(),
+            bounded_generics: self.bounded_generics.clone(),
         }
     }
 }
 
 impl FnInvStmt {
-    pub fn new(func: FunctionItem, args: Vec<Arg>) -> Self {
+    pub fn new(func: FunctionItem, args: Vec<Arg>, bounded_generics: Vec<T>) -> Self {
         FnInvStmt {
             args,
             func,
             id: Uuid::new_v4(),
             var: None,
+            bounded_generics,
         }
     }
 
@@ -1785,9 +1848,10 @@ impl FnInvStmt {
 
         if self.returns_value() {
             if let Some(var) = &self.var {
-                let ident = Ident::new(&var.to_string(), Span::call_site());
+                let var_name = Ident::new(&var.to_string(), Span::call_site());
+                let return_type_name = self.return_type().unwrap().to_ident();
                 syn::parse_quote! {
-                    let mut #ident = #fn_ident(#(#args),*);
+                    let mut #var_name: #return_type_name = #fn_ident(#(#args),*);
                 }
             } else {
                 panic!("Name must have been set before")
