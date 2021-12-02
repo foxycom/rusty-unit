@@ -1,9 +1,10 @@
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::{fs, io};
+use proc_macro2::{Ident, Span};
 use syn::visit_mut::VisitMut;
-use syn::{File, Item, ItemMod};
-use crate::chromosome::ToSyn;
+use syn::{File, Item, ItemMod, Stmt};
+use crate::chromosome::{TestCase, ToSyn};
 
 #[derive(Debug, Clone)]
 pub struct TestClearer {
@@ -80,6 +81,17 @@ where
                 }
             }
         }
+    }
+}
+
+pub struct TestCaseVisitor {
+
+}
+
+impl TestCaseVisitor {
+    pub fn visit(test_case: &TestCase) -> Item {
+
+        todo!()
     }
 }
 
