@@ -1,15 +1,18 @@
-use std::collections::HashSet;
-use std::collections::HashMap;
-use crate::chromosome::{Arg, AssignStmt, FieldAccessStmt, FnInvStmt, MethodInvStmt, Statement, StaticFnInvStmt, StructInitStmt};
+use crate::chromosome::{
+    Arg, AssignStmt, FieldAccessStmt, FnInvStmt, MethodInvStmt, Statement, StaticFnInvStmt,
+    StructInitStmt,
+};
+use proc_macro2::{Ident, Span};
 use rustc_ast::{FloatTy, IntTy, UintTy};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BodyId, FnSig, HirId, PrimTy};
 use rustc_middle::ty::{TyCtxt, TypeFoldable};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fmt::{Debug, Display, Formatter};
 use std::fs;
 use std::path::PathBuf;
-use proc_macro2::{Ident, Span};
 use syn::{Expr, Type};
 
 lazy_static! {
@@ -70,7 +73,6 @@ lazy_static! {
         s.insert(Trait::new("std::default::Default"));
         s
     };
-
     pub static ref TYPES: HashMap<T, HashSet<Trait>> = {
         let types = load_types().unwrap();
 
@@ -88,26 +90,31 @@ lazy_static! {
         }
         m
     };
-
     pub static ref STD_CALLABLES: Vec<Callable> = load_callables().unwrap();
 }
 
-static TYPE_PROVIDERS_DIR: &'static str = "/Users/tim/Documents/master-thesis/testify/providers/types";
-static IMPLEMENTATIONS_DIR: &'static str = "/Users/tim/Documents/master-thesis/testify/providers/implementations";
-static CALLABLES_DIR: &'static str = "/Users/tim/Documents/master-thesis/testify/providers/callables";
+static TYPE_PROVIDERS_DIR: &'static str =
+    "/Users/tim/Documents/master-thesis/testify/providers/types";
+static IMPLEMENTATIONS_DIR: &'static str =
+    "/Users/tim/Documents/master-thesis/testify/providers/implementations";
+static CALLABLES_DIR: &'static str =
+    "/Users/tim/Documents/master-thesis/testify/providers/callables";
 
 fn load_callables() -> std::io::Result<Vec<Callable>> {
-    let callables = fs::read_dir(CALLABLES_DIR)?.map(|entry| {
-        let entry = entry.unwrap();
-        let path = entry.path();
-        if path.is_dir() {
-            panic!("Should not be a dir");
-        }
+    let callables = fs::read_dir(CALLABLES_DIR)?
+        .map(|entry| {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            if path.is_dir() {
+                panic!("Should not be a dir");
+            }
 
-        let callable_content = fs::read_to_string(path.as_path()).unwrap();
-        let callables: Vec<Callable> = serde_json::from_str(&callable_content).unwrap();
-        callables
-    }).flatten().collect::<Vec<_>>();
+            let callable_content = fs::read_to_string(path.as_path()).unwrap();
+            let callables: Vec<Callable> = serde_json::from_str(&callable_content).unwrap();
+            callables
+        })
+        .flatten()
+        .collect::<Vec<_>>();
 
     Ok(callables)
 }
@@ -131,7 +138,6 @@ fn load_types() -> std::io::Result<Vec<(T, HashSet<Trait>)>> {
         // Load implemented traits
         let implementations_content = fs::read_to_string(implementations_path)?;
         let implementations: HashSet<Trait> = serde_json::from_str(&implementations_content)?;
-
 
         types.push((ty, implementations));
     }
@@ -179,7 +185,7 @@ impl Callable {
             Callable::Function(fn_item) => fn_item.return_type.as_ref(),
             Callable::Primitive(primitive_item) => Some(&primitive_item.ty),
             Callable::FieldAccess(field_access_item) => Some(&field_access_item.ty),
-            Callable::StructInit(struct_init_item) => Some(struct_init_item.return_type())
+            Callable::StructInit(struct_init_item) => Some(struct_init_item.return_type()),
         }
     }
 
@@ -190,30 +196,37 @@ impl Callable {
             Callable::Function(_) => None,
             Callable::Primitive(_) => None,
             Callable::FieldAccess(field_access_item) => Some(&field_access_item.parent),
-            Callable::StructInit(struct_init_item) => Some(struct_init_item.return_type())
+            Callable::StructInit(struct_init_item) => Some(struct_init_item.return_type()),
         }
     }
 
     pub fn to_stmt(&self, args: Vec<Arg>, bounded_generics: Vec<T>) -> Statement {
         match self {
-            Callable::Method(method_item) => {
-                Statement::MethodInvocation(MethodInvStmt::new(method_item.clone(), args, bounded_generics))
-            }
-            Callable::StaticFunction(fn_item) => {
-                Statement::StaticFnInvocation(StaticFnInvStmt::new(fn_item.clone(), args, bounded_generics))
-            }
-            Callable::Function(fn_item) => {
-                Statement::FunctionInvocation(FnInvStmt::new(fn_item.clone(), args, bounded_generics))
-            }
-            Callable::Primitive(primitive_item) => {
-                Statement::PrimitiveAssignment(AssignStmt::new(primitive_item.clone(), bounded_generics))
-            }
-            Callable::FieldAccess(field_access_item) => {
-                Statement::FieldAccess(FieldAccessStmt::new(field_access_item.clone(), bounded_generics))
-            }
-            Callable::StructInit(struct_init_item) => {
-                Statement::StructInit(StructInitStmt::new(struct_init_item.clone(), args, bounded_generics))
-            }
+            Callable::Method(method_item) => Statement::MethodInvocation(MethodInvStmt::new(
+                method_item.clone(),
+                args,
+                bounded_generics,
+            )),
+            Callable::StaticFunction(fn_item) => Statement::StaticFnInvocation(
+                StaticFnInvStmt::new(fn_item.clone(), args, bounded_generics),
+            ),
+            Callable::Function(fn_item) => Statement::FunctionInvocation(FnInvStmt::new(
+                fn_item.clone(),
+                args,
+                bounded_generics,
+            )),
+            Callable::Primitive(primitive_item) => Statement::PrimitiveAssignment(AssignStmt::new(
+                primitive_item.clone(),
+                bounded_generics,
+            )),
+            Callable::FieldAccess(field_access_item) => Statement::FieldAccess(
+                FieldAccessStmt::new(field_access_item.clone(), bounded_generics),
+            ),
+            Callable::StructInit(struct_init_item) => Statement::StructInit(StructInitStmt::new(
+                struct_init_item.clone(),
+                args,
+                bounded_generics,
+            )),
         }
     }
 
@@ -224,7 +237,7 @@ impl Callable {
             Callable::Function(f) => f.name(),
             Callable::Primitive(_) => unimplemented!(),
             Callable::FieldAccess(_) => unimplemented!(),
-            Callable::StructInit(_) => unimplemented!()
+            Callable::StructInit(_) => unimplemented!(),
         }
     }
 }
@@ -256,7 +269,11 @@ pub struct StructInitItem {
 
 impl StructInitItem {
     pub fn new(src_file_id: usize, fields: Vec<Param>, return_type: T) -> Self {
-        StructInitItem { fields, return_type, src_file_id }
+        StructInitItem {
+            fields,
+            return_type,
+            src_file_id,
+        }
     }
 
     pub fn params(&self) -> &Vec<Param> {
@@ -437,6 +454,7 @@ pub enum T {
     Prim(PrimT),
     Complex(ComplexT),
     Generic(Generic),
+    Enum(EnumT),
 }
 
 impl Debug for T {
@@ -446,39 +464,37 @@ impl Debug for T {
                 write!(f, "&");
                 Debug::fmt(ty, f)
             }
-            T::Prim(prim_ty) => {
-                Debug::fmt(prim_ty, f)
-            }
-            T::Complex(complex_ty) => {
-                Debug::fmt(complex_ty, f)
-            }
-            T::Generic(generic_ty) => {
-                Debug::fmt(generic_ty, f)
-            }
+            T::Prim(prim_ty) => Debug::fmt(prim_ty, f),
+            T::Complex(complex_ty) => Debug::fmt(complex_ty, f),
+            T::Generic(generic_ty) => Debug::fmt(generic_ty, f),
+            T::Enum(enum_ty) => Debug::fmt(enum_ty, f),
         }
     }
 }
-
 
 impl PartialEq for T {
     fn eq(&self, other: &Self) -> bool {
         match self {
             T::Prim(prim) => match other {
                 T::Prim(other_prim) => prim == other_prim,
-                _ => false
+                _ => false,
             },
             T::Complex(comp) => match other {
                 T::Complex(other_comp) => comp == other_comp,
-                _ => false
+                _ => false,
             },
             T::Generic(generic) => match other {
                 T::Generic(other_generic) => generic == other_generic,
-                _ => false
+                _ => false,
             },
             T::Ref(r) => match other {
                 T::Ref(other_r) => r == other_r,
-                _ => false
-            }
+                _ => false,
+            },
+            T::Enum(enum_ty) => match other {
+                T::Enum(other_enum) => enum_ty == other_enum,
+                _ => false,
+            },
         }
     }
 }
@@ -533,7 +549,8 @@ impl T {
             T::Prim(prim) => prim.name_str().to_string(),
             T::Complex(complex) => complex.name().to_string(),
             T::Generic(generic) => generic.name().to_string(),
-            T::Ref(r) => r.name()
+            T::Ref(r) => r.name(),
+            T::Enum(enum_ty) => enum_ty.name().to_owned(),
         }
     }
 
@@ -542,7 +559,8 @@ impl T {
             T::Prim(prim) => prim.name_str().to_string(),
             T::Complex(complex) => complex.full_name(),
             T::Generic(generic) => generic.name().to_string(),
-            T::Ref(r) => r.full_name()
+            T::Ref(r) => r.full_name(),
+            T::Enum(enum_ty) => enum_ty.full_name(),
         }
     }
 
@@ -551,7 +569,8 @@ impl T {
             T::Prim(prim) => prim.name_str().to_string(),
             T::Complex(complex) => complex.name().split("::").last().unwrap().to_string(),
             T::Generic(generic) => todo!(),
-            T::Ref(r) => r.var_string()
+            T::Ref(r) => r.var_string(),
+            T::Enum(enum_ty) => enum_ty.name().split("::").last().unwrap().to_string(),
         }
     }
 
@@ -560,7 +579,8 @@ impl T {
             T::Prim(_) => unimplemented!(),
             T::Complex(complex) => complex.def_id(),
             T::Generic(generic) => unimplemented!(),
-            T::Ref(r) => r.id()
+            T::Ref(r) => r.id(),
+            T::Enum(enum_ty) => enum_ty.def_id(),
         }
     }
 
@@ -570,6 +590,7 @@ impl T {
             T::Complex(complex) => complex.def_id().unwrap(),
             T::Generic(generic) => unimplemented!(),
             T::Ref(r) => r.expect_id(),
+            T::Enum(enum_ty) => enum_ty.def_id().unwrap(),
         }
     }
 
@@ -578,25 +599,32 @@ impl T {
             T::Prim(_) => true,
             T::Complex(_) => false,
             T::Generic(_) => false,
-            T::Ref(r) => r.is_prim()
+            T::Ref(r) => r.is_prim(),
+            T::Enum(_) => false,
         }
     }
 
     pub fn is_complex(&self) -> bool {
         match self {
-            T::Prim(_) => false,
             T::Complex(_) => true,
-            T::Generic(_) => false,
-            T::Ref(r) => r.is_complex()
+            T::Ref(r) => r.is_complex(),
+            _ => false,
+        }
+    }
+
+    pub fn is_enum(&self) -> bool {
+        match self {
+            T::Enum(_) => true,
+            T::Ref(r) => r.is_enum(),
+            _ => false,
         }
     }
 
     pub fn is_generic(&self) -> bool {
         match self {
-            T::Prim(_) => false,
-            T::Complex(_) => false,
             T::Generic(_) => true,
-            T::Ref(r) => r.is_generic()
+            T::Ref(r) => r.is_generic(),
+            _ => false,
         }
     }
 
@@ -620,7 +648,15 @@ impl T {
         match self {
             T::Prim(prim) => prim,
             T::Ref(r) => r.expect_primitive(),
-            _ => panic!()
+            _ => panic!(),
+        }
+    }
+
+    pub fn expect_enum(&self) -> &EnumT {
+        match self {
+            T::Ref(r) => r.expect_enum(),
+            T::Enum(enum_ty) => enum_ty,
+            _ => panic!("Is not enum"),
         }
     }
 
@@ -630,13 +666,17 @@ impl T {
             T::Complex(complex) => Some(complex.generics()),
             T::Generic(generic) => None,
             T::Ref(r) => r.generics(),
+            T::Enum(enum_ty) => todo!(),
         }
     }
 
     pub fn to_ident(&self) -> Expr {
         let name = self.full_name();
 
-        let ident = name.split("::").map(|segment| Ident::new(segment, Span::call_site())).collect::<Vec<_>>();
+        let ident = name
+            .split("::")
+            .map(|segment| Ident::new(segment, Span::call_site()))
+            .collect::<Vec<_>>();
         let expr = syn::parse_quote! {
             #(#ident)::*
         };
@@ -645,8 +685,8 @@ impl T {
             T::Ref(_) => syn::parse_quote! {
                 &#expr
             },
-            _ => expr
-        }
+            _ => expr,
+        };
     }
 }
 
@@ -660,6 +700,7 @@ impl Display for T {
                 write!(f, "&");
                 Display::fmt(r.as_ref(), f)
             }
+            T::Enum(enum_ty) => Display::fmt(enum_ty, f),
         }
     }
 }
@@ -670,7 +711,7 @@ pub struct ComplexT {
     def_id: Option<DefId>,
     name: String,
     generics: Vec<T>,
-    is_local: bool
+    is_local: bool,
 }
 
 impl Debug for ComplexT {
@@ -700,17 +741,17 @@ impl Display for ComplexT {
 
 impl PartialEq for ComplexT {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
+        self.name == other.name && self.generics == other.generics
     }
 }
 
 impl ComplexT {
     pub fn new(def_id: Option<DefId>, name: &str, generics: Vec<T>) -> Self {
         let is_local = if let Some(def_id) = def_id {
-                def_id.is_local()
-            } else {
-                false
-            };
+            def_id.is_local()
+        } else {
+            false
+        };
         ComplexT {
             name: name.to_string(),
             is_local,
@@ -731,11 +772,109 @@ impl ComplexT {
         &self.generics
     }
 
+    pub fn bind_generics(&mut self, types: Vec<T>) {
+        self.generics = types;
+    }
+
     pub fn full_name(&self) -> String {
         if self.is_local {
             format!("crate::{}", &self.name)
         } else {
             self.name.to_string()
+        }
+    }
+}
+
+#[derive(Debug, Clone, Hash, Eq, Serialize, Deserialize)]
+pub struct EnumT {
+    #[serde(skip)]
+    def_id: Option<DefId>,
+    name: String,
+    generics: Vec<T>,
+    variants: Vec<EnumVariant>,
+    is_local: bool,
+}
+
+impl PartialEq for EnumT {
+    fn eq(&self, other: &Self) -> bool {
+        if self.name != other.name {
+            return false;
+        }
+
+        self.variants == other.variants
+    }
+}
+
+impl Display for EnumT {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)?;
+        if !self.generics.is_empty() {
+            write!(f, "<")?;
+            for (idx, gen) in self.generics.iter().enumerate() {
+                if idx == self.generics.len() - 1 {
+                    write!(f, "{}", gen)?;
+                } else {
+                    write!(f, "{}, ", gen)?;
+                }
+            }
+            write!(f, ">")?;
+        }
+
+        Ok(())
+    }
+}
+
+impl EnumT {
+    pub fn new(def_id: Option<DefId>, name: &str, generics: Vec<T>, variants: Vec<EnumVariant>) -> Self {
+        let is_local = if let Some(def_id) = def_id {
+            def_id.is_local()
+        } else {
+            false
+        };
+
+        Self {
+            def_id,
+            name: name.to_string(),
+            variants,
+            generics,
+            is_local,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn full_name(&self) -> String {
+        if self.is_local {
+            format!("crate::{}", &self.name)
+        } else {
+            self.name.to_string()
+        }
+    }
+
+    pub fn def_id(&self) -> Option<DefId> {
+        self.def_id
+    }
+}
+
+#[derive(Debug, Clone, Hash, Eq, Serialize, Deserialize)]
+pub struct EnumVariant {
+    name: String,
+    inner_types: Vec<T>,
+}
+
+impl PartialEq for EnumVariant {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && self.inner_types == other.inner_types
+    }
+}
+
+impl EnumVariant {
+    pub fn new(name: &str, inner_types: Vec<T>) -> Self {
+        Self {
+            name: name.to_string(),
+            inner_types,
         }
     }
 }
@@ -754,7 +893,10 @@ impl Debug for Generic {
 
 impl Generic {
     pub fn new(name: &str, bounds: Vec<Trait>) -> Self {
-        Self { name: name.to_string(), bounds }
+        Self {
+            name: name.to_string(),
+            bounds,
+        }
     }
 
     pub fn name(&self) -> &str {
@@ -827,7 +969,7 @@ impl Debug for Param {
 }
 
 impl Param {
-    pub fn new(name: Option<&str>, ty: T,  mutable: bool) -> Self {
+    pub fn new(name: Option<&str>, ty: T, mutable: bool) -> Self {
         Param {
             name: name.map(|s| s.to_string()),
             ty,
@@ -842,7 +984,7 @@ impl Param {
     pub fn by_reference(&self) -> bool {
         match &self.ty {
             T::Ref(_) => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -853,7 +995,7 @@ impl Param {
     pub fn real_ty(&self) -> &T {
         match &self.ty {
             T::Ref(ty) => ty.as_ref(),
-            _ => &self.ty
+            _ => &self.ty,
         }
     }
 
@@ -916,7 +1058,9 @@ impl PrimT {
                 IntT::I32,
                 IntT::I64,
                 IntT::I128,
-            ].iter().for_each(|i| {
+            ]
+            .iter()
+            .for_each(|i| {
                 let _ = implementators.insert(PrimT::Int(*i));
             });
         }
@@ -929,7 +1073,9 @@ impl PrimT {
                 UintT::U32,
                 UintT::U64,
                 UintT::U128,
-            ].iter().for_each(|t| {
+            ]
+            .iter()
+            .for_each(|t| {
                 let _ = implementators.insert(PrimT::Uint(*t));
             });
         }
@@ -952,21 +1098,11 @@ impl PrimT {
 
     pub fn implements(&self, trayt: &Trait) -> bool {
         match self {
-            PrimT::Int(_) => {
-                INT_TRAITS.contains(trayt)
-            }
-            PrimT::Uint(_) => {
-                UINT_TRAITS.contains(trayt)
-            }
-            PrimT::Float(_) => {
-                FLOAT_TRAITS.contains(trayt)
-            }
-            PrimT::Str => {
-                STR_TRAITS.contains(trayt)
-            }
-            PrimT::Bool => {
-                BOOL_TRAITS.contains(trayt)
-            }
+            PrimT::Int(_) => INT_TRAITS.contains(trayt),
+            PrimT::Uint(_) => UINT_TRAITS.contains(trayt),
+            PrimT::Float(_) => FLOAT_TRAITS.contains(trayt),
+            PrimT::Str => STR_TRAITS.contains(trayt),
+            PrimT::Bool => BOOL_TRAITS.contains(trayt),
             PrimT::Char => {
                 todo!()
             }

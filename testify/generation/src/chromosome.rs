@@ -2,9 +2,12 @@ use crate::analysis::HirAnalysis;
 use crate::branch::Branch;
 use crate::fitness::FitnessValue;
 use crate::generators::{generate_random_prim, TestIdGenerator};
-use crate::types::{Callable, FieldAccessItem, FunctionItem, MethodItem, Param, PrimT, PrimitiveItem, StaticFnItem, StructInitItem, Trait, STD_CALLABLES, T, TYPES, ComplexT, Generic};
+use crate::operators::{BasicMutation, SinglePointCrossover};
+use crate::types::{Callable, ComplexT, FieldAccessItem, FunctionItem, Generic, MethodItem, Param, PrimT, PrimitiveItem, StaticFnItem, StructInitItem, Trait, STD_CALLABLES, T, TYPES, IntT};
+use petgraph::dot::Dot;
 use petgraph::prelude::StableDiGraph;
 use petgraph::stable_graph::NodeIndex;
+use petgraph::visit::{EdgeIndexable, EdgeRef};
 use petgraph::{Direction, EdgeDirection};
 use proc_macro2::{Ident, Span};
 use quote::ToTokens;
@@ -18,11 +21,8 @@ use std::iter::FromIterator;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
-use petgraph::dot::Dot;
-use petgraph::visit::EdgeRef;
 use syn::{Expr, FieldValue, ImplItemMethod, Item, ItemEnum, ItemStruct, Stmt, Type};
 use uuid::Uuid;
-use crate::operators::{BasicMutation, SinglePointCrossover};
 
 lazy_static! {
     static ref CHROMOSOME_ID_GENERATOR: Arc<Mutex<TestIdGenerator>> =
@@ -51,8 +51,8 @@ pub trait Chromosome: Clone + Debug + ToSyn + PartialEq + Eq + Hash {
 
     /// Applies crossover to this and other chromosome and returns a pair of offsprings
     fn crossover(&self, other: &Self, crossover: &SinglePointCrossover) -> (Self, Self)
-        where
-            Self: Sized;
+    where
+        Self: Sized;
 
     /// Generates a random chromosome
     fn random(analysis: Rc<HirAnalysis>) -> Self;
@@ -65,7 +65,7 @@ pub enum Dependency {
     Owns,
     Consumes,
     Borrows,
-    Defines
+    Defines,
 }
 
 impl Display for Dependency {
@@ -77,14 +77,16 @@ impl Display for Dependency {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Node {
     TypeBinding(Generic, T),
-    Var(Var),
-    Statement(Uuid)
+    Var(Rc<Var>),
+    Statement(Uuid),
 }
 
 impl Display for Node {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Node::TypeBinding(generic, ty) => write!(f, "TypeBinding({}, {})", generic.to_string(), ty.name()),
+            Node::TypeBinding(generic, ty) => {
+                write!(f, "TypeBinding({}, {})", generic.to_string(), ty.name())
+            }
             Node::Var(var) => write!(f, "Var({})", &var.name),
             Node::Statement(id) => write!(f, "Stmt({})", id),
         }
@@ -95,21 +97,21 @@ impl Node {
     pub fn expect_stmt(&self) -> Uuid {
         match self {
             Node::Statement(id) => *id,
-            _ => panic!("Is no stmt")
+            _ => panic!("Is no stmt"),
         }
     }
 
-    pub fn expect_var(&self) -> &Var {
+    pub fn expect_var(&self) -> &Rc<Var> {
         match self {
             Node::Var(var) => var,
-            _ => panic!("Is no var")
+            _ => panic!("Is no var"),
         }
     }
 
     pub fn expect_type_binding(&self) -> (&Generic, &T) {
         match self {
             Node::TypeBinding(generic, ty) => (generic, ty),
-            _ => panic!("Is not type binding")
+            _ => panic!("Is not type binding"),
         }
     }
 }
@@ -119,14 +121,11 @@ pub struct TestCase<'test> {
     pub id: u64,
     pub stmts: Vec<Statement>,
     coverage: HashMap<Branch, FitnessValue>,
-    //ddg: StableDiGraph<&'test Node<'test>, Dependency>,
-
     pub ddg: StableDiGraph<Node, Dependency>,
     pub nodes: Vec<&'test Node>,
     /// Stores connection of variables and the appropriate statements
-    pub var_table: HashMap<Var, Uuid>,
-
-    /// Stores ids of statement to be able to retrieve dd graph nodes later by their index
+    pub var_table: HashMap<Rc<Var>, Uuid>,
+    /// Stores nodes to be able to retrieve dd graph nodes later by their index
     pub node_index_table: HashMap<Node, NodeIndex>,
     var_counters: HashMap<String, usize>,
     analysis: Rc<HirAnalysis>,
@@ -174,7 +173,7 @@ impl<'test> TestCase<'test> {
         self.size() > 1
     }
 
-    fn create_var(&mut self, stmt: &mut Statement) -> Option<Var> {
+    fn create_var(&mut self, stmt: &mut Statement) -> Option<Rc<Var>> {
         if let Some(return_type) = stmt.return_type() {
             let type_name = return_type.var_string();
             let counter = self
@@ -184,40 +183,51 @@ impl<'test> TestCase<'test> {
                 .or_insert(0);
 
             let var_name = format!("{}_{}", type_name.to_lowercase(), counter);
-            let var = Var::new(&var_name, return_type.clone());
+            let var = Rc::new(Var::new(&var_name, return_type.clone()));
             Some(var)
         } else {
             None
         }
     }
 
-    pub fn insert_stmt(&mut self, idx: usize, mut stmt: Statement) -> Option<Var> {
+    pub fn insert_stmt(&mut self, idx: usize, mut stmt: Statement) -> Option<Rc<Var>> {
         let uuid = stmt.id();
 
         // Save to DDG
         let stmt_node_idx = self.ddg.add_node(Node::Statement(uuid));
-        self.node_index_table.insert(Node::Statement(uuid), stmt_node_idx);
+        self.node_index_table
+            .insert(Node::Statement(uuid), stmt_node_idx);
 
         let var = self.create_var(&mut stmt);
         if let Some(var) = &var {
             let var_node_idx = self.ddg.add_node(Node::Var(var.clone()));
-            self.ddg.add_edge(stmt_node_idx, var_node_idx, Dependency::Defines);
+            self.ddg
+                .add_edge(stmt_node_idx, var_node_idx, Dependency::Defines);
+            self.node_index_table
+                .insert(Node::Var(var.clone()), var_node_idx);
         }
 
         if let Some(args) = stmt.args() {
             args.iter().for_each(|arg| {
                 if let Arg::Var(var_arg) = arg {
-                    let generating_stmt_index = self.var_position(var_arg.var()).unwrap();
-                    let generating_stmt_id = self.stmts.get(generating_stmt_index).unwrap().id();
-                    let stmt_node = Node::Statement(generating_stmt_id);
-                    let arg_node_index = self.node_index_table.get(&stmt_node).unwrap();
+                    let arg_node_idx = self
+                        .ddg
+                        .node_indices()
+                        .find(|i| {
+                            let node = self.ddg.node_weight(*i).unwrap();
+                            if let Node::Var(var) = node {
+                                return var == var_arg.var();
+                            }
+                            false
+                        })
+                        .unwrap();
 
                     if var_arg.is_by_reference() {
                         self.ddg
-                            .add_edge(stmt_node_idx, arg_node_index.clone(), Dependency::Borrows);
+                            .add_edge(stmt_node_idx, arg_node_idx, Dependency::Borrows);
                     } else {
                         self.ddg
-                            .add_edge(stmt_node_idx, arg_node_index.clone(), Dependency::Consumes);
+                            .add_edge(stmt_node_idx, arg_node_idx, Dependency::Consumes);
                     }
                 }
             });
@@ -233,7 +243,7 @@ impl<'test> TestCase<'test> {
         var
     }
 
-    pub fn add_stmt(&mut self, stmt: Statement) -> Option<Var> {
+    pub fn add_stmt(&mut self, stmt: Statement) -> Option<Rc<Var>> {
         let mut insert_position: usize = 0;
         if let Some(args) = stmt.args() {
             insert_position = args
@@ -259,9 +269,7 @@ impl<'test> TestCase<'test> {
     }
 
     pub fn remove_stmt_at(&mut self, idx: usize) {
-        assert_eq!(self.stmts.len(), self.ddg.node_count());
-
-        let stmt = self.stmts.remove(idx);
+        /*let stmt = self.stmts.remove(idx);
         let id = stmt.id();
         if stmt.returns_value() {
             self.var_table.remove(stmt.var().unwrap()).unwrap();
@@ -290,7 +298,8 @@ impl<'test> TestCase<'test> {
         self.ddg.remove_node(node_index).unwrap();
 
         assert!(self.stmts.len() >= self.var_table.len());
-        assert_eq!(self.stmts.len(), self.ddg.node_count());
+        assert_eq!(self.stmts.len(), self.ddg.node_count());*/
+        todo!()
     }
 
     pub fn stmt_position(&self, id: Uuid) -> Option<usize> {
@@ -334,119 +343,157 @@ impl<'test> TestCase<'test> {
             .collect()
     }
 
-    pub fn variables(&self) -> Vec<Var> {
-        self.var_table.keys().cloned().collect()
+    pub fn variables(&self) -> Vec<&Rc<Var>> {
+        self.var_table.keys().collect()
     }
 
-    pub fn get_variable(&self, stmt: &Statement) -> &Var {
-        let stmt = Node::Statement(stmt.id());
+    pub fn get_variable(&self, stmt_id: Uuid) -> Option<&Rc<Var>> {
+        let stmt = Node::Statement(stmt_id);
         let stmt_node_idx = *self.node_index_table.get(&stmt).unwrap();
-
-
-        let vars = self.ddg.edges_directed(stmt_node_idx, Direction::Outgoing).filter_map(|e| {
-            if e.weight() == Dependency::Defines {
-                let var_node = self.ddg.node_weight(e.target()).unwrap();
-                return Some(var_node.expect_var())
-            }
-            None
-        }).collect::<Vec<_>>();
-
-        assert_eq!(vars.len(), 1);
-
-        *vars.first().unwrap()
-    }
-
-    pub fn is_consumable(&self, var: &Var, idx: usize) -> bool {
-        /*let stmt_id = self.var_table.get(var).unwrap();
-        let node_index = self.node_index_table.get(stmt_id).unwrap();
-
-        let mut neighbours = self.ddg.neighbors(node_index.clone());
-
-        // Find the first place where a variable is consumed before or borrowed or consumed after idx
-        let collision = neighbours.find(|n| {
-            let edge_index = self.ddg.find_edge(n.clone(), node_index.clone()).unwrap();
-            let edge = self.ddg.edge_weight(edge_index).unwrap();
-
-            match edge {
-                Dependency::Owns => false,
-                Dependency::Consumes => true,
-                Dependency::Borrows => {
-                    let neighbour_id = self.ddg.node_weight(n.clone()).unwrap();
-                    let neighbour_stmt_i = self.stmt_position(neighbour_id.clone()).unwrap();
-                    if neighbour_stmt_i > idx {
-                        return true;
-                    }
-                    false
-                },
-                _ => todo!()
-            }
-        });
-
-        // If there is none, a var is borrowable at index idx
-        collision.is_none()*/
-        todo!()
-    }
-
-    pub fn is_borrowable(&self, var: &Var, idx: usize) -> bool {
-        /*let stmt_id = self.var_table.get(var).unwrap();
-
-        let node_index = self.node_index_table.get(stmt_id).unwrap();
-
-        let mut neighbours = self.ddg.neighbors(node_index.clone());
-
-        // Find the first place where borrowing and consume collide
-        let collision = neighbours.find(|n| {
-            let edge_index = self.ddg.find_edge(n.clone(), node_index.clone()).unwrap();
-            let edge = self.ddg.edge_weight(edge_index).unwrap();
-            if *edge == Dependency::Consumes {
-                let neighbour_id = self.ddg.node_weight(n.clone()).unwrap();
-                let neighbour_stmt_i = self.stmt_position(neighbour_id.clone()).unwrap();
-                if neighbour_stmt_i < idx {
-                    return true;
+        self.ddg
+            .edges_directed(stmt_node_idx, Direction::Outgoing)
+            .find_map(|e| {
+                if *e.weight() == Dependency::Defines {
+                    let var_node = self.ddg.node_weight(e.target()).unwrap();
+                    Some(var_node.expect_var())
+                } else {
+                    None
                 }
-            }
-            false
-        });
-
-        // If there is none, a var is borrowable at index idx
-        collision.is_none()*/
-
-        todo!()
+            })
     }
 
-    pub fn unconsumed_variables_typed(&self, ty: &T) -> Vec<(Var, usize)> {
+    pub fn defined_by(&self, var: &Rc<Var>) -> Uuid {
+        let var_node = Node::Var(var.clone());
+        let var_node_idx = self.node_index_table.get(&var_node).unwrap();
+
+        let mut edges = self.ddg.edges_directed(*var_node_idx, Direction::Incoming);
+        edges
+            .find_map(|e| {
+                if *e.weight() == Dependency::Defines {
+                    let stmt_node = self.ddg.node_weight(e.source()).unwrap();
+                    Some(stmt_node.expect_stmt())
+                } else {
+                    None
+                }
+            })
+            .unwrap()
+    }
+
+    pub fn is_consumable(&self, var: &Rc<Var>, idx: usize) -> bool {
+        let var_node = Node::Var(var.clone());
+        let var_node_idx = self.node_index_table.get(&var_node).unwrap();
+        let edges = self.ddg.edges_directed(*var_node_idx, Direction::Incoming);
+        let stmts = edges
+            .filter_map(|e| {
+                if *e.weight() == Dependency::Consumes || *e.weight() == Dependency::Borrows {
+                    let stmt_node = self.ddg.node_weight(e.source()).unwrap();
+                    Some((stmt_node, e.weight()))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        if stmts.is_empty() {
+            return true;
+        }
+
+        let mut last_borrow_pos = 0;
+        for (stmt, edge) in stmts {
+            if *edge == Dependency::Consumes {
+                return false;
+            }
+
+            let uuid = stmt.expect_stmt();
+            let stmt_pos = self.index_of_stmt(uuid);
+            last_borrow_pos = last_borrow_pos.max(stmt_pos);
+        }
+
+        last_borrow_pos < idx
+    }
+
+    pub fn is_borrowable(&self, var: &Rc<Var>, idx: usize) -> bool {
+        let var_node = Node::Var(var.clone());
+        let var_node_idx = self.node_index_table.get(&var_node).unwrap();
+        let mut edges = self.ddg.edges_directed(*var_node_idx, Direction::Incoming);
+
+        let collision = edges
+            .find_map(|e| {
+                if *e.weight() == Dependency::Consumes {
+                    Some(self.ddg.node_weight(e.source()).unwrap())
+                } else {
+                    None
+                }
+            })
+            .map(|stmt| {
+                let uuid = stmt.expect_stmt();
+                let consuming_pos = self.stmt_position(uuid).unwrap();
+                consuming_pos < idx
+            });
+
+        if let Some(collision) = collision {
+            collision
+        } else {
+            true
+        }
+    }
+
+    pub fn index_of_stmt(&self, stmt_id: Uuid) -> usize {
+        self.stmts
+            .iter()
+            .zip(0..self.stmts.len())
+            .find_map(|(stmt, idx)| {
+                if stmt.id() == stmt_id {
+                    Some(idx)
+                } else {
+                    None
+                }
+            })
+            .unwrap()
+    }
+
+    pub fn unconsumed_variables_typed(&self, ty: &T) -> Vec<(Rc<Var>, usize)> {
         let mut vars = self.variables_typed(ty);
         vars.retain(|(v, _)| !self.is_consumed(v));
         vars
     }
 
-    pub fn variables_typed(&self, ty: &T) -> Vec<(Var, usize)> {
+    pub fn variables_typed(&self, ty: &T) -> Vec<(Rc<Var>, usize)> {
         // Also return their positions in the test case
-        self.stmts
-            .iter()
-            .zip(0..self.stmts.len())
-            .filter_map(|(s, i)| {
-                if let Some(var) = s.var() {
-                    if var.ty() == ty {
-                        return Some((var.clone(), i));
-                    }
+        let node_indices = self.ddg.node_indices();
+        node_indices
+            .filter_map(|var_idx| {
+                let var_node = self.ddg.node_weight(var_idx).unwrap();
+                if let Node::Var(var) = var_node {
+                    return Some((var_idx, var));
                 }
                 None
             })
-            .collect()
+            .filter(|(var_idx, var)| &var.ty == ty)
+            .map(|(var_idx, var)| {
+                let edge = self
+                    .ddg
+                    .edges_directed(var_idx, Direction::Incoming)
+                    .find(|e| *e.weight() == Dependency::Defines)
+                    .unwrap();
+                let stmt_node_idx = edge.source();
+                let stmt_node = self.ddg.node_weight(stmt_node_idx).unwrap();
+                let stmt_idx = self.index_of_stmt(stmt_node.expect_stmt());
+                (var.clone(), stmt_idx)
+            })
+            .collect::<Vec<_>>()
     }
 
-    pub fn is_consumed(&self, var: &Var) -> bool {
-       /* let uuid = self.var_table.get(var).unwrap();
-        let node_index = self.node_index_table.get(uuid).unwrap();
-        let mut incoming_edges = self
+    pub fn is_consumed(&self, var: &Rc<Var>) -> bool {
+        let var_node = Node::Var(var.clone());
+        let var_node_index = self.node_index_table.get(&var_node).unwrap();
+        let mut edges = self
             .ddg
-            .edges_directed(node_index.to_owned(), Direction::Incoming);
-        incoming_edges.any(|e| e.weight().to_owned() == Dependency::Consumes)*/
-        todo!()
+            .edges_directed(*var_node_index, Direction::Incoming);
+        edges.any(|e| *e.weight() == Dependency::Consumes)
     }
 
-    pub fn instantiated_at(&self, var: &Var) -> Option<usize> {
+    pub fn instantiated_at(&self, var: &Rc<Var>) -> Option<usize> {
         let id = self.var_table.get(var);
 
         id.map(|id| {
@@ -460,54 +507,36 @@ impl<'test> TestCase<'test> {
         })
     }
 
-    pub fn consumed_at(&self, var: &Var) -> Option<usize> {
-        /*let id = self.var_table.get(var).unwrap();
-        let node_index = self.node_index_table.get(id).unwrap();
-        let mut neighbours = self
-            .ddg
-            .neighbors_directed(node_index.clone(), Direction::Incoming);
+    pub fn consumed_at(&self, var: &Rc<Var>) -> Option<usize> {
+        let var_node = Node::Var(var.clone());
+        let var_node_idx = self.node_index_table.get(&var_node).unwrap();
+        let consume_pos = self.ddg
+            .edges_directed(*var_node_idx, Direction::Incoming)
+            .find_map(|e| {
+                if *e.weight() == Dependency::Consumes {
+                    let stmt = self.ddg.node_weight(e.source()).unwrap();
+                    Some(self.stmt_position(stmt.expect_stmt()).unwrap())
+                } else {
+                    None
+                }
+            });
 
-        let consuming_stmt_index = neighbours.find(|n| {
-            let edge = self.ddg.find_edge(node_index.clone(), n.clone());
-            if let Some(edge_index) = edge {
-                let weight = self.ddg.edge_weight(edge_index).unwrap();
-                return *weight == Dependency::Consumes;
-            }
-            false
-        });
-
-        if let Some(consuming_stmt_index) = consuming_stmt_index {
-            let consuming_stmt = self.ddg.node_weight(consuming_stmt_index);
-            if let Some(node) = consuming_stmt {
-                return self.stmt_position(node.expect_stmt());
-            }
-        }
-        None*/
-
-        todo!()
+        consume_pos
     }
 
-    pub fn borrowed_at(&self, var: &Var) -> Vec<usize> {
-        /*let id = self.var_table.get(var).unwrap();
-        let node_index = self.node_index_table.get(id).unwrap();
-        let mut neighbours = self
-            .ddg
-            .neighbors_directed(node_index.clone(), Direction::Incoming);
-        neighbours
-            .filter_map(|n| {
-                let edge = self.ddg.find_edge(node_index.clone(), n.clone());
-                if let Some(edge_index) = edge {
-                    let weight = self.ddg.edge_weight(edge_index).unwrap();
-                    if *weight == Dependency::Borrows {
-                        let id = self.ddg.node_weight(n.clone()).unwrap();
-
-                        return Some(self.stmt_position(id.clone()).unwrap());
-                    }
+    pub fn borrowed_at(&self, var: &Rc<Var>) -> Vec<usize> {
+        let var_node = Node::Var(var.clone());
+        let var_node_idx = self.node_index_table.get(&var_node).unwrap();
+        self.ddg
+            .edges_directed(*var_node_idx, Direction::Incoming)
+            .filter_map(|e| {
+                if *e.weight() == Dependency::Borrows {
+                    let stmt = self.ddg.node_weight(e.source()).unwrap();
+                    Some(self.stmt_position(stmt.expect_stmt()).unwrap())
+                } else {
+                    None
                 }
-                None
-            })
-            .collect()*/
-        todo!()
+            }).collect::<Vec<_>>()
     }
 
     /// Returns the callables and where they can be called in the test case.
@@ -548,7 +577,7 @@ impl<'test> TestCase<'test> {
     ///     // a can be only be borrowed at position p with 1 < p < pos(consume)
     /// }
     /// ```
-    pub fn available_callables(&self) -> Vec<(&Var, &Callable, RangeInclusive<usize>)> {
+    pub fn available_callables(&self) -> Vec<(&Rc<Var>, &Callable, RangeInclusive<usize>)> {
         self.var_table
             .keys()
             .filter_map(|v| {
@@ -558,7 +587,7 @@ impl<'test> TestCase<'test> {
                     // v can only be borrowed
                     let range = self.instantiated_at(v).unwrap()..=idx;
                     // Retain only callables that are borrowing
-                    let possible_callables: Vec<(&Var, &Callable, RangeInclusive<usize>)> =
+                    let possible_callables: Vec<(&Rc<Var>, &Callable, RangeInclusive<usize>)> =
                         callables
                             .iter()
                             .filter_map(|&c| {
@@ -619,7 +648,6 @@ impl<'test> TestCase<'test> {
     /// Generates a random statement and all its dependencies, even if the
     /// test already contains some definitions that can be reused.
     pub fn insert_random_stmt(&mut self) -> bool {
-        // TODO primitive statements are not being generated yet
         let callables = self.analysis.callables();
         let i = fastrand::usize(0..callables.len());
         let callable = (*(callables.get(i).unwrap())).clone();
@@ -649,6 +677,10 @@ impl<'test> TestCase<'test> {
     fn get_primitive_type_for_generic(&self, generic_ty: &Generic) -> Option<PrimT> {
         // Generated arg should comply to generic trait bounds
         let bounds = generic_ty.bounds();
+
+        if bounds.is_empty() {
+            return Some(PrimT::Int(IntT::Isize));
+        }
 
         let mut possible_primitives: Option<HashSet<PrimT>> = None;
         for bound in bounds {
@@ -696,8 +728,24 @@ impl<'test> TestCase<'test> {
         }
 
         let complex_i = fastrand::usize(0..possible_complex_types.len());
-        let complex_ty = *possible_complex_types.get(complex_i).unwrap();
+        let mut complex_ty = (*possible_complex_types.get(complex_i).unwrap()).clone();
 
+        // Recursively generate generics for generics
+        if let T::Complex(complex_ty) = &mut complex_ty {
+            println!("Selected complex ty: {:?}", complex_ty);
+            let bounded_generics = complex_ty.generics().iter().map(|g| {
+                let generic = g.expect_generic();
+                if let Some(prim) = self.get_primitive_type_for_generic(generic) {
+                    println!("Selected prim for generic: {:?}", prim);
+                    T::Prim(prim)
+                } else {
+                    println!("Selected complex for generic");
+                    // We must assume that a type is available
+                    self.get_complex_type_for_generic(generic).unwrap()
+                }
+            }).collect::<Vec<_>>();
+            complex_ty.bind_generics(bounded_generics);
+        }
 
         Some(complex_ty.clone())
     }
@@ -756,11 +804,14 @@ impl<'test> TestCase<'test> {
         let return_ty = callable.return_type();
         let bounded_generics = if let Some(return_ty) = return_ty {
             if let Some(generics) = return_ty.generics() {
-                let mut all_generics = generics.iter().map(|g| match g {
-                    T::Generic(generic) => (generic, None),
-                    T::Ref(ty) => (ty.expect_generic(), None),
-                    _ => todo!("T is {:?}", g)
-                }).collect::<HashMap<_, _>>();
+                let mut all_generics = generics
+                    .iter()
+                    .map(|g| match g {
+                        T::Generic(generic) => (generic, None),
+                        T::Ref(ty) => (ty.expect_generic(), None),
+                        _ => todo!("T is {:?}", g),
+                    })
+                    .collect::<HashMap<_, _>>();
 
                 args.iter().filter(|a| a.is_generic()).for_each(|a| {
                     // This can on ly be a complex object at the moment
@@ -776,28 +827,39 @@ impl<'test> TestCase<'test> {
                 assert_eq!(all_generics.len(), generics.len());
 
                 // Set still unbounded generics
-                all_generics.iter_mut().filter(|(generic, t)| t.is_none()).for_each(|(generic, t)| {
-                    // TODO generate some type
-
-                    let primitive = self.get_primitive_type_for_generic(generic);
-                    if let Some(primitive) = primitive {
-                        *t = Some(T::Prim(primitive));
-                    } else {
-                        let complex = self.get_complex_type_for_generic(generic);
-                        if let Some(complex) = complex {
-                            *t = Some(complex);
+                all_generics
+                    .iter_mut()
+                    .filter(|(generic, t)| t.is_none())
+                    .for_each(|(generic, t)| {
+                        // TODO generate some type
+                        let primitive = self.get_primitive_type_for_generic(generic);
+                        if let Some(primitive) = primitive {
+                            *t = Some(T::Prim(primitive));
+                        } else {
+                            let complex = self.get_complex_type_for_generic(generic);
+                            if let Some(complex) = complex {
+                                *t = Some(complex);
+                            }
                         }
-                    }
-                });
+                    });
 
-                generics.iter().map(|g| match g {
-                    T::Generic(generic) => all_generics.get(generic).unwrap().as_ref().unwrap().clone(),
-                    T::Ref(ref_generic) => {
-                        let ty = all_generics.get(ref_generic.as_ref().expect_generic()).unwrap().as_ref().unwrap();
-                        T::Ref(Box::new(ty.clone()))
-                    },
-                    _ => todo!()
-                }).collect::<Vec<_>>()
+                generics
+                    .iter()
+                    .map(|g| match g {
+                        T::Generic(generic) => {
+                            all_generics.get(generic).unwrap().as_ref().unwrap().clone()
+                        }
+                        T::Ref(ref_generic) => {
+                            let ty = all_generics
+                                .get(ref_generic.as_ref().expect_generic())
+                                .unwrap()
+                                .as_ref()
+                                .unwrap();
+                            T::Ref(Box::new(ty.clone()))
+                        }
+                        _ => todo!(),
+                    })
+                    .collect::<Vec<_>>()
             } else {
                 vec![]
             }
@@ -949,12 +1011,11 @@ impl<'test> ToSyn for TestCase<'test> {
             &format!("{}_{}", TEST_FN_PREFIX, &self.id),
             Span::call_site(),
         );
-        let stmts: Vec<Stmt> = self.stmts.iter().map(|s| {
-            s.to_syn(&self)
-        }).collect();
+        let stmts: Vec<Stmt> = self.stmts.iter().map(|s| s.to_syn(&self)).collect();
 
+        let test_id = self.id;
         let set_test_id_stmt: Stmt = syn::parse_quote! {
-            testify_monitor::set_test_id(#id);
+            testify_monitor::set_test_id(#test_id);
         };
 
         syn::parse_quote! {
@@ -995,8 +1056,8 @@ impl<'test> Chromosome for TestCase<'test> {
     }
 
     fn crossover(&self, other: &Self, crossover: &SinglePointCrossover) -> (Self, Self)
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         let (mut left, mut right) = crossover.apply(self, other);
         left.id = CHROMOSOME_ID_GENERATOR.lock().unwrap().next_id();
@@ -1014,7 +1075,11 @@ impl<'test> Chromosome for TestCase<'test> {
             test_case.insert_random_stmt();
         }
 
-        println!("Generated test:\n{}\n{}", test_case.to_string(), Dot::new(&test_case.ddg));
+        println!(
+            "Generated test:\n{}\n{}",
+            test_case.to_string(),
+            Dot::new(&test_case.ddg)
+        );
 
         test_case
     }
@@ -1055,28 +1120,28 @@ impl Arg {
     pub fn is_var(&self) -> bool {
         match self {
             Arg::Var(_) => true,
-            _ => false
+            _ => false,
         }
     }
 
     pub fn is_primitive(&self) -> bool {
         match self {
             Arg::Primitive(_) => true,
-            _ => false
+            _ => false,
         }
     }
 
     pub fn expect_var(&self) -> &VarArg {
         match self {
             Arg::Var(var_arg) => var_arg,
-            _ => panic!("Is no var")
+            _ => panic!("Is no var"),
         }
     }
 
     pub fn expect_primitive(&self) -> &Primitive {
         match self {
             Arg::Primitive(primitive) => primitive,
-            _ => panic!("Is no primitive")
+            _ => panic!("Is no primitive"),
         }
     }
 
@@ -1148,7 +1213,7 @@ impl Primitive {
             Primitive::Bool(param, _) => param.name(),
             Primitive::Str(param, _) => param.name(),
             Primitive::Float(param, _) => param.name(),
-            Primitive::Char(param, _) => param.name()
+            Primitive::Char(param, _) => param.name(),
         }
     }
 }
@@ -1229,11 +1294,11 @@ impl Float {
 #[derive(Debug, Clone)]
 pub struct VarArg {
     param: Param,
-    var: Var,
+    var: Rc<Var>,
 }
 
 impl VarArg {
-    pub fn new(var: Var, param: Param) -> Self {
+    pub fn new(var: Rc<Var>, param: Param) -> Self {
         VarArg { param, var }
     }
 
@@ -1241,7 +1306,7 @@ impl VarArg {
         &self.param
     }
 
-    pub fn var(&self) -> &Var {
+    pub fn var(&self) -> &Rc<Var> {
         &self.var
     }
 
@@ -1318,19 +1383,7 @@ impl Statement {
             Statement::FieldAccess(_) => true,
 
             Statement::AttributeAccess(_) => unimplemented!(),
-            Statement::StructInit(s) => s.returns_value()
-        }
-    }
-
-    pub fn var(&self) -> Option<&Var> {
-        match self {
-            Statement::MethodInvocation(m) => m.var(),
-            Statement::StaticFnInvocation(func) => func.var(),
-            Statement::FunctionInvocation(func) => func.var(),
-            Statement::PrimitiveAssignment(a) => a.var(),
-            Statement::FieldAccess(f_stmt) => f_stmt.var(),
-            Statement::AttributeAccess(_) => unimplemented!(),
-            Statement::StructInit(s) => s.var()
+            Statement::StructInit(s) => s.returns_value(),
         }
     }
 
@@ -1342,23 +1395,7 @@ impl Statement {
             Statement::FunctionInvocation(f) => f.return_type(),
             Statement::AttributeAccess(a) => a.return_type(),
             Statement::FieldAccess(f) => Some(f.return_type()),
-            Statement::StructInit(s) => Some(s.return_type())
-        }
-    }
-
-    pub fn set_var(&mut self, var: Var) {
-        if !self.returns_value() {
-            panic!("Statement does not return any value")
-        }
-
-        match self {
-            Statement::PrimitiveAssignment(ref mut p) => p.set_var(var),
-            Statement::AttributeAccess(ref mut a) => a.set_var(var),
-            Statement::MethodInvocation(ref mut m) => m.set_var(var),
-            Statement::StaticFnInvocation(ref mut f) => f.set_var(var),
-            Statement::FunctionInvocation(ref mut f) => f.set_var(var),
-            Statement::FieldAccess(ref mut f) => f.set_var(var),
-            Statement::StructInit(ref mut s) => s.set_var(var)
+            Statement::StructInit(s) => Some(s.return_type()),
         }
     }
 
@@ -1370,7 +1407,7 @@ impl Statement {
             Statement::StaticFnInvocation(f) => Some(f.args()),
             Statement::FunctionInvocation(f) => Some(f.args()),
             Statement::FieldAccess(f) => unimplemented!(),
-            Statement::StructInit(s) => Some(s.args())
+            Statement::StructInit(s) => Some(s.args()),
         }
     }
 
@@ -1382,7 +1419,7 @@ impl Statement {
             Statement::StaticFnInvocation(f) => f.set_arg(arg, idx),
             Statement::FunctionInvocation(f) => f.set_arg(arg, idx),
             Statement::FieldAccess(_) => unimplemented!(),
-            Statement::StructInit(s) => s.set_arg(arg, idx)
+            Statement::StructInit(s) => s.set_arg(arg, idx),
         }
     }
 
@@ -1394,7 +1431,7 @@ impl Statement {
             Statement::StaticFnInvocation(f) => f.id(),
             Statement::FunctionInvocation(f) => f.id(),
             Statement::FieldAccess(f) => f.id(),
-            Statement::StructInit(s) => s.id()
+            Statement::StructInit(s) => s.id(),
         }
     }
 
@@ -1456,7 +1493,6 @@ impl FieldAccessStmt {
     pub fn id(&self) -> Uuid {
         self.id
     }
-
 }
 
 #[derive(Debug, Clone)]
@@ -1486,11 +1522,13 @@ impl StructInitStmt {
     }
 
     pub fn to_syn(&self, test_case: &TestCase<'_>) -> Stmt {
-        if let Some(var) = self.var.as_ref() {
+        let var = test_case.get_variable(self.id);
+        if let Some(var) = var {
             let ident = Ident::new(&var.to_string(), Span::call_site());
 
             let type_name = self.struct_init_item.return_type.to_ident();
-            let args: Vec<FieldValue> = self.args
+            let args: Vec<FieldValue> = self
+                .args
                 .iter()
                 .map(|a| {
                     let field_name = a.param_name().unwrap();
@@ -1507,7 +1545,7 @@ impl StructInitStmt {
                 let mut #ident = #type_name { #(#args),* };
             }
         } else {
-            panic!("Name must have been set until here")
+            panic!("Variable has not been set in the test case for a stmt")
         }
     }
 
@@ -1561,30 +1599,30 @@ impl StaticFnInvStmt {
     pub fn to_syn(&self, test_case: &TestCase<'_>) -> Stmt {
         let func_ident = Ident::new(self.func.name(), Span::call_site());
         let args: Vec<Expr> = self.args().iter().map(|a| a.to_syn()).collect();
-        let parent_path = self
-            .func
-            .parent()
-            .to_ident();
+        let parent_path = self.func.parent().to_ident();
 
         if self.returns_value() {
-            if let Some(var) = &self.var {
+            let var = test_case.get_variable(self.id);
+
+            if let Some(var) = var {
                 let var_name = Ident::new(&var.to_string(), Span::call_site());
-                let return_type_name = self.func.return_type
-                    .as_ref()
-                    .unwrap()
-                    .to_ident();
+                let return_type_name = self.func.return_type.as_ref().unwrap().to_ident();
                 return if self.bounded_generics.is_empty() {
                     syn::parse_quote! {
                         let mut #var_name: #return_type_name = #parent_path::#func_ident(#(#args),*);
                     }
                 } else {
-                    let bounded_generics_idents = self.bounded_generics.iter().map(|g| g.to_ident()).collect::<Vec<_>>();
+                    let bounded_generics_idents = self
+                        .bounded_generics
+                        .iter()
+                        .map(|g| g.to_ident())
+                        .collect::<Vec<_>>();
                     syn::parse_quote! {
                         let mut #var_name: #return_type_name<#(#bounded_generics_idents),*> = #parent_path::#func_ident(#(#args),*);
                     }
-                }
+                };
             } else {
-                panic!("Name must have been set before")
+                panic!("Variable has not been set for a stmt")
             }
         } else {
             syn::parse_quote! {
@@ -1709,16 +1747,13 @@ impl MethodInvStmt {
                     }
         }*/
 
-
         let method_ident = Ident::new(self.method.name(), Span::call_site());
         let args: Vec<Expr> = self.args().iter().map(|a| a.to_syn()).collect();
-        let parent_path = self
-            .method
-            .parent()
-            .to_ident();
+        let parent_path = self.method.parent().to_ident();
 
         if self.returns_value() {
-            if let Some(var) = &self.var {
+            let var = test_case.get_variable(self.id);
+            if let Some(var) = var {
                 let var_name = Ident::new(&var.to_string(), Span::call_site());
                 let return_type_name = self.return_type().unwrap().to_ident();
                 return if self.bounded_generics.is_empty() {
@@ -1726,13 +1761,17 @@ impl MethodInvStmt {
                         let mut #var_name: #return_type_name = #parent_path::#method_ident(#(#args),*);
                     }
                 } else {
-                    let bounded_generics_idents = self.bounded_generics.iter().map(|g| g.to_ident()).collect::<Vec<_>>();
+                    let bounded_generics_idents = self
+                        .bounded_generics
+                        .iter()
+                        .map(|g| g.to_ident())
+                        .collect::<Vec<_>>();
                     syn::parse_quote! {
                         let mut #var_name: #return_type_name<#(#bounded_generics_idents),*> = #parent_path::#method_ident(#(#args),*);
                     }
-                }
+                };
             } else {
-                panic!("Name must have been set before")
+                panic!("Variable has not been set in test case for a stmt")
             }
         } else {
             syn::parse_quote! {
@@ -1790,7 +1829,6 @@ pub struct FnInvStmt {
     bounded_generics: Vec<T>,
 }
 
-
 impl FnInvStmt {
     pub fn new(func: FunctionItem, args: Vec<Arg>, bounded_generics: Vec<T>) -> Self {
         FnInvStmt {
@@ -1837,17 +1875,16 @@ impl FnInvStmt {
         let args: Vec<Expr> = self.args.iter().map(Arg::to_syn).collect();
 
         if self.returns_value() {
-            let stmt = Statement::FunctionInvocation()
-            test_case.get_variable()
+            let var = test_case.get_variable(self.id);
 
-            if let Some(var) = &self.var {
+            if let Some(var) = var {
                 let var_name = Ident::new(&var.to_string(), Span::call_site());
                 let return_type_name = self.return_type().unwrap().to_ident();
                 syn::parse_quote! {
                     let mut #var_name: #return_type_name = #fn_ident(#(#args),*);
                 }
             } else {
-                panic!("Name must have been set before")
+                panic!("Variable has not been set for a returning stmt")
             }
         } else {
             syn::parse_quote! {

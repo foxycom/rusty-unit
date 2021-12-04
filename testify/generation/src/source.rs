@@ -18,12 +18,7 @@ use syn::ext::IdentExt;
 use syn::punctuated::Punctuated;
 use syn::token::Else;
 use syn::visit::Visit;
-use syn::visit_mut::VisitMut;
-use syn::{
-    Attribute, BinOp, Block, Expr, ExprIf, Fields, File, FnArg, ImplItemMethod, Item, ItemEnum,
-    ItemExternCrate, ItemFn, ItemImpl, ItemMacro, ItemMod, ItemStruct, ItemUse, Stmt, Type,
-    UseTree,
-};
+use syn::{File, Item, ItemUse, UseTree, ItemMod};
 use toml::value::Table;
 use toml::Value;
 

@@ -110,7 +110,7 @@ impl BasicMutation {
                     if fastrand::f64() < 1.0 {
                         // Swap object
                         let variables = test_case.variables_typed(var_arg.param().real_ty());
-                        let candidates: Vec<&(Var, usize)>;
+                        let candidates: Vec<&(Rc<Var>, usize)>;
                         if var_arg.is_consuming() {
                             // The candidates must not be consumed throughout the whole test
                             // and they also must not be borrowed after stmt_i
@@ -130,7 +130,7 @@ impl BasicMutation {
                             let candidate_i = fastrand::usize(0..candidates.len());
                             let (new_var, _) = candidates.get(candidate_i).unwrap();
                             let new_arg =
-                                Arg::Var(VarArg::new(new_var.clone(), var_arg.param().clone()));
+                                Arg::Var(VarArg::new((*new_var).clone(), var_arg.param().clone()));
                             new_stmt.set_arg(new_arg, arg_i);
                         } else {
                             // There are no candidates

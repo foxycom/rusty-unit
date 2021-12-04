@@ -1,5 +1,4 @@
 use crate::types::{ComplexT, Generic, Param, Trait, T};
-use petgraph::visit::Walker;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
