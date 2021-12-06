@@ -35,7 +35,7 @@ serde_json = "1.0"
 derive_builder = "0.10.2"
 pbr = "1.0.4"
 petgraph = "0.6.0"
-uuid = { version = "0.8", features = ["v4"] }
+uuid = { version = "0.8", features = ["v4", "serde"] }
 instrumentation = {path = "./instrumentation"}
 generation = {path = "./generation"}
 rustfmt-wrapper = "0.1.0"

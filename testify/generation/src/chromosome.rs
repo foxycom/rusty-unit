@@ -15,6 +15,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{BodyId, FnSig, HirId, PrimTy};
 use rustc_middle::ty::{TyCtxt, TypeFoldable};
 use std::collections::{HashMap, HashSet};
+use std::env::var;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
@@ -79,6 +80,8 @@ pub enum Node {
     TypeBinding(Generic, T),
     Var(Rc<Var>),
     Statement(Uuid),
+    GenericTy(Rc<Generic>),
+    RealTy(Rc<T>)
 }
 
 impl Display for Node {
@@ -89,6 +92,8 @@ impl Display for Node {
             }
             Node::Var(var) => write!(f, "Var({})", &var.name),
             Node::Statement(id) => write!(f, "Stmt({})", id),
+            Node::GenericTy(generic) => write!(f, "Generic({})", generic.name()),
+            Node::RealTy(real_ty) => write!(f, "Real({})", real_ty.full_name())
         }
     }
 }
@@ -112,6 +117,20 @@ impl Node {
         match self {
             Node::TypeBinding(generic, ty) => (generic, ty),
             _ => panic!("Is not type binding"),
+        }
+    }
+
+    pub fn expect_generic_ty(&self) -> &Rc<Generic> {
+        match self {
+            Node::GenericTy(generic) => generic,
+            _ => panic!("Is not generic")
+        }
+    }
+
+    pub fn expect_real_ty(&self) -> &Rc<T> {
+        match self {
+            Node::RealTy(real_ty) => real_ty,
+            _ => panic!("Is not real ty")
         }
     }
 }
@@ -336,7 +355,7 @@ impl<'test> TestCase<'test> {
             .collect()
     }
 
-    pub fn instantiated_types(&self) -> Vec<T> {
+    pub fn instantiated_types(&self) -> Vec<Arc<T>> {
         self.var_table
             .iter()
             .map(|(var, _)| var.ty.clone())
@@ -452,13 +471,13 @@ impl<'test> TestCase<'test> {
             .unwrap()
     }
 
-    pub fn unconsumed_variables_typed(&self, ty: &T) -> Vec<(Rc<Var>, usize)> {
+    pub fn unconsumed_variables_typed(&self, ty: &Arc<T>) -> Vec<(Rc<Var>, usize)> {
         let mut vars = self.variables_typed(ty);
         vars.retain(|(v, _)| !self.is_consumed(v));
         vars
     }
 
-    pub fn variables_typed(&self, ty: &T) -> Vec<(Rc<Var>, usize)> {
+    pub fn variables_typed(&self, ty: &Arc<T>) -> Vec<(Rc<Var>, usize)> {
         // Also return their positions in the test case
         let node_indices = self.ddg.node_indices();
         node_indices
@@ -709,7 +728,7 @@ impl<'test> TestCase<'test> {
         None
     }
 
-    fn get_complex_type_for_generic(&self, generic_ty: &Generic) -> Option<T> {
+    fn get_complex_type_for_generic(&self, generic_ty: &Generic) -> Option<Arc<T>> {
         // Generated arg should comply to generic trait bounds
         let bounds = generic_ty.bounds();
 
@@ -731,20 +750,21 @@ impl<'test> TestCase<'test> {
         let mut complex_ty = (*possible_complex_types.get(complex_i).unwrap()).clone();
 
         // Recursively generate generics for generics
-        if let T::Complex(complex_ty) = &mut complex_ty {
+        if let T::Complex(complex_ty) = complex_ty.as_ref() {
             println!("Selected complex ty: {:?}", complex_ty);
             let bounded_generics = complex_ty.generics().iter().map(|g| {
                 let generic = g.expect_generic();
                 if let Some(prim) = self.get_primitive_type_for_generic(generic) {
                     println!("Selected prim for generic: {:?}", prim);
-                    T::Prim(prim)
+                    //T::Prim(prim)
+                    todo!()
                 } else {
                     println!("Selected complex for generic");
                     // We must assume that a type is available
                     self.get_complex_type_for_generic(generic).unwrap()
                 }
             }).collect::<Vec<_>>();
-            complex_ty.bind_generics(bounded_generics);
+            //complex_ty.bind_generics(bounded_generics);
         }
 
         Some(complex_ty.clone())
@@ -753,7 +773,7 @@ impl<'test> TestCase<'test> {
     fn generate_generic_arg(
         &mut self,
         param: &Param,
-        types_to_generate: HashSet<T>,
+        types_to_generate: HashSet<Arc<T>>,
     ) -> Option<Arg> {
         let generic_ty = param.real_ty().expect_generic();
         let primitive_ty = self.get_primitive_type_for_generic(generic_ty);
@@ -779,7 +799,7 @@ impl<'test> TestCase<'test> {
         self.generate_arg_from_generators(param, generators, types_to_generate)
     }
 
-    fn generate_arg_inner(&mut self, param: &Param, types_to_generate: HashSet<T>) -> Option<Arg> {
+    fn generate_arg_inner(&mut self, param: &Param, types_to_generate: HashSet<Arc<T>>) -> Option<Arg> {
         if param.is_primitive() {
             println!("Generating primitive for param: {:?}", param);
             let ty = param.real_ty().expect_primitive();
@@ -799,14 +819,14 @@ impl<'test> TestCase<'test> {
         }
     }
 
-    fn bind_generics(&self, callable: &Callable, args: &Vec<Arg>) -> Vec<T> {
+    fn bind_generics(&self, callable: &Callable, args: &Vec<Arg>) -> Vec<Arc<T>> {
         // Now look which generic parameters are already bounded by arguments and bound the rest
-        let return_ty = callable.return_type();
+        /*let return_ty = callable.return_type();
         let bounded_generics = if let Some(return_ty) = return_ty {
             if let Some(generics) = return_ty.generics() {
                 let mut all_generics = generics
                     .iter()
-                    .map(|g| match g {
+                    .map(|g| match g.as_ref() {
                         T::Generic(generic) => (generic, None),
                         T::Ref(ty) => (ty.expect_generic(), None),
                         _ => todo!("T is {:?}", g),
@@ -820,6 +840,8 @@ impl<'test> TestCase<'test> {
 
                     // Check if the generic type is global or just defined in the func
                     if all_generics.contains_key(generic) {
+                        let var_node = Node::Var(var_arg.var.clone());
+
                         all_generics.insert(generic, Some(var_arg.param().real_ty().clone()));
                     }
                 });
@@ -845,7 +867,7 @@ impl<'test> TestCase<'test> {
 
                 generics
                     .iter()
-                    .map(|g| match g {
+                    .map(|g| match g.as_ref() {
                         T::Generic(generic) => {
                             all_generics.get(generic).unwrap().as_ref().unwrap().clone()
                         }
@@ -855,7 +877,7 @@ impl<'test> TestCase<'test> {
                                 .unwrap()
                                 .as_ref()
                                 .unwrap();
-                            T::Ref(Box::new(ty.clone()))
+                            T::Ref(Arc::new(ty.clone()))
                         }
                         _ => todo!(),
                     })
@@ -867,14 +889,15 @@ impl<'test> TestCase<'test> {
             vec![]
         };
 
-        bounded_generics
+        bounded_generics*/
+        todo!()
     }
 
     fn generate_arg_from_generators(
         &mut self,
         param: &Param,
         mut generators: Vec<Callable>,
-        types_to_generate: HashSet<T>,
+        types_to_generate: HashSet<Arc<T>>,
     ) -> Option<Arg> {
         println!(
             "Trying to generate {:?}, generators: {:?}",
@@ -1387,7 +1410,7 @@ impl Statement {
         }
     }
 
-    pub fn return_type(&self) -> Option<&T> {
+    pub fn return_type(&self) -> Option<&Arc<T>> {
         match self {
             Statement::PrimitiveAssignment(a) => Some(a.return_type()),
             Statement::MethodInvocation(m) => m.return_type(),
@@ -1475,7 +1498,7 @@ pub struct FieldAccessStmt {
 }
 
 impl FieldAccessStmt {
-    pub fn new(field: FieldAccessItem, bounded_generics: Vec<T>) -> Self {
+    pub fn new(field: FieldAccessItem, bounded_generics: Vec<Arc<T>>) -> Self {
         FieldAccessStmt {
             id: Uuid::new_v4(),
             field,
@@ -1486,7 +1509,7 @@ impl FieldAccessStmt {
         todo!()
     }
 
-    pub fn return_type(&self) -> &T {
+    pub fn return_type(&self) -> &Arc<T> {
         &self.field.ty
     }
 
@@ -1500,11 +1523,11 @@ pub struct StructInitStmt {
     id: Uuid,
     args: Vec<Arg>,
     struct_init_item: StructInitItem,
-    bounded_generics: Vec<T>,
+    bounded_generics: Vec<Arc<T>>,
 }
 
 impl StructInitStmt {
-    pub fn new(struct_init_item: StructInitItem, args: Vec<Arg>, bounded_generics: Vec<T>) -> Self {
+    pub fn new(struct_init_item: StructInitItem, args: Vec<Arg>, bounded_generics: Vec<Arc<T>>) -> Self {
         StructInitStmt {
             id: Uuid::new_v4(),
             struct_init_item,
@@ -1513,7 +1536,7 @@ impl StructInitStmt {
         }
     }
 
-    pub fn return_type(&self) -> &T {
+    pub fn return_type(&self) -> &Arc<T> {
         self.struct_init_item.return_type()
     }
 
@@ -1575,11 +1598,11 @@ pub struct StaticFnInvStmt {
     id: Uuid,
     args: Vec<Arg>,
     func: StaticFnItem,
-    bounded_generics: Vec<T>,
+    bounded_generics: Vec<Arc<T>>,
 }
 
 impl StaticFnInvStmt {
-    pub fn new(func: StaticFnItem, args: Vec<Arg>, bounded_generics: Vec<T>) -> Self {
+    pub fn new(func: StaticFnItem, args: Vec<Arg>, bounded_generics: Vec<Arc<T>>) -> Self {
         StaticFnInvStmt {
             id: Uuid::new_v4(),
             args,
@@ -1588,7 +1611,7 @@ impl StaticFnInvStmt {
         }
     }
 
-    pub fn return_type(&self) -> Option<&T> {
+    pub fn return_type(&self) -> Option<&Arc<T>> {
         self.func.return_type.as_ref()
     }
 
@@ -1656,14 +1679,14 @@ pub struct AssignStmt {
 }
 
 impl AssignStmt {
-    pub fn new(primitive: PrimitiveItem, bounded_generics: Vec<T>) -> Self {
+    pub fn new(primitive: PrimitiveItem, bounded_generics: Vec<Arc<T>>) -> Self {
         AssignStmt {
             id: Uuid::new_v4(),
             primitive,
         }
     }
 
-    pub fn return_type(&self) -> &T {
+    pub fn return_type(&self) -> &Arc<T> {
         &self.primitive.ty
     }
 
@@ -1694,7 +1717,7 @@ impl AttrStmt {
         AttrStmt { id: Uuid::new_v4() }
     }
 
-    pub fn return_type(&self) -> Option<&T> {
+    pub fn return_type(&self) -> Option<&Arc<T>> {
         unimplemented!()
     }
 
@@ -1708,11 +1731,11 @@ pub struct MethodInvStmt {
     id: Uuid,
     method: MethodItem,
     args: Vec<Arg>,
-    bounded_generics: Vec<T>,
+    bounded_generics: Vec<Arc<T>>,
 }
 
 impl MethodInvStmt {
-    pub fn new(method: MethodItem, args: Vec<Arg>, bounded_generics: Vec<T>) -> Self {
+    pub fn new(method: MethodItem, args: Vec<Arg>, bounded_generics: Vec<Arc<T>>) -> Self {
         MethodInvStmt {
             method,
             args,
@@ -1784,7 +1807,7 @@ impl MethodInvStmt {
         self.method.return_type.is_some()
     }
 
-    pub fn return_type(&self) -> Option<&T> {
+    pub fn return_type(&self) -> Option<&Arc<T>> {
         self.method.return_type.as_ref()
     }
 
@@ -1826,11 +1849,11 @@ pub struct FnInvStmt {
     id: Uuid,
     args: Vec<Arg>,
     func: FunctionItem,
-    bounded_generics: Vec<T>,
+    bounded_generics: Vec<Arc<T>>,
 }
 
 impl FnInvStmt {
-    pub fn new(func: FunctionItem, args: Vec<Arg>, bounded_generics: Vec<T>) -> Self {
+    pub fn new(func: FunctionItem, args: Vec<Arg>, bounded_generics: Vec<Arc<T>>) -> Self {
         FnInvStmt {
             args,
             func,
@@ -1858,7 +1881,7 @@ impl FnInvStmt {
         self.func.return_type.is_some()
     }
 
-    pub fn return_type(&self) -> Option<&T> {
+    pub fn return_type(&self) -> Option<&Arc<T>> {
         self.func.return_type.as_ref()
     }
 
@@ -1900,7 +1923,7 @@ impl FnInvStmt {
 #[derive(Clone, Debug, PartialEq, Hash, Eq)]
 pub struct Var {
     name: String,
-    ty: T,
+    ty: Arc<T>,
 }
 
 impl Display for Var {
@@ -1910,7 +1933,7 @@ impl Display for Var {
 }
 
 impl Var {
-    pub fn new(name: &str, ty: T) -> Self {
+    pub fn new(name: &str, ty: Arc<T>) -> Self {
         Var {
             name: name.to_owned(),
             ty,
@@ -1921,7 +1944,7 @@ impl Var {
         &self.name
     }
 
-    pub fn ty(&self) -> &T {
+    pub fn ty(&self) -> &Arc<T> {
         &self.ty
     }
 

@@ -207,6 +207,9 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
     let parent_hir_id = tcx
         .hir()
         .local_def_id_to_hir_id(parent_def_id.expect_local());
+    let def_id = tcx.hir().local_def_id(parent_hir_id).to_def_id();
+    let parent = def_id_to_complex(def_id, tcx).unwrap();
+
     let items = im.items;
 
     println!("Analyzing impl: {:?}\nIt's generics are: {:?}", im, impl_generics);
@@ -244,8 +247,6 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                             }
                         }
 
-                        let def_id = tcx.hir().local_def_id(parent_hir_id).to_def_id();
-                        let parent = def_id_to_complex(def_id, tcx).unwrap();
                         let return_type = fn_ret_ty_to_t(&sig.decl.output, parent_hir_id, tcx);
 
                         if let Some(return_type) = return_type.as_ref() {
@@ -259,7 +260,7 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                                 src_file_id,
                                 params,
                                 return_type,
-                                parent,
+                                parent.clone(),
                                 impl_generics.clone(),
                                 hir_id,
                                 tcx,
@@ -273,7 +274,7 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                                 src_file_id,
                                 params,
                                 return_type,
-                                parent,
+                                parent.clone(),
                                 impl_generics.clone(),
                                 hir_id,
                                 tcx,

@@ -13,6 +13,8 @@ use std::io::Write;
 use std::option::Option::Some;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::rc::Rc;
+use std::sync::Arc;
 use syn::{FnArg, ImplItemMethod, Path, ReturnType, Type};
 
 pub fn cargo_path() -> io::Result<PathBuf> {
@@ -33,7 +35,7 @@ pub fn ty_to_param(
     name: Option<&str>,
     ty: &Ty,
     self_hir_id: HirId,
-    parent_generics: &Vec<T>,
+    parent_generics: &Vec<Arc<T>>,
     tcx: &TyCtxt<'_>,
 ) -> Option<Param> {
     let mutability = match &ty.kind {
@@ -48,13 +50,13 @@ pub fn ty_to_param(
 pub fn ty_to_t(
     ty: &Ty,
     self_: Option<HirId>,
-    defined_generics: &Vec<T>,
+    defined_generics: &Vec<Arc<T>>,
     tcx: &TyCtxt<'_>,
-) -> Option<T> {
+) -> Option<Arc<T>> {
     match &ty.kind {
-        TyKind::Rptr(_, mut_ty) => ty_to_t(mut_ty.ty, self_, defined_generics, tcx).map(|t| {
-            T::Ref(Box::new(t))
-        }),
+        TyKind::Rptr(_, mut_ty) => ty_to_t(mut_ty.ty, self_, defined_generics, tcx).map(|t| Arc::from({
+            T::Ref(t)
+        })),
         TyKind::Path(q_path) => {
             match q_path {
                 QPath::Resolved(_, path) => {
@@ -78,12 +80,12 @@ pub fn ty_to_t(
                                     vec![]
                                 };
 
-                                return Some(T::Generic(Generic::new(&name, bounds)));
+                                return Some(Arc::new(T::Generic(Generic::new(&name, bounds))));
                             }
                             //def_id_to_complex(*def_id, tcx)
                             path_to_t(*def_id, path, defined_generics, tcx)
                         }
-                        Res::PrimTy(prim_ty) => Some(T::from(*prim_ty)),
+                        Res::PrimTy(prim_ty) => Some(Arc::new(T::from(*prim_ty))),
                         Res::SelfTy(trait_def_id, impl_) => {
                             // Self type, so replace it with the parent id
                             //let name = node_to_name(&tcx.hir().get(self_), tcx).unwrap();
@@ -115,7 +117,7 @@ pub fn ty_to_t(
     }
 }
 
-pub fn path_to_t(def_id: DefId, path: &rustc_hir::Path<'_>, defined_generics: &Vec<T>, tcx: &TyCtxt<'_>) -> Option<T> {
+pub fn path_to_t(def_id: DefId, path: &rustc_hir::Path<'_>, defined_generics: &Vec<Arc<T>>, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
     let name = tcx.def_path_str(def_id);
     let generics = path.segments.iter().filter_map(|s| if let Some(args) = s.args {
         Some(args.args.iter().filter_map(|a| generic_arg_to_t(a, defined_generics, tcx)).collect::<Vec<_>>())
@@ -124,17 +126,17 @@ pub fn path_to_t(def_id: DefId, path: &rustc_hir::Path<'_>, defined_generics: &V
     }).flatten().collect::<Vec<_>>();
 
 
-    Some(T::Complex(ComplexT::new(Some(def_id), &name, generics)))
+    Some(Arc::new(T::Complex(ComplexT::new(Some(def_id), &name, generics))))
 }
 
-pub fn generic_arg_to_t(generic_arg: &GenericArg, defined_generics: &Vec<T>, tcx: &TyCtxt<'_>) -> Option<T> {
+pub fn generic_arg_to_t(generic_arg: &GenericArg, defined_generics: &Vec<Arc<T>>, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
     match generic_arg {
         GenericArg::Type(ty) => ty_to_t(ty, None, defined_generics, tcx),
         _ => None
     }
 }
 
-pub fn def_id_to_complex(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<T> {
+pub fn def_id_to_complex(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
     /*let ty = tcx.type_of(def_id);
     match ty.kind() {
         rustc_middle::ty::TyKind::Adt(_, substs) => {
@@ -170,7 +172,7 @@ pub fn def_id_to_complex(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<T> {
             let name = tcx.def_path_str(def_id);
             let t = T::Complex(ComplexT::new(Some(def_id), &name, generics));
 
-            Some(t)
+            Some(Arc::new(t))
         }
         _ => todo!(),
     }
@@ -183,7 +185,7 @@ pub fn substs_len(substs: SubstsRef) -> usize {
     }).count()
 }
 
-pub fn generic_to_t(generic_kind: GenericArgKind, tcx: &TyCtxt<'_>) -> Option<T> {
+pub fn generic_to_t(generic_kind: GenericArgKind, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
     match generic_kind {
         GenericArgKind::Lifetime(_) => None,
         GenericArgKind::Type(ty) => tys_to_t(ty, tcx),
@@ -193,15 +195,15 @@ pub fn generic_to_t(generic_kind: GenericArgKind, tcx: &TyCtxt<'_>) -> Option<T>
     }
 }
 
-pub fn tys_to_t(ty: rustc_middle::ty::Ty, tcx: &TyCtxt<'_>) -> Option<T> {
+pub fn tys_to_t(ty: rustc_middle::ty::Ty, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
     match ty.kind() {
         rustc_middle::ty::TyKind::Param(param) => {
             let name = param.name.to_string();
-            let generic_param = T::Generic(Generic::new(&name, vec![]));
+            let generic_param = Arc::new(T::Generic(Generic::new(&name, vec![])));
             if ty.is_region_ptr() {
                 println!("GENERIC PTR //: {:?}", ty);
 
-                Some(T::Ref(Box::new(generic_param)))
+                Some(Arc::new(T::Ref(generic_param)))
             } else {
                 Some(generic_param)
             }
@@ -210,7 +212,7 @@ pub fn tys_to_t(ty: rustc_middle::ty::Ty, tcx: &TyCtxt<'_>) -> Option<T> {
     }
 }
 
-pub fn generics_to_ts(generics: &Generics, tcx: &TyCtxt<'_>) -> Vec<T> {
+pub fn generics_to_ts(generics: &Generics, tcx: &TyCtxt<'_>) -> Vec<Arc<T>> {
     if !generics.where_clause.predicates.is_empty() {
         let predicates = generics.where_clause.predicates;
         let bounds_generic_param = predicates.iter().filter_map(|p| match p {
@@ -227,7 +229,7 @@ pub fn generics_to_ts(generics: &Generics, tcx: &TyCtxt<'_>) -> Vec<T> {
             WherePredicate::BoundPredicate(p) => {
                 let defined_generics = vec![];
                 println!("Parsing where bounds: {:?}", &p.bounds);
-                let ty = ty_to_t(p.bounded_ty, None, &defined_generics, tcx);
+                let ty = ty_to_t(p.bounded_ty, None, &defined_generics, tcx).map(|ty| Rc::new(ty));
                 let bounds = p.bounds.iter().filter_map(|b| generic_bound_to_trait(b, tcx)).collect::<Vec<_>>();
                 if let Some(ty) = ty {
                     return Some((ty, bounds));
@@ -247,7 +249,7 @@ pub fn generics_to_ts(generics: &Generics, tcx: &TyCtxt<'_>) -> Vec<T> {
         .collect::<Vec<_>>()
 }
 
-pub fn generic_param_to_t(param: &GenericParam<'_>, tcx: &TyCtxt<'_>) -> Option<T> {
+pub fn generic_param_to_t(param: &GenericParam<'_>, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
     if let GenericParamKind::Type { .. } = &param.kind {
         if let ParamName::Plain(ident) = &param.name {
             let name = ident.name.to_ident_string();
@@ -257,7 +259,7 @@ pub fn generic_param_to_t(param: &GenericParam<'_>, tcx: &TyCtxt<'_>) -> Option<
                 .iter()
                 .filter_map(|b| generic_bound_to_trait(b, tcx))
                 .collect::<Vec<_>>();
-            return Some(T::Generic(Generic::new(&name, bounds)));
+            return Some(Arc::new(T::Generic(Generic::new(&name, bounds))));
         }
     }
 
@@ -276,14 +278,14 @@ pub fn generic_bound_to_trait(bound: &GenericBound<'_>, tcx: &TyCtxt<'_>) -> Opt
     }
 }
 
-pub fn node_to_t(node: &Node<'_>, tcx: &TyCtxt<'_>) -> Option<T> {
+pub fn node_to_t(node: &Node<'_>, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
     match node {
         Node::Item(item) => item_to_t(item, tcx),
         _ => unimplemented!(),
     }
 }
 
-pub fn item_to_t(item: &Item<'_>, tcx: &TyCtxt<'_>) -> Option<T> {
+pub fn item_to_t(item: &Item<'_>, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
     let generics = vec![];
     match &item.kind {
         ItemKind::Impl(im) => ty_to_t(im.self_ty, Some(item.hir_id()), &generics, tcx),
@@ -291,7 +293,7 @@ pub fn item_to_t(item: &Item<'_>, tcx: &TyCtxt<'_>) -> Option<T> {
     }
 }
 
-pub fn fn_ret_ty_to_t(ret_ty: &FnRetTy, self_hir_id: HirId, tcx: &TyCtxt<'_>) -> Option<T> {
+pub fn fn_ret_ty_to_t(ret_ty: &FnRetTy, self_hir_id: HirId, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
     let generics = vec![];
     match ret_ty {
         FnRetTy::DefaultReturn(_) => None,

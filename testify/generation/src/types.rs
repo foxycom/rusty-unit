@@ -13,7 +13,10 @@ use std::collections::HashSet;
 use std::fmt::{Debug, Display, Formatter};
 use std::fs;
 use std::path::PathBuf;
+use std::rc::Rc;
+use std::sync::Arc;
 use syn::{Expr, Type};
+use uuid::Uuid;
 
 lazy_static! {
     pub static ref STR_TRAITS: HashSet<Trait> = {
@@ -73,7 +76,7 @@ lazy_static! {
         s.insert(Trait::new("std::default::Default"));
         s
     };
-    pub static ref TYPES: HashMap<T, HashSet<Trait>> = {
+    pub static ref TYPES: HashMap<Arc<T>, HashSet<Trait>> = {
         let types = load_types().unwrap();
 
         let mut vec_traits = HashSet::new();
@@ -119,7 +122,7 @@ fn load_callables() -> std::io::Result<Vec<Callable>> {
     Ok(callables)
 }
 
-fn load_types() -> std::io::Result<Vec<(T, HashSet<Trait>)>> {
+fn load_types() -> std::io::Result<Vec<(Arc<T>, HashSet<Trait>)>> {
     let mut types = Vec::new();
     for entry in fs::read_dir(TYPE_PROVIDERS_DIR)? {
         let entry = entry?;
@@ -178,7 +181,7 @@ impl Callable {
         }
     }
 
-    pub fn return_type(&self) -> Option<&T> {
+    pub fn return_type(&self) -> Option<&Arc<T>> {
         match self {
             Callable::Method(method_item) => method_item.return_type.as_ref(),
             Callable::StaticFunction(fn_item) => fn_item.return_type.as_ref(),
@@ -200,7 +203,7 @@ impl Callable {
         }
     }
 
-    pub fn to_stmt(&self, args: Vec<Arg>, bounded_generics: Vec<T>) -> Statement {
+    pub fn to_stmt(&self, args: Vec<Arg>, bounded_generics: Vec<Arc<T>>) -> Statement {
         match self {
             Callable::Method(method_item) => Statement::MethodInvocation(MethodInvStmt::new(
                 method_item.clone(),
@@ -244,12 +247,12 @@ impl Callable {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrimitiveItem {
-    pub ty: T,
+    pub ty: Arc<T>,
     pub params: Vec<Param>,
 }
 
 impl PrimitiveItem {
-    pub fn new(ty: T) -> PrimitiveItem {
+    pub fn new(ty: Arc<T>) -> PrimitiveItem {
         PrimitiveItem { ty, params: vec![] }
     }
 
@@ -262,13 +265,13 @@ impl PrimitiveItem {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StructInitItem {
     pub fields: Vec<Param>,
-    pub return_type: T,
+    pub return_type: Arc<T>,
 
     pub src_file_id: usize,
 }
 
 impl StructInitItem {
-    pub fn new(src_file_id: usize, fields: Vec<Param>, return_type: T) -> Self {
+    pub fn new(src_file_id: usize, fields: Vec<Param>, return_type: Arc<T>) -> Self {
         StructInitItem {
             fields,
             return_type,
@@ -280,7 +283,7 @@ impl StructInitItem {
         &self.fields
     }
 
-    pub fn return_type(&self) -> &T {
+    pub fn return_type(&self) -> &Arc<T> {
         &self.return_type
     }
 }
@@ -288,8 +291,8 @@ impl StructInitItem {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MethodItem {
     pub params: Vec<Param>,
-    pub return_type: Option<T>,
-    pub parent: T,
+    pub return_type: Option<Arc<T>>,
+    pub parent: Arc<T>,
     pub name: String,
 
     #[serde(skip)]
@@ -301,9 +304,9 @@ impl MethodItem {
     pub fn new(
         src_file_id: usize,
         params: Vec<Param>,
-        return_type: Option<T>,
-        parent: T,
-        generics: Vec<T>,
+        return_type: Option<Arc<T>>,
+        parent: Arc<T>,
+        generics: Vec<Arc<T>>,
         fn_id: HirId,
         tcx: &TyCtxt<'_>,
     ) -> Self {
@@ -323,8 +326,8 @@ impl MethodItem {
     pub fn params(&self) -> &Vec<Param> {
         &self.params
     }
-    pub fn return_type(&self) -> Option<&T> {
-        self.return_type.as_ref()
+    pub fn return_type(&self) -> Option<Arc<T>> {
+        self.return_type.clone()
     }
     pub fn parent(&self) -> &T {
         &self.parent
@@ -342,7 +345,7 @@ impl MethodItem {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FunctionItem {
     pub params: Vec<Param>,
-    pub return_type: Option<T>,
+    pub return_type: Option<Arc<T>>,
     #[serde(skip)]
     pub fn_id: Option<HirId>,
     pub name: String,
@@ -353,7 +356,7 @@ impl FunctionItem {
     pub fn new(
         src_file_id: usize,
         params: Vec<Param>,
-        return_type: Option<T>,
+        return_type: Option<Arc<T>>,
         fn_id: HirId,
         tcx: &TyCtxt<'_>,
     ) -> Self {
@@ -377,8 +380,8 @@ impl FunctionItem {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StaticFnItem {
     pub params: Vec<Param>,
-    pub return_type: Option<T>,
-    pub parent: T,
+    pub return_type: Option<Arc<T>>,
+    pub parent: Arc<T>,
     #[serde(skip)]
     pub fn_id: Option<HirId>,
     pub name: String,
@@ -389,9 +392,9 @@ impl StaticFnItem {
     pub fn new(
         src_file_id: usize,
         params: Vec<Param>,
-        return_type: Option<T>,
-        parent: T,
-        generics: Vec<T>,
+        return_type: Option<Arc<T>>,
+        parent: Arc<T>,
+        generics: Vec<Arc<T>>,
         fn_id: HirId,
         tcx: &TyCtxt<'_>,
     ) -> Self {
@@ -411,7 +414,7 @@ impl StaticFnItem {
     pub fn params(&self) -> &Vec<Param> {
         &self.params
     }
-    pub fn return_type(&self) -> Option<&T> {
+    pub fn return_type(&self) -> Option<&Arc<T>> {
         self.return_type.as_ref()
     }
     pub fn parent(&self) -> &T {
@@ -425,16 +428,16 @@ impl StaticFnItem {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FieldAccessItem {
-    pub ty: T,
+    pub ty: Arc<T>,
     #[serde(skip)]
     pub field_id: Option<HirId>,
-    pub parent: T,
+    pub parent: Arc<T>,
     pub name: String,
     pub src_file_id: usize,
 }
 
 impl FieldAccessItem {
-    pub fn new(src_file_id: usize, ty: T, parent: T, field_id: HirId, tcx: &TyCtxt<'_>) -> Self {
+    pub fn new(src_file_id: usize, ty: Arc<T>, parent: Arc<T>, field_id: HirId, tcx: &TyCtxt<'_>) -> Self {
         let ident = tcx.hir().get(field_id).ident().unwrap();
         let name = ident.name.to_string();
 
@@ -450,7 +453,7 @@ impl FieldAccessItem {
 
 #[derive(Clone, Hash, Eq, Serialize, Deserialize)]
 pub enum T {
-    Ref(Box<T>),
+    Ref(Arc<T>),
     Prim(PrimT),
     Complex(ComplexT),
     Generic(Generic),
@@ -660,7 +663,7 @@ impl T {
         }
     }
 
-    pub fn generics(&self) -> Option<&Vec<T>> {
+    pub fn generics(&self) -> Option<&Vec<Arc<T>>> {
         match self {
             T::Prim(_) => None,
             T::Complex(complex) => Some(complex.generics()),
@@ -710,7 +713,7 @@ pub struct ComplexT {
     #[serde(skip)]
     def_id: Option<DefId>,
     name: String,
-    generics: Vec<T>,
+    generics: Vec<Arc<T>>,
     is_local: bool,
 }
 
@@ -746,12 +749,14 @@ impl PartialEq for ComplexT {
 }
 
 impl ComplexT {
-    pub fn new(def_id: Option<DefId>, name: &str, generics: Vec<T>) -> Self {
+    pub fn new(def_id: Option<DefId>, name: &str, generics: Vec<Arc<T>>) -> Self {
         let is_local = if let Some(def_id) = def_id {
             def_id.is_local()
         } else {
             false
         };
+
+
         ComplexT {
             name: name.to_string(),
             is_local,
@@ -768,11 +773,11 @@ impl ComplexT {
         self.def_id
     }
 
-    pub fn generics(&self) -> &Vec<T> {
+    pub fn generics(&self) -> &Vec<Arc<T>> {
         &self.generics
     }
 
-    pub fn bind_generics(&mut self, types: Vec<T>) {
+    pub fn bind_generics(&mut self, types: Vec<Arc<T>>) {
         self.generics = types;
     }
 
@@ -881,6 +886,7 @@ impl EnumVariant {
 
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Generic {
+    scope: Uuid,
     name: String,
     bounds: Vec<Trait>,
 }
@@ -894,6 +900,7 @@ impl Debug for Generic {
 impl Generic {
     pub fn new(name: &str, bounds: Vec<Trait>) -> Self {
         Self {
+            scope: Uuid::new_v4(),
             name: name.to_string(),
             bounds,
         }
@@ -950,7 +957,7 @@ impl Display for Trait {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Param {
-    ty: T,
+    ty: Arc<T>,
     mutable: bool,
     name: Option<String>,
 }
@@ -969,7 +976,7 @@ impl Debug for Param {
 }
 
 impl Param {
-    pub fn new(name: Option<&str>, ty: T, mutable: bool) -> Self {
+    pub fn new(name: Option<&str>, ty: Arc<T>, mutable: bool) -> Self {
         Param {
             name: name.map(|s| s.to_string()),
             ty,
@@ -982,7 +989,7 @@ impl Param {
     }
 
     pub fn by_reference(&self) -> bool {
-        match &self.ty {
+        match self.ty.as_ref() {
             T::Ref(_) => true,
             _ => false,
         }
@@ -992,9 +999,9 @@ impl Param {
         self.mutable
     }
 
-    pub fn real_ty(&self) -> &T {
-        match &self.ty {
-            T::Ref(ty) => ty.as_ref(),
+    pub fn real_ty(&self) -> &Arc<T> {
+        match self.ty.as_ref() {
+            T::Ref(ty) => ty,
             _ => &self.ty,
         }
     }

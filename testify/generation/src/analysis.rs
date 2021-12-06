@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 use petgraph::Graph;
 use crate::types::{Callable, T};
 use serde::{Serialize, Deserialize};
@@ -28,7 +29,7 @@ impl HirAnalysis {
         &self.callables
     }
 
-    pub fn generators(&self, ty: &T) -> Vec<&Callable> {
+    pub fn generators(&self, ty: &Arc<T>) -> Vec<&Callable> {
         self.callables
             .iter()
             .filter(|&c| {
