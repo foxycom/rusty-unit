@@ -1,0 +1,29 @@
+[
+  {
+    "name": "std::clone::Clone"
+  },
+  {
+    "name": "std::marker::Copy"
+  },
+  {
+    "name": "std::default::Default"
+  },
+  {
+    "name": "std::cmp::Eq"
+  },
+  {
+    "name": "std::cmp::PartialEq"
+  },
+  {
+    "name": "std::hash::Hash"
+  },
+  {
+    "name": "std::cmp::Ord"
+  },
+  {
+    "name": "std::cmp::PartialOrd"
+  },
+  {
+    "name": "std::iter::IntoIterator"
+  }
+]

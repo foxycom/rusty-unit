@@ -1,0 +1,137 @@
+package de.unipassau.testify.test_case.type;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+@JsonDeserialize(as = Complex.class)
+public class Complex implements Type {
+
+  private String name;
+  private List<Type> generics;
+  @JsonProperty("is_local")
+  private boolean isLocal;
+
+  public Complex() {
+  }
+
+  public Complex(Complex other) {
+    this.name = other.name;
+    this.isLocal = other.isLocal;
+    this.generics = other.generics.stream().map(Type::copy).toList();
+  }
+
+  public Complex(String name, List<Type> generics, boolean isLocal) {
+    this.name = name;
+    this.generics = generics;
+    this.isLocal = isLocal;
+  }
+
+  @Override
+  public String getName() {
+    return name;
+  }
+
+  @Override
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  @Override
+  public String fullName() {
+    if (isLocal) {
+      return String.format("crate::%s", name);
+    } else {
+      return name;
+    }
+  }
+
+  @Override
+  public boolean isComplex() {
+    return true;
+  }
+
+  @Override
+  public Complex asComplex() {
+    return this;
+  }
+
+  @Override
+  public String varString() {
+    var segments = name.split("::");
+    return segments[segments.length - 1].toLowerCase(Locale.ROOT);
+  }
+
+  @Override
+  public boolean isSameType(Type other) {
+    if (other.isComplex()) {
+      return isSameType(other.asComplex());
+    } else if (other.isRef()) {
+      var ref = other.asRef();
+      var innerType = ref.getInnerType();
+      return isSameType(innerType);
+    } else {
+      return false;
+    }
+  }
+
+  public boolean isSameType(Complex other) {
+    return name.equals(other.name) && isLocal == other.isLocal;
+  }
+
+  @Override
+  public List<Type> generics() {
+    return generics;
+  }
+
+  @Override
+  public void setGenerics(List<Type> generics) {
+    this.generics = generics;
+  }
+
+  @Override
+  public Type copy() {
+    return new Complex(this);
+  }
+
+  public boolean isLocal() {
+    return isLocal;
+  }
+
+  public void setLocal(boolean local) {
+    isLocal = local;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Complex complex = (Complex) o;
+    return isLocal == complex.isLocal && name.equals(complex.name);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, isLocal);
+  }
+
+  @Override
+  public String toString() {
+    var sb = new StringBuilder();
+    sb.append(fullName());
+    if (!generics.isEmpty()) {
+      sb.append("<");
+      var genericsStr = generics.stream().map(Type::toString).collect(Collectors.joining(", "));
+      sb.append(genericsStr);
+      sb.append(">");
+    }
+    return sb.toString();
+  }
+}
