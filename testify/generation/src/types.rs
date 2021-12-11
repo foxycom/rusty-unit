@@ -104,6 +104,13 @@ static CALLABLES_DIR: &'static str =
     "/Users/tim/Documents/master-thesis/testify/providers/callables";
 
 fn load_callables() -> std::io::Result<Vec<Callable>> {
+
+    let variants = vec![
+        EnumVariant::new("Some", vec![T::Generic(Generic::new("T", vec![]))]),
+        EnumVariant::new("None", vec![])
+    ];
+    let t = T::Enum(EnumT::new(None, "std::option::Option", vec![], variants));
+    println!("---HELLO {}", serde_json::to_string(&t).unwrap());
     let callables = fs::read_dir(CALLABLES_DIR)?
         .map(|entry| {
             let entry = entry.unwrap();
@@ -177,7 +184,7 @@ impl Callable {
             Callable::Function(f) => &mut f.params,
             Callable::Primitive(p) => &mut p.params,
             Callable::FieldAccess(_) => unimplemented!(),
-            Callable::StructInit(s) => &mut s.fields,
+            Callable::StructInit(s) => &mut s.params,
         }
     }
 
@@ -264,7 +271,7 @@ impl PrimitiveItem {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StructInitItem {
-    pub fields: Vec<Param>,
+    pub params: Vec<Param>,
     pub return_type: Arc<T>,
 
     pub src_file_id: usize,
@@ -273,14 +280,14 @@ pub struct StructInitItem {
 impl StructInitItem {
     pub fn new(src_file_id: usize, fields: Vec<Param>, return_type: Arc<T>) -> Self {
         StructInitItem {
-            fields,
+            params: fields,
             return_type,
             src_file_id,
         }
     }
 
     pub fn params(&self) -> &Vec<Param> {
-        &self.fields
+        &self.params
     }
 
     pub fn return_type(&self) -> &Arc<T> {

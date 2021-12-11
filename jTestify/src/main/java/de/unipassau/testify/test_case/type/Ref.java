@@ -73,7 +73,12 @@ public class Ref implements Type {
 
   @Override
   public void setGenerics(List<Type> generics) {
-    innerType.setGenerics(generics);
+    innerType.setGenerics(Objects.requireNonNull(generics));
+  }
+
+  @Override
+  public Type replaceGenerics(List<Type> generics) {
+    return new Ref(innerType.replaceGenerics(Objects.requireNonNull(generics)));
   }
 
   @Override

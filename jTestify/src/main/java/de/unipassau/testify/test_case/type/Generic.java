@@ -3,6 +3,7 @@ package de.unipassau.testify.test_case.type;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @JsonDeserialize(as = Generic.class)
@@ -57,6 +58,11 @@ public class Generic implements Type {
 
   }
 
+  @Override
+  public Type replaceGenerics(List<Type> generics) {
+    return this;
+  }
+
   /*
    * Generics don't change, so there's no point in copying them
    */
@@ -81,6 +87,23 @@ public class Generic implements Type {
 
   public void setScope(String scope) {
     this.scope = scope;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Generic generic = (Generic) o;
+    return name.equals(generic.name) && bounds.equals(generic.bounds);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, bounds);
   }
 
   @Override

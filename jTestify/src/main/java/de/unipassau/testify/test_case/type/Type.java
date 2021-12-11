@@ -60,7 +60,12 @@ public interface Type {
 
   List<Type> generics();
 
+  /**
+   * Only intended for Jackson unmarshalling.
+   */
   void setGenerics(List<Type> generics);
+
+  Type replaceGenerics(List<Type> generics);
 
   Type copy();
 }

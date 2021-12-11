@@ -31,7 +31,7 @@ public class TypeBinding {
   }
 
   public Type getBindingFor(Generic generic) {
-    return binding.get(generic);
+    return Objects.requireNonNull(binding.get(generic), "Does not contain " + generic);
   }
 
   public void bindGeneric(Generic generic, Type type) {
@@ -44,5 +44,13 @@ public class TypeBinding {
 
   public boolean hasUnboundedGeneric() {
     return binding.values().stream().anyMatch(Objects::isNull);
+  }
+
+  public TypeBinding merge(TypeBinding other) {
+    var merged = new HashMap<>(binding);
+    other.binding.forEach((key, value) -> merged.merge(key, value, (left, right) -> left));
+    var typeBinding = new TypeBinding();
+    typeBinding.binding = merged;
+    return typeBinding;
   }
 }

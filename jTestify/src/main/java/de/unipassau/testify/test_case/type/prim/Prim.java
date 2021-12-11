@@ -78,6 +78,11 @@ public interface Prim extends Type {
     throw new RuntimeException("Not with me");
   }
 
+  @Override
+  default Type replaceGenerics(List<Type> generics) {
+    return this;
+  }
+
   Primitive random();
 
   static List<Prim> implementorsOf(Trait trait) {

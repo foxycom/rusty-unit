@@ -81,8 +81,12 @@ public class Method implements Callable {
 
   @Override
   public Statement toStmt(TestCase testCase, List<VarReference> args, VarReference returnValue) {
+    if (returnsValue()) {
+      Objects.requireNonNull(returnValue);
+    }
+
     return new MethodStmt(Objects.requireNonNull(testCase), Objects.requireNonNull(args),
-        Objects.requireNonNull(returnValue), this);
+        returnValue, this);
   }
 
   public int getSrcFileId() {

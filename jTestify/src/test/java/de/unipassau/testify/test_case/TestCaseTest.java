@@ -1,5 +1,6 @@
 package de.unipassau.testify.test_case;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import de.unipassau.testify.hir.HirAnalysis;
@@ -51,7 +52,7 @@ class TestCaseTest {
     var callableUnderTest = new StaticMethod("a", params, ISize.INSTANCE, parent, 2);
 
     var vecCallable = new StaticMethod("new", Collections.emptyList(), vecType, vecType, 2);
-    when(analysis.generatorsOf(vecType)).thenReturn(List.of(vecCallable));
+    when(analysis.generatorsOf(any())).thenReturn(List.of(vecCallable));
 
     testCase.insertCallable(callableUnderTest);
 

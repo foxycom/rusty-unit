@@ -21,9 +21,9 @@
 \usepackage{algorithm}
 \usepackage{amsmath}
 \usepackage{amssymb}
+\usepackage{tabularx}
 \usepackage{url}
 \usepackage[shortlabels]{enumitem}
-
 \usepackage{algpseudocode}
 \algblock{Input}{EndInput}
 \algnotext{EndInput}
@@ -62,7 +62,7 @@
 
 \begin{document}
 
-\title{Master Thesis}
+\title{Search-based Test Suite Generation for Rust}
 \author{Vsevolod Tymofyeyev}
 \date{\today}
 \maketitle
@@ -70,20 +70,20 @@
 \tableofcontents
 \newpage
 
-\section{Plan}
-\begin{table}[]
-\begin{tabular}{lll}
-\textbf{Woche}         & \textbf{Aufgaben}                                                                                                                                                                                                                  &  \\
-\textit{09.11 - 16.11} & \begin{tabular}[c]{@{}l@{}}Fitness Berechnungen abschließen\\ Evaluation mit echten Crates (Gesamt-Coverage, Coverage vs manuelle Tests + Zeit)\\ Beschreibung der MIR + HIR Analyse und Instrumentierung abschließen\end{tabular} &  \\
-\textit{16.11 - 23.11} & Evaluation mit echten Crates                                                                                                                                                                                                       &  \\
-\textit{23.11 - 30.11} & Evaluation von KLEE mit denselben Crates                                                                                                                                                                                           &  \\
-\textit{30.11 - 07.12} & Evaluationsergebnisse dokumentieren + Statistische Analyse                                                                                                                                                                         &  \\
-\textit{07.12 - 14.12} & Latex-Dokument von vorne bis hinten aufräumen                                                                                                                                                                                      &  \\
-\textit{14.12 - 21.12} &  Korrekturlesen?                                                                                                                                                                                                                                  &  \\
-\textit{21.12 - 28.12} &                                                                                                                                                                                                                                    &  \\
-\textit{10.01.22} & Abgabe                                                                                                                                                                                                                                    & 
-\end{tabular}
-\end{table}
+%\section{Plan}
+%\begin{table}[]
+%\begin{tabular}{lll}
+%\textbf{Woche}         & \textbf{Aufgaben}                                                                                                                                                                                                                  &  \\
+%\textit{09.11 - 16.11} & \begin{tabular}[c]{@{}l@{}}Fitness Berechnungen abschließen\\ Evaluation mit echten Crates (Gesamt-Coverage, Coverage vs manuelle Tests + Zeit)\\ Beschreibung der MIR + HIR Analyse und Instrumentierung abschließen\end{tabular} &  \\
+%\textit{16.11 - 23.11} & Evaluation mit echten Crates                                                                                                                                                                                                       &  \\
+%\textit{23.11 - 30.11} & Evaluation von KLEE mit denselben Crates                                                                                                                                                                                           &  \\
+%\textit{30.11 - 07.12} & Evaluationsergebnisse dokumentieren + Statistische Analyse                                                                                                                                                                         &  \\
+%\textit{07.12 - 14.12} & Latex-Dokument von vorne bis hinten aufräumen                                                                                                                                                                                      &  \\
+%\textit{14.12 - 21.12} &  Korrekturlesen?                                                                                                                                                                                                                                  &  \\
+%\textit{21.12 - 28.12} &                                                                                                                                                                                                                                    &  \\
+%\textit{10.01.22} & Abgabe                                                                                                                                                                                                                                    & 
+%\end{tabular}
+%\end{table}
 
 \section{Introduction}
 In the programming language world, there are two major sides. There are low-level languages that offer better performance at the expense of security and high-level languages that provide security for programmers through certain constructs such as garbage collection, which lead to runtime overhead. The young programming language Rust tries to combine the good from both. This statically typed language for system programming promises a similarly high performance as C++ while maintaining extended type and memory safety by default. It ensures invariants at compile time, which means that abstractions (so-called zero-cost abstractions) and automatic memory management are not associated with any runtime costs, as is the case with managed languages, for example. Rust prevents (among others) the following common problems: dangling pointers, data races, integer overflow, buffer overflow, and iterator invalidation. Only the integer and buffer overflows are checked at runtime, whereas the buffer overflows can be reduced to static checks using iterators~\cite{Anderson2016}. This symbiosis makes the language particularly attractive to developers, as it has seen a rise in popularity rankings for several years in a row~\cite{StackOverflow2020}. Even the most prominent corporations are considering using Rust in parts of their software. According to Microsoft and Google, 70\% of the bugs found in their software in recent years were due to memory leaks caused by widely used insecure languages such as C and C++~\cite{Microsoft2019MemoryBugs, RustInAndroid}. Microsoft, SpaceX, Google, Amazon AWS, and many other companies have already started experimenting with Rust in their products for increased security~\cite{MicrosoftJoinsRust, AmazonLovesRust, RustInAndroid, GoogleRustFoundation}.
@@ -589,7 +589,7 @@ As mentioned in the beginning of the chapter, Rust has an approach to memory man
 
 In cases where the value needs to outlive a given scope, it can be moved to a new owner in a different scope. This happens, for example, when a value is passed as a parameter to a function, or on assignment, with the caveat that some values are so cheaply copied that a move is never necessary.
 
-\begin{lstlisting}[language=Rust, style=boxed, caption=Transferring Ownership, label=lst:example-ownership]
+\begin{lstlisting}[language=Rust, style=boxed, caption=Transferring Ownership, label=lst:transfer-ownership]
 let b;
 {
     let a = String::from("content"); 
@@ -1256,16 +1256,51 @@ impl<A: TrieAtom, V: TrieValue> IntoIterator for Trie<A, V> {
 }
 \end{lstlisting}
 
-However, all possible types implementing a particular trait which is not defined in the SUT itself is difficult. Rust compiler proceeds similarly to C++ compiler when compiling: Crates are compiled individually and independently and only then, for example, linked with the standard library. Nevertheless, in order to provide certain implementations of traits when generating tests, we manually create several widely used type definitions as well as their methods and implemented traits. These definitions are automatically loaded and used by our tool. We define all primitive data types as well as several container types such as \lstinline{std::vec::Vec}. Listing~\ref{lst:vec-definition} shows the abbreviated definition of \lstinline{std::vec::Vec}. Among other things, Vec implements the \lstinline{IntoIterator} trait and thus could be used as an argument to test the \lstinline{area} function from Listing~\ref{lst:intoiterator-trait}. The method list is also used so that the tool can create or modify an object of the respective type.
+However, all possible types implementing a particular trait which is not defined in the SUT itself is difficult. Rust compiler proceeds similarly to C++ compiler when compiling: Crates are compiled individually and independently and only then, for example, linked with the standard library. Nevertheless, in order to provide certain implementations of traits when generating tests, we manually create several widely used type definitions as well as their methods and implemented traits. These definitions are automatically loaded and used by our tool. We define all primitive data types as well as several container types such as \lstinline{std::vec::Vec}. Listing~\ref{lst:vec-definition} shows the shortened definition of \lstinline{std::vec::Vec}. Among other things, Vec implements the \lstinline{IntoIterator} trait and thus could be used as an argument to test the \lstinline{area} function from Listing~\ref{lst:intoiterator-trait}. Moreover, it uses a generic type \lstinline{T} which has no trait bounds. The method list is also provided so that the tool can create or modify an object of the respective type.
 
 \begin{lstlisting}[language={}, style=boxed, caption={std::vec::Vec type definition}, label=lst:vec-definition]
 name = std::vec::Vec
 generics = [(T, None)]
-traits = [std::clone::Clone, std::cmp::PartialEq, ...]
+traits = [std::clone::Clone, std::iter::IntoIterator, ...]
 methods = [new() -> Self<T>, len(&self) -> usize, ...]
 \end{lstlisting}
 
-In general, we mainly use primitive data types for a \ac{SUT} to keep the generated tests simple as far as this satisfies the defined trait bounds.
+In general, we mainly use primitive data types for a \ac{SUT} to keep the generated tests simple as far as this satisfies the defined trait bounds. To create a call to the example method \lstinline{FooBar::foo} (Figure~\ref{lst:generic-type-used-in-multiple-params}) in a generated test, we would do the following: 
+
+\begin{lstlisting}[language=Rust, style=boxed, caption={A generic type A is used in multiple parameters and return value}, label=lst:generic-type-used-in-multiple-params]
+struct FooBar<A> {
+    // ...
+}
+
+impl<A> for FooBar<A> {
+    fn new() -> Self {
+        // ...
+    }
+
+    fn foo(&self, x: A, v: &Vec<A>) -> Option<A> {
+        // ...
+    }
+}
+\end{lstlisting}
+
+\begin{enumerate} 
+    \item Look for a type that satisfies \lstinline{A}; \lstinline{A} has no bounds, so bind it to a primitive type, e.g., \lstinline{i32}. Now, with that information, we know that the parameters \lstinline{&self}, \lstinline{x}, and \lstinline{v} have to be of type \lstinline{FooBar<i32>}, \lstinline{i32}, and \lstinline{Vec<i32>}, respectively.
+    \item Using \lstinline{GenObject} we find that an instance of \lstinline{FooBar<A>} can be created by the constructor \lstinline{FooBar::new()}, thus, we define \lstinline{let f: FooBar<i32> = FooBar::new();}.
+    \item Generating a primitive like \lstinline{i32} is just a matter of defining some random value, like \lstinline{let x: i32 = 42i32;}. 
+    \item Using \lstinline{GenObject}, find a generator that returns a \lstinline{Vec<i32>} or a \lstinline{Vec<T>} with some generic type \lstinline{T}.
+    \item From our custom type definition, we know that \lstinline{Vec::new()} returns a \lstinline{Vec<T>}. We need its inner elements to be of type \lstinline{i32}, which does satisfy the generic type \lstinline{T}, so we take it and define \lstinline{let v: Vec<i32> = Vec::new();}.
+    \item Now, we can use the defined variables to generate a call to the \lstinline{FooBar::foo} and store its returning value, whose bound type we are aware of, too, as shown in Listing~\ref{lst:example-generated-test}.
+\end{enumerate}
+
+\begin{lstlisting}[language=Rust, style=boxed, caption={An example test that invokes \lstinline{FooBar::foo}}, label=lst:example-generated-test]
+#[test]
+fn test_foobar_foo() {
+    let f: FooBar<i32> = FooBar::new();
+    let x: i32 = 42i32;
+    let v: Vec<i32> = Vec::new();
+    let o: Option<i32> = FooBar::foo(&f, x, &v);
+}
+\end{lstlisting}
 
 \section{Evaluation}
 To determine how well a search-based approach performs with respect to code coverage and program crash detection, a set of experiments shall be conducted on a set of open-source Rust software, e.g., libraries. As there is already another tool available, KLEE, which uses \ac{DSE} and can also generate tests for Rust, it can be used in the experiments. KLEE-generated tests do not depend on the tool itself and can be executed outside of it the usual way. This opens the possibility to compute a source-based code coverage available in the Rust compiler for both tools. The experiments should answer the following questions: 
@@ -1286,16 +1321,86 @@ To this end, a set of real Rust programs shall be chosen for experiments. The pr
     \item The programs use only Rust's \textit{stable} language features.
 \end{itemize}
 
+\subsection{Benchmark Subjects}
+The extraction of the units under test to use as benchmark for the unit test case generation has been conducted considering several factors: (i) inclusion of different application domain, (ii) replicability, so open source projects may be preferable, and (iii) no trivial cases (e.g., libraries without branches). We focused on GitHub projects (i) complying with the above rules, and (ii) including test suites. Specifically, we picked the following crates: 
+\begin{itemize}
+    \item \textit{trying (v0.1.0)}\footnote{\url{https://crates.io/crates/trying/}}, a simple Trie implementation for storing ''keys'' composed of ''atoms'',
+    \item \textit{num-iter (v0.1.42)}\footnote{\url{https://crates.io/crates/num-iter/}}, generic Range iterators for Rust,
+    \item \textit{num (v0.4.0)}\footnote{\url{https://crates.io/crates/num}}, a collection of numeric types and traits for Rust,
+    \item \textit{crc (v2.1.0)}\footnote{\url{https://crates.io/crates/crc}}, a Rust implementation of CRC(8, 16, 32, 64),
+    \item \textit{rstar (v0.9.2)}\footnote{\url{https://crates.io/crates/rstar}}, a flexible, n-dimensional r*-tree implementation,
+    \item \textit{md5 (v0.7.0)}\footnote{\url{https://crates.io/crates/md5}}, a MD5 hash function implementation,
+    \item \textit{bytecount (v0.6.2)}\footnote{\url{https://crates.io/crates/bytecount}}, a byte counting crate,
+    \item \textit{PriorityQueue (v1.2.1)}\footnote{\url{https://crates.io/crates/priority-queue}}, a priority queue with a function to change the priority of an object.
+\end{itemize}
+
 \subsection{Setup}
+Für jede Ausführung eines Generierungszyklus soll ein bestimmtes Zeitbudget gelten, damit das Programm noch irgendwann zum Schluss kommen kann. Die genauen Time-Bounds lassen sich noch bestimmen in Abhängigkeit von der Zeit, die für das ständige Rekompilieren der generierten Tests benötigt wird\todo{Wie oft werden die Benchmarks ausgefürt?}. 
+
+Um die Performanz der der Tools zu messen, wird hier die sogenannte \textit{instrument-coverage} des Rust Compilers verwendet. Rust unterstützt eigentlich zwei Coverage-Arten. Zum einen, die \textit{gcov}, die die Debug Information verwendet, um von LLVM IR nach Quellcode zu mappen. Dabei wird die LLVM IR instrumentiert, um die ausgeführten Befehle zu zählen. Da LLVM jedoch nichts von der Codesturktur von Rust weiß, gehen auf diese Weise viele Details verloren und die gemessene Coverage ist nur eine Annäherung an die tatsächliche Coverage, was nur mittelmäßig gut ist. Zum anderen unterstützen die neueren Versionen des Rust Compilers die Quellcode-basierte Coverage, auch genannt \textit{instrument-coverage}. Hierbei wird Rust Code (seine MIR, um genau zu sein) direkt instrumentiert, bevor er in die LLVM IR umgewandelt wird. Da die MIR ein Mapping zwischen Quellcode und dem CFG eines Programms ist, können selbst Stellen wie short-circuited conditionals, closures, and match guards präzise abgebildet werden. 
+
+Damit die \textit{instrument-coverage} benutzt werden kann, muss das SUT mit dem entsprechenden Flag \lstinline{-Z instrument-coverage} kompiliert werden. Hierbei wird eine \textit{profiler runtime} benötigt, die im \textit{nightly} Compiler bereits mit dabei ist. Somit wird ein entsprechendes SUT mit \raggedright\lstinline{RUSTFLAGS="-Z instrument-coverage" cargo +nightly build} gebaut. Bei der Ausführung des gebauten Programs bzw. Tests werden von LLVM entsprechende Coverage (\lstinline{profdata}) Dateien generiert, \todo{Inwieweit sollte man an dieser Stelle ins Detail gehen?} die nach dem Postprocessing die Line- sowie Branchcoverage per Quellcode-Datei des SUT enthalten. Das ist die Information, die bei dieser Evaluation herangezogen wird. 
+
+Da beide Tools, \textit{KLEE} und \textit{testify} Tests in Quellcode-Form generiert werden, können sie zusammen mit dem SUT kompiliert und ihre Quellcode-basierte Coverage direkt verglichen werden. 
+
+
+
 \subsection{Threats to Validity}
+Die Geschichte mit interner und externer Validität...
+
+Die in der Evaluation verwendeten Crates sind eher klein gehalten und vor allem so, dass sie möglichst wenige Dependencies haben, d. h. in sich geschlossen bleiben. Sie interagieren nicht mit der Umgebung, z. B. mittels I/O, und wodurch die Ergebnisse nicht auf alle möglichen Rust Programme generalisiert werden können. Außerdem wird hier teilweise ein wichtiges Feature von Rust außer Acht gelassen: Die Codegenerierung mittels Makros. Der zur Kompilierzeit generierte Code, wie beispielsweise vom \lstinline{serde} Crate, stellt unter anderem Schwierigkeiten durch seine Komplexität dar, die einen extensiven Zeitaufwand benötigt. Des Weiteren werdem hier keine Multithreaded Programme behandelt. Streng genommen sind die hier generierten Tests nicht ganz Unit Tests, da sie unter anderem auf modulfremde Implementierungen zugreifen, um Argumente für einen bestimmten Methodaufruf zu generieren. Das wird normalerweise mittels Mocks gehandhabt \todo{Hier Referenz zu EvoSuite oder anderen Tools, die Typen vor allem in Java gut mocken können}. Leider funktioniert das in Rust bis jetzt nur mäßig gut, da Mocks nur für Traits gut funktionieren, jedoch nicht für konkrete Structs. \todo{Das kann jedoch von Vorteil sein, wenn wir zum Beispiel Traits wie IntoIterator haben, hmmmm...}. 
+
+Moreover, bei den generierten Tests möchte man unter anderem wissen, ob zwei Tests eigentlich equal und dadurch teilweise überflüssig sind, allerdings ist das ein ganz anderes Problem. Somit generieren wir einfach einen Haufen von Tests und hoffen auf das Beste. Um den Rest soll sich jemand in Future kümmern.
 \subsection{Code Coverage Comparison with Manually Written Tests}
+\begin{table}[]
+\begin{tabular*}{\textwidth}{l @{\extracolsep{\fill}} cccc}
+\hline
+\textbf{Crate} & \textbf{120s} & \textbf{240s} & \textbf{360s} & \textbf{480s} \\ \hline
+trying         &       -       &       -        &        -         &       -       \\
+num-iter       &       -       &       -        &        -         &       -       \\
+num            &       -       &       -        &        -         &       -       \\
+crc            &       -       &       -        &        -         &       -       \\
+rstar          &       -       &       -        &        -         &       -       \\
+md5            &       -       &       -        &        -         &       -       \\
+bytecount      &       -       &       -        &        -         &       -       \\
+PriorityQueue  &       -       &       -        &        -         &       -       \\ \hline
+\end{tabular*}
+\caption{Detailed results of testify on the branch coverage}
+\end{table}
+
+
+\begin{table}[]
+\begin{tabular*}{\textwidth}{l @{\extracolsep{\fill}} ccccc}
+\hline
+\textbf{Crate} & \textbf{Budget time} & \textbf{Min} & \textbf{Mean} & \textbf{Median} & \textbf{Max} \\ \hline
+trying         &       -       &      -       &        -        &       -   &       -   \\
+num-iter       &       -      &       -        &        -         &       -    &       -    \\
+num            &       -      &       -        &        -         &       -    &       -    \\
+crc            &       -      &       -       &        -         &       -   &       -    \\
+rstar          &       -      &       -       &        -       &       -   &       -    \\
+md5            &       -      &       -       &        -        &       -    &       -   \\
+bytecount      &       -      &       -        &        -         &       -   &       -    \\
+PriorityQueue  &       -      &       -        &        -         &       -  &       -    \\ \hline
+\end{tabular*}
+\caption{Statistics about generated tests}
+\end{table}
 \subsection{Code Coverage Comparison with KLEE}
 
 
 \section{Conclusion}
 
 \section{Future Work}
+Folgende Punkte gehören auf jeden Fall zu Future Work:
+\begin{itemize} 
+    \item Es sollte definitiv darauf geachtet werden, dass die Generierung an sich einfach schneller wird. Durch das öftere Rekompilieren kommt es bei größeren Programmen zu sehr langen Bottlenecks. 
+    \item Minimierung von generierten Tests und Entfernen von unnötigen Statements.
+    \item Bessere Mock-Unterstützung, um Tests möglich lokal zu halten und dem Namen Unit-Tests gerecht zu werden.
+    \item Regression Testing mit Mutation Coverage.
+    \item Testability Transformations als ein relativ einfacher Weg zum Finden von Common Bugs.
+    \item Assertion Generierung basierend auf dem beobachteten Verhalten.
+\end{itemize}
 
+\newpage
 \appendix
 \input{acronyms}
 

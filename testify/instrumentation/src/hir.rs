@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 use crate::util::{get_cut_name, get_testify_flags};
 use crate::writer::HirWriter;
 use generation::analysis::HirAnalysis;
-use generation::types::{Callable, ComplexT, FieldAccessItem, FunctionItem, MethodItem, StaticFnItem, StructInitItem, T};
+use generation::types::{Callable, ComplexT, EnumT, EnumVariant, FieldAccessItem, FunctionItem, Generic, MethodItem, StaticFnItem, StructInitItem, T};
 use generation::util::{
     def_id_to_complex, fn_ret_ty_to_t, generics_to_ts, impl_to_struct_id, item_to_name,
     node_to_name, span_to_path, ty_to_param, ty_to_t,

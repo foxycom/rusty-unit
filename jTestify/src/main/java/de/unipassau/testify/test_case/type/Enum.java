@@ -99,6 +99,13 @@ public class Enum implements Type {
   }
 
   @Override
+  public Type replaceGenerics(List<Type> generics) {
+    var copy = new Enum(this);
+    copy.generics = generics;
+    return copy;
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;

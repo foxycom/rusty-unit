@@ -191,19 +191,16 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
     var args = callable.getParams().stream()
         .map(p -> {
+          Type typeToGenerate;
           if (p.isGeneric()) {
             var genericParam = p.getType().asGeneric();
-            var boundType = typeBinding.getBindingFor(genericParam);
-
-            return generateArg(boundType);
+            typeToGenerate = typeBinding.getBindingFor(genericParam);
+          } else {
+            var genericTypes = substituteGenerics(p.getType().generics(), typeBinding);
+            typeToGenerate = p.getType().replaceGenerics(genericTypes);
           }
 
-          var type = p.getType();
-          var innerGenerics = type.generics().stream()
-              .filter(Type::isGeneric)
-              .map(g -> typeBinding.getBindingFor(g.asGeneric()))
-              .toList();
-          return generateArg(p);
+          return generateArg(typeToGenerate);
         })
         .filter(Optional::isPresent)
         .map(Optional::get)
@@ -225,8 +222,21 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     return true;
   }
 
+  private List<Type> substituteGenerics(List<Type> generics, TypeBinding binding) {
+    return generics.stream()
+        .map(g -> {
+          if (g.isGeneric()) {
+            return binding.getBindingFor(g.asGeneric());
+          } else {
+            return g;
+          }
+        })
+        .peek(Objects::requireNonNull)
+        .toList();
+  }
+
   public Optional<VarReference> generateArg(Param param) {
-    return generateArg(param, new HashSet<>());
+    return generateArg(Objects.requireNonNull(param), new HashSet<>());
   }
 
   private Optional<VarReference> generateArg(Param param,
@@ -247,21 +257,30 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
    * param
    */
   private Optional<VarReference> generateArg(Type type) {
-    return generateArg(type, new HashSet<>());
+    return generateArg(Objects.requireNonNull(type), new HashSet<>());
   }
 
   private Optional<VarReference> generateArg(Type type,
       Set<Type> typesToGenerate) {
     if (type.isPrim()) {
       return Optional.of(generatePrimitive(type.asPrimitive()));
-    } else if (type.isComplex()) {
+    } else if (type.isComplex() || type.isEnum()) {
       var generators = hirAnalysis.generatorsOf(type);
       return generateArgFromGenerators(type, generators, typesToGenerate);
+    } else if (type.isRef()) {
+      return generateArg(type.asRef().getInnerType(), typesToGenerate);
     } else {
-      throw new RuntimeException("Not implemented");
+      throw new RuntimeException("Not implemented: " + type);
     }
   }
 
+  /**
+   * Recursively generate an actual type, e.g. if we generate std::vec::Vec&lt;T&gt;, then also
+   * generate an actual type for T.
+   *
+   * @param generic Generic type to substitute.
+   * @return Fully substituted real type.
+   */
   private Optional<Type> getTypeFor(Generic generic) {
     var primitive = getPrimitiveTypeFor(generic);
     if (primitive.isPresent()) {
@@ -295,6 +314,12 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     }
   }
 
+  /**
+   * Generate a complex type for a generics recursively.
+   *
+   * @param generic Generic to substitute.
+   * @return An actual type that deeply substitutes a generic param.
+   */
   private Optional<Type> getComplexTypeFor(Generic generic) {
     var bounds = generic.getBounds();
 
@@ -304,19 +329,17 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     }
 
     var type = Rnd.element(possibleTypes);
-    var boundedGenerics = type.generics().stream().map(g -> {
-      var genericType = g.asGeneric();
-      var primitive = getPrimitiveTypeFor(genericType);
-      if (primitive.isPresent()) {
-        return primitive.get();
-      } else {
-        return getComplexTypeFor(genericType).get();
-      }
-    }).toList();
+    var boundedGenerics = type.generics().stream()
+        .map(g -> getTypeFor(g.asGeneric()))
+        .filter(Optional::isPresent)
+        .map(Optional::get)
+        .toList();
 
-    // TODO: 06.12.21 bind generics
+    if (boundedGenerics.size() != type.generics().size()) {
+      return Optional.empty();
+    }
 
-    return Optional.of(type);
+    return Optional.of(type.replaceGenerics(boundedGenerics));
   }
 
   private List<Type> bindGenerics(Callable callable, List<VarReference> args) {
@@ -377,17 +400,39 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       }
     }
 
+    // fn foo<A>(x: A, v: Vec<A>) -> Option<A>;
+
     if (generator == null) {
       System.out.println("-- Could not generate: " + type);
       return Optional.empty();
     }
 
-    List<VarReference> args = generator.getParams().stream().map(p -> {
+    Set<Generic> generics = generator.getParams().stream().filter(Param::isGeneric)
+        .map(p -> p.getType().asGeneric()).collect(Collectors.toCollection(HashSet::new));
+    if (generator.isMethod()) {
+      generics.addAll(generator.getParent().generics().stream().map(Type::asGeneric)
+          .collect(Collectors.toSet()));
+    }
+    var typeBinding = new TypeBinding(generics);
+
+    generics.stream().map(g -> Pair.with(g, getTypeFor(g))).filter(p -> p.getValue1().isPresent())
+        .forEach(p -> typeBinding.bindGeneric(p.getValue0(), p.getValue1().get()));
+    if (typeBinding.hasUnboundedGeneric()) {
+      System.out.println("Could not bind all generics");
+      return Optional.empty();
+    }
+
+    List<VarReference> args = generator.getParams().stream()
+        .map(p -> {
           var usableVars = unconsumedVariablesOfType(p.getType());
           if (!instantiatedTypes().contains(p.getType()) || usableVars.isEmpty()) {
             var extendedTypesToGenerate = new HashSet<>(typesToGenerate);
             extendedTypesToGenerate.add(type);
-            return generateArg(p, extendedTypesToGenerate);
+            if (p.isGeneric()) {
+              var actualType = typeBinding.getBindingFor(p.getType().asGeneric());
+              return generateArg(actualType, extendedTypesToGenerate);
+            }
+            return generateArg(p.getType(), typesToGenerate);
           } else {
             // TODO check if those are used
             var var = Rnd.element(usableVars);
@@ -405,7 +450,15 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
     VarReference returnValue = null;
     if (generator.returnsValue()) {
-      returnValue = createVariable(generator.getReturnType());
+      if (type.isRef() && !generator.getReturnType().isRef()) {
+        // Unwrap the type
+        var innerType = type.asRef().getInnerType();
+        returnValue = createVariable(innerType);
+      } else if (!type.isRef() && generator.getReturnType().isRef()) {
+        throw new RuntimeException("Not implemented");
+      } else {
+        returnValue = createVariable(type);
+      }
     }
 
     var stmt = generator.toStmt(this, args, returnValue);

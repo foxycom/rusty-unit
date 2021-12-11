@@ -21,10 +21,12 @@ public class Complex implements Type {
   public Complex(Complex other) {
     this.name = other.name;
     this.isLocal = other.isLocal;
-    this.generics = other.generics.stream().map(Type::copy).toList();
+    this.generics = other.generics.stream().map(Type::copy).peek(Objects::requireNonNull).toList();
   }
 
   public Complex(String name, List<Type> generics, boolean isLocal) {
+    Objects.requireNonNull(generics).forEach(Objects::requireNonNull);
+
     this.name = name;
     this.generics = generics;
     this.isLocal = isLocal;
@@ -89,7 +91,16 @@ public class Complex implements Type {
 
   @Override
   public void setGenerics(List<Type> generics) {
+    generics.forEach(Objects::requireNonNull);
     this.generics = generics;
+  }
+
+  @Override
+  public Type replaceGenerics(List<Type> generics) {
+    var copy = new Complex(this);
+    generics.forEach(Objects::requireNonNull);
+    copy.generics = generics;
+    return copy;
   }
 
   @Override
@@ -114,18 +125,19 @@ public class Complex implements Type {
       return false;
     }
     Complex complex = (Complex) o;
-    return isLocal == complex.isLocal && name.equals(complex.name);
+    return isLocal == complex.isLocal && name.equals(complex.name) && generics.equals(complex.generics);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, isLocal);
+    return Objects.hash(name, generics, isLocal);
   }
 
   @Override
   public String toString() {
-    var sb = new StringBuilder();
-    sb.append(fullName());
+    generics.forEach(Objects::requireNonNull);
+
+    var sb = new StringBuilder(fullName());
     if (!generics.isEmpty()) {
       sb.append("<");
       var genericsStr = generics.stream().map(Type::toString).collect(Collectors.joining(", "));
