@@ -21,6 +21,15 @@ public class StructInit implements Callable {
   @JsonProperty("src_file_id")
   private int srcFileId;
 
+  public StructInit() {
+  }
+
+  public StructInit(List<Param> params, Type returnType, int srcFileId) {
+    this.params = params;
+    this.returnType = returnType;
+    this.srcFileId = srcFileId;
+  }
+
   @Override
   public String getName() {
     return returnType.getName();

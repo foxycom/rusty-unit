@@ -37,15 +37,17 @@ public class Generic implements Type {
   }
 
   @Override
-  public boolean isSameType(Type other) {
-    if (other.isRef()) {
+  public boolean canBeSameAs(Type other) {
+    /*if (other.isRef()) {
       var ref = other.asRef();
-      return isSameType(ref.getInnerType());
+      return canBeSameAs(ref.getInnerType());
     } else if (other.isGeneric()) {
       return equals(other);
     } else {
       return false;
-    }
+    }*/
+
+    return true;
   }
 
   @Override
@@ -61,6 +63,11 @@ public class Generic implements Type {
   @Override
   public Type replaceGenerics(List<Type> generics) {
     return this;
+  }
+
+  @Override
+  public Type bindGenerics(TypeBinding binding) {
+    return binding.getBindingFor(this);
   }
 
   /*

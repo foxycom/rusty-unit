@@ -31,6 +31,11 @@ public interface Int extends Prim {
       ISize.INSTANCE
   );
 
+  @Override
+  default boolean isSignedInt() {
+    return true;
+  }
+
   @JsonDeserialize(as = Int8.class)
   enum Int8 implements Int {
     INSTANCE;
@@ -197,7 +202,7 @@ public interface Int extends Prim {
 
     @Override
     public Primitive random() {
-      var val = Rnd.random().nextLong();
+      var val = Rnd.get().nextLong();
       return new Primitive(val, this);
     }
 

@@ -20,6 +20,10 @@ public abstract class AbstractTestCaseChromosome<C extends AbstractTestCaseChrom
 
   public abstract int size();
 
+  public boolean isEmpty() {
+    return size() == 0;
+  }
+
   /**
    * Returns the statements of this test case chromosome.
    *

@@ -2,6 +2,7 @@ package de.unipassau.testify.test_case;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import de.unipassau.testify.test_case.type.Type;
+import de.unipassau.testify.test_case.type.TypeBinding;
 
 public class Param {
 
@@ -17,6 +18,12 @@ public class Param {
     this.type = type;
     this.mutable = mutable;
     this.name = name;
+  }
+
+  public Param(Param other) {
+    this.type = other.getType().copy();
+    this.mutable = other.mutable;
+    this.name = other.name;
   }
 
   public String getName() {
@@ -47,12 +54,25 @@ public class Param {
     this.type = type;
   }
 
+  public Param bindGenerics(TypeBinding binding) {
+    if (type.isGeneric()) {
+      var copy = new Param(this);
+      copy.type = binding.getBindingFor(type.asGeneric());
+      return copy;
+    }
+    return this;
+  }
+
   public boolean isPrimitive() {
     return type.isPrim();
   }
 
   public boolean isGeneric() {
     return type.isGeneric();
+  }
+
+  public Param copy() {
+    return new Param(this);
   }
 
   @Override

@@ -1,5 +1,6 @@
 package de.unipassau.testify.test_case.statement;
 
+import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
 import de.unipassau.testify.test_case.callable.EnumInit;
@@ -7,12 +8,14 @@ import de.unipassau.testify.test_case.type.Enum;
 import de.unipassau.testify.test_case.type.Enum.EnumVariant;
 import de.unipassau.testify.test_case.type.Type;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 public class EnumStmt implements Statement {
 
-  private UUID id;
+  private final UUID id;
   private VarReference returnValue;
 
   private List<VarReference> args;
@@ -68,6 +71,35 @@ public class EnumStmt implements Statement {
   }
 
   @Override
+  public List<VarReference> args() {
+    return args;
+  }
+
+  @Override
+  public void setArgs(List<VarReference> args) {
+    if (args.size() != params().size()) {
+      throw new RuntimeException("Unequal number of args and params");
+    }
+
+    this.args = args;
+  }
+
+  @Override
+  public List<Param> params() {
+    return enumInit.getVariant().getParams();
+  }
+
+  @Override
+  public List<Type> actualParamTypes() {
+    return args.stream().peek(Objects::requireNonNull).map(VarReference::type).toList();
+  }
+
+  @Override
+  public TestCase testCase() {
+    return testCase;
+  }
+
+  @Override
   public boolean isEnumStmt() {
     return true;
   }
@@ -75,5 +107,74 @@ public class EnumStmt implements Statement {
   @Override
   public EnumStmt asEnumStmt() {
     return this;
+  }
+
+  @Override
+  public boolean consumes(VarReference var) {
+    var typeBinding = testCase.getTypeBindingsFor(returnValue);
+
+    var pos = IntStream.range(0, args.size()).filter(i -> args.get(i).equals(var)).findFirst();
+    if (pos.isPresent()) {
+      return !getVariant().getParams().get(pos.getAsInt()).bindGenerics(typeBinding).isByReference();
+    } else {
+      return false;
+    }
+  }
+
+  @Override
+  public boolean borrows(VarReference var) {
+    var typeBinding = testCase.getTypeBindingsFor(returnValue);
+
+    var pos = IntStream.range(0, args.size()).filter(i -> args.get(i).equals(var)).findFirst();
+    if (pos.isPresent()) {
+      return getVariant().getParams().get(pos.getAsInt()).bindGenerics(typeBinding).isByReference();
+    } else {
+      return false;
+    }
+  }
+
+  @Override
+  public boolean uses(VarReference var) {
+    return args.stream().anyMatch(a -> a.equals(var));
+  }
+
+  @Override
+  public boolean mutate(TestCase testCase) {
+    throw new RuntimeException("Not implemented");
+  }
+
+  @Override
+  public void replace(VarReference oldVar, VarReference newVar) {
+    if (!args.contains(oldVar)) {
+      throw new RuntimeException("There's something wrong");
+    }
+
+    var typeBinding = testCase.popTypeBindingsFor(oldVar);
+    testCase.setTypeBindingsFor(newVar, typeBinding);
+
+    args = args.stream().map(a -> {
+      if (a.equals(oldVar)) {
+        return newVar;
+      } else {
+        return a;
+      }
+    }).toList();
+  }
+
+  @Override
+  public void replaceAt(int pos, VarReference var) {
+    throw new RuntimeException("Not implemented yet");
+  }
+
+  @Override
+  public Statement copy(TestCase testCase) {
+    var argsCopy = args.stream().map(a -> a.copy(testCase)).toList();
+    var returnValueCopy = returnValue.copy(testCase);
+    return new EnumStmt(testCase, argsCopy, returnValueCopy, enumInit);
+  }
+
+  @Override
+  public int position() {
+    return testCase.stmtPosition(this).orElseThrow();
   }
 }

@@ -41,11 +41,11 @@ public class Ref implements Type {
   }
 
   @Override
-  public boolean isSameType(Type other) {
+  public boolean canBeSameAs(Type other) {
     if (other.isRef()) {
-      return equals(other);
+      return innerType.canBeSameAs(other.asRef().getInnerType());
     } else {
-      return innerType.isSameType(other);
+      return other.isGeneric();
     }
   }
 
@@ -82,6 +82,11 @@ public class Ref implements Type {
   }
 
   @Override
+  public Type bindGenerics(TypeBinding binding) {
+    return new Ref(innerType.bindGenerics(binding));
+  }
+
+  @Override
   public boolean isRef() {
     return true;
   }
@@ -97,7 +102,7 @@ public class Ref implements Type {
 
   @Override
   public String toString() {
-    return String.format("&%s", innerType);
+    return String.format("&mut %s", innerType);
   }
 
   @Override

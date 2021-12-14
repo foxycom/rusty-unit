@@ -5,6 +5,7 @@ import de.unipassau.testify.json.PrimDeserializer;
 import de.unipassau.testify.test_case.Primitive;
 import de.unipassau.testify.test_case.type.Trait;
 import de.unipassau.testify.test_case.type.Type;
+import de.unipassau.testify.test_case.type.TypeBinding;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -35,7 +36,7 @@ public interface Prim extends Type {
   };*/
 
   @Override
-  default boolean isSameType(Type other) {
+  default boolean canBeSameAs(Type other) {
     return equals(other);
   }
 
@@ -56,6 +57,22 @@ public interface Prim extends Type {
   @Override
   default boolean isPrim() {
     return true;
+  }
+
+  default boolean isSignedInt() {
+    return false;
+  }
+
+  default boolean isFloat() {
+    return false;
+  }
+
+  default boolean isUnsignedInt() {
+    return false;
+  }
+
+  default boolean isString() {
+    return false;
   }
 
   @Override
@@ -108,6 +125,11 @@ public interface Prim extends Type {
     }
 
     return implementors;
+  }
+
+  @Override
+  default Type bindGenerics(TypeBinding binding) {
+    return this;
   }
 
   @Override

@@ -1,8 +1,11 @@
 package de.unipassau.testify.hir;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.EnumInit;
+import de.unipassau.testify.test_case.callable.RefItem;
+import de.unipassau.testify.test_case.type.Generic;
 import de.unipassau.testify.test_case.type.Trait;
 import de.unipassau.testify.test_case.type.Type;
 import java.io.IOException;
@@ -11,6 +14,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,8 +54,9 @@ public class HirAnalysis {
 
   public List<Callable> generatorsOf(Type type) {
     return callables.stream().filter(
-            callable -> callable.getReturnType() != null && callable.getReturnType().isSameType(type))
-        .collect(Collectors.toCollection(ArrayList::new));
+            callable -> callable.getReturnType() != null
+                && callable.getReturnType().canBeSameAs(type)
+        ).collect(Collectors.toCollection(ArrayList::new));
   }
 
   private static List<Callable> loadCallableProviders() throws IOException {
@@ -75,15 +80,27 @@ public class HirAnalysis {
     }
 
     var types = loadStdTypeProviders();
-    var enumInits = types.entrySet().stream().filter(e -> e.getKey().isEnum()).map(e -> {
-      var enumType = e.getKey().asEnum();
+    var enumInits = types.keySet().stream().filter(Type::isEnum).map(traits -> {
+      var enumType = traits.asEnum();
       return enumType.getVariants().stream().map(variant -> new EnumInit(enumType, variant))
           .toList();
     }).flatMap(Collection::stream).toList();
 
     callables.addAll(enumInits);
 
+    callables.addAll(loadArtificialCallables());
+
     return callables;
+  }
+
+  private static List<Callable> loadArtificialCallables() {
+    var refCallable = new RefItem(new Param(
+        new Generic("T", Collections.emptyList()),
+        true,
+        null
+    ));
+
+    return List.of(refCallable);
   }
 
   private static Map<Type, Set<Trait>> loadStdTypeProviders() throws IOException {

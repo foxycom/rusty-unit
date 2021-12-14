@@ -9,7 +9,9 @@ import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.type.Enum;
 import de.unipassau.testify.test_case.type.Enum.EnumVariant;
 import de.unipassau.testify.test_case.type.Generic;
+import de.unipassau.testify.test_case.type.Ref;
 import de.unipassau.testify.test_case.type.Type;
+import de.unipassau.testify.test_case.type.prim.Int.ISize;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -38,5 +40,17 @@ class HirAnalysisTest {
     var generators = analysis.generatorsOf(option);
 
     assertThat(generators.size()).isAtLeast(2);
+  }
+
+  @Test
+  void testGetGeneratorsOfRefIsizeOption() {
+    List<EnumVariant> variants = List.of(
+        new EnumVariant("None", Collections.emptyList()),
+        new EnumVariant("Some", List.of(new Param(new Ref(ISize.INSTANCE), false, null)))
+    );
+    var option = new Enum("std::option::Option", Collections.emptyList(), variants, false);
+    var generators = analysis.generatorsOf(option);
+    System.out.println(generators);
+
   }
 }

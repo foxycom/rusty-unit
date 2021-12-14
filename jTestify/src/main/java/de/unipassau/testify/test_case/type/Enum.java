@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @JsonDeserialize(as = Enum.class)
 public class Enum implements Type {
@@ -72,19 +73,18 @@ public class Enum implements Type {
   }
 
   @Override
-  public boolean isSameType(Type other) {
-    if (other.isRef()) {
-      var ref = other.asRef();
-      return isSameType(ref.getInnerType());
-    } else if (other.isEnum()) {
-      return isSameEnum(other.asEnum());
+  public boolean canBeSameAs(Type other) {
+    if (other.isEnum()) {
+      return isSameEnum(other.asEnum()) &&
+          generics.size() == other.generics().size() &&
+          IntStream.range(0, generics.size()).allMatch(i ->
+              generics.get(i).canBeSameAs(other.generics().get(i)));
     } else {
-      return false;
+      return other.isGeneric();
     }
   }
 
   public boolean isSameEnum(Enum other) {
-    // TODO prolly also compare variants
     return isLocal == other.isLocal && name.equals(other.name);
   }
 
@@ -102,6 +102,18 @@ public class Enum implements Type {
   public Type replaceGenerics(List<Type> generics) {
     var copy = new Enum(this);
     copy.generics = generics;
+    return copy;
+  }
+
+  @Override
+  public Type bindGenerics(TypeBinding binding) {
+    var copy = new Enum(this);
+    if (binding.hasUnboundedGeneric()) {
+      throw new RuntimeException("Unbound generics");
+    }
+
+    copy.generics = generics.stream().map(g -> g.bindGenerics(binding)).toList();
+    copy.variants = variants.stream().map(v -> v.bindGenerics(binding)).toList();
     return copy;
   }
 
@@ -162,6 +174,7 @@ public class Enum implements Type {
 
   @JsonDeserialize(as = EnumVariant.class)
   public static class EnumVariant {
+
     private String name;
     private List<Param> params;
 
@@ -171,6 +184,11 @@ public class Enum implements Type {
     public EnumVariant(String name, List<Param> params) {
       this.name = name;
       this.params = params;
+    }
+
+    public EnumVariant(EnumVariant other) {
+      this.name = other.name;
+      this.params = other.params.stream().map(Param::copy).toList();
     }
 
     public String getName() {
@@ -187,6 +205,12 @@ public class Enum implements Type {
 
     public List<Param> getParams() {
       return params;
+    }
+
+    public EnumVariant bindGenerics(TypeBinding binding) {
+      var copy = new EnumVariant(this);
+      copy.params = copy.params.stream().map(p -> p.bindGenerics(binding)).toList();
+      return copy;
     }
 
     public void setParams(List<Param> params) {

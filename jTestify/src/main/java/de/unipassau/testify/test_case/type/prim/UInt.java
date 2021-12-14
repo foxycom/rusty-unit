@@ -32,6 +32,10 @@ public interface UInt extends Prim {
       USize.INSTANCE
   );
 
+  @Override
+  default boolean isUnsignedInt() {
+    return true;
+  }
 
   @JsonDeserialize(as = UInt8.class)
   enum UInt8 implements UInt {
@@ -49,7 +53,7 @@ public interface UInt extends Prim {
 
     @Override
     public Primitive random() {
-      var value = Rnd.random().nextInt(255) + 1;
+      var value = Rnd.get().nextInt(255) + 1;
       return new Primitive(value, this);
     }
 
@@ -200,7 +204,7 @@ public interface UInt extends Prim {
 
     @Override
     public Primitive random() {
-      var val = Rnd.random().nextLong() & Long.MAX_VALUE;
+      var val = Rnd.get().nextLong() & Long.MAX_VALUE;
       return new Primitive(val, this);
     }
 

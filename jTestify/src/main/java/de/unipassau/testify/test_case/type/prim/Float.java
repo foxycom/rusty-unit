@@ -26,6 +26,10 @@ public interface Float extends Prim {
       Float64.INSTANCE
   );
 
+  @Override
+  default boolean isFloat() {
+    return true;
+  }
 
   @JsonDeserialize(as = Float32.class)
   enum Float32 implements Float {

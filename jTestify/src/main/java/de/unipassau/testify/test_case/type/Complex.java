@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @JsonDeserialize(as = Complex.class)
 public class Complex implements Type {
@@ -68,15 +69,14 @@ public class Complex implements Type {
   }
 
   @Override
-  public boolean isSameType(Type other) {
+  public boolean canBeSameAs(Type other) {
     if (other.isComplex()) {
-      return isSameType(other.asComplex());
-    } else if (other.isRef()) {
-      var ref = other.asRef();
-      var innerType = ref.getInnerType();
-      return isSameType(innerType);
+      return isSameType(other.asComplex()) &&
+          generics.size() == other.generics().size() &&
+          IntStream.range(0, generics.size())
+              .allMatch(i -> generics.get(i).canBeSameAs(other.generics().get(i)));
     } else {
-      return false;
+      return other.isGeneric();
     }
   }
 
@@ -104,6 +104,18 @@ public class Complex implements Type {
   }
 
   @Override
+  public Type bindGenerics(TypeBinding binding) {
+    var copy = new Complex(this);
+    if (binding.hasUnboundedGeneric()) {
+      throw new RuntimeException("Unbounded generics");
+    }
+
+    copy.generics = generics.stream().map(g -> g.bindGenerics(binding)).toList();
+    return copy;
+  }
+
+
+  @Override
   public Type copy() {
     return new Complex(this);
   }
@@ -125,7 +137,8 @@ public class Complex implements Type {
       return false;
     }
     Complex complex = (Complex) o;
-    return isLocal == complex.isLocal && name.equals(complex.name) && generics.equals(complex.generics);
+    return isLocal == complex.isLocal && name.equals(complex.name) && generics.equals(
+        complex.generics);
   }
 
   @Override

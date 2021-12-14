@@ -32,9 +32,16 @@ public enum Str implements Prim {
   }
 
   @Override
+  public boolean isString() {
+    return true;
+  }
+
+  @Override
   public void setName(String name) {
 
   }
+
+
 
   @Override
   public Primitive random() {

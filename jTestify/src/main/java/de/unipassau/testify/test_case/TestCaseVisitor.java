@@ -38,6 +38,17 @@ public class TestCaseVisitor implements Visitor {
     return varName;
   }
 
+  private String getVariableNameRef(VarReference returnValue, VarReference referredValue) {
+    if (varNames.containsKey(returnValue)) {
+      return varNames.get(returnValue);
+    }
+
+    var referredVarName = getVariableName(referredValue);
+    var returnVarName = String.format("%s_ref", referredVarName);
+    varNames.put(returnValue, returnVarName);
+    return returnVarName;
+  }
+
   private String getTypeString(Type type) {
     return type.toString();
   }
@@ -52,6 +63,8 @@ public class TestCaseVisitor implements Visitor {
     }
 
     sb.append("}");
+
+    clear();
     return sb.toString();
   }
 
@@ -86,12 +99,12 @@ public class TestCaseVisitor implements Visitor {
 
       var argsString = callableStmt.args().stream().map(a -> {
             var argBuilder = new StringBuilder();
-            if (callableStmt.borrows(a)) {
+            /*if (callableStmt.borrows(a)) {
               argBuilder.append("&");
-            }
-            if (callableStmt.mutates(a)) {
+            }*/
+            /*if (callableStmt.mutates(a)) {
               argBuilder.append("mut ");
-            }
+            }*/
 
             argBuilder.append(getVariableName(a));
             return argBuilder.toString();
@@ -102,43 +115,69 @@ public class TestCaseVisitor implements Visitor {
     } else if (stmt.isStructInitStmt()) {
       var structInitStmt = stmt.asStructInitStmt();
       var returnValue = structInitStmt.returnValue().get();
-      var actualType = structInitStmt.returnType().get();
+      var returnType = returnValue.type();
       sb.append("let mut ").append(getVariableName(returnValue))
           .append(": ")
-          .append(getTypeString(actualType))
+          .append(getTypeString(returnType))
           .append(" = ")
-          .append(actualType.fullName()).append(" {");
+          .append(returnType.fullName()).append(" {");
 
       var argsStr = Streams.zip(structInitStmt.params().stream(), structInitStmt.args().stream(),
               Pair::with)
-          .map(pair -> String.format("%s: %s", pair.getValue0().getName(),
-              getVariableName(pair.getValue1())))
+          .map(pair -> {
+            var value = getVariableName(pair.getValue1());
+            /*if (structInitStmt.borrows(pair.getValue1())) {
+              value = String.format("&%s", value);
+            }*/
+
+            return String.format("%s: %s", pair.getValue0().getName(), value);
+          })
           .collect(Collectors.joining(", "));
       sb.append(argsStr).append("};");
     } else if (stmt.isEnumStmt()) {
       var enumStmt = stmt.asEnumStmt();
       var returnValue = enumStmt.getReturnValue();
-      var actualType = enumStmt.returnType().get();
+      var returnType = returnValue.type();
       var variant = enumStmt.getVariant();
       sb.append("let mut ").append(getVariableName(returnValue))
           .append(": ")
-          .append(getTypeString(actualType))
+          .append(getTypeString(returnType))
           .append(" = ")
-          .append(actualType.fullName())
+          .append(returnType.fullName())
           .append("::")
           .append(variant.getName());
 
       if (!enumStmt.getArgs().isEmpty()) {
-        var argsStr = enumStmt.getArgs().stream().map(this::getVariableName).collect(Collectors.joining(", "));
+        /*if (enumStmt.borrows(a)) {
+                value = String.format("&%s", value);
+              }*/
+        var argsStr = enumStmt.getArgs().stream()
+            .map(this::getVariableName)
+            .collect(Collectors.joining(", "));
         sb.append("(").append(argsStr).append(")");
       }
 
       sb.append(";");
+    } else if (stmt.isRefStmt()) {
+      var refStmt = stmt.asRefStmt();
+      var returnValue = refStmt.returnValue().get();
+      var returnType = returnValue.type();
+      sb.append("let mut ").append(getVariableNameRef(returnValue, refStmt.arg()))
+          .append(": ")
+          .append(getTypeString(returnType))
+          .append(" = &mut ")
+          .append(getVariableName(refStmt.arg()))
+          .append(";");
     } else {
       throw new RuntimeException("Huh?");
     }
 
     return sb.toString();
+  }
+
+  public void clear() {
+    varCounters.clear();
+    varNames.clear();
   }
 
   @Override

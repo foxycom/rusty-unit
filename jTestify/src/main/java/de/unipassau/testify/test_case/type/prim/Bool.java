@@ -41,7 +41,7 @@ public enum Bool implements Prim {
 
   @Override
   public Primitive random() {
-    var r = Rnd.random().nextDouble();
+    var r = Rnd.get().nextDouble();
     if (r < 0.5) {
       return new Primitive(true, this);
     } else {

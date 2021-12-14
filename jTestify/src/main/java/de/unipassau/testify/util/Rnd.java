@@ -1,6 +1,5 @@
 package de.unipassau.testify.util;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Random;
 
@@ -19,11 +18,11 @@ public final class Rnd {
    *
    * @return randomness
    */
-  public static Random random() {
+  public static Random get() {
     return random;
   }
 
-  public static <T> T element(List<T> list) {
+  public static <T> T choice(List<T> list) {
     return list.get(random.nextInt(list.size()));
   }
 }

@@ -12,6 +12,19 @@ public class Primitive {
     this.type = type;
   }
 
+  public Primitive(Primitive other) {
+    this.value = other.value;
+    this.type = other.type.copy();
+  }
+
+  public Primitive copy() {
+    return new Primitive(this);
+  }
+
+  public Type type() {
+    return type;
+  }
+
   @Override
   public String toString() {
     var primType = type.asPrimitive();

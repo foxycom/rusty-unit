@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 public class MethodStmt extends CallableStmt {
-  private Method method;
+  private final Method method;
 
   public MethodStmt(TestCase testCase,
       List<VarReference> args, VarReference returnValue, Method method) {
@@ -38,6 +38,21 @@ public class MethodStmt extends CallableStmt {
   }
 
   @Override
+  public void replaceAt(int pos, VarReference var) {
+    throw new RuntimeException("Not implemented yet");
+  }
+
+  @Override
+  public Statement copy(TestCase testCase) {
+    var argsCopy = args.stream().map(a -> a.copy(testCase)).toList();
+    VarReference returnValueCopy = null;
+    if (returnValue != null) {
+       returnValueCopy = returnValue.copy(testCase);
+    }
+    return new MethodStmt(testCase, argsCopy, returnValueCopy, method);
+  }
+
+  @Override
   public Optional<Type> parent() {
     return Optional.of(method.getParent());
   }
@@ -51,4 +66,6 @@ public class MethodStmt extends CallableStmt {
   public List<Param> params() {
     return method.getParams();
   }
+
+
 }

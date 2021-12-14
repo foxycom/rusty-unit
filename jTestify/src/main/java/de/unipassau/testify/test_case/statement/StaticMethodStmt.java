@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 public class StaticMethodStmt extends CallableStmt {
-  private StaticMethod method;
+  private final StaticMethod method;
 
   public StaticMethodStmt(TestCase testCase, List<VarReference> args, VarReference returnValue, StaticMethod method) {
     super(testCase, args, returnValue);
@@ -34,6 +34,13 @@ public class StaticMethodStmt extends CallableStmt {
   @Override
   public StaticMethodStmt asStaticMethodStmt() {
     return this;
+  }
+
+  @Override
+  public Statement copy(TestCase testCase) {
+    var argsCopy = args.stream().map(a -> a.copy(testCase)).toList();
+    var returnValueCopy = returnValue.copy(testCase);
+    return new StaticMethodStmt(testCase, argsCopy, returnValueCopy, method);
   }
 
   @Override

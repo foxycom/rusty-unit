@@ -16,7 +16,7 @@ public interface Type {
 
   String varString();
 
-  boolean isSameType(Type other);
+  boolean canBeSameAs(Type other);
 
   default boolean isPrim() {
     return false;
@@ -66,6 +66,8 @@ public interface Type {
   void setGenerics(List<Type> generics);
 
   Type replaceGenerics(List<Type> generics);
+
+  Type bindGenerics(TypeBinding binding);
 
   Type copy();
 }
