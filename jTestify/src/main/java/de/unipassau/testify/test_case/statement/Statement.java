@@ -27,6 +27,8 @@ public interface Statement {
 
   void setArgs(List<VarReference> args);
 
+  void setArg(int pos, VarReference var);
+
   List<Param> params();
 
   List<Type> actualParamTypes();
@@ -167,7 +169,7 @@ public interface Statement {
     var typeBinding = testCase().popTypeBindingsFor(args().get(pos));
     testCase().setTypeBindingsFor(var, typeBinding);
 
-    args().set(pos, var);
+    setArg(pos, var);
   }
 
   Statement copy(TestCase testCase);

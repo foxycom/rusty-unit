@@ -2,10 +2,24 @@ package de.unipassau.testify.test_case.type.prim;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.json.PrimDeserializer;
-import de.unipassau.testify.test_case.Primitive;
+import de.unipassau.testify.test_case.primitive.PrimitiveValue;
 import de.unipassau.testify.test_case.type.Trait;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.TypeBinding;
+import de.unipassau.testify.test_case.type.prim.Float.Float32;
+import de.unipassau.testify.test_case.type.prim.Float.Float64;
+import de.unipassau.testify.test_case.type.prim.Int.ISize;
+import de.unipassau.testify.test_case.type.prim.Int.Int128;
+import de.unipassau.testify.test_case.type.prim.Int.Int16;
+import de.unipassau.testify.test_case.type.prim.Int.Int32;
+import de.unipassau.testify.test_case.type.prim.Int.Int64;
+import de.unipassau.testify.test_case.type.prim.Int.Int8;
+import de.unipassau.testify.test_case.type.prim.UInt.UInt128;
+import de.unipassau.testify.test_case.type.prim.UInt.UInt16;
+import de.unipassau.testify.test_case.type.prim.UInt.UInt32;
+import de.unipassau.testify.test_case.type.prim.UInt.UInt64;
+import de.unipassau.testify.test_case.type.prim.UInt.UInt8;
+import de.unipassau.testify.test_case.type.prim.UInt.USize;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -100,7 +114,7 @@ public interface Prim extends Type {
     return this;
   }
 
-  Primitive random();
+  PrimitiveValue<?> random();
 
   static List<Prim> implementorsOf(Trait trait) {
     var implementors = new ArrayList<Prim>();
@@ -113,15 +127,32 @@ public interface Prim extends Type {
     }
 
     if (Int.implementedTraits.contains(trait)) {
-      implementors.addAll(Int.types);
+      implementors.addAll(List.of(
+          Int8.INSTANCE,
+          Int16.INSTANCE,
+          Int32.INSTANCE,
+          Int64.INSTANCE,
+          Int128.INSTANCE,
+          ISize.INSTANCE
+      ));
     }
 
     if (UInt.implementedTraits.contains(trait)) {
-      implementors.addAll(UInt.types);
+      implementors.addAll(List.of(
+          UInt8.INSTANCE,
+          UInt16.INSTANCE,
+          UInt32.INSTANCE,
+          UInt64.INSTANCE,
+          UInt128.INSTANCE,
+          USize.INSTANCE
+      ));
     }
 
     if (Float.implementedTraits.contains(trait)) {
-      implementors.addAll(Float.types);
+      implementors.addAll(List.of(
+          Float32.INSTANCE,
+          Float64.INSTANCE
+      ));
     }
 
     return implementors;

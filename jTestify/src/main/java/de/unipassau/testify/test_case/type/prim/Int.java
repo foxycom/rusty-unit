@@ -1,7 +1,9 @@
 package de.unipassau.testify.test_case.type.prim;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import de.unipassau.testify.test_case.Primitive;
+import de.unipassau.testify.Constants;
+import de.unipassau.testify.test_case.primitive.PrimitiveValue;
+import de.unipassau.testify.test_case.primitive.IntValue;
 import de.unipassau.testify.test_case.type.Trait;
 import de.unipassau.testify.util.Rnd;
 import java.util.HashSet;
@@ -22,14 +24,17 @@ public interface Int extends Prim {
       new Trait("std::default::Default")
   ));
 
-  List<Prim> types = List.of(
-      Int8.INSTANCE,
-      Int16.INSTANCE,
-      Int32.INSTANCE,
-      Int64.INSTANCE,
-      Int128.INSTANCE,
-      ISize.INSTANCE
-  );
+  int bits();
+
+  long maxValue();
+
+  long minValue();
+
+  @Override
+  default PrimitiveValue<?> random() {
+    var newValue = (long) (Rnd.get().nextGaussian() * Constants.MAX_INT);
+    return new IntValue(newValue, this);
+  }
 
   @Override
   default boolean isSignedInt() {
@@ -51,11 +56,6 @@ public interface Int extends Prim {
     }
 
     @Override
-    public Primitive random() {
-      throw new RuntimeException("Not implemented");
-    }
-
-    @Override
     public void setName(String name) {
 
     }
@@ -63,6 +63,21 @@ public interface Int extends Prim {
     @Override
     public String toString() {
       return getName();
+    }
+
+    @Override
+    public int bits() {
+      return 8;
+    }
+
+    @Override
+    public long maxValue() {
+      return Byte.MAX_VALUE;
+    }
+
+    @Override
+    public long minValue() {
+      return Byte.MIN_VALUE;
     }
   }
 
@@ -81,11 +96,6 @@ public interface Int extends Prim {
     }
 
     @Override
-    public Primitive random() {
-      throw new RuntimeException("Not implemented");
-    }
-
-    @Override
     public void setName(String name) {
 
     }
@@ -93,6 +103,21 @@ public interface Int extends Prim {
     @Override
     public String toString() {
       return getName();
+    }
+
+    @Override
+    public int bits() {
+      return 16;
+    }
+
+    @Override
+    public long maxValue() {
+      return Short.MAX_VALUE;
+    }
+
+    @Override
+    public long minValue() {
+      return Short.MIN_VALUE;
     }
   }
 
@@ -111,11 +136,6 @@ public interface Int extends Prim {
     }
 
     @Override
-    public Primitive random() {
-      throw new RuntimeException("Not implemented");
-    }
-
-    @Override
     public void setName(String name) {
 
     }
@@ -123,6 +143,21 @@ public interface Int extends Prim {
     @Override
     public String toString() {
       return getName();
+    }
+
+    @Override
+    public int bits() {
+      return 32;
+    }
+
+    @Override
+    public long maxValue() {
+      return Integer.MAX_VALUE;
+    }
+
+    @Override
+    public long minValue() {
+      return Integer.MIN_VALUE;
     }
   }
 
@@ -141,11 +176,6 @@ public interface Int extends Prim {
     }
 
     @Override
-    public Primitive random() {
-      throw new RuntimeException("Not implemented");
-    }
-
-    @Override
     public void setName(String name) {
 
     }
@@ -153,6 +183,21 @@ public interface Int extends Prim {
     @Override
     public String toString() {
       return getName();
+    }
+
+    @Override
+    public int bits() {
+      return 64;
+    }
+
+    @Override
+    public long maxValue() {
+      return Long.MAX_VALUE;
+    }
+
+    @Override
+    public long minValue() {
+      return Long.MIN_VALUE;
     }
   }
 
@@ -171,11 +216,6 @@ public interface Int extends Prim {
     }
 
     @Override
-    public Primitive random() {
-      throw new RuntimeException("Not implemented");
-    }
-
-    @Override
     public void setName(String name) {
 
     }
@@ -183,6 +223,21 @@ public interface Int extends Prim {
     @Override
     public String toString() {
       return getName();
+    }
+
+    @Override
+    public int bits() {
+      return 128;
+    }
+
+    @Override
+    public long maxValue() {
+      return Long.MAX_VALUE;
+    }
+
+    @Override
+    public long minValue() {
+      return Long.MIN_VALUE;
     }
   }
 
@@ -201,12 +256,6 @@ public interface Int extends Prim {
     }
 
     @Override
-    public Primitive random() {
-      var val = Rnd.get().nextLong();
-      return new Primitive(val, this);
-    }
-
-    @Override
     public void setName(String name) {
 
     }
@@ -214,6 +263,21 @@ public interface Int extends Prim {
     @Override
     public String toString() {
       return getName();
+    }
+
+    @Override
+    public int bits() {
+      return 64;
+    }
+
+    @Override
+    public long maxValue() {
+      return Long.MAX_VALUE;
+    }
+
+    @Override
+    public long minValue() {
+      return Long.MIN_VALUE;
     }
   }
 }

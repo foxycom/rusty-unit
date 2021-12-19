@@ -55,6 +55,10 @@ public class Param {
   }
 
   public Param bindGenerics(TypeBinding binding) {
+    if (binding == null) {
+      throw new RuntimeException("Something is wrong");
+    }
+
     if (type.isGeneric()) {
       var copy = new Param(this);
       copy.type = binding.getBindingFor(type.asGeneric());

@@ -85,6 +85,11 @@ public class EnumStmt implements Statement {
   }
 
   @Override
+  public void setArg(int pos, VarReference var) {
+    args.set(pos, var);
+  }
+
+  @Override
   public List<Param> params() {
     return enumInit.getVariant().getParams();
   }

@@ -90,6 +90,11 @@ public class StructInitStmt implements Statement {
   }
 
   @Override
+  public void setArg(int pos, VarReference var) {
+    args.set(pos, var);
+  }
+
+  @Override
   public boolean consumes(VarReference var) {
     return Streams.zip(params().stream(), args.stream(), Pair::with)
         .filter(pair -> pair.getValue1().equals(var))

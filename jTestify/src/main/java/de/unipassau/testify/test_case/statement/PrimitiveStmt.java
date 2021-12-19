@@ -2,9 +2,9 @@ package de.unipassau.testify.test_case.statement;
 
 import de.unipassau.testify.Constants;
 import de.unipassau.testify.test_case.Param;
-import de.unipassau.testify.test_case.Primitive;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.primitive.PrimitiveValue;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.util.Rnd;
 import java.util.Collections;
@@ -16,17 +16,17 @@ public class PrimitiveStmt implements Statement {
 
   private final UUID id;
   private VarReference varReference;
-  private Primitive value;
+  private PrimitiveValue<?> value;
   private TestCase testCase;
 
-  public PrimitiveStmt(TestCase testCase, VarReference varReference, Primitive value) {
+  public PrimitiveStmt(TestCase testCase, VarReference varReference, PrimitiveValue<?> value) {
     this.id = UUID.randomUUID();
     this.testCase = testCase;
     this.varReference = varReference;
     this.value = value;
   }
 
-  public Primitive getValue() {
+  public PrimitiveValue<?> getValue() {
     return value;
   }
 
@@ -63,6 +63,11 @@ public class PrimitiveStmt implements Statement {
   }
 
   @Override
+  public void setArg(int pos, VarReference var) {
+
+  }
+
+  @Override
   public List<Param> params() {
     return Collections.emptyList();
   }
@@ -89,17 +94,30 @@ public class PrimitiveStmt implements Statement {
 
   @Override
   public boolean mutate(TestCase testCase) {
-    Primitive oldValue = value;
+    var oldValue = value;
     while (value == oldValue && value != null) {
-      var primitive = value.type().asPrimitive();
       if (Rnd.get().nextDouble() <= Constants.P_RANDOM_PERTURBATION) {
-        if (primitive.isSignedInt()) {
-          oldValue.
+        if (value.isInt()) {
+          if (Rnd.get().nextDouble() <= Constants.P_RANDOM_PERTURBATION) {
+            value = value.asInt().negate();
+          } else {
+            value = value.type().random();
+          }
+        } else if (value.isFloat()) {
+          if (Rnd.get().nextDouble() <= Constants.P_RANDOM_PERTURBATION) {
+            value = value.asFloat().negate();
+          } else {
+            value = value.type().random();;
+          }
+        } else {
+          value = value.type().random();
         }
+      } else {
+        value = value.delta();
       }
     }
 
-
+    return true;
   }
 
   @Override

@@ -58,6 +58,14 @@ public class RefStmt implements Statement {
   }
 
   @Override
+  public void setArg(int pos, VarReference var) {
+    if (pos != 0) {
+      throw new RuntimeException("Something is wrong");
+    }
+    this.arg = var;
+  }
+
+  @Override
   public List<Param> params() {
     return refItem.getParams();
   }

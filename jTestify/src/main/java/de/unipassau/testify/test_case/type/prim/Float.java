@@ -1,8 +1,11 @@
 package de.unipassau.testify.test_case.type.prim;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import de.unipassau.testify.test_case.Primitive;
+import de.unipassau.testify.Constants;
+import de.unipassau.testify.test_case.primitive.FloatValue;
+import de.unipassau.testify.test_case.primitive.PrimitiveValue;
 import de.unipassau.testify.test_case.type.Trait;
+import de.unipassau.testify.util.Rnd;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -21,10 +24,18 @@ public interface Float extends Prim {
       new Trait("std::default::Default")
   ));
 
-  List<Prim> types = List.of(
-      Float32.INSTANCE,
-      Float64.INSTANCE
-  );
+  int bits();
+
+  double maxValue();
+
+  double minValue();
+
+  @Override
+  default PrimitiveValue<?> random() {
+    // TODO take value from constant pool
+    var newValue = Rnd.get().nextGaussian() * Constants.MAX_INT;
+    return new FloatValue(newValue, this);
+  }
 
   @Override
   default boolean isFloat() {
@@ -46,11 +57,6 @@ public interface Float extends Prim {
     }
 
     @Override
-    public Primitive random() {
-      throw new RuntimeException("Not implemented");
-    }
-
-    @Override
     public void setName(String name) {
 
     }
@@ -58,6 +64,21 @@ public interface Float extends Prim {
     @Override
     public String toString() {
       return getName();
+    }
+
+    @Override
+    public int bits() {
+      return 32;
+    }
+
+    @Override
+    public double maxValue() {
+      return java.lang.Float.MAX_VALUE;
+    }
+
+    @Override
+    public double minValue() {
+      return java.lang.Float.MIN_VALUE;
     }
   }
 
@@ -77,11 +98,6 @@ public interface Float extends Prim {
     }
 
     @Override
-    public Primitive random() {
-      throw new RuntimeException("Not implemented");
-    }
-
-    @Override
     public void setName(String name) {
 
     }
@@ -89,6 +105,21 @@ public interface Float extends Prim {
     @Override
     public String toString() {
       return getName();
+    }
+
+    @Override
+    public int bits() {
+      return 64;
+    }
+
+    @Override
+    public double maxValue() {
+      return Double.MAX_VALUE;
+    }
+
+    @Override
+    public double minValue() {
+      return Double.MIN_VALUE;
     }
   }
 }

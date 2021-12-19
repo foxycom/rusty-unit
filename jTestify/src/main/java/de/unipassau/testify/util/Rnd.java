@@ -22,6 +22,10 @@ public final class Rnd {
     return random;
   }
 
+  public static char nextChar() {
+    return (char) (random.nextInt(32, 128));
+  }
+
   public static <T> T choice(List<T> list) {
     return list.get(random.nextInt(list.size()));
   }

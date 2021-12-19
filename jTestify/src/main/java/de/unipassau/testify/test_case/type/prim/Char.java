@@ -1,8 +1,10 @@
 package de.unipassau.testify.test_case.type.prim;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import de.unipassau.testify.test_case.Primitive;
+import de.unipassau.testify.test_case.primitive.CharValue;
+import de.unipassau.testify.test_case.primitive.PrimitiveValue;
 import de.unipassau.testify.test_case.type.Trait;
+import de.unipassau.testify.util.Rnd;
 import java.util.Collections;
 import java.util.Set;
 
@@ -25,8 +27,8 @@ public enum Char implements Prim {
   }
 
   @Override
-  public Primitive random() {
-    throw new RuntimeException("Not implemented");
+  public PrimitiveValue<?> random() {
+    return new CharValue(Rnd.nextChar());
   }
 
   @Override

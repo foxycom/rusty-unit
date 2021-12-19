@@ -1,5 +1,7 @@
 package de.unipassau.testify;
 
+import com.lexicalscope.jewel.cli.CliFactory;
+import com.lexicalscope.jewel.cli.Option;
 import de.unipassau.testify.algorithm.ArchiveImpl;
 import de.unipassau.testify.algorithm.FNDSImpl;
 import de.unipassau.testify.algorithm.MOSA;
@@ -13,6 +15,7 @@ import de.unipassau.testify.metaheuristics.chromosome.FixedSizePopulationGenerat
 import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
 import de.unipassau.testify.mir.Branch;
 import de.unipassau.testify.mir.MirAnalysis;
+import de.unipassau.testify.source.Crate;
 import de.unipassau.testify.test_case.Fitness;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.TestCaseGenerator;
@@ -24,6 +27,7 @@ import de.unipassau.testify.test_case.operators.SinglePointFixedCrossover;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -32,6 +36,11 @@ import org.slf4j.LoggerFactory;
 public class Main {
 
   private static final Logger logger = LoggerFactory.getLogger(Main.class);
+
+  public interface CLI {
+    @Option(shortName = "c", longName = "crate")
+    String getCrateRoot();
+  }
 
   public static void mains(String[] args) throws IOException {
     var file = new File("/Users/tim/Documents/master-thesis/testify/log/hir.json");
@@ -50,6 +59,9 @@ public class Main {
   }
 
   public static void main(String[] args) throws IOException {
+    var cli = CliFactory.parseArguments(CLI.class, args);
+    var crate = Crate.parse(Paths.get(cli.getCrateRoot()));
+
     var file = new File("/Users/tim/Documents/master-thesis/testify/log/hir.json");
     var json = Files.readString(file.toPath());
     var hirAnalysis = new HirAnalysis(JSONParser.parse(json));

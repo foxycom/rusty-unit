@@ -2,7 +2,7 @@ package de.unipassau.testify.test_case.type.prim;
 
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import de.unipassau.testify.test_case.Primitive;
+import de.unipassau.testify.test_case.primitive.PrimitiveValue;
 import de.unipassau.testify.test_case.type.Trait;
 import java.util.Set;
 
@@ -41,10 +41,8 @@ public enum Str implements Prim {
 
   }
 
-
-
   @Override
-  public Primitive random() {
+  public PrimitiveValue<String> random() {
     throw new RuntimeException("Not implemented");
   }
 

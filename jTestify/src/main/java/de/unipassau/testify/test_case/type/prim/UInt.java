@@ -1,7 +1,9 @@
 package de.unipassau.testify.test_case.type.prim;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import de.unipassau.testify.test_case.Primitive;
+import de.unipassau.testify.Constants;
+import de.unipassau.testify.test_case.primitive.PrimitiveValue;
+import de.unipassau.testify.test_case.primitive.UIntValue;
 import de.unipassau.testify.test_case.type.Trait;
 import de.unipassau.testify.util.Rnd;
 import java.util.HashSet;
@@ -23,14 +25,20 @@ public interface UInt extends Prim {
 
   ));
 
-  List<Prim> types = List.of(
-      UInt8.INSTANCE,
-      UInt16.INSTANCE,
-      UInt32.INSTANCE,
-      UInt64.INSTANCE,
-      UInt128.INSTANCE,
-      USize.INSTANCE
-  );
+  int bits();
+
+  long maxValue();
+
+  default long minValue() {
+    return 0;
+  }
+
+  @Override
+  default PrimitiveValue<Long> random() {
+    // TODO get contsant pool
+    var value = (long) (Rnd.get().nextDouble() * Constants.MAX_INT);
+    return new UIntValue(value, this);
+  }
 
   @Override
   default boolean isUnsignedInt() {
@@ -52,12 +60,6 @@ public interface UInt extends Prim {
     }
 
     @Override
-    public Primitive random() {
-      var value = Rnd.get().nextInt(255) + 1;
-      return new Primitive(value, this);
-    }
-
-    @Override
     public void setName(String name) {
 
     }
@@ -65,6 +67,16 @@ public interface UInt extends Prim {
     @Override
     public String toString() {
       return getName();
+    }
+
+    @Override
+    public int bits() {
+      return 8;
+    }
+
+    @Override
+    public long maxValue() {
+      return Byte.MAX_VALUE;
     }
   }
 
@@ -83,11 +95,6 @@ public interface UInt extends Prim {
     }
 
     @Override
-    public Primitive random() {
-      throw new RuntimeException("Not implemented");
-    }
-
-    @Override
     public void setName(String name) {
 
     }
@@ -95,6 +102,16 @@ public interface UInt extends Prim {
     @Override
     public String toString() {
       return getName();
+    }
+
+    @Override
+    public int bits() {
+      return 16;
+    }
+
+    @Override
+    public long maxValue() {
+      return Short.MAX_VALUE;
     }
   }
 
@@ -113,11 +130,6 @@ public interface UInt extends Prim {
     }
 
     @Override
-    public Primitive random() {
-      throw new RuntimeException("Not implemented");
-    }
-
-    @Override
     public void setName(String name) {
 
     }
@@ -125,6 +137,16 @@ public interface UInt extends Prim {
     @Override
     public String toString() {
       return getName();
+    }
+
+    @Override
+    public int bits() {
+      return 32;
+    }
+
+    @Override
+    public long maxValue() {
+      return Integer.MAX_VALUE;
     }
   }
 
@@ -143,11 +165,6 @@ public interface UInt extends Prim {
     }
 
     @Override
-    public Primitive random() {
-      throw new RuntimeException("Not implemented");
-    }
-
-    @Override
     public void setName(String name) {
 
     }
@@ -155,6 +172,16 @@ public interface UInt extends Prim {
     @Override
     public String toString() {
       return getName();
+    }
+
+    @Override
+    public int bits() {
+      return 64;
+    }
+
+    @Override
+    public long maxValue() {
+      return Long.MAX_VALUE;
     }
   }
 
@@ -173,11 +200,6 @@ public interface UInt extends Prim {
     }
 
     @Override
-    public Primitive random() {
-      throw new RuntimeException("Not implemented");
-    }
-
-    @Override
     public void setName(String name) {
 
     }
@@ -185,6 +207,16 @@ public interface UInt extends Prim {
     @Override
     public String toString() {
       return getName();
+    }
+
+    @Override
+    public int bits() {
+      return 128;
+    }
+
+    @Override
+    public long maxValue() {
+      return Long.MAX_VALUE;
     }
   }
 
@@ -203,12 +235,6 @@ public interface UInt extends Prim {
     }
 
     @Override
-    public Primitive random() {
-      var val = Rnd.get().nextLong() & Long.MAX_VALUE;
-      return new Primitive(val, this);
-    }
-
-    @Override
     public void setName(String name) {
 
     }
@@ -216,6 +242,16 @@ public interface UInt extends Prim {
     @Override
     public String toString() {
       return getName();
+    }
+
+    @Override
+    public int bits() {
+      return 64;
+    }
+
+    @Override
+    public long maxValue() {
+      return Long.MAX_VALUE;
     }
   }
 }

@@ -1,7 +1,8 @@
 package de.unipassau.testify.test_case.type.prim;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import de.unipassau.testify.test_case.Primitive;
+import de.unipassau.testify.test_case.primitive.BoolValue;
+import de.unipassau.testify.test_case.primitive.PrimitiveValue;
 import de.unipassau.testify.test_case.type.Trait;
 import de.unipassau.testify.util.Rnd;
 import java.util.Set;
@@ -40,12 +41,12 @@ public enum Bool implements Prim {
   }
 
   @Override
-  public Primitive random() {
+  public PrimitiveValue<?> random() {
     var r = Rnd.get().nextDouble();
     if (r < 0.5) {
-      return new Primitive(true, this);
+      return new BoolValue(true);
     } else {
-      return new Primitive(false, this);
+      return new BoolValue(false);
     }
   }
 
