@@ -18,16 +18,19 @@ public class StructInit implements Callable {
   private List<Param> params;
   @JsonProperty("return_type")
   private Type returnType;
-  @JsonProperty("src_file_id")
-  private int srcFileId;
+  @JsonProperty("src_file_path")
+  private String srcFilePath;
+
+  @JsonProperty("is_public")
+  private boolean isPublic;
 
   public StructInit() {
   }
 
-  public StructInit(List<Param> params, Type returnType, int srcFileId) {
+  public StructInit(List<Param> params, Type returnType, String srcFilePath) {
     this.params = params;
     this.returnType = returnType;
-    this.srcFileId = srcFileId;
+    this.srcFilePath = srcFilePath;
   }
 
   @Override
@@ -76,9 +79,29 @@ public class StructInit implements Callable {
   }
 
   @Override
+  public boolean isPublic() {
+    return isPublic;
+  }
+
+  @Override
+  public void setPublic(boolean isPublic) {
+    this.isPublic = isPublic;
+  }
+
+  @Override
   public Statement toStmt(TestCase testCase, List<VarReference> args, VarReference returnValue) {
     return new StructInitStmt(Objects.requireNonNull(testCase), Objects.requireNonNull(args),
         Objects.requireNonNull(returnValue), this);
+  }
+
+  @Override
+  public String getSrcFilePath() {
+    return srcFilePath;
+  }
+
+  @Override
+  public void setSrcFilePath(String path) {
+    this.srcFilePath = path;
   }
 
   @Override

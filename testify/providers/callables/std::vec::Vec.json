@@ -29,7 +29,8 @@
         }
       },
       "name": "new",
-      "src_file_id": 10000
+      "src_file_path": "",
+      "is_public": true
     }
   }
 ]

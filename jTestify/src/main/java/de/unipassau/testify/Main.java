@@ -42,22 +42,6 @@ public class Main {
     String getCrateRoot();
   }
 
-  public static void mains(String[] args) throws IOException {
-    var file = new File("/Users/tim/Documents/master-thesis/testify/log/hir.json");
-    var json = Files.readString(file.toPath());
-    var hirAnalysis = new HirAnalysis(JSONParser.parse(json));
-    var mutation = new BasicMutation();
-    var crossover = new SinglePointFixedCrossover();
-
-    var populationGenerator = new FixedSizePopulationGenerator<>(
-        new TestCaseGenerator(hirAnalysis, mutation, crossover), 1);
-
-    var population = populationGenerator.get();
-
-    var visitor = new TestCaseVisitor();
-    System.out.println(population.get(0).visit(visitor));
-  }
-
   public static void main(String[] args) throws IOException {
     var cli = CliFactory.parseArguments(CLI.class, args);
     var crate = Crate.parse(Paths.get(cli.getCrateRoot()));

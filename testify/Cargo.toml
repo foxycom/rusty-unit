@@ -17,7 +17,8 @@ members = [
     "examples",
     "instrumentation",
     "generation",
-    "common"
+    "common",
+    "writer"
 ]
 
 exclude = [

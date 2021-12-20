@@ -16,11 +16,14 @@ public class Function implements Callable {
   private String name;
   private List<Param> params;
 
+  @JsonProperty("is_public")
+  private boolean isPublic;
+
   @JsonProperty("return_type")
   private Type returnType;
 
-  @JsonProperty("src_file_id")
-  private int srcFileId;
+  @JsonProperty("src_file_path")
+  private String srcFilePath;
 
   @Override
   public String getName() {
@@ -68,8 +71,28 @@ public class Function implements Callable {
   }
 
   @Override
+  public boolean isPublic() {
+    return isPublic;
+  }
+
+  @Override
+  public void setPublic(boolean isPublic) {
+    this.isPublic = isPublic;
+  }
+
+  @Override
   public Statement toStmt(TestCase testCase, List<VarReference> args, VarReference returnValue) {
     throw new RuntimeException("Not implemented");
+  }
+
+  @Override
+  public String getSrcFilePath() {
+    return srcFilePath;
+  }
+
+  @Override
+  public void setSrcFilePath(String path) {
+    this.srcFilePath = path;
   }
 
   @Override

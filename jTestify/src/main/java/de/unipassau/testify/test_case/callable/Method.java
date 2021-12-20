@@ -19,9 +19,12 @@ public class Method implements Callable {
   @JsonProperty("return_type")
   private Type returnType;
   private Type parent;
-  @JsonProperty("src_file_id")
-  private int srcFileId;
+  @JsonProperty("src_file_path")
+  private String srcFilePath;
   private String name;
+
+  @JsonProperty("is_public")
+  private boolean isPublic;
 
   public Method() {
   }
@@ -80,6 +83,16 @@ public class Method implements Callable {
   }
 
   @Override
+  public boolean isPublic() {
+    return isPublic;
+  }
+
+  @Override
+  public void setPublic(boolean isPublic) {
+    this.isPublic = isPublic;
+  }
+
+  @Override
   public Statement toStmt(TestCase testCase, List<VarReference> args, VarReference returnValue) {
     if (returnsValue()) {
       Objects.requireNonNull(returnValue);
@@ -89,17 +102,19 @@ public class Method implements Callable {
         returnValue, this);
   }
 
-  public int getSrcFileId() {
-    return srcFileId;
-  }
-
-  public void setSrcFileId(int srcFileId) {
-    this.srcFileId = srcFileId;
-  }
-
   @Override
   public boolean isMethod() {
     return true;
+  }
+
+  @Override
+  public String getSrcFilePath() {
+    return srcFilePath;
+  }
+
+  @Override
+  public void setSrcFilePath(String path) {
+    this.srcFilePath = path;
   }
 
   @Override

@@ -12,6 +12,7 @@
       <sourceFolder url="file://$MODULE_DIR$/common/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/algorithms/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/generation/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/writer/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/src/instrument/target" />
       <excludeFolder url="file://$MODULE_DIR$/server/target" />

@@ -1,5 +1,6 @@
 package de.unipassau.testify.test_case.callable;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
@@ -16,10 +17,13 @@ public class EnumInit implements Callable {
 
   private Enum type;
   private EnumVariant variant;
+  @JsonProperty("is_public")
+  private boolean isPublic;
 
-  public EnumInit(Enum type, EnumVariant variant) {
+  public EnumInit(Enum type, EnumVariant variant, boolean isPublic) {
     this.type = type;
     this.variant = variant;
+    this.isPublic = isPublic;
   }
 
   @Override
@@ -65,6 +69,16 @@ public class EnumInit implements Callable {
   @Override
   public boolean returnsValue() {
     return true;
+  }
+
+  @Override
+  public boolean isPublic() {
+    return isPublic;
+  }
+
+  @Override
+  public void setPublic(boolean isPublic) {
+    this.isPublic = isPublic;
   }
 
   @Override

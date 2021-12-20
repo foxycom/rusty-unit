@@ -15,10 +15,12 @@ public class RefItem implements Callable {
 
   private List<Param> params;
   private final Type returnType;
+  private boolean isPublic;
 
-  public RefItem(Param param) {
+  public RefItem(Param param, boolean isPublic) {
     this.params = Collections.singletonList(param);
     this.returnType = new Ref(param.getType());
+    this.isPublic = isPublic;
   }
 
   @Override
@@ -68,6 +70,16 @@ public class RefItem implements Callable {
   @Override
   public boolean returnsValue() {
     return true;
+  }
+
+  @Override
+  public boolean isPublic() {
+    return isPublic;
+  }
+
+  @Override
+  public void setPublic(boolean isPublic) {
+    this.isPublic = isPublic;
   }
 
   @Override

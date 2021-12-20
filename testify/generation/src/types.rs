@@ -104,10 +104,9 @@ static CALLABLES_DIR: &'static str =
     "/Users/tim/Documents/master-thesis/testify/providers/callables";
 
 fn load_callables() -> std::io::Result<Vec<Callable>> {
-
     let variants = vec![
         EnumVariant::new("Some", vec![T::Generic(Generic::new("T", vec![]))]),
-        EnumVariant::new("None", vec![])
+        EnumVariant::new("None", vec![]),
     ];
     let t = T::Enum(EnumT::new(None, "std::option::Option", vec![], variants));
     println!("---HELLO {}", serde_json::to_string(&t).unwrap());
@@ -274,15 +273,15 @@ pub struct StructInitItem {
     pub params: Vec<Param>,
     pub return_type: Arc<T>,
 
-    pub src_file_id: usize,
+    pub src_file_path: String,
 }
 
 impl StructInitItem {
-    pub fn new(src_file_id: usize, fields: Vec<Param>, return_type: Arc<T>) -> Self {
+    pub fn new(src_file_path: &str, fields: Vec<Param>, return_type: Arc<T>) -> Self {
         StructInitItem {
             params: fields,
             return_type,
-            src_file_id,
+            src_file_path: src_file_path.to_string(),
         }
     }
 
@@ -304,16 +303,18 @@ pub struct MethodItem {
 
     #[serde(skip)]
     pub fn_id: Option<HirId>,
-    pub src_file_id: usize,
+    pub src_file_path: String,
+    pub is_public: bool,
 }
 
 impl MethodItem {
     pub fn new(
-        src_file_id: usize,
+        src_file_path: &str,
         params: Vec<Param>,
         return_type: Option<Arc<T>>,
         parent: Arc<T>,
         generics: Vec<Arc<T>>,
+        is_public: bool,
         fn_id: HirId,
         tcx: &TyCtxt<'_>,
     ) -> Self {
@@ -321,12 +322,13 @@ impl MethodItem {
         let name = ident.name.to_string();
 
         MethodItem {
-            src_file_id,
+            src_file_path: src_file_path.to_string(),
             params,
             parent,
             return_type,
             name,
             fn_id: Some(fn_id),
+            is_public,
         }
     }
 
@@ -356,14 +358,16 @@ pub struct FunctionItem {
     #[serde(skip)]
     pub fn_id: Option<HirId>,
     pub name: String,
-    pub src_file_id: usize,
+    pub src_file_path: String,
+    pub is_public: bool
 }
 
 impl FunctionItem {
     pub fn new(
-        src_file_id: usize,
+        src_file_path: &str,
         params: Vec<Param>,
         return_type: Option<Arc<T>>,
+        is_public: bool,
         fn_id: HirId,
         tcx: &TyCtxt<'_>,
     ) -> Self {
@@ -371,10 +375,11 @@ impl FunctionItem {
         let name = ident.name.to_string();
 
         FunctionItem {
-            src_file_id,
+            src_file_path: src_file_path.to_string(),
             params,
             return_type,
             name,
+            is_public,
             fn_id: Some(fn_id),
         }
     }
@@ -392,16 +397,18 @@ pub struct StaticFnItem {
     #[serde(skip)]
     pub fn_id: Option<HirId>,
     pub name: String,
-    pub src_file_id: usize,
+    pub src_file_path: String,
+    pub is_public: bool,
 }
 
 impl StaticFnItem {
     pub fn new(
-        src_file_id: usize,
+        src_file_path: &str,
         params: Vec<Param>,
         return_type: Option<Arc<T>>,
         parent: Arc<T>,
         generics: Vec<Arc<T>>,
+        is_public: bool,
         fn_id: HirId,
         tcx: &TyCtxt<'_>,
     ) -> Self {
@@ -409,12 +416,13 @@ impl StaticFnItem {
         let name = ident.name.to_string();
 
         StaticFnItem {
-            src_file_id,
+            src_file_path: src_file_path.to_string(),
             params,
             parent,
             return_type,
             fn_id: Some(fn_id),
             name,
+            is_public,
         }
     }
 
@@ -440,19 +448,28 @@ pub struct FieldAccessItem {
     pub field_id: Option<HirId>,
     pub parent: Arc<T>,
     pub name: String,
-    pub src_file_id: usize,
+    pub src_file_path: String,
+    pub is_public: bool,
 }
 
 impl FieldAccessItem {
-    pub fn new(src_file_id: usize, ty: Arc<T>, parent: Arc<T>, field_id: HirId, tcx: &TyCtxt<'_>) -> Self {
+    pub fn new(
+        src_file_path: &str,
+        ty: Arc<T>,
+        parent: Arc<T>,
+        is_public: bool,
+        field_id: HirId,
+        tcx: &TyCtxt<'_>,
+    ) -> Self {
         let ident = tcx.hir().get(field_id).ident().unwrap();
         let name = ident.name.to_string();
 
         FieldAccessItem {
-            src_file_id,
+            src_file_path: src_file_path.to_string(),
             name,
             ty,
             parent,
+            is_public,
             field_id: Some(field_id),
         }
     }
@@ -763,7 +780,6 @@ impl ComplexT {
             false
         };
 
-
         ComplexT {
             name: name.to_string(),
             is_local,
@@ -837,7 +853,12 @@ impl Display for EnumT {
 }
 
 impl EnumT {
-    pub fn new(def_id: Option<DefId>, name: &str, generics: Vec<T>, variants: Vec<EnumVariant>) -> Self {
+    pub fn new(
+        def_id: Option<DefId>,
+        name: &str,
+        generics: Vec<T>,
+        variants: Vec<EnumVariant>,
+    ) -> Self {
         let is_local = if let Some(def_id) = def_id {
             def_id.is_local()
         } else {

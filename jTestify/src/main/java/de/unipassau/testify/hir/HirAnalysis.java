@@ -82,7 +82,7 @@ public class HirAnalysis {
     var types = loadStdTypeProviders();
     var enumInits = types.keySet().stream().filter(Type::isEnum).map(traits -> {
       var enumType = traits.asEnum();
-      return enumType.getVariants().stream().map(variant -> new EnumInit(enumType, variant))
+      return enumType.getVariants().stream().map(variant -> new EnumInit(enumType, variant, true))
           .toList();
     }).flatMap(Collection::stream).toList();
 
@@ -98,7 +98,7 @@ public class HirAnalysis {
         new Generic("T", Collections.emptyList()),
         true,
         null
-    ));
+    ), true);
 
     return List.of(refCallable);
   }

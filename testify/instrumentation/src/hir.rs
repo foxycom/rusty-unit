@@ -1,18 +1,22 @@
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{Map, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{AssocItemKind, Body, BodyId, FnSig, ForeignItem, ForeignItemId, Generics, HirId, Impl, ImplItem, ImplItemId, ImplItemKind, Item, ItemId, ItemKind, Node, TraitItem, TraitItemId, VariantData};
+use rustc_hir::{AssocItemKind, Body, BodyId, FnSig, ForeignItem, ForeignItemId, Generics, HirId, Impl, ImplItem, ImplItemId, ImplItemKind, Item, ItemId, ItemKind, Node, TraitItem, TraitItemId, VariantData, Visibility, VisibilityKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::ErrorOutputType;
 use rustc_span::Span;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use rustc_ast::CrateSugar;
 
 use crate::util::{get_cut_name, get_testify_flags};
 use crate::writer::HirWriter;
 use generation::analysis::HirAnalysis;
-use generation::types::{Callable, ComplexT, EnumT, EnumVariant, FieldAccessItem, FunctionItem, Generic, MethodItem, StaticFnItem, StructInitItem, T};
+use generation::types::{
+    Callable, ComplexT, EnumT, EnumVariant, FieldAccessItem, FunctionItem, Generic, MethodItem,
+    StaticFnItem, StructInitItem, T,
+};
 use generation::util::{
     def_id_to_complex, fn_ret_ty_to_t, generics_to_ts, impl_to_struct_id, item_to_name,
     node_to_name, span_to_path, ty_to_param, ty_to_t,
@@ -57,6 +61,7 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
                         sig,
                         item.def_id,
                         body_id,
+                        &item.vis,
                         file_path.unwrap(),
                         &mut callables,
                         &tcx,
@@ -71,7 +76,7 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
             }
             ItemKind::Struct(s, g) => {
                 if allowed_item(item, &tcx) {
-                    analyze_struct(item.def_id, s, g, file_path.unwrap(), &mut callables, &tcx);
+                    analyze_struct(item.def_id, s, g, &item.vis, file_path.unwrap(), &mut callables, &tcx);
                 }
             }
             _ => {}
@@ -94,6 +99,7 @@ fn analyze_fn(
     sig: &FnSig,
     local_def_id: LocalDefId,
     body_id: &BodyId,
+    vis: &Visibility<'_>,
     file_path: PathBuf,
     callables: &mut Vec<Callable>,
     tcx: &TyCtxt<'_>,
@@ -102,6 +108,8 @@ fn analyze_fn(
     let src_file_map = SOURCE_FILE_MAP.lock().unwrap();
     let src_file_id = *src_file_map.get(&file_path).unwrap();
     drop(src_file_map);
+
+    let is_public = is_public(vis);
 
     let fn_decl = &sig.decl;
 
@@ -120,7 +128,14 @@ fn analyze_fn(
 
     let return_type = fn_ret_ty_to_t(&fn_decl.output, hir_id, tcx);
 
-    let function_item = FunctionItem::new(src_file_id, params, return_type, hir_id, tcx);
+    let function_item = FunctionItem::new(
+        file_path.to_str().unwrap(),
+        params,
+        return_type,
+        is_public,
+        hir_id,
+        tcx,
+    );
     let fn_callable = Callable::Function(function_item);
     callables.push(fn_callable);
 }
@@ -129,6 +144,7 @@ fn analyze_struct(
     struct_local_def_id: LocalDefId,
     vd: &VariantData,
     g: &Generics,
+    vis: &Visibility<'_>,
     file_path: PathBuf,
     callables: &mut Vec<Callable>,
     tcx: &TyCtxt<'_>,
@@ -136,13 +152,13 @@ fn analyze_struct(
     println!(">> U8 type: {:?}", tcx.types.u8.kind());
     //let adt_def = tcx.adt_def(struct_local_def_id.to_def_id());
     let src_file_map = SOURCE_FILE_MAP.lock().unwrap();
+    let is_public = is_public(vis);
 
     let src_file_id = *src_file_map.get(&file_path).expect(&format!(
         "Source file map does not contain {:?}",
         &file_path
     ));
     drop(src_file_map);
-
 
     let struct_generics = generics_to_ts(g, tcx);
     let struct_hir_id = tcx.hir().local_def_id_to_hir_id(struct_local_def_id);
@@ -162,15 +178,22 @@ fn analyze_struct(
                     let def_id = tcx.hir().local_def_id(struct_hir_id).to_def_id();
                     println!("Def id is {:?}", def_id);
                     let parent = def_id_to_complex(def_id, tcx).unwrap();
-                    let field_item =
-                        FieldAccessItem::new(src_file_id, ty, parent, field.hir_id, tcx);
+                    let field_item = FieldAccessItem::new(
+                        file_path.to_str().unwrap(),
+                        ty,
+                        parent,
+                        is_public,
+                        field.hir_id,
+                        tcx,
+                    );
                 }
             }
 
             let mut params = Vec::with_capacity(fields.len());
             for field in fields.iter() {
                 let name = field.ident.name.to_ident_string();
-                let param = ty_to_param(Some(&name), field.ty, struct_hir_id, &struct_generics, tcx);
+                let param =
+                    ty_to_param(Some(&name), field.ty, struct_hir_id, &struct_generics, tcx);
                 if let Some(param) = param {
                     params.push(param);
                 } else {
@@ -181,7 +204,11 @@ fn analyze_struct(
             }
 
             println!("Fields in struct {}: {:?}", parent_name, params);
-            callables.push(Callable::StructInit(StructInitItem::new(src_file_id, params, parent)));
+            callables.push(Callable::StructInit(StructInitItem::new(
+                file_path.to_str().unwrap(),
+                params,
+                parent,
+            )));
         }
         _ => {}
     }
@@ -212,7 +239,10 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
 
     let items = im.items;
 
-    println!("Analyzing impl: {:?}\nIt's generics are: {:?}", im, impl_generics);
+    println!(
+        "Analyzing impl: {:?}\nIt's generics are: {:?}",
+        im, impl_generics
+    );
     for item in items {
         let def_id = item.id.def_id;
 
@@ -223,7 +253,8 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                 match &impl_item.kind {
                     ImplItemKind::Fn(sig, body_id) => {
                         println!("Analyzing method {}", &impl_item.ident);
-
+                        println!("Visibility: {:?}", &impl_item.vis);
+                        let is_public = is_public(&impl_item.vis);
                         let parent_name = node_to_name(&tcx.hir().get(parent_hir_id), tcx).unwrap();
                         if parent_name.contains("serde") {
                             // Skip too hard stuff
@@ -236,7 +267,8 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
 
                         let mut params = Vec::with_capacity(sig.decl.inputs.len());
                         for input in sig.decl.inputs.iter() {
-                            let param = ty_to_param(None, input, parent_hir_id, &overall_generics, tcx);
+                            let param =
+                                ty_to_param(None, input, parent_hir_id, &overall_generics, tcx);
                             if let Some(param) = param {
                                 params.push(param);
                             } else {
@@ -257,25 +289,28 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                         if !sig.decl.implicit_self.has_implicit_self() {
                             // Static method
                             let static_method_item = StaticFnItem::new(
-                                src_file_id,
+                                file_path.to_str().unwrap(),
                                 params,
                                 return_type,
                                 parent.clone(),
                                 impl_generics.clone(),
+                                is_public,
                                 hir_id,
                                 tcx,
                             );
-                            let static_method_callable = Callable::StaticFunction(static_method_item);
+                            let static_method_callable =
+                                Callable::StaticFunction(static_method_item);
                             callables.push(static_method_callable);
                         } else {
                             // Dynamic method
 
                             let method_item = MethodItem::new(
-                                src_file_id,
+                                file_path.to_str().unwrap(),
                                 params,
                                 return_type,
                                 parent.clone(),
                                 impl_generics.clone(),
+                                is_public,
                                 hir_id,
                                 tcx,
                             );
@@ -288,5 +323,18 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
             }
             _ => {}
         }
+    }
+}
+
+fn is_public(vis: &Visibility<'_>) -> bool {
+    match &vis.node {
+        VisibilityKind::Public => true,
+        VisibilityKind::Crate(sugar) => {
+            match sugar {
+                CrateSugar::PubCrate => true,
+                _ => false
+            }
+        }
+        _ => false
     }
 }

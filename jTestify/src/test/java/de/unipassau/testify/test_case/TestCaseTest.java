@@ -57,9 +57,9 @@ class TestCaseTest {
         new Param(generic_A, false, "x"),
         new Param(vecType, false, "v")
     );
-    var callableUnderTest = new StaticMethod("a", params, ISize.INSTANCE, parent, 2);
+    var callableUnderTest = new StaticMethod("a", params, ISize.INSTANCE, parent, "");
 
-    var vecCallable = new StaticMethod("new", Collections.emptyList(), vecType, vecType, 2);
+    var vecCallable = new StaticMethod("new", Collections.emptyList(), vecType, vecType, "");
     when(analysis.generatorsOf(any())).thenReturn(List.of(vecCallable));
 
     testCase.insertCallable(callableUnderTest);
@@ -164,7 +164,7 @@ class TestCaseTest {
   void testInsertVecConstructor() {
     var genericT = new Generic("T", Collections.emptyList());
     var vecType = new Complex("std::vec::Vec", Collections.singletonList(genericT), false);
-    var vecConstructor = new StaticMethod("new", Collections.emptyList(), vecType, vecType, 3);
+    var vecConstructor = new StaticMethod("new", Collections.emptyList(), vecType, vecType, "");
     testCase.insertCallable(vecConstructor);
 
     var visitor = new TestCaseVisitor();
@@ -204,10 +204,10 @@ class TestCaseTest {
     );
 
     var structType = new Complex("SomeStruct", Collections.emptyList(), true);
-    var structInit = new StructInit(params, structType, 2);
+    var structInit = new StructInit(params, structType, "");
 
-    var enumGenerator = new EnumInit(genericOption, genericVariant);
-    var refGenerator = new RefItem(new Param(new Generic("T", Collections.emptyList()), true, null));
+    var enumGenerator = new EnumInit(genericOption, genericVariant, true);
+    var refGenerator = new RefItem(new Param(new Generic("T", Collections.emptyList()), true, null), true);
     when(analysis.generatorsOf(any(Enum.class))).thenReturn(List.of(enumGenerator));
     when(analysis.generatorsOf(any(Ref.class))).thenReturn(List.of(refGenerator));
 

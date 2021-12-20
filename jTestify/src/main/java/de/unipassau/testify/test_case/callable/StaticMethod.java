@@ -20,19 +20,22 @@ public class StaticMethod implements Callable {
   @JsonProperty("return_type")
   private Type returnType;
   private Type parent;
-  @JsonProperty("src_file_id")
-  private int srcFileId;
+  @JsonProperty("src_file_path")
+  private String srcFilePath;
+
+  @JsonProperty("is_public")
+  private boolean isPublic;
 
   public StaticMethod() {
   }
 
   public StaticMethod(String name, List<Param> params,
-      Type returnType, Type parent, int srcFileId) {
+      Type returnType, Type parent, String srcFilePath) {
     this.name = name;
     this.params = params;
     this.returnType = returnType;
     this.parent = parent;
-    this.srcFileId = srcFileId;
+    this.srcFilePath = srcFilePath;
   }
 
   @Override
@@ -90,12 +93,24 @@ public class StaticMethod implements Callable {
     return returnType != null;
   }
 
-  public int getSrcFileId() {
-    return srcFileId;
+  @Override
+  public boolean isPublic() {
+    return isPublic;
   }
 
-  public void setSrcFileId(int srcFileId) {
-    this.srcFileId = srcFileId;
+  @Override
+  public void setPublic(boolean isPublic) {
+    this.isPublic = isPublic;
+  }
+
+  @Override
+  public String getSrcFilePath() {
+    return srcFilePath;
+  }
+
+  @Override
+  public void setSrcFilePath(String path) {
+    this.srcFilePath = path;
   }
 
   @Override
