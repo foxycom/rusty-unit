@@ -3,16 +3,15 @@ package de.unipassau.testify.test_case.operators;
 import de.unipassau.testify.exception.NoAvailableArgException;
 import de.unipassau.testify.metaheuristics.operators.Crossover;
 import de.unipassau.testify.test_case.TestCase;
-import de.unipassau.testify.test_case.TestCaseVisitor;
-import de.unipassau.testify.test_case.statement.Statement;
+import de.unipassau.testify.test_case.visitor.CrossoverDebugVisitor;
+import de.unipassau.testify.test_case.visitor.TestCaseVisitor;
 import de.unipassau.testify.util.Rnd;
-import java.util.List;
 import org.javatuples.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SinglePointFixedCrossover implements Crossover<TestCase> {
-  private static Logger logger = LoggerFactory.getLogger(SinglePointFixedCrossover.class);
+  private static final Logger logger = LoggerFactory.getLogger(SinglePointFixedCrossover.class);
 
   @Override
   public Pair<TestCase, TestCase> apply(TestCase parent1, TestCase parent2) {
@@ -20,25 +19,24 @@ public class SinglePointFixedCrossover implements Crossover<TestCase> {
       return Pair.with(parent1, parent2);
     }
 
-    var visitor = new TestCaseVisitor();
-
-
     int point = Rnd.get().nextInt(Math.min(parent1.size(), parent2.size()) - 1) + 1;
 
+    var debugVisitor = new CrossoverDebugVisitor(point);
+
     logger.info("Starting crossover at point = {}", point);
-    logger.info("Parent 1:\n{}", parent1.visit(visitor));
-    logger.info("Parent 2:\n{}", parent2.visit(visitor));
+    logger.info("Parent 1:\n{}", parent1.visit(debugVisitor));
+    logger.info("Parent 2:\n{}", parent2.visit(debugVisitor));
 
     var child1 = crossOver(parent1, parent2, point);
     var child2 = crossOver(parent2, parent1, point);
 
-    logger.info("Child 1:\n{}", child1.visit(visitor));
-    logger.info("Child 2:\n{}", child2.visit(visitor));
+    logger.info("Child 1:\n{}", child1.visit(debugVisitor));
+    logger.info("Child 2:\n{}", child2.visit(debugVisitor));
 
     return Pair.with(child1, child2);
   }
 
-  private TestCase crossOver(TestCase t1, TestCase t2, int pos) {
+  TestCase crossOver(TestCase t1, TestCase t2, int pos) {
     var offspring = t1.copy();
     offspring.removeAllStmts();
 

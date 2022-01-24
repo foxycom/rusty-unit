@@ -3,7 +3,7 @@ package de.unipassau.testify.test_case.operators;
 import de.unipassau.testify.Constants;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
 import de.unipassau.testify.test_case.TestCase;
-import de.unipassau.testify.test_case.TestCaseVisitor;
+import de.unipassau.testify.test_case.visitor.TestCaseVisitor;
 import de.unipassau.testify.util.Rnd;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +15,7 @@ public class BasicMutation implements Mutation<TestCase> {
   @Override
   public TestCase apply(TestCase testCase) {
     var visitor = new TestCaseVisitor();
-    logger.info("Starting mutation on testcase:\n{}", testCase.visit(visitor));
+    logger.info("Starting mutation on testcase:\n{}\n{}", testCase.visit(visitor), testCase.getTypeBindingsString());
     var copy = testCase.copy();
 
     if (Rnd.get().nextDouble() <= Constants.P_TEST_DELETE) {

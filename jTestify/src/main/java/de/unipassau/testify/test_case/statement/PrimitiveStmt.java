@@ -83,6 +83,16 @@ public class PrimitiveStmt implements Statement {
   }
 
   @Override
+  public String getSrcFilePath() {
+    return null;
+  }
+
+  @Override
+  public boolean isPublic() {
+    return true;
+  }
+
+  @Override
   public boolean isPrimitiveStmt() {
     return true;
   }

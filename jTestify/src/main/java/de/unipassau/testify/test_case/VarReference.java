@@ -51,12 +51,12 @@ public class VarReference {
       return false;
     }
     VarReference that = (VarReference) o;
-    return testCase.equals(that.testCase) && type.equals(that.type) && id.equals(that.id);
+    return type.equals(that.type) && id.equals(that.id);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(testCase, type, id);
+    return Objects.hash(type, id);
   }
 
   public Statement definedBy() {
@@ -65,6 +65,11 @@ public class VarReference {
   }
 
   public boolean isConsumableAt(int pos) {
+    if (type.isPrim()) {
+      // TODO: 27.12.21 strings??
+      return true;
+    }
+
     if (isConsumed()) {
       return false;
     }
@@ -120,5 +125,10 @@ public class VarReference {
     var copy = new VarReference(this);
     copy.testCase = testCase;
     return copy;
+  }
+
+  @Override
+  public String toString() {
+    return String.format("Var at %d", position());
   }
 }

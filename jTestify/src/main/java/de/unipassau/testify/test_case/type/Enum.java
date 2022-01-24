@@ -140,7 +140,7 @@ public class Enum implements Type {
     var sb = new StringBuilder(name);
     if (!generics.isEmpty()) {
       sb.append("<");
-      var genericNames = generics.stream().map(Object::toString).collect(Collectors.joining(", "));
+      var genericNames = generics.stream().map(Type::toGenericString).collect(Collectors.joining(", "));
       sb.append(genericNames);
       sb.append(">");
     }

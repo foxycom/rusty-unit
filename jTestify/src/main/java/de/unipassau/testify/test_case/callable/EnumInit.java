@@ -19,6 +19,7 @@ public class EnumInit implements Callable {
   private EnumVariant variant;
   @JsonProperty("is_public")
   private boolean isPublic;
+  private String srcFilePath;
 
   public EnumInit(Enum type, EnumVariant variant, boolean isPublic) {
     this.type = type;
@@ -79,6 +80,16 @@ public class EnumInit implements Callable {
   @Override
   public void setPublic(boolean isPublic) {
     this.isPublic = isPublic;
+  }
+
+  @Override
+  public String getSrcFilePath() {
+    return srcFilePath;
+  }
+
+  @Override
+  public void setSrcFilePath(String path) {
+    this.srcFilePath = path;
   }
 
   @Override

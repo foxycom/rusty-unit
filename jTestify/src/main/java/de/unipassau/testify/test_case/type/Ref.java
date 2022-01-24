@@ -106,6 +106,11 @@ public class Ref implements Type {
   }
 
   @Override
+  public String toGenericString() {
+    return String.format("&%s", innerType);
+  }
+
+  @Override
   public Type copy() {
     return new Ref(this);
   }

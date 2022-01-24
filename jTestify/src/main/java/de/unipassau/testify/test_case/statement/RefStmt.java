@@ -81,6 +81,16 @@ public class RefStmt implements Statement {
   }
 
   @Override
+  public String getSrcFilePath() {
+    return null;
+  }
+
+  @Override
+  public boolean isPublic() {
+    return true;
+  }
+
+  @Override
   public boolean isRefStmt() {
     return true;
   }
@@ -101,7 +111,7 @@ public class RefStmt implements Statement {
 
   @Override
   public void replace(VarReference oldVar, VarReference newVar) {
-    if (arg.equals(oldVar)) {
+    if (!arg.equals(oldVar)) {
       throw new RuntimeException("Statement does not use this var");
     }
 
@@ -119,4 +129,6 @@ public class RefStmt implements Statement {
   public int position() {
     return testCase.stmtPosition(this).orElseThrow();
   }
+
+
 }

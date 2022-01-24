@@ -120,8 +120,8 @@ public abstract class CallableStmt implements Statement {
       throw new RuntimeException("There's something wrong");
     }
 
-    var typeBinding = testCase.popTypeBindingsFor(oldVar);
-    testCase.setTypeBindingsFor(newVar, typeBinding);
+    /*var typeBinding = testCase.popTypeBindingsFor(oldVar);
+    testCase.setTypeBindingsFor(newVar, typeBinding);*/
 
     args = args.stream().map(a -> {
       if (a.equals(oldVar)) {

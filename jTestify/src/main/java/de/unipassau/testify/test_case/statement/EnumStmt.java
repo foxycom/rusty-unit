@@ -1,5 +1,7 @@
 package de.unipassau.testify.test_case.statement;
 
+import static java.util.stream.Collectors.toCollection;
+
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
@@ -7,10 +9,13 @@ import de.unipassau.testify.test_case.callable.EnumInit;
 import de.unipassau.testify.test_case.type.Enum;
 import de.unipassau.testify.test_case.type.Enum.EnumVariant;
 import de.unipassau.testify.test_case.type.Type;
+import de.unipassau.testify.util.Rnd;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class EnumStmt implements Statement {
@@ -22,7 +27,8 @@ public class EnumStmt implements Statement {
   private TestCase testCase;
   private EnumInit enumInit;
 
-  public EnumStmt(TestCase testCase, List<VarReference> args, VarReference returnValue, EnumInit enumInit) {
+  public EnumStmt(TestCase testCase, List<VarReference> args, VarReference returnValue,
+      EnumInit enumInit) {
     this.id = UUID.randomUUID();
     this.enumInit = enumInit;
     this.testCase = testCase;
@@ -105,6 +111,16 @@ public class EnumStmt implements Statement {
   }
 
   @Override
+  public String getSrcFilePath() {
+    return enumInit.getSrcFilePath();
+  }
+
+  @Override
+  public boolean isPublic() {
+    return enumInit.isPublic();
+  }
+
+  @Override
   public boolean isEnumStmt() {
     return true;
   }
@@ -120,7 +136,8 @@ public class EnumStmt implements Statement {
 
     var pos = IntStream.range(0, args.size()).filter(i -> args.get(i).equals(var)).findFirst();
     if (pos.isPresent()) {
-      return !getVariant().getParams().get(pos.getAsInt()).bindGenerics(typeBinding).isByReference();
+      return !getVariant().getParams().get(pos.getAsInt()).bindGenerics(typeBinding)
+          .isByReference();
     } else {
       return false;
     }
@@ -145,7 +162,28 @@ public class EnumStmt implements Statement {
 
   @Override
   public boolean mutate(TestCase testCase) {
-    throw new RuntimeException("Not implemented");
+    var variants = testCase.getHirAnalysis()
+        .generatorsOf(enumInit.getReturnType(), enumInit.getSrcFilePath(), EnumInit.class);
+    var mutatedEnumInit = Rnd.choice(variants);
+
+    if (params().isEmpty()) {
+      args.clear();
+      var changed = !mutatedEnumInit.equals(enumInit);
+      enumInit = (EnumInit) mutatedEnumInit;
+      return changed;
+    }
+
+    var pChangeParam = 1d / params().size();
+    var changed = false;
+    for (int iParam = 0; iParam < params().size(); iParam++) {
+      if (Rnd.get().nextDouble() < pChangeParam) {
+        if (mutateParameter(iParam)) {
+          changed = true;
+        }
+      }
+    }
+
+    return changed;
   }
 
   @Override
@@ -154,8 +192,8 @@ public class EnumStmt implements Statement {
       throw new RuntimeException("There's something wrong");
     }
 
-    var typeBinding = testCase.popTypeBindingsFor(oldVar);
-    testCase.setTypeBindingsFor(newVar, typeBinding);
+    /*var typeBinding = testCase.popTypeBindingsFor(oldVar);
+    testCase.setTypeBindingsFor(newVar, typeBinding);*/
 
     args = args.stream().map(a -> {
       if (a.equals(oldVar)) {
@@ -168,12 +206,14 @@ public class EnumStmt implements Statement {
 
   @Override
   public void replaceAt(int pos, VarReference var) {
-    throw new RuntimeException("Not implemented yet");
+    args.set(pos, var);
   }
 
   @Override
   public Statement copy(TestCase testCase) {
-    var argsCopy = args.stream().map(a -> a.copy(testCase)).toList();
+    var argsCopy = args.stream()
+        .map(a -> a.copy(testCase))
+        .collect(toCollection(ArrayList::new));
     var returnValueCopy = returnValue.copy(testCase);
     return new EnumStmt(testCase, argsCopy, returnValueCopy, enumInit);
   }

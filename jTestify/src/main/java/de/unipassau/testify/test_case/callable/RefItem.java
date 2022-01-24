@@ -5,19 +5,26 @@ import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
 import de.unipassau.testify.test_case.statement.RefStmt;
 import de.unipassau.testify.test_case.statement.Statement;
+import de.unipassau.testify.test_case.type.Generic;
 import de.unipassau.testify.test_case.type.Ref;
 import de.unipassau.testify.test_case.type.Type;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class RefItem implements Callable {
+public enum RefItem implements Callable {
+  INSTANCE(new Param(
+      new Generic("T", Collections.emptyList()),
+      true,
+      null
+  ), true);
+
 
   private List<Param> params;
   private final Type returnType;
   private boolean isPublic;
 
-  public RefItem(Param param, boolean isPublic) {
+  RefItem(Param param, boolean isPublic) {
     this.params = Collections.singletonList(param);
     this.returnType = new Ref(param.getType());
     this.isPublic = isPublic;

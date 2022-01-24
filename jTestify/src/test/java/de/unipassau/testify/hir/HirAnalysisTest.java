@@ -28,6 +28,8 @@ class HirAnalysisTest {
     analysis = new HirAnalysis(Collections.emptyList());
   }
 
+
+
   @Test
   void testGetGeneratorsOfOption() {
     List<Type> generic = List.of(new Generic("T", Collections.emptyList()));
@@ -37,7 +39,7 @@ class HirAnalysisTest {
     );
 
     var option = new Enum("std::option::Option", generic, variants, false);
-    var generators = analysis.generatorsOf(option);
+    var generators = analysis.generatorsOf(option, null);
 
     assertThat(generators.size()).isAtLeast(2);
   }
@@ -49,7 +51,7 @@ class HirAnalysisTest {
         new EnumVariant("Some", List.of(new Param(new Ref(ISize.INSTANCE), false, null)))
     );
     var option = new Enum("std::option::Option", Collections.emptyList(), variants, false);
-    var generators = analysis.generatorsOf(option);
+    var generators = analysis.generatorsOf(option, null);
     System.out.println(generators);
 
   }

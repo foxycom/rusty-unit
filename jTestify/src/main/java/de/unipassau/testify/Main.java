@@ -19,7 +19,6 @@ import de.unipassau.testify.source.Crate;
 import de.unipassau.testify.test_case.Fitness;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.TestCaseGenerator;
-import de.unipassau.testify.test_case.TestCaseVisitor;
 import de.unipassau.testify.test_case.UncoveredObjectives;
 import de.unipassau.testify.test_case.operators.BasicMutation;
 import de.unipassau.testify.test_case.operators.RankSelection;
@@ -27,6 +26,7 @@ import de.unipassau.testify.test_case.operators.SinglePointFixedCrossover;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -38,13 +38,18 @@ public class Main {
   private static final Logger logger = LoggerFactory.getLogger(Main.class);
 
   public interface CLI {
+
     @Option(shortName = "c", longName = "crate")
     String getCrateRoot();
+
+    @Option(shortName = "m")
+    List<String> getMainFiles();
   }
 
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) throws IOException, InterruptedException {
     var cli = CliFactory.parseArguments(CLI.class, args);
-    var crate = Crate.parse(Paths.get(cli.getCrateRoot()));
+    var crate = Crate.parse(Paths.get(cli.getCrateRoot()),
+        cli.getMainFiles().stream().map(Path::of).toList());
 
     var file = new File("/Users/tim/Documents/master-thesis/testify/log/hir.json");
     var json = Files.readString(file.toPath());
@@ -63,6 +68,10 @@ public class Main {
     var selection = new RankSelection<>(objectives, svd, preferenceSorter);
     var populationGenerator = new FixedSizePopulationGenerator<>(
         new TestCaseGenerator(hirAnalysis, mutation, crossover), 20);
+
+    //var population = populationGenerator.get();
+
+    //crate.addTests(population);
 
     var uncoveredObjectives = new UncoveredObjectives<>(objectives);
     var offspringGenerator = new OffspringGeneratorImpl(selection, uncoveredObjectives);

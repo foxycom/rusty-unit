@@ -17,6 +17,7 @@ public class Complex implements Type {
   private boolean isLocal;
 
   public Complex() {
+
   }
 
   public Complex(Complex other) {
@@ -137,8 +138,9 @@ public class Complex implements Type {
       return false;
     }
     Complex complex = (Complex) o;
-    return isLocal == complex.isLocal && name.equals(complex.name) && generics.equals(
-        complex.generics);
+    return isLocal == complex.isLocal
+        && name.equals(complex.name)
+        && generics.equals(complex.generics);
   }
 
   @Override
@@ -153,7 +155,7 @@ public class Complex implements Type {
     var sb = new StringBuilder(fullName());
     if (!generics.isEmpty()) {
       sb.append("<");
-      var genericsStr = generics.stream().map(Type::toString).collect(Collectors.joining(", "));
+      var genericsStr = generics.stream().map(Type::toGenericString).collect(Collectors.joining(", "));
       sb.append(genericsStr);
       sb.append(">");
     }

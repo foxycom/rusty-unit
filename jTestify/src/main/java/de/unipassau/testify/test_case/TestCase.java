@@ -1,5 +1,8 @@
 package de.unipassau.testify.test_case;
 
+import static java.util.stream.Collectors.toCollection;
+
+import com.google.common.base.Preconditions;
 import de.unipassau.testify.ddg.Dependency;
 import de.unipassau.testify.ddg.Node;
 import de.unipassau.testify.exception.NoAvailableArgException;
@@ -17,6 +20,9 @@ import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.TypeBinding;
 import de.unipassau.testify.test_case.type.prim.Int.ISize;
 import de.unipassau.testify.test_case.type.prim.Prim;
+import de.unipassau.testify.test_case.visitor.LineNumberDebugVisitor;
+import de.unipassau.testify.test_case.visitor.TypeBindingStringVisitor;
+import de.unipassau.testify.test_case.visitor.Visitor;
 import de.unipassau.testify.util.Rnd;
 import de.unipassau.testify.util.TypeUtil;
 import java.util.ArrayList;
@@ -40,13 +46,13 @@ import org.slf4j.LoggerFactory;
 public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
   private static Logger logger = LoggerFactory.getLogger(TestCase.class);
+  private final HirAnalysis hirAnalysis;
 
   private int id;
   private List<Statement> statements;
   private Map<Integer, Double> coverage;
-  private Graph<Node, Dependency> ddg;
-  private HirAnalysis hirAnalysis;
-  private Map<VarReference, TypeBinding> typeBindings;
+  private final Graph<Node, Dependency> ddg;
+  private final Map<VarReference, TypeBinding> typeBindings;
 
   public TestCase(int id, HirAnalysis hirAnalysis, Mutation<TestCase> mutation,
       Crossover<TestCase> crossover) {
@@ -64,18 +70,27 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     this.id = TestIdGenerator.get();
     this.hirAnalysis = other.hirAnalysis;
     this.statements = other.statements.stream().map(s -> s.copy(this))
-        .collect(Collectors.toCollection(ArrayList::new));
+        .collect(toCollection(ArrayList::new));
     // TODO not really copying it
     this.ddg = new DirectedMultigraph<>(Dependency.class);
 
     this.typeBindings = variables().stream()
         .map(v -> Pair.with(v, other.typeBindings.get(v)))
+        // Only consider values that indeed have some binding
+        .filter(p -> p.getValue1() != null)
         .collect(
             HashMap::new,
             (m, v) -> m.put(v.getValue0(), v.getValue1()),
             HashMap::putAll
         );
+
+    Preconditions.checkState(typeBindings.size() == other.typeBindings.size());
+
     this.coverage = new HashMap<>();
+  }
+
+  public HirAnalysis getHirAnalysis() {
+    return hirAnalysis;
   }
 
   public int getId() {
@@ -92,6 +107,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   }
 
   public TypeBinding getTypeBindingsFor(VarReference var) {
+    Preconditions.checkState(typeBindings.containsKey(var));
     return typeBindings.get(var);
   }
 
@@ -100,6 +116,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   }
 
   public void setTypeBindingsFor(VarReference var, TypeBinding binding) {
+    Preconditions.checkNotNull(binding);
     typeBindings.put(var, binding);
   }
 
@@ -107,6 +124,30 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     return statements;
   }
 
+  public Optional<Statement> getLastCrateStmt() {
+    return IntStream.range(0, statements.size())
+        .mapToObj(i -> statements.get(statements.size() - i - 1))
+        .filter(s -> s.getSrcFilePath() != null)
+        .findFirst();
+  }
+
+  public Optional<String> getFilePathBinding() {
+    var paths = statements.stream().filter(s -> s.getSrcFilePath() != null)
+        .filter(s -> !s.isPublic())
+        .map(Statement::getSrcFilePath)
+        .collect(Collectors.toSet());
+    Preconditions.checkState(paths.size() <= 1);
+
+    return paths.stream().findFirst();
+  }
+
+  public boolean isValid() {
+    return statements.stream().filter(s -> s.getSrcFilePath() != null)
+        .filter(s -> !s.isPublic())
+        .map(Statement::getSrcFilePath)
+        .collect(Collectors.toSet())
+        .size() <= 1;
+  }
 
   public void setStatements(List<Statement> statements) {
     this.statements = statements;
@@ -217,9 +258,12 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     var usingStmts = returnValue.usedAt().stream()
         .map(this::stmtAt)
         .map(Optional::orElseThrow)
-        .toList();
+        .collect(toCollection(ArrayList::new));
     Collections.reverse(usingStmts);
     usingStmts.forEach(this::removeStmt);
+
+    typeBindings.remove(returnValue);
+    statements.remove(stmt);
     return 0;
   }
 
@@ -261,7 +305,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         .map(Statement::returnValue)
         .filter(Optional::isPresent)
         .map(Optional::get)
-        .collect(Collectors.toCollection(ArrayList::new));
+        .collect(toCollection(ArrayList::new));
   }
 
   public List<VarReference> borrowableVariablesOfType(Type type, int untilPos) {
@@ -270,8 +314,8 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         .map(Statement::returnValue)
         .filter(Optional::isPresent)
         .map(Optional::get)
-        .filter(var -> var.type().equals(type) && !var.isBorrowableAt(untilPos))
-        .collect(Collectors.toCollection(ArrayList::new));
+        .filter(var -> var.type().equals(type) && var.isBorrowableAt(untilPos))
+        .collect(toCollection(ArrayList::new));
   }
 
   public List<VarReference> consumableVariablesOfType(Type type, int untilPos) {
@@ -280,8 +324,8 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         .map(Statement::returnValue)
         .filter(Optional::isPresent)
         .map(Optional::get)
-        .filter(var -> var.type().equals(type) && !var.isConsumableAt(untilPos))
-        .collect(Collectors.toCollection(ArrayList::new));
+        .filter(var -> var.type().equals(type) && var.isConsumableAt(untilPos))
+        .collect(toCollection(ArrayList::new));
   }
 
   public List<VarReference> unconsumedVariablesOfType(Type type) {
@@ -290,7 +334,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         .filter(Optional::isPresent)
         .map(Optional::get)
         .filter(var -> var.type().equals(type) && !var.isConsumed())
-        .collect(Collectors.toCollection(ArrayList::new));
+        .collect(toCollection(ArrayList::new));
   }
 
   /**
@@ -302,7 +346,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         .filter(Optional::isPresent)
         .map(Optional::get)
         .filter(var -> var.type().equals(type))
-        .collect(Collectors.toCollection(ArrayList::new));
+        .collect(toCollection(ArrayList::new));
   }
 
   /**
@@ -318,7 +362,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         .filter(Optional::isPresent)
         .map(Optional::get)
         .filter(var -> var.type().equals(type))
-        .collect(Collectors.toCollection(ArrayList::new));
+        .collect(toCollection(ArrayList::new));
   }
 
   public List<Quartet<VarReference, Callable, Integer, Integer>> availableCallables() {
@@ -368,7 +412,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         })
         .filter(Optional::isPresent)
         .map(Optional::get)
-        .toList();
+        .collect(toCollection(ArrayList::new));
 
     if (args.size() != callable.getParams().size()) {
       logger.warn("Could not generate all arguments");
@@ -412,7 +456,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     } else if (param.isGeneric()) {
       throw new RuntimeException("Not allowed");
     } else {
-      var generators = hirAnalysis.generatorsOf(param.getType());
+      var generators = hirAnalysis.generatorsOf(param.getType(), getFilePathBinding().orElse(null));
       return generateArgFromGenerators(param.getType(), generators, typesToGenerate);
     }
   }
@@ -432,10 +476,10 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     if (type.isPrim()) {
       return Optional.of(generatePrimitive(type.asPrimitive()));
     } else if (type.isComplex() || type.isEnum()) {
-      var generators = hirAnalysis.generatorsOf(type);
+      var generators = hirAnalysis.generatorsOf(type, getFilePathBinding().orElse(null));
       return generateArgFromGenerators(type, generators, typesToGenerate);
     } else if (type.isRef()) {
-      var generators = hirAnalysis.generatorsOf(type);
+      var generators = hirAnalysis.generatorsOf(type, getFilePathBinding().orElse(null));
       return generateArgFromGenerators(type, generators, typesToGenerate);
     } else {
       throw new RuntimeException("Not implemented: " + type);
@@ -592,7 +636,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       // return Optional.empty();
     }
 
-    List<VarReference> args = generator.getParams().stream()
+    var args = generator.getParams().stream()
         .map(p -> {
           var usableVars = unconsumedVariablesOfType(p.getType());
           if (!instantiatedTypes().contains(p.getType()) || usableVars.isEmpty()) {
@@ -607,7 +651,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         })
         .filter(Optional::isPresent)
         .map(Optional::get)
-        .toList();
+        .collect(toCollection(ArrayList::new));
     if (args.size() != generator.getParams().size()) {
 
       generators.remove(generator);
@@ -642,20 +686,22 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     return new VarReference(this, type);
   }
 
+  public String getTypeBindingsString() {
+    var sb = new StringBuilder();
+    var visitor = new TypeBindingStringVisitor(this);
+    typeBindings.forEach((key, value) -> sb.append(visitor.getVariableName(key)).append(": ")
+        .append(visitor.visit(value)));
+    return sb.toString();
+  }
+
   public String visit(Visitor visitor) {
     return visitor.visitTestCase(this);
   }
 
   @Override
   public String toString() {
-    var sb = new StringBuilder();
-    sb.append("fn ").append(getName()).append("() {\n");
-    for (Statement statement : statements) {
-      sb.append("    ").append(statement).append("\n");
-    }
-    sb.append("}");
-
-    return sb.toString();
+    var visitor = new LineNumberDebugVisitor();
+    return visit(visitor);
   }
 
   @Override

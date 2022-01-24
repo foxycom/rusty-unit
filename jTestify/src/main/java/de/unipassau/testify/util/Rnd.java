@@ -7,7 +7,7 @@ public final class Rnd {
   /**
    * Internal source of randomness.
    */
-  private static final Random random = new Random();
+  private static final Random random = new Random(12345L);
 
   private Rnd() {
     // private constructor to prevent instantiation

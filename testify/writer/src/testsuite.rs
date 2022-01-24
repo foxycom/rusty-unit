@@ -7,7 +7,9 @@ pub struct TestSuite {
 }
 
 impl TestSuite {
-    pub fn to_items() -> Vec<Item> {
-        todo!()
+    pub fn to_items(&self) -> Vec<Item> {
+        self.tests.iter().map(|s| {
+            syn::parse_str::<Item>(s).unwrap()
+        }).collect::<Vec<_>>()
     }
 }

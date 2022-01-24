@@ -58,6 +58,14 @@ public interface Type {
     throw new RuntimeException("Not with me");
   }
 
+  default String toFullString() {
+    return this.toString();
+  }
+
+  default String toGenericString() {
+    return this.toString();
+  }
+
   List<Type> generics();
 
   /**

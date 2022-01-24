@@ -6,6 +6,4 @@ public class LLVMCoverage {
   public LLVMCoverage(double lineCoverage) {
     this.lineCoverage = lineCoverage;
   }
-
-
 }

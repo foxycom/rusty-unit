@@ -1,15 +1,19 @@
 package de.unipassau.testify.test_case.statement;
 
+import static java.util.stream.Collectors.toCollection;
+
 import com.google.common.collect.Streams;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
 import de.unipassau.testify.test_case.callable.StructInit;
 import de.unipassau.testify.test_case.type.Type;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.javatuples.Pair;
 
 public class StructInitStmt implements Statement {
@@ -76,6 +80,16 @@ public class StructInitStmt implements Statement {
   }
 
   @Override
+  public String getSrcFilePath() {
+    return structInit.getSrcFilePath();
+  }
+
+  @Override
+  public boolean isPublic() {
+    return structInit.isPublic();
+  }
+
+  @Override
   public List<VarReference> args() {
     return args;
   }
@@ -119,8 +133,8 @@ public class StructInitStmt implements Statement {
       throw new RuntimeException("There's something wrong");
     }
 
-    var typeBinding = testCase.popTypeBindingsFor(oldVar);
-    testCase.setTypeBindingsFor(newVar, typeBinding);
+    /*var typeBinding = testCase.popTypeBindingsFor(oldVar);
+    testCase.setTypeBindingsFor(newVar, typeBinding);*/
 
     args = args.stream().map(a -> {
       if (a.equals(oldVar)) {
@@ -133,7 +147,9 @@ public class StructInitStmt implements Statement {
 
   @Override
   public Statement copy(TestCase testCase) {
-    var argsCopy = args.stream().map(a -> a.copy(testCase)).toList();
+    var argsCopy = args.stream()
+        .map(a -> a.copy(testCase))
+        .collect(toCollection(ArrayList::new));
     var returnValueCopy = returnValue.copy(testCase);
     return new StructInitStmt(testCase, argsCopy, returnValueCopy, structInit);
   }

@@ -6,6 +6,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -112,14 +113,20 @@ public class TestCaseRunner {
       throw new RuntimeException("Could not create a coverage report");
     }
 
-    var lineCoverage =
-        (Double) JsonPath.read(coverageResult.getValue1(), "$.data[0].totals.lines.percent");
-    return new LLVMCoverage(lineCoverage);
+    var lineCoverage = JsonPath.read(coverageResult.getValue1(), "$.data[0].totals.lines.percent");
+    if (lineCoverage instanceof Double) {
+      return new LLVMCoverage((double) lineCoverage);
+    } else if (lineCoverage instanceof BigDecimal) {
+      var coverage = ((BigDecimal) lineCoverage).doubleValue();
+      return new LLVMCoverage(coverage);
+    } else {
+      throw new RuntimeException("Not implemented yet");
+    }
   }
 
   public static void main(String[] args) throws IOException, InterruptedException {
     var runner = new TestCaseRunner();
-    var llvmCoverage = runner.run("/Users/tim/Documents/master-thesis/evaluation/trying-main");
+    var llvmCoverage = runner.run("/Users/tim/Documents/master-thesis/evaluation/current");
     System.out.printf("Line coverage: %.2f", llvmCoverage.lineCoverage);
   }
 }

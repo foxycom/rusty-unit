@@ -1,5 +1,7 @@
 package de.unipassau.testify.hir;
 
+import static java.util.stream.Collectors.toCollection;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.callable.Callable;
@@ -27,9 +29,9 @@ public class HirAnalysis {
 
   private static final String PROVIDERS_PATH = "/Users/tim/Documents/master-thesis/jTestify/providers";
 
-  private List<Callable> callables = loadCallableProviders();
+  private final List<Callable> callables = loadCallableProviders();
 
-  private Map<Type, Set<Trait>> types = loadStdTypeProviders();
+  private final Map<Type, Set<Trait>> types = loadStdTypeProviders();
 
   public HirAnalysis(List<Callable> callables) throws IOException {
     this.callables.addAll(callables);
@@ -52,11 +54,24 @@ public class HirAnalysis {
     return callables;
   }
 
-  public List<Callable> generatorsOf(Type type) {
-    return callables.stream().filter(
-            callable -> callable.getReturnType() != null
-                && callable.getReturnType().canBeSameAs(type)
-        ).collect(Collectors.toCollection(ArrayList::new));
+  public List<Callable> generatorsOf(Type type, String filePath) {
+    return generatorsOf(type, filePath, Callable.class);
+  }
+
+  public <S extends Callable> List<Callable> generatorsOf(Type type, String filePath,
+      Class<S> subClass) {
+
+    var stream = callables.stream()
+        .filter(subClass::isInstance)
+        .filter(callable -> callable.getReturnType() != null
+        && callable.getReturnType().canBeSameAs(type));
+
+    if (filePath != null) {
+      stream = stream.filter(callable -> callable.isPublic()
+          || (callable.getSrcFilePath() != null && callable.getSrcFilePath().equals(filePath)));
+    }
+
+    return stream.collect(toCollection(ArrayList::new));
   }
 
   private static List<Callable> loadCallableProviders() throws IOException {
@@ -76,30 +91,30 @@ public class HirAnalysis {
 
             return null;
           }).flatMap(Collection::stream)
-          .collect(Collectors.toCollection(ArrayList::new));
+          .collect(toCollection(ArrayList::new));
     }
 
     var types = loadStdTypeProviders();
-    var enumInits = types.keySet().stream().filter(Type::isEnum).map(traits -> {
-      var enumType = traits.asEnum();
-      return enumType.getVariants().stream().map(variant -> new EnumInit(enumType, variant, true))
-          .toList();
-    }).flatMap(Collection::stream).toList();
+    var enumInits = types.keySet()
+        .stream()
+        .filter(Type::isEnum)
+        .map(traits -> {
+          var enumType = traits.asEnum();
+          return enumType.getVariants().stream()
+              .map(variant -> new EnumInit(enumType, variant, true))
+              .toList();
+        })
+        .flatMap(Collection::stream)
+        .toList();
 
     callables.addAll(enumInits);
-
     callables.addAll(loadArtificialCallables());
 
     return callables;
   }
 
   private static List<Callable> loadArtificialCallables() {
-    var refCallable = new RefItem(new Param(
-        new Generic("T", Collections.emptyList()),
-        true,
-        null
-    ), true);
-
+    var refCallable = RefItem.INSTANCE;
     return List.of(refCallable);
   }
 

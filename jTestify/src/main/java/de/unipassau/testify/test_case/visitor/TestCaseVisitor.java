@@ -1,6 +1,8 @@
-package de.unipassau.testify.test_case;
+package de.unipassau.testify.test_case.visitor;
 
 import com.google.common.collect.Streams;
+import de.unipassau.testify.test_case.TestCase;
+import de.unipassau.testify.test_case.VarReference;
 import de.unipassau.testify.test_case.statement.Statement;
 import de.unipassau.testify.test_case.type.Type;
 import java.util.HashMap;
@@ -97,18 +99,9 @@ public class TestCaseVisitor implements Visitor {
         sb.append(parentType.fullName()).append("::");
       }
 
-      var argsString = callableStmt.args().stream().map(a -> {
-            var argBuilder = new StringBuilder();
-            /*if (callableStmt.borrows(a)) {
-              argBuilder.append("&");
-            }*/
-            /*if (callableStmt.mutates(a)) {
-              argBuilder.append("mut ");
-            }*/
-
-            argBuilder.append(getVariableName(a));
-            return argBuilder.toString();
-          })
+      var argsString = callableStmt.args()
+          .stream()
+          .map(this::getVariableName)
           .collect(Collectors.joining(", "));
 
       sb.append(callableStmt.name()).append("(").append(argsString).append(");");

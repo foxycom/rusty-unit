@@ -1,14 +1,19 @@
 package de.unipassau.testify.test_case.statement;
 
+import static java.util.stream.Collectors.toCollection;
+
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
 import de.unipassau.testify.test_case.callable.Method;
 import de.unipassau.testify.test_case.type.Type;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class MethodStmt extends CallableStmt {
+
   private final Method method;
 
   public MethodStmt(TestCase testCase,
@@ -39,15 +44,17 @@ public class MethodStmt extends CallableStmt {
 
   @Override
   public void replaceAt(int pos, VarReference var) {
-    throw new RuntimeException("Not implemented yet");
+    args.set(pos, var);
   }
 
   @Override
   public Statement copy(TestCase testCase) {
-    var argsCopy = args.stream().map(a -> a.copy(testCase)).toList();
+    var argsCopy = args.stream()
+        .map(a -> a.copy(testCase))
+        .collect(toCollection(ArrayList::new));
     VarReference returnValueCopy = null;
     if (returnValue != null) {
-       returnValueCopy = returnValue.copy(testCase);
+      returnValueCopy = returnValue.copy(testCase);
     }
     return new MethodStmt(testCase, argsCopy, returnValueCopy, method);
   }
@@ -65,6 +72,16 @@ public class MethodStmt extends CallableStmt {
   @Override
   public List<Param> params() {
     return method.getParams();
+  }
+
+  @Override
+  public String getSrcFilePath() {
+    return method.getSrcFilePath();
+  }
+
+  @Override
+  public boolean isPublic() {
+    return method.isPublic();
   }
 
 

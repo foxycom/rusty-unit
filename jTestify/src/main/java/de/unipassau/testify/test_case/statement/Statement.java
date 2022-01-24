@@ -35,6 +35,10 @@ public interface Statement {
 
   TestCase testCase();
 
+  String getSrcFilePath();
+
+  boolean isPublic();
+
   default boolean isRefStmt() {
     return false;
   }
@@ -130,30 +134,30 @@ public interface Statement {
   }
 
   default boolean mutateParameter(int pos) {
-    var param = actualParamTypes().get(pos);
+    var paramType = actualParamTypes().get(pos);
     var currentVar = args().get(pos);
 
     List<VarReference> usableVariables;
-    if (param.isRef()) {
-      usableVariables = testCase().borrowableVariablesOfType(param, pos);
+    if (paramType.isRef() || isRefStmt()) {
+      usableVariables = testCase().borrowableVariablesOfType(paramType, position());
     } else {
-      usableVariables = testCase().consumableVariablesOfType(param, pos);
+      usableVariables = testCase().consumableVariablesOfType(paramType, position());
     }
 
     usableVariables.remove(returnValue().orElseThrow());
     usableVariables.remove(currentVar);
 
-    int numParamsOfThatType = numParamsOfType(param);
+    int numParamsOfThatType = numParamsOfType(paramType);
     // If there are fewer objects than parameters of that type,
     // we consider adding an instance
     while (numParamsOfThatType + 1 > usableVariables.size()) {
       logger.info("Still too few usable variables, trying to generate another one");
-      var var = testCase().generateArg(param);
+      var var = testCase().generateArg(paramType);
       var.ifPresent(usableVariables::add);
     }
 
     if (usableVariables.isEmpty()) {
-      logger.warn("Could not mutate param #{} of type {} ", pos, param);
+      logger.warn("Could not mutate param #{} of type {} ", pos, paramType);
       return false;
     }
 
@@ -166,8 +170,8 @@ public interface Statement {
   void replace(VarReference oldVar, VarReference newVar);
 
   default void replaceAt(int pos, VarReference var) {
-    var typeBinding = testCase().popTypeBindingsFor(args().get(pos));
-    testCase().setTypeBindingsFor(var, typeBinding);
+    /*var typeBinding = testCase().popTypeBindingsFor(args().get(pos));
+    testCase().setTypeBindingsFor(var, typeBinding);*/
 
     setArg(pos, var);
   }

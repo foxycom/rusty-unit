@@ -10,16 +10,15 @@ import de.unipassau.testify.test_case.callable.EnumInit;
 import de.unipassau.testify.test_case.callable.RefItem;
 import de.unipassau.testify.test_case.callable.StaticMethod;
 import de.unipassau.testify.test_case.callable.StructInit;
-import de.unipassau.testify.test_case.statement.StaticMethodStmt;
 import de.unipassau.testify.test_case.type.Complex;
 import de.unipassau.testify.test_case.type.Enum;
 import de.unipassau.testify.test_case.type.Enum.EnumVariant;
 import de.unipassau.testify.test_case.type.Generic;
 import de.unipassau.testify.test_case.type.Ref;
 import de.unipassau.testify.test_case.type.Type;
-import de.unipassau.testify.test_case.type.prim.Int;
 import de.unipassau.testify.test_case.type.prim.Int.ISize;
 import de.unipassau.testify.test_case.type.prim.UInt.USize;
+import de.unipassau.testify.test_case.visitor.TestCaseVisitor;
 import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,18 +48,19 @@ class TestCaseTest {
 
   @Test
   void testInsertCallableWithSameGeneric() {
-
     Type generic_A = new Generic("A", Collections.emptyList());
     Type parent = new Complex("MyType", List.of(generic_A), true);
     Type vecType = new Complex("std::vec::Vec", List.of(generic_A), false);
-    List<Param> params = List.of(
+
+    var params = List.of(
         new Param(generic_A, false, "x"),
         new Param(vecType, false, "v")
     );
+
     var callableUnderTest = new StaticMethod("a", params, ISize.INSTANCE, parent, "");
 
     var vecCallable = new StaticMethod("new", Collections.emptyList(), vecType, vecType, "");
-    when(analysis.generatorsOf(any())).thenReturn(List.of(vecCallable));
+    when(analysis.generatorsOf(any(), null)).thenReturn(List.of(vecCallable));
 
     testCase.insertCallable(callableUnderTest);
 
@@ -207,9 +207,9 @@ class TestCaseTest {
     var structInit = new StructInit(params, structType, "");
 
     var enumGenerator = new EnumInit(genericOption, genericVariant, true);
-    var refGenerator = new RefItem(new Param(new Generic("T", Collections.emptyList()), true, null), true);
-    when(analysis.generatorsOf(any(Enum.class))).thenReturn(List.of(enumGenerator));
-    when(analysis.generatorsOf(any(Ref.class))).thenReturn(List.of(refGenerator));
+    var refGenerator = RefItem.INSTANCE;
+    when(analysis.generatorsOf(any(Enum.class), null)).thenReturn(List.of(enumGenerator));
+    when(analysis.generatorsOf(any(Ref.class), null)).thenReturn(List.of(refGenerator));
 
     testCase.insertCallable(structInit);
     var visitor = new TestCaseVisitor();
@@ -222,6 +222,7 @@ class TestCaseTest {
 
   @Test
   void visit() {
+
   }
 
   @Test

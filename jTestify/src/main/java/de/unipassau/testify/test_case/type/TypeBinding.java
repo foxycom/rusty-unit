@@ -1,6 +1,7 @@
 package de.unipassau.testify.test_case.type;
 
 import com.google.common.collect.Streams;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -86,5 +87,12 @@ public class TypeBinding {
 
   public TypeBinding copy() {
     return new TypeBinding(this);
+  }
+
+  @Override
+  public String toString() {
+    return "{" + binding.entrySet().stream().map(e -> e.getKey() + " -> " + e.getValue())
+        .collect(Collectors.joining(", "))
+        + "}";
   }
 }
