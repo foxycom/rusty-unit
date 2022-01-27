@@ -4,6 +4,7 @@ import de.unipassau.testify.Constants;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.visitor.TestCaseVisitor;
+import de.unipassau.testify.test_case.visitor.Visitor;
 import de.unipassau.testify.util.Rnd;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,8 +15,8 @@ public class BasicMutation implements Mutation<TestCase> {
 
   @Override
   public TestCase apply(TestCase testCase) {
-    var visitor = new TestCaseVisitor();
-    logger.info("Starting mutation on testcase:\n{}\n{}", testCase.visit(visitor), testCase.getTypeBindingsString());
+    logger.info("Starting mutation on testcase:\n{}\n{}", testCase,
+        testCase.getTypeBindingsString());
     var copy = testCase.copy();
 
     if (Rnd.get().nextDouble() <= Constants.P_TEST_DELETE) {
@@ -33,13 +34,14 @@ public class BasicMutation implements Mutation<TestCase> {
       mutationInsert(copy);
     }
 
+    logger.info("Mutated test:\n{}", copy);
     return copy;
   }
 
   private boolean mutationInsert(TestCase testCase) {
     logger.info("Starting insert mutation");
 
-    boolean changed = true;
+    boolean changed = false;
     final double alpha = Constants.P_STMT_INSERT;
     int count = 0;
 
@@ -52,17 +54,21 @@ public class BasicMutation implements Mutation<TestCase> {
       }
     }
 
+    logger.debug("Inserted " + count + " statements");
     return changed;
   }
 
   private boolean mutationChange(TestCase testCase) {
+    logger.info("Starting change mutation");
     var p = 1d / testCase.size();
 
+    int count = 0;
     var changed = false;
     for (int position = 0; position < testCase.size(); position++) {
       if (Rnd.get().nextDouble() <= p) {
         var stmt = testCase.stmtAt(position).orElseThrow();
         if (stmt.mutate(testCase)) {
+          count++;
           changed = true;
         }
 
@@ -70,15 +76,16 @@ public class BasicMutation implements Mutation<TestCase> {
       }
     }
 
+    logger.debug("Changed " + count + " statements");
     return changed;
   }
 
   private boolean mutationDelete(TestCase testCase) {
+    logger.info("Starting delete mutation");
     if (testCase.isEmpty()) {
+      logger.debug("Aborting, test case is already empty");
       return false;
     }
-
-    logger.info("Starting delete mutation");
 
     boolean changed = false;
 
@@ -89,13 +96,14 @@ public class BasicMutation implements Mutation<TestCase> {
         continue;
       }
 
-      logger.info("Deleting statement at position {}", pos);
-
       if (Rnd.get().nextDouble() <= p) {
+        logger.info("Deleting statement at position {}", pos);
         changed |= deleteStatement(testCase, pos);
       }
     }
 
+    var message = changed ? "Deleted statements" : "Did not delete any statement";
+    logger.debug(message);
     return changed;
   }
 
@@ -110,20 +118,23 @@ public class BasicMutation implements Mutation<TestCase> {
       alternatives.remove(returnValue);
 
       if (!alternatives.isEmpty()) {
-        // Replace all usages of var to something else of the same type
         for (int i = pos + 1; i < testCase.size(); i++) {
           var s = testCase.stmtAt(i).orElseThrow();
           if (s.uses(returnValue)) {
+            // Replace all usages of var to something else of the same type
             var replacement = Rnd.choice(alternatives);
-            logger.info("Replacing {} by {} in statement {}", returnValue, replacement, s);
+            logger.info("Replacing {} by {} at {} in statement {}",
+                returnValue, replacement, i, s);
             s.replace(returnValue, replacement);
-            changed = true;
           }
+
+          changed = true;
         }
       }
     }
 
     var removed = testCase.removeStmt(testCase.stmtAt(pos).orElseThrow());
+
     return changed;
   }
 }

@@ -45,14 +45,13 @@ import org.slf4j.LoggerFactory;
 
 public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
-  private static Logger logger = LoggerFactory.getLogger(TestCase.class);
+  private static final Logger logger = LoggerFactory.getLogger(TestCase.class);
   private final HirAnalysis hirAnalysis;
 
   private int id;
   private List<Statement> statements;
   private Map<Integer, Double> coverage;
   private final Graph<Node, Dependency> ddg;
-  private final Map<VarReference, TypeBinding> typeBindings;
 
   public TestCase(int id, HirAnalysis hirAnalysis, Mutation<TestCase> mutation,
       Crossover<TestCase> crossover) {
@@ -61,7 +60,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     this.hirAnalysis = hirAnalysis;
     this.statements = new ArrayList<>();
     this.ddg = new DirectedMultigraph<>(Dependency.class);
-    this.typeBindings = new HashMap<>();
     this.coverage = new HashMap<>();
   }
 
@@ -73,19 +71,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         .collect(toCollection(ArrayList::new));
     // TODO not really copying it
     this.ddg = new DirectedMultigraph<>(Dependency.class);
-
-    this.typeBindings = variables().stream()
-        .map(v -> Pair.with(v, other.typeBindings.get(v)))
-        // Only consider values that indeed have some binding
-        .filter(p -> p.getValue1() != null)
-        .collect(
-            HashMap::new,
-            (m, v) -> m.put(v.getValue0(), v.getValue1()),
-            HashMap::putAll
-        );
-
-    Preconditions.checkState(typeBindings.size() == other.typeBindings.size());
-
     this.coverage = new HashMap<>();
   }
 
@@ -104,20 +89,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   @Override
   public int size() {
     return statements.size();
-  }
-
-  public TypeBinding getTypeBindingsFor(VarReference var) {
-    Preconditions.checkState(typeBindings.containsKey(var));
-    return typeBindings.get(var);
-  }
-
-  public TypeBinding popTypeBindingsFor(VarReference var) {
-    return typeBindings.remove(var);
-  }
-
-  public void setTypeBindingsFor(VarReference var, TypeBinding binding) {
-    Preconditions.checkNotNull(binding);
-    typeBindings.put(var, binding);
   }
 
   public List<Statement> getStatements() {
@@ -165,7 +136,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     return statements.size() > 1;
   }
 
-  public VarReference satisfyParameter(int pos, Type parameter) throws NoAvailableArgException {
+  public Optional<VarReference> satisfyParameter(int pos, Type parameter) {
     List<VarReference> usableVariables;
     if (parameter.isRef()) {
       usableVariables = borrowableVariablesOfType(parameter, pos);
@@ -182,24 +153,24 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       if (generatedArg.isPresent()) {
         var = generatedArg.get();
       } else {
-        throw new NoAvailableArgException("Could not generate any argument for " + parameter);
+        logger.warn("Could not generate any argument for " + parameter);
+        return Optional.empty();
       }
     }
-    return var;
+    return Optional.of(var);
   }
 
   /**
    * We assume that all the variables used in the statement do not exist in this test case, because
    * the stmt comes from another one.
    */
-  public List<VarReference> satisfyParameters(int pos, Statement stmt)
-      throws NoAvailableArgException {
+  public List<VarReference> satisfyParameters(int pos, Statement stmt) {
     var paramTypes = stmt.actualParamTypes();
 
     List<VarReference> variables = new ArrayList<>(paramTypes.size());
     for (Type paramType : paramTypes) {
       var var = satisfyParameter(pos, paramType);
-      variables.add(var);
+      var.ifPresent(variables::add);
     }
 
     return variables;
@@ -245,7 +216,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
   public void removeAllStmts() {
     statements.clear();
-    typeBindings.clear();
   }
 
   public int removeStmt(Statement stmt) {
@@ -255,14 +225,14 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     }
 
     var returnValue = stmt.returnValue().orElseThrow();
-    var usingStmts = returnValue.usedAt().stream()
+    var usingStmts = returnValue.usedAt()
+        .stream()
         .map(this::stmtAt)
         .map(Optional::orElseThrow)
         .collect(toCollection(ArrayList::new));
     Collections.reverse(usingStmts);
     usingStmts.forEach(this::removeStmt);
 
-    typeBindings.remove(returnValue);
     statements.remove(stmt);
     return 0;
   }
@@ -377,7 +347,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   }
 
   public boolean insertCallable(Callable callable) {
-    logger.info("Inserting callable {}", callable);
+    logger.debug("Inserting callable {}", callable);
 
     Set<Generic> generics = callable.getParams().stream()
         .map(Param::getType)
@@ -392,21 +362,21 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       generics.addAll(TypeUtil.getDeepGenerics(callable.getReturnType()));
     }
 
-    logger.info("It's generics are: {}", generics);
+    logger.debug("It's generics are: {}", generics);
 
     var typeBinding = new TypeBinding(generics);
 
     generics.stream().map(g -> Pair.with(g, getTypeFor(g))).filter(p -> p.getValue1().isPresent())
         .forEach(p -> typeBinding.bindGeneric(p.getValue0(), p.getValue1().get()));
     if (typeBinding.hasUnboundedGeneric()) {
-      logger.info("Could not bind all generics: {}", typeBinding.getUnboundGenerics());
+      logger.warn("Could not bind all generics: {}", typeBinding.getUnboundGenerics());
       return false;
     }
 
     var args = callable.getParams().stream()
         .map(p -> {
           Type typeToGenerate = p.getType().bindGenerics(typeBinding);
-          logger.info("Bounded param {} to {}", p, typeToGenerate);
+          logger.debug("Bounded param {} to {}", p, typeToGenerate);
 
           return generateArg(typeToGenerate);
         })
@@ -422,7 +392,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     VarReference returnValue = null;
     if (callable.returnsValue()) {
       returnValue = createVariable(callable.getReturnType().bindGenerics(typeBinding));
-      typeBindings.put(returnValue, typeBinding);
+      returnValue.setBinding(typeBinding);
     }
 
     var stmt = callable.toStmt(this, args, returnValue);
@@ -449,7 +419,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
   private Optional<VarReference> generateArg(Param param,
       Set<Type> typesToGenerate) {
-    logger.info("Starting to generate an argument for param {}", param);
+    logger.debug("Starting to generate an argument for param {}", param);
     if (param.isPrimitive()) {
       var type = param.getType().asPrimitive();
       return Optional.of(generatePrimitive(type));
@@ -471,15 +441,17 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
   private Optional<VarReference> generateArg(Type type,
       Set<Type> typesToGenerate) {
-    logger.info("Starting to generate an argument for type {}", type);
+    logger.debug("Starting to generate an argument for type {}", type);
     // TODO reuse existing variables if possible, e.g., introduce a boolean flag or so
     if (type.isPrim()) {
       return Optional.of(generatePrimitive(type.asPrimitive()));
     } else if (type.isComplex() || type.isEnum()) {
       var generators = hirAnalysis.generatorsOf(type, getFilePathBinding().orElse(null));
+      logger.debug("Found " + generators.size() + " generators");
       return generateArgFromGenerators(type, generators, typesToGenerate);
     } else if (type.isRef()) {
       var generators = hirAnalysis.generatorsOf(type, getFilePathBinding().orElse(null));
+      logger.debug("Found " + generators.size() + " generators");
       return generateArgFromGenerators(type, generators, typesToGenerate);
     } else {
       throw new RuntimeException("Not implemented: " + type);
@@ -559,7 +531,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   }
 
   private VarReference generatePrimitive(Prim prim) {
-    logger.info("Starting to generate a primitive");
+    logger.debug("Starting to generate a primitive");
     var val = prim.random();
     var var = createVariable(prim);
     var stmt = new PrimitiveStmt(this, var, val);
@@ -570,7 +542,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   private Optional<VarReference> generateArgFromGenerators(Type type, List<Callable> generators,
       Set<Type> typesToGenerate) {
 
-    logger.info("Starting to generate a " + type);
+    logger.debug("Starting to generate a " + type + " with " + generators.size() + " generator options");
     boolean retry = true;
     Callable generator = null;
     while (retry && !generators.isEmpty()) {
@@ -584,6 +556,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         // We already try to generate a type which is needed as an argument for the call
         // Hence, this would probably lead to infinite recursive chain. Remove the
         // generator and retry with another one.
+        logger.debug("Removing candidate generator since we already try to generate it");
         generators.remove(candidateGenerator);
         retry = true;
       } else {
@@ -598,7 +571,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       return Optional.empty();
     }
 
-    logger.info("Selected generator: {} (Total: {})", generator, generators.size());
+    logger.debug("Selected generator: {} (Total: {})", generator, generators.size());
 
     var typeBinding = TypeUtil.getNecessaryBindings(generator.getReturnType(), type);
 
@@ -673,7 +646,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         returnValue = createVariable(type);
       }
 
-      typeBindings.put(returnValue, typeBinding);
+      returnValue.setBinding(typeBinding);
     }
 
     var stmt = generator.toStmt(this, args, returnValue);
@@ -682,15 +655,15 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   }
 
   private VarReference createVariable(Type type) {
-    logger.info("Created variable of type {}", type);
+    logger.debug("Created variable of type {}", type);
     return new VarReference(this, type);
   }
 
   public String getTypeBindingsString() {
     var sb = new StringBuilder();
     var visitor = new TypeBindingStringVisitor(this);
-    typeBindings.forEach((key, value) -> sb.append(visitor.getVariableName(key)).append(": ")
-        .append(visitor.visit(value)));
+    /*typeBindings.forEach((key, value) -> sb.append(visitor.getVariableName(key)).append(": ")
+        .append(visitor.visit(value)));*/
     return sb.toString();
   }
 

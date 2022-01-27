@@ -51,7 +51,7 @@ public interface Prim extends Type {
 
   @Override
   default boolean canBeSameAs(Type other) {
-    return equals(other);
+    return equals(other) || other.isGeneric();
   }
 
   default boolean isNumeric() {

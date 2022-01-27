@@ -1,8 +1,10 @@
 package de.unipassau.testify.test_case;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Streams;
 import de.unipassau.testify.test_case.statement.Statement;
 import de.unipassau.testify.test_case.type.Type;
+import de.unipassau.testify.test_case.type.TypeBinding;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -12,20 +14,28 @@ import org.javatuples.Pair;
 
 public class VarReference {
 
-  private TestCase testCase;
   private final Type type;
-  private UUID id;
+  private final UUID id;
+
+  private TestCase testCase;
+  private TypeBinding binding;
 
   public VarReference(TestCase testCase, Type type) {
+    this(testCase, type, new TypeBinding());
+  }
+
+  public VarReference(TestCase testCase, Type type, TypeBinding typeBinding) {
     this.id = UUID.randomUUID();
     this.testCase = testCase;
     this.type = type;
+    this.binding = typeBinding;
   }
 
   public VarReference(VarReference other) {
     this.id = other.id;
     this.testCase = other.testCase;
     this.type = other.type.copy();
+    this.binding = other.binding.copy();
   }
 
   public Type type() {
@@ -125,6 +135,15 @@ public class VarReference {
     var copy = new VarReference(this);
     copy.testCase = testCase;
     return copy;
+  }
+
+  public TypeBinding getBinding() {
+    return binding;
+  }
+
+  public void setBinding(TypeBinding binding) {
+    Preconditions.checkNotNull(binding);
+    this.binding = binding;
   }
 
   @Override

@@ -1,6 +1,7 @@
-package de.unipassau.testify.test_case;
+package de.unipassau.testify.test_case.fitness;
 
 import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
+import de.unipassau.testify.test_case.TestCase;
 
 public class Fitness implements MinimizingFitnessFunction<TestCase> {
 

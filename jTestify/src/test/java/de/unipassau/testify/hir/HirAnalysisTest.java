@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.google.common.collect.Lists;
 import com.google.common.truth.Truth;
 import de.unipassau.testify.test_case.Param;
+import de.unipassau.testify.test_case.type.Complex;
 import de.unipassau.testify.test_case.type.Enum;
 import de.unipassau.testify.test_case.type.Enum.EnumVariant;
 import de.unipassau.testify.test_case.type.Generic;
@@ -27,8 +28,6 @@ class HirAnalysisTest {
   void setUp() throws IOException {
     analysis = new HirAnalysis(Collections.emptyList());
   }
-
-
 
   @Test
   void testGetGeneratorsOfOption() {

@@ -278,4 +278,9 @@ TSWLatexianTemp*
 *.pdf
 .DS_Store
 
+evaluation/*
+*/build/*
+testify/tests_debug/*
+jTestify/.gradle/*
+
 

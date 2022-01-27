@@ -132,7 +132,7 @@ public class EnumStmt implements Statement {
 
   @Override
   public boolean consumes(VarReference var) {
-    var typeBinding = testCase.getTypeBindingsFor(returnValue);
+    var typeBinding = returnValue.getBinding();
 
     var pos = IntStream.range(0, args.size()).filter(i -> args.get(i).equals(var)).findFirst();
     if (pos.isPresent()) {
@@ -145,7 +145,7 @@ public class EnumStmt implements Statement {
 
   @Override
   public boolean borrows(VarReference var) {
-    var typeBinding = testCase.getTypeBindingsFor(returnValue);
+    var typeBinding = returnValue.getBinding();
 
     var pos = IntStream.range(0, args.size()).filter(i -> args.get(i).equals(var)).findFirst();
     if (pos.isPresent()) {

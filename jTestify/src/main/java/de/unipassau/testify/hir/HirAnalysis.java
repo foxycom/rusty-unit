@@ -4,6 +4,7 @@ import static java.util.stream.Collectors.toCollection;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.unipassau.testify.test_case.Param;
+import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.EnumInit;
 import de.unipassau.testify.test_case.callable.RefItem;
@@ -24,9 +25,12 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HirAnalysis {
 
+  private static final Logger logger = LoggerFactory.getLogger(HirAnalysis.class);
   private static final String PROVIDERS_PATH = "/Users/tim/Documents/master-thesis/jTestify/providers";
 
   private final List<Callable> callables = loadCallableProviders();
@@ -60,13 +64,14 @@ public class HirAnalysis {
 
   public <S extends Callable> List<Callable> generatorsOf(Type type, String filePath,
       Class<S> subClass) {
-
+    logger.debug("Looking for generators of " + type);
     var stream = callables.stream()
         .filter(subClass::isInstance)
         .filter(callable -> callable.getReturnType() != null
         && callable.getReturnType().canBeSameAs(type));
 
     if (filePath != null) {
+      logger.debug("File path is not null, applying filtering");
       stream = stream.filter(callable -> callable.isPublic()
           || (callable.getSrcFilePath() != null && callable.getSrcFilePath().equals(filePath)));
     }

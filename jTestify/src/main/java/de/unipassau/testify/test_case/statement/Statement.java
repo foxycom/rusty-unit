@@ -133,6 +133,12 @@ public interface Statement {
     return (int) args().stream().map(VarReference::type).filter(t -> t.equals(type)).count();
   }
 
+  /**
+   * Mutates parameter at position pos.
+   *
+   * @param pos The position index of the parameter.
+   * @return true if the param has been mutated, false otherwise.
+   */
   default boolean mutateParameter(int pos) {
     var paramType = actualParamTypes().get(pos);
     var currentVar = args().get(pos);
@@ -144,7 +150,10 @@ public interface Statement {
       usableVariables = testCase().consumableVariablesOfType(paramType, position());
     }
 
-    usableVariables.remove(returnValue().orElseThrow());
+    // Don't use the return value of the statement as its own parameter
+    returnValue().ifPresent(usableVariables::remove);
+
+    // Don't use the original parameter
     usableVariables.remove(currentVar);
 
     int numParamsOfThatType = numParamsOfType(paramType);

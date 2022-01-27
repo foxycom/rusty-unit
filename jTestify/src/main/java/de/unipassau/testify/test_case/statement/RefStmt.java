@@ -110,6 +110,11 @@ public class RefStmt implements Statement {
   }
 
   @Override
+  public boolean borrows(VarReference var) {
+    return arg.equals(var);
+  }
+
+  @Override
   public void replace(VarReference oldVar, VarReference newVar) {
     if (!arg.equals(oldVar)) {
       throw new RuntimeException("Statement does not use this var");
