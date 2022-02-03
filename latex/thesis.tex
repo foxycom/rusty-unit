@@ -605,7 +605,7 @@ let left_value: &str = pair.left();
 let another_pair: Pair<usize, usize> = Pair::of(0usize, 1usize);
 \end{lstlisting}
 
-It is also possible to put constraits, which are called trait bounds in Rust, on the type parameters. For instance, we could define a textual representation of a pair. The \lstinline{Display} trait of the standard library defines the \lstinline{fmt} method which uses the \lstinline{\{} print marker. As shown in Listing~\ref{lst:example-generics-usage}, we tell that the left and right hand side types used with the \lstinline{Pair} struct must implement the \lstinline{Display} trait. The effect of bounding is that generic instances are allowed to access the methods of traits specified in the bounds. Under the hood, the \lstinline{println!} macro call the \lstinline{fmt} method of the \lstinline{Pair} instance.
+It is also possible to put constraits, which are called trait bounds in Rust, on the type parameters. For instance, we could define a textual representation of a pair. The \lstinline{Display} trait of the standard library defines the \lstinline{fmt} method which uses the \lstinline{\{\}} print marker. As shown in Listing~\ref{lst:example-generics-usage}, we tell that the left and right hand side types used with the \lstinline{Pair} struct must implement the \lstinline{Display} trait. The effect of bounding is that generic instances are allowed to access the methods of traits specified in the bounds. Under the hood, the \lstinline{println!} macro call the \lstinline{fmt} method of the \lstinline{Pair} instance.
 \begin{lstlisting}[language=Rust, style=boxed, caption=A function which will remain generic at runtime. It can be rewritten in the same style as the other two variants in Listing~\ref{lst:example-generic-functions}, label=lst:example-generics-usage]
 struct Pair<L: Display, R: Display> {
     left: L,
@@ -1024,73 +1024,53 @@ Instead most compilers, including \lstinline{rustc}, build some sort of \ac{IR} 
 \end{itemize}
 
 \subsubsection{High-Level Intermediate Representation}
-For the purpose of test generation, \ac{HIR} and \ac{MIR} are of primary importance. First, we are interested in all possible functions, structs/enums, and their methods and fields in the crate we want to test. This information allows us to evaluate which statements we can use in a generated test at all and what types of instances do those statements produce. We call functions and methods generators since those can generate instances and values of the required types when we recursively search for a dependency. The fact that desugaring has already been performed in the \ac{HIR} has no influence at this point, because the transformations are only performed intra-procedurally. We are only interested in method definitions, their parameters and return types. However, thanks to \ac{HIR} we can also determine the absolute path of a type, for example a parameter. Relative type names, such as \lstinline{File} instead of \lstinline{std::fs::File}, can lead to difficulties when compiling the generated tests due to missing imports. Thus it is easier to carry a complete type path and by means of \ac{HIR} one can easily query this. Listing~\ref{lst:hir-analysis} shows how items can be extracted from a crate under test. In \ac{HIR}, the whole program (i.e. all source files) is unified into one large in-memory data structure, which makes it easier to extract the required pieces of information. Nevertheless, each type stores a Span object, which shows its origin at the source code level. This is important because, by convention, unit tests in Rust are written in the same file that contains the tested code and, thus, can also access private functions and methods and increase coverage.
+Many parts of the \ac{HIR} resemble Rust surface syntax quite closely, with the exception that some of Rust's expression forms have been desugared away. Für die Analyse von verfügbaren Strukturen, Methoden und Funktionen müssen wir möglichst viele Informationen bekommen, die vom Compiler zur Verfügung gestellt werden. Die \ac{HIR} ist dafür perfekt geeignet, denn auf dieser Ebene werden zugleich die Typen explizit vom Compiler ausgefüllt und es werden noch alle für uns relevante Sprachelemente beibehalten. Lediglich werden intraprozedurale Elemente desugared, for instance, \lstinline{for} loops are converted into a \lstinline{loop} and do not appear in the \ac{HIR}.
+\begin{lstlisting}[language=Rust, style=boxed, caption={An example Rust program that we convert to HIR}, label=lst:hir-lowering]
+struct IntVec {
+    vec: Vec<i32>
+}
 
-\begin{lstlisting}[language=Rust, style=boxed, caption={Iterate over the items in the HIR of a crate}, label=lst:hir-analysis]
-fn hir_analysis(tcx: &TyCtxt<'_>, callables: &mut Vec<Callable>) {
-    for item in tcx.hir().items() {
-        match &item.kind {
-            ItemKind::Fn(sig, _, _) => {
-                if &item.ident.name.to_string() != "main" {
-                    analyze_fn(sig, item.def_id, callables, &tcx);
-                }
-            }
-            ItemKind::Impl(impl_item) => {
-                analyze_impl(impl_item, callables, &tcx);
-            }
-            _ => {}
+impl IntVec {
+    pub fn foo(&mut self) {
+        for n in self.vec {
+            // Does something
         }
     }
 }
 \end{lstlisting}
 
-This way we can already generate random tests, since we know which functions or methods can be called. Listing~\ref{lst:hir-analysis-example} shows an example program. After the analysis, the following holds in terms of Algorithm~\ref{alg:random-generation-of-args}: $M = \{\lstinline{Address::new}, \lstinline{Person::new}, \lstinline{Person::address}, \lstinline{say_hello_to}, \lstinline{address_to_string}\}$. If we wanted to execute the \lstinline{address_to_string} function in an empty test $t = \{\}$, we would have to generate an argument of type \lstinline{Address}. Thanks to the information about the return type of a method, we can use $GenObject(Address, \{\}, M, t)$ to create either an \lstinline{Address} object using \lstinline{Address::new} or \lstinline{Person::address}. The latter one is a method, i.e., it expects a \lstinline{self} object argument which would require us to recursively search for a way to create an object of type \lstinline{Person}.
+Listings~\ref{lst:hir-lowering} and \ref{lst:hir-lowered} demonstrate a comparison of the same program before and after lowering to \ac{HIR}. The main differences are the desugared \lstinline{for} loop and the filled in type declaration of the \lstinline{self} parameter of the \lstinline{foo} method. Da wir für das Generieren eines Tests für die gegebene \lstinline{foo} Methode nur die Methodensignatur sowie die Structdefinition brauchen, stellt das Desugaring kein Problem dar.
 
-\begin{lstlisting}[language=Rust, style=boxed, caption={After HIR analysis, we know how a \lstinline{Person} object can be generated to be used in \lstinline{say_hello_to}.}, label=lst:hir-analysis-example]
-struct Address {
-    street: String,
-    house_n: usize,
-    city: String,
-    zip: usize
+\begin{lstlisting}[language=Rust, style=boxed, caption={HIR of the code in Listing~\ref{lst:hir-lowering}}, label=lst:hir-lowered]
+struct IntVec {
+    vec: Vec<i32>,
 }
 
-impl Address {
-    pub fn new(street: &str, house_n: usize, city: &str, zip: usize) -> Self {
-        Address {
-            street: street.to_owned(),
-            house_n,
-            city: city.to_owned(),
-            zip
+impl IntVec {
+    pub fn foo(self: &mut Self) -> () {
+        {
+            let _t = match #[lang = "into_iter"](self.vec) {
+                mut iter => loop {
+                    match #[lang = "next"](&mut iter) {
+                        #[lang = "None"] {} => break,
+                        #[lang = "Some"] { 0: n } => {
+                                {
+                                    // Does something
+                                };
+                        }
+                    }
+                },
+            };
+            _t
         }
     }
-}
-
-struct Person {
-    name: String,
-    address: Address
-}
-
-impl Person {
-    pub fn new(name: &str, address: Address) -> Self {
-        Person {
-            name: name.to_owned(),
-            address
-        }
-    }
-
-    pub fn address(&self) -> &Address {
-        &self.address
-    }
-}
-
-fn say_hello_to(person: &Person) {
-    // ...
-}
-
-fn address_to_string(address: &Address) -> String {
-    // ...
 }
 \end{lstlisting}
+
+Bei der nächsten Lowering Stufe, nämlich \ac{THIR}, kennt, ähnlich wie \ac{MIR}, nur function bodies, d. h. nur ausführbaren Code. Folglich hat \ac{THIR} keine Repräsentation für Items wie \lstinline{struct} oder
+\lstinline{trait} und ist daher für diese Art der Analyse nicht hilfreich.
+
+\todo{DefIds und so weiter beschreiben}
 
 \subsubsection{Mid-Level Intermediate Representation}
 % TODO umformulieren und so
@@ -1174,132 +1154,89 @@ fn main() {
 }
 \end{lstlisting}
 
-Listing~\ref{lst:running-compiler} shows how the Rust compiler can subsequently be started programmatically. Now this program can be used in general for instrumenting Rust programs. However, calling it directly is very cumbersome, since the compiler needs to know many arguments, especially for large crates, in order to link dependencies correctly. Normally one uses a build system for this, for example Cargo, which takes over this work and provides compiler arguments. Fortunately, Cargo provides a way to define your own \lstinline{rustc} wrapper, which is supplied with correct arguments by Cargo. The task of such a wrapper is to eventually call the compiler on itself with the passed arguments~\footnote{\url{https://doc.rust-lang.org/cargo/reference/environment-variables.html}}. To use the wrapper, one has to set the environment variable \lstinline{RUSTC_WRAPPER} to the path to the wrapper binary. Finally, a target Rust program can be built and instrumented by running:
+Listing~\ref{lst:running-compiler} shows how the Rust compiler can subsequently be started programmatically. Now this program can be used in general for instrumenting Rust programs. However, calling it directly is very cumbersome, since the compiler needs to know many arguments, especially for large crates, in order to link dependencies correctly. Normally one uses a build system for this, for example Cargo, which takes over this work and provides appropriate compiler arguments when building a crate. Fortunately, Cargo provides a way to define our own \lstinline{rustc} wrapper, which is then supplied with correct arguments by Cargo. The task of such a wrapper is to eventually call the compiler on itself with the passed arguments~\footnote{\url{https://doc.rust-lang.org/cargo/reference/environment-variables.html}}. To use the wrapper, one has to set the environment variable \lstinline{RUSTC_WRAPPER} to the path to the wrapper binary. Finally, a target Rust program can be built and instrumented by running:
 
 \lstinline{RUSTC_WRAPPER=./instrumentation cargo +nightly build}
 
 Since our wrapper uses \lstinline{rustc_private} features, we have to tell Cargo to enable the nightly channel. The next step is to define how to instrument the \ac{MIR} so that we can observe the execution paths triggered by an execution of generated tests.
 
-
 %The whole process starts, when we run the compiler for the first time on a target crate that we want to test. During this process we can already extract the available items like structs and their methods by traversing the \ac{HIR}.
 
-\subsection{Instrumentation}
-The only compiler callback we implement at is point is the \lstinline{config} function, which allows us to modify the \ac{MIR} of a target program on the fly. The internal compiler crates already provide a \lstinline{MutVisitor}~\footnote{\url{https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/trait.MutVisitor.html}} which can be used to traverse and modify \ac{MIR} objects. To trace the execution of a \ac{SUT}, we need to insert additional code at relevant places in the \ac{MIR}. Those are mainly entry basic blocks (to trace if a body has been entered at all during an execution) and basic blocks that introduce branches and split the execution flow, i.e., those having \lstinline{SwitchInt} terminators. Technically, there are also other terminators which have more than one successor, e.g., \lstinline{Call}. However, the additional branch is used to point to basic blocks which unwind the stack in case the function being called panics. At this point, we are only interested in basic blocks that belong to a regular execution of the program. Listings~\ref{lst:example-function-to-instrument} and \ref{lst:mir-of-example-function-to-instrument} show an example function we want to instrument and the relevant parts of it's \ac{MIR}.
+\subsection{HIR Analysis}
+For the purpose of test generation, \ac{HIR} and \ac{MIR} are of primary importance. First, we are interested in all possible functions, structs/enums, and their methods and fields in the crate we want to test. This information allows us to evaluate which statements we can use in a generated test at all and what types of instances do those statements produce. We call functions and methods generators since those can generate instances and values of the required types when we recursively search for a dependency. The fact that desugaring has already been performed in the \ac{HIR} has no influence at this point, because the transformations are only performed intra-procedurally. We are only interested in method definitions, their parameters and return types. Moreover, thanks to \ac{HIR} we can also determine the absolute path of a type, for example a parameter. Relative type names, such as \lstinline{File} instead of \lstinline{std::fs::File}, can lead to difficulties when compiling the generated tests due to missing imports. Thus it is easier to carry a complete type path and by means of \ac{HIR} one can easily query this. Listing~\ref{lst:hir-analysis} shows how items can be extracted from a crate under test. In \ac{HIR}, the whole program (i.e. all source files) is unified into one large in-memory data structure, which makes it easier to extract the required pieces of information. Nevertheless, each type stores a Span object, which shows its origin at the source code level. This is important because, by convention, unit tests in Rust are written in the same file that contains the tested code and, thus, can also access private functions and methods and increase coverage.
 
-\begin{lstlisting}[language=Rust, style=boxed, caption={Example function to instrument}, label=lst:example-function-to-instrument]
-fn foo(x: i32, y: i32) {
-    if x < y {
-        println!("x < y");
-    } else {
-        println!("x >= y");
+\begin{lstlisting}[language=Rust, style=boxed, caption={Iterate over the items in the HIR of a crate}, label=lst:hir-analysis]
+fn hir_analysis(tcx: &TyCtxt<'_>, callables: &mut Vec<Callable>) {
+    for item in tcx.hir().items() {
+        match &item.kind {
+            ItemKind::Fn(sig, _, _) => {
+                if &item.ident.name.to_string() != "main" {
+                    analyze_fn(sig, item.def_id, &mut callables, &tcx);
+                }
+            }
+            ItemKind::Impl(impl_item) => {
+                if allowed_item(item, &tcx) {
+                    analyze_impl(impl_item, &mut callables, &tcx);
+                }
+            }
+            ItemKind::Struct(s, g) => {
+                if allowed_item(item, &tcx) {
+                    analyze_struct(item.def_id, s, g, &item.vis, file_path.unwrap(), &mut callables, &tcx);
+                }
+            }
+            _ => {}
+        }
     }
 }
 \end{lstlisting}
 
-Within the entry basic block in the \ac{MIR}, the two input arguments are compared and their result is stored into the local variable~\lstinline{_3}. Then, based on the comparison result, the execution of the function can either jump to the block~\lstinline{bb1} (if~\lstinline{x} was less than~\lstinline{y}) or \lstinline{bb3} (if~\lstinline{x} was greater or equal to~\lstinline{y}), that is, there are two branches at this point.
-\begin{lstlisting}[language=Rust, style=boxed, caption={MIR of the \lstinline{foo} function}, label=lst:mir-of-example-function-to-instrument]
-fn foo(_1: i32, _2: i32) -> () {
-    // Locals definition
+This way we can already generate random tests, since we know which functions or methods can be called. Listing~\ref{lst:hir-analysis-example} shows an example program. After the analysis, the following holds in terms of Algorithm~\ref{alg:random-generation-of-args}: $M = \{\lstinline{Address::new}, \lstinline{Person::new}, \lstinline{Person::address}, \lstinline{say_hello_to}, \lstinline{address_to_string}\}$. If we wanted to execute the \lstinline{address_to_string} function in an empty test $t = \{\}$, we would have to generate an argument of type \lstinline{Address}. Thanks to the information about the return type of a method, we can use $GenObject(Address, \{\}, M, t)$ to create either an \lstinline{Address} object using \lstinline{Address::new} or \lstinline{Person::address}. The latter one is a method, i.e., it expects a \lstinline{self} object argument which would require us to recursively search for a way to create an object of type \lstinline{Person}.
 
-    bb0: {
-        _4 = _1;
-        _5 = _2;
-        _3 = Lt(move _4, move _5);
-        switchInt(move _3) -> [false: bb3, otherwise: bb1];
-    }
-
-    bb3: {
-        // print "x >= y"
-    }
-
-    bb1: {
-        // print "x < y"
-    }
-
-    // Other blocks
+\begin{lstlisting}[language=Rust, style=boxed, caption={After HIR analysis, we know how a \lstinline{Person} object can be generated to be used in \lstinline{say_hello_to}.}, label=lst:hir-analysis-example]
+struct Address {
+    street: String,
+    house_n: usize,
+    city: String,
+    zip: usize
 }
-\end{lstlisting}
 
-To trace the execution of a branch, we need to insert a call to our own tracing function after a branch has been taken and just before it starts to execute. A function call is always a terminator in the \ac{MIR}, that is, we must insert a whole new basic block for each trace function invocation. Doing so, we first update a terminator where branching begins, e.g., \lstinline{switchInt}, to point to our artificial tracing blocks. Then, each tracing block must point to the original target block of a branching terminator. Listing~\ref{lst:-instrumented-mir-of-example-function-to-instrument} provides an instrumented version of the \ac{MIR} shown in Listing~\ref{lst:mir-of-example-function-to-instrument}.
-\todo{Entry block instrumentation fehlt}
-\begin{lstlisting}[language={}, style=boxed, caption={Instrumented MIR of the \lstinline{foo} function}, label=lst:-instrumented-mir-of-example-function-to-instrument]
-fn test(_1: i32, _2: i32) -> () {
-    // Locals definition
+impl Address {
+    pub fn new(street: &str, house_n: usize, city: &str, zip: usize) -> Self {
+        Address {
+            street: street.to_owned(),
+            house_n,
+            city: city.to_owned(),
+            zip
+        }
+    }
+}
+
+struct Person {
+    name: String,
+    address: Address
+}
+
+impl Person {
+    pub fn new(name: &str, address: Address) -> Self {
+        Person {
+            name: name.to_owned(),
+            address
+        }
+    }
+
+    pub fn address(&self) -> &Address {
+        &self.address
+    }
+}
+
+fn say_hello_to(person: &Person) {
     // ...
-    let mut _11: monitor::Op;
-    let mut _12: monitor::Branch;
-    let mut _26: monitor::Op;
-    let mut _27: monitor::Branch;
+}
 
-
-    bb0: {
-        _4 = _1;
-        _5 = _2;
-        _3 = Lt(move _4, move _5);
-        switchInt(move _3) -> [false: bb4, otherwise: bb5];
-    }
-
-    bb3: {
-        // print "x >= y"
-    }
-
-    bb1: {
-        // print "x < y"
-    }
-
-    bb4: {
-        _8 = _1;
-        _7 = move _8 as i64 (Misc);
-        _10 = _2;
-        _9 = move _10 as i64 (Misc);
-        discriminant(_11) = 1;
-        discriminant(_12) = 0;
-        _6 = monitor::trace_branch(const 0_u64,
-                            const 1_u64,
-                            move _7,
-                            move _9,
-                            move _11,
-                            move _12) -> bb3;
-    }
-
-    bb5: {
-        _23 = _1;
-        _22 = move _23 as i64 (Misc);
-        _25 = _2;
-        _24 = move _25 as i64 (Misc);
-        discriminant(_26) = 1;
-        discriminant(_27) = 1;
-        _21 = monitor::trace_branch(const 1_u64,
-                            const 0_u64,
-                            move _22,
-                            move _24,
-                            move _26,
-                            move _27) -> bb1;
-    }
-
-    // Other blocks
+fn address_to_string(address: &Address) -> String {
+    // ...
 }
 \end{lstlisting}
-
-In tracing blocks \lstinline{bb4} and \lstinline{bb5} we want to call an appropriate function and store all the information we need to identify and compute the branch distance later. For reference, Listing~\ref{lst:basic-block-in-regular-rust} shows how the basic block~\lstinline{bb5} would look like if it was written in regular Rust.
-
-\begin{lstlisting}[language={}, style=boxed, caption={How would \lstinline{bb5} look like in regular Rust code}, label=lst:basic-block-in-regular-rust]
-monitor::trace_branch(
-        0, // visited branch ID
-        1, // opposite branch ID
-        x as i64,
-        y as i64,
-        monitor::Op::LT,
-        monitor::Branch::True);
-\end{lstlisting}
-
-By outsourcing calculations and the actual tracing to external \lstinline{monitor::trace_*} functions, we need to expend minimal effort to weave in code at this low-level. The \lstinline{monitor} module itself is a regular Rust source code file which we copy into the crate before instrumenting it. With this approach, \lstinline{monitor} is compiled with the actual crate and is available to it, so we can call the tracing functions directly.
-
-\subsection{Building a Control Dependence Graph from MIR}
-To improve the effectivity of generated tests, both DynaMOSA and the used fitness function (approach level) rely on information from a \ac{CDG}~\cite{Ferrante1987} of the \ac{SUT}. A \ac{CDG} can be constructed from a \ac{CFG} and its post-dominator tree. \ac{MIR} itself is a \ac{CFG}, so before instrumenting it, we can build the post-dominator-tree and the \ac{CDG} of each method we want to test. We do not use the complete \ac{CFG} of a \lstinline{Body}, but rather a subset of it. Rust compiler creates many unwinding edges that point to basic blocks whose task is to cleanup the stack in case the program panics at some points of it's execution. However, here we only want to analyse and test regular program execution, not the cleanup logic of the compiler. Furthermore, considering unwind nodes results in \ac{CFG} having multiple exit nodes, which complicate the computation of a post-dominator tree. The standard algorithm to compute a dominator tree from a \ac{CFG} can also yield a post-dominator tree when applied to reversed \ac{CFG}, given that the original \ac{CFG} has a single exit point, i.e., a single entry point with reversed edges\todo{Referenz}.
-
-Prosser introduced the notion of dominance in a 1959 paper on the analysis of flow diagrams, defining it as follows:
-\textit{We say box i dominates box j if every path (leading from input to output through the diagram) which passes through box j must also pass through box i. Thus box i dominates box j if box j is subordinate to box i in the program}~\cite{Prosser1959}. He did not specify the algorithm to compute dominance, though. Since then, several algorithms for calculating dominance have been presented. Post-dominance can be computed the same way on a \ac{CFG} with reversed edges, given that the \ac{CFG} has a single exit point. In this work, we use the \lstinline{petgraph} graph library for Rust, which provides an implementation of the simple, fast dominance algorithm~\cite{Cooper2001} by Cooper et al. Finally, we compute a \ac{CDG} for each method body based on the algorithm~\cite{Ferrante1987} described by Ferrante et al.
 
 \subsection{Generics and Trait Bounds}
 A large part of SBST approaches is applied to managed languages such as Java, since these offer reflection, among other things. This allows the code to be analyzed by the SUT at runtime and information needed for generating tests to be extracted without much effort. Listing~\ref{lst:java-interface-example} shows the function \lstinline{area} that accepts objects of type \lstinline{Shape}, that is, instances of classes that implement the interface. To test the \lstinline{area} function, one would have to find a type that implements the interface. Reflection can be used to query classes that do. This is possible because Java runs in a virtual machine that carries this information.
@@ -1409,6 +1346,176 @@ fn test_foobar_foo() {
 }
 \end{lstlisting}
 
+\subsection{MIR Analysis}
+Hier muss die Analyse der MIR beschrieben werden, also wie wird die MIR (CFG) zum Post-Dominator Tree und dann zum CDG umgewandelt. Einige der Nodes sind bereits Objectives, die gecovert werden müssen.
+
+% Building CDG from MIR
+To improve the effectivity of generated tests, both DynaMOSA and the used fitness function (approach level) rely on information from a \ac{CDG}~\cite{Ferrante1987} of the \ac{SUT}. A \ac{CDG} can be constructed from a \ac{CFG} and its post-dominator tree. \ac{MIR} itself is a \ac{CFG}, so before instrumenting it, we can build the post-dominator-tree and the \ac{CDG} of each method we want to test. We do not use the complete \ac{CFG} of a \lstinline{Body}, but rather a subset of it. Rust compiler creates many unwinding edges that point to basic blocks whose task is to cleanup the stack in case the program panics at some points of it's execution. However, here we only want to analyse and test regular program execution, not the cleanup logic of the compiler. Furthermore, considering unwind nodes results in \ac{CFG} having multiple exit nodes, which complicate the computation of a post-dominator tree. The standard algorithm to compute a dominator tree from a \ac{CFG} can also yield a post-dominator tree when applied to reversed \ac{CFG}, given that the original \ac{CFG} has a single exit point, i.e., a single entry point with reversed edges\todo{Referenz}.
+
+Prosser introduced the notion of dominance in a 1959 paper on the analysis of flow diagrams, defining it as follows:
+\textit{We say box i dominates box j if every path (leading from input to output through the diagram) which passes through box j must also pass through box i. Thus box i dominates box j if box j is subordinate to box i in the program}~\cite{Prosser1959}. He did not specify the algorithm to compute dominance, though. Since then, several algorithms for calculating dominance have been presented. Post-dominance can be computed the same way on a \ac{CFG} with reversed edges, given that the \ac{CFG} has a single exit point. In this work, we use the \lstinline{petgraph} graph library for Rust, which provides an implementation of the simple, fast dominance algorithm~\cite{Cooper2001} by Cooper et al. Finally, we compute a \ac{CDG} for each method body based on the algorithm~\cite{Ferrante1987} described by Ferrante et al.
+
+\subsection{MIR Instrumentation}
+The only compiler callback we implement at is point is the \lstinline{config} function, which allows us to modify the \ac{MIR} of a target program on the fly. The internal compiler crates already provide a \lstinline{MutVisitor}~\footnote{\url{https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/trait.MutVisitor.html}} which can be used to traverse and modify \ac{MIR} objects. To trace the execution of branches of a \ac{SUT}, we need to insert additional code at relevant places in the \ac{MIR}. Those are mainly entry basic blocks (to trace if a body has been entered at all during an execution of a test) and basic blocks that introduce branches and split the execution flow, e.g., those having \lstinline{SwitchInt} and \lstinline{Assert} terminators. Technically, there are also other terminators which have more than one successor\todo{Elaborate on that}, e.g., \lstinline{Call}. However, their additional branch is used to point to basic blocks which unwind the stack in case the function being called panics. At this point, we are only interested in basic blocks that belong to the regular execution of the program. Listings~\ref{lst:example-function-to-instrument} and \ref{lst:mir-of-example-function-to-instrument} show an example function we want to instrument and the relevant parts of it's \ac{MIR}.
+
+\begin{lstlisting}[language=Rust, style=boxed, caption={Example function to instrument}, label=lst:example-function-to-instrument]
+fn foo(x: i32, y: i32) {
+    if x < y {
+        println!("x < y");
+    } else {
+        println!("x >= y");
+    }
+}
+\end{lstlisting}
+
+Within the entry basic block in the \ac{MIR}, the two input arguments are compared and their result is stored into the local variable~\lstinline{_3}. Then, based on the comparison result, the execution of the function can either jump to the block~\lstinline{bb1} (if~\lstinline{x} was less than~\lstinline{y}) or \lstinline{bb3} (if~\lstinline{x} was greater or equal to~\lstinline{y}), that is, there are two branches at this point.
+\begin{lstlisting}[language=Rust, style=boxed, caption={MIR of the \lstinline{foo} function}, label=lst:mir-of-example-function-to-instrument]
+fn foo(_1: i32, _2: i32) -> () {
+    // Locals definition
+
+    bb0: {
+        _4 = _1;
+        _5 = _2;
+        _3 = Lt(move _4, move _5);
+        switchInt(move _3) -> [false: bb3, otherwise: bb1];
+    }
+
+    bb3: {
+        // print "x >= y"
+    }
+
+    bb1: {
+        // print "x < y"
+    }
+
+    // Other blocks
+}
+\end{lstlisting}
+
+\subsubsection{Body Entry Instrumentation}
+Hier muss die Instrumentierung beschrieben werden, wie das Entry eines Codebodys instrumentiert wird (Root branch).
+
+\subsubsection{Branch Instrumentation}
+To trace the execution of a branch, we need to insert a call to our own tracing function after a branch has been taken and just before it starts to execute. A function call is always a terminator in \ac{MIR}, that is, we must insert a whole new basic block for each trace function invocation. Doing so, we first update a terminator where branching begins, e.g., \lstinline{switchInt}, to point to our artificial tracing blocks. Then, each tracing block must point to the original target block of a branching terminator. Listing~\ref{lst:-instrumented-mir-of-example-function-to-instrument} provides an instrumented version of the \ac{MIR} shown in Listing~\ref{lst:mir-of-example-function-to-instrument}.
+\todo{Entry block instrumentation fehlt}
+\begin{lstlisting}[language={}, style=boxed, caption={Instrumented MIR of the \lstinline{foo} function}, label=lst:-instrumented-mir-of-example-function-to-instrument]
+fn foo(_1: i32, _2: i32) -> () {
+    // Locals definition
+    // ...
+    let mut _11: monitor::Op;
+    let mut _12: monitor::Branch;
+    let mut _26: monitor::Op;
+    let mut _27: monitor::Branch;
+
+
+    bb0: {
+        _4 = _1;
+        _5 = _2;
+        _3 = Lt(move _4, move _5);
+        switchInt(move _3) -> [false: bb4, otherwise: bb5];
+    }
+
+    bb3: {
+        // print "x >= y"
+    }
+
+    bb1: {
+        // print "x < y"
+    }
+
+    bb4: {
+        _8 = _1;
+        _7 = move _8 as i64 (Misc);
+        _10 = _2;
+        _9 = move _10 as i64 (Misc);
+        discriminant(_11) = 1;
+        discriminant(_12) = 0;
+        _6 = monitor::trace_branch(const 0_u64,
+                            const 1_u64,
+                            move _7,
+                            move _9,
+                            move _11,
+                            move _12) -> bb3;
+    }
+
+    bb5: {
+        _23 = _1;
+        _22 = move _23 as i64 (Misc);
+        _25 = _2;
+        _24 = move _25 as i64 (Misc);
+        discriminant(_26) = 1;
+        discriminant(_27) = 1;
+        _21 = monitor::trace_branch(const 1_u64,
+                            const 0_u64,
+                            move _22,
+                            move _24,
+                            move _26,
+                            move _27) -> bb1;
+    }
+
+    // Other blocks
+}
+\end{lstlisting}
+
+In tracing blocks \lstinline{bb4} and \lstinline{bb5} we want to call an appropriate function and store all the information we need to identify and compute the branch distance later. For reference, Listing~\ref{lst:basic-block-in-regular-rust} shows how the basic block~\lstinline{bb5} would look like if it was written in regular Rust.
+
+\begin{lstlisting}[language={}, style=boxed, caption={How would \lstinline{bb5} look like in regular Rust code}, label=lst:basic-block-in-regular-rust]
+monitor::trace_branch(
+        0, // visited branch ID
+        1, // opposite branch ID
+        x as i64,
+        y as i64,
+        monitor::Op::LT,
+        monitor::Branch::True);
+\end{lstlisting}
+
+By outsourcing calculations and the actual tracing to external \lstinline{monitor::trace_*} functions, we need to expend minimal effort to weave in code at this low-level. The \lstinline{monitor} module itself is a regular Rust source code file which we copy into the crate before compiling and instrumenting it. With this approach, \lstinline{monitor} is compiled with the actual crate and it is available to the instrumented code, so we can call the tracing functions directly.
+
+\subsubsection{Testability Transformation Instrumentation}
+Hier muss beschrieben werden, wie wir die Assertions in der MIR instrumentieren. Zum Beispiel werden in der MIR bei arithmetischen Operationen Checks eingeführt:
+\begin{lstlisting}[language={}, style=boxed, caption={MIR overflow check}, label=lst:mir-overflow-check]
+fn add(a: i8, b: i8) -> i8 {
+    a + b
+}
+
+bb0: {
+    _3 = _1;
+    _4 = _2;
+    _5 = CheckedAdd(_3, _4);
+    assert(
+        !move (_5.1: bool),
+        "attempt to compute `{} + {}`, which would overflow",
+        move _3,
+        move _4) -> bb1;
+}
+\end{lstlisting}
+
+Oder für array boundary check:
+\begin{lstlisting}[language={}, style=boxed, caption={MIR array boundary check}, label=lst:mir-boundary-check]
+fn get(pos: usize) -> i32 {
+    let mut array: [i32; 3] = [0; 3];
+    array[pos]
+}
+
+bb0: {
+    _2 = [const 0_i32; 3];
+    _3 = _1;
+    _4 = const 3_usize;
+    _5 = Lt(_3, _4);
+    assert(
+        move _5,
+         "index out of bounds: the length is {} but the index is {}",
+         move _4,
+         _3) -> bb1;
+}
+
+bb1: {
+    _0 = _2[_3];
+    return;
+}
+\end{lstlisting}
+
+
 \section{Evaluation}
 To determine how well a search-based approach performs with respect to code coverage and program crash detection, a set of experiments shall be conducted on a set of open-source Rust software, e.g., libraries. As there is already another tool available, KLEE, which uses \ac{DSE} and can also generate tests for Rust, it can be used in the experiments. KLEE-generated tests do not depend on the tool itself and can be executed outside of it the usual way. This opens the possibility to compute a source-based code coverage available in the Rust compiler for both tools. The experiments should answer the following questions:
 
@@ -1444,7 +1551,7 @@ The extraction of the units under test to use as benchmark for the unit test cas
 \subsection{Setup}
 Für jede Ausführung eines Generierungszyklus soll ein bestimmtes Zeitbudget gelten, damit das Programm noch irgendwann zum Schluss kommen kann. Die genauen Time-Bounds lassen sich noch bestimmen in Abhängigkeit von der Zeit, die für das ständige Rekompilieren der generierten Tests benötigt wird\todo{Wie oft werden die Benchmarks ausgefürt?}.
 
-Um die Performanz der der Tools zu messen, wird hier die sogenannte \textit{instrument-coverage} des Rust Compilers verwendet. Rust unterstützt eigentlich zwei Coverage-Arten. Zum einen, die \textit{gcov}, die die Debug Information verwendet, um von LLVM IR nach Quellcode zu mappen. Dabei wird die LLVM IR instrumentiert, um die ausgeführten Befehle zu zählen. Da LLVM jedoch nichts von der Codesturktur von Rust weiß, gehen auf diese Weise viele Details verloren und die gemessene Coverage ist nur eine Annäherung an die tatsächliche Coverage, was nur mittelmäßig gut ist. Zum anderen unterstützen die neueren Versionen des Rust Compilers die Quellcode-basierte Coverage, auch genannt \textit{instrument-coverage}. Hierbei wird Rust Code (seine MIR, um genau zu sein) direkt instrumentiert, bevor er in die LLVM IR umgewandelt wird. Da die MIR ein Mapping zwischen Quellcode und dem CFG eines Programms ist, können selbst Stellen wie short-circuited conditionals, closures, and match guards präzise abgebildet werden.
+Um die Performanz der Tools zu messen, wird hier die sogenannte \textit{instrument-coverage} des Rust Compilers verwendet. Rust unterstützt eigentlich zwei Coverage-Arten. Zum einen, die \textit{gcov}, die die Debug Information verwendet, um von LLVM IR nach Quellcode zu mappen. Dabei wird die LLVM IR instrumentiert, um die ausgeführten Befehle zu zählen. Da LLVM jedoch nichts von der Codesturktur von Rust weiß, gehen auf diese Weise viele Details verloren und die gemessene Coverage ist nur eine Annäherung an die tatsächliche Coverage, was nur mittelmäßig gut ist. Zum anderen unterstützen die neueren Versionen des Rust Compilers die Quellcode-basierte Coverage, auch genannt \textit{instrument-coverage}. Hierbei wird Rust Code (seine MIR, um genau zu sein) direkt instrumentiert, bevor er in die LLVM IR umgewandelt wird. Da die MIR ein Mapping zwischen Quellcode und dem CFG eines Programms ist, können selbst Stellen wie short-circuited conditionals, closures, and match guards präzise abgebildet werden.
 
 Damit die \textit{instrument-coverage} benutzt werden kann, muss das SUT mit dem entsprechenden Flag \lstinline{-Z instrument-coverage} kompiliert werden. Hierbei wird eine \textit{profiler runtime} benötigt, die im \textit{nightly} Compiler bereits mit dabei ist. Somit wird ein entsprechendes SUT mit \raggedright\lstinline{RUSTFLAGS="-Z instrument-coverage" cargo +nightly build} gebaut. Bei der Ausführung des gebauten Programs bzw. Tests werden von LLVM entsprechende Coverage (\lstinline{profdata}) Dateien generiert, \todo{Inwieweit sollte man an dieser Stelle ins Detail gehen?} die nach dem Postprocessing die Line- sowie Branchcoverage per Quellcode-Datei des SUT enthalten. Das ist die Information, die bei dieser Evaluation herangezogen wird.
 
