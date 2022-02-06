@@ -605,7 +605,7 @@ let left_value: &str = pair.left();
 let another_pair: Pair<usize, usize> = Pair::of(0usize, 1usize);
 \end{lstlisting}
 
-It is also possible to put constraits, which are called trait bounds in Rust, on the type parameters. For instance, we could define a textual representation of a pair. The \lstinline{Display} trait of the standard library defines the \lstinline{fmt} method which uses the \lstinline{\{\}} print marker. As shown in Listing~\ref{lst:example-generics-usage}, we tell that the left and right hand side types used with the \lstinline{Pair} struct must implement the \lstinline{Display} trait. The effect of bounding is that generic instances are allowed to access the methods of traits specified in the bounds. Under the hood, the \lstinline{println!} macro call the \lstinline{fmt} method of the \lstinline{Pair} instance.
+It is also possible to put constraits, which are called trait bounds in Rust, on the type parameters. For instance, we could define a textual representation of a pair. The \lstinline{Display} trait of the standard library defines the \lstinline{fmt} method which uses the \lstinline|{}| print marker. As shown in Listing~\ref{lst:example-generics-usage}, we tell that the left and right hand side types used with the \lstinline{Pair} struct must implement the \lstinline{Display} trait. The effect of bounding is that generic instances are allowed to access the methods of traits specified in the bounds. Under the hood, the \lstinline{println!} macro call the \lstinline{fmt} method of the \lstinline{Pair} instance.
 \begin{lstlisting}[language=Rust, style=boxed, caption=A function which will remain generic at runtime. It can be rewritten in the same style as the other two variants in Listing~\ref{lst:example-generic-functions}, label=lst:example-generics-usage]
 struct Pair<L: Display, R: Display> {
     left: L,
@@ -1070,7 +1070,7 @@ impl IntVec {
 Bei der nächsten Lowering Stufe, nämlich \ac{THIR}, kennt, ähnlich wie \ac{MIR}, nur function bodies, d. h. nur ausführbaren Code. Folglich hat \ac{THIR} keine Repräsentation für Items wie \lstinline{struct} oder
 \lstinline{trait} und ist daher für diese Art der Analyse nicht hilfreich.
 
-\todo{DefIds und so weiter beschreiben}
+\todo{DefIds, wie werden Elemente wie Structs, Methoden und so weiter extrahiert und alles mögliche beschreiben}
 
 \subsubsection{Mid-Level Intermediate Representation}
 % TODO umformulieren und so
@@ -1181,7 +1181,8 @@ fn hir_analysis(tcx: &TyCtxt<'_>, callables: &mut Vec<Callable>) {
             }
             ItemKind::Struct(s, g) => {
                 if allowed_item(item, &tcx) {
-                    analyze_struct(item.def_id, s, g, &item.vis, file_path.unwrap(), &mut callables, &tcx);
+                    analyze_struct(item.def_id, s, g, &item.vis,
+                    file_path.unwrap(), &mut callables, &tcx);
                 }
             }
             _ => {}
@@ -1190,7 +1191,7 @@ fn hir_analysis(tcx: &TyCtxt<'_>, callables: &mut Vec<Callable>) {
 }
 \end{lstlisting}
 
-This way we can already generate random tests, since we know which functions or methods can be called. Listing~\ref{lst:hir-analysis-example} shows an example program. After the analysis, the following holds in terms of Algorithm~\ref{alg:random-generation-of-args}: $M = \{\lstinline{Address::new}, \lstinline{Person::new}, \lstinline{Person::address}, \lstinline{say_hello_to}, \lstinline{address_to_string}\}$. If we wanted to execute the \lstinline{address_to_string} function in an empty test $t = \{\}$, we would have to generate an argument of type \lstinline{Address}. Thanks to the information about the return type of a method, we can use $GenObject(Address, \{\}, M, t)$ to create either an \lstinline{Address} object using \lstinline{Address::new} or \lstinline{Person::address}. The latter one is a method, i.e., it expects a \lstinline{self} object argument which would require us to recursively search for a way to create an object of type \lstinline{Person}.
+This way we can already generate random tests, since we know which functions or methods can be called. Listing~\ref{lst:hir-analysis-example} shows an example program. After the analysis, the following holds in terms of Algorithm~\ref{alg:random-generation-of-args}: $M = \{\lstinline{Address::new}, \lstinline{Person::new}, \lstinline{Person::address}, \lstinline{say_hello_to}, \lstinline{address_to_string}\}$. If we wanted to execute the \lstinline{address_to_string} function in an empty test $t = \{\}$, we would have to generate an argument of type \lstinline{Address}. Thanks to the information about the return type of a method, we can use $GenObject(Address, \{\}, M, t)$ to create either an \lstinline{Address} object using \lstinline{Address::new} or \lstinline{Person::address}. The latter one is a method, i.e., it expects a \lstinline{self} object argument which would require us to recursively search for a way to create an object of type \lstinline{Person}, e.g., by calling the constructor \lstinline{Person::new}.
 
 \begin{lstlisting}[language=Rust, style=boxed, caption={After HIR analysis, we know how a \lstinline{Person} object can be generated to be used in \lstinline{say_hello_to}.}, label=lst:hir-analysis-example]
 struct Address {
@@ -1235,114 +1236,6 @@ fn say_hello_to(person: &Person) {
 
 fn address_to_string(address: &Address) -> String {
     // ...
-}
-\end{lstlisting}
-
-\subsection{Generics and Trait Bounds}
-A large part of SBST approaches is applied to managed languages such as Java, since these offer reflection, among other things. This allows the code to be analyzed by the SUT at runtime and information needed for generating tests to be extracted without much effort. Listing~\ref{lst:java-interface-example} shows the function \lstinline{area} that accepts objects of type \lstinline{Shape}, that is, instances of classes that implement the interface. To test the \lstinline{area} function, one would have to find a type that implements the interface. Reflection can be used to query classes that do. This is possible because Java runs in a virtual machine that carries this information.
-
-\begin{lstlisting}[language=Java, style=boxed, caption={A function that takes objects implementing an interface}, label=lst:java-interface-example]
-public interface Shape {
-    double area();
-}
-
-public class Rectangle implements Shape {
-  private double length;
-  private double height;
-
-  @Override
-  public double area() {
-      return length * height;
-  }
-}
-
-public class Main {
-    public static double area(Shape shape) {
-        return shape.area();
-    }
-}
-\end{lstlisting}
-
-Generics play an even greater role in Rust than in other object-oriented languages. More precisely, Rust is not a typical object-oriented language and instead of using direct types, for example as method parameters, as is often the case in Java, generics are rather used in conjunction with trait bounds. Trait bounds define what behavior a particular generic type must be capable of. This allows a wider range of types to be used. Listing~\ref{lst:trait-bounds-example} implements the \lstinline{area} function in Rust, which takes a parameter of generic type~\lstinline{T}. \lstinline{T} must implement the \lstinline{HasArea} trait, which allows \lstinline{area} to access the trait's functions. Unlike Java, there is no Reflection provided in Rust. Source code is compiled directly to machine executable code, and all superfluous information is eliminated during the compilation process.
-
-\begin{lstlisting}[language=Rust, style=boxed, caption={A function that takes a generic types and specifies a bound}, label=lst:trait-bounds-example]
-trait HasArea {
-    fn area(&self) -> f64;
-}
-
-struct Rectangle { length: f64, height: f64 }
-
-impl HasArea for Rectangle {
-    fn area(&self) -> f64 { self.length * self.height }
-}
-
-// `T` must implement `HasArea`. Any type which meets
-// the bound can access `HasArea`'s function `area`.
-fn area<T: HasArea >(t: &T) -> f64 { t.area() }
-\end{lstlisting}
-
-Types that implement a particular trait must thus be found statically during compilation of the \ac{SUT} and thus annotated. Another difficulty is that traits themselves can be generic, as shown by the definition of \lstinline{IntoIterator} from the standard library and its implementation from the \textbf{trying}~\footnote{\url{https://crates.io/crates/trying}} crate in Listing~\ref{lst:intoiterator-trait}.
-
-\begin{lstlisting}[language=Rust, style=boxed, caption={IntoIterator implementation in the \textbf{trying} crate}, label=lst:intoiterator-trait]
-pub trait IntoIterator {
-    type Item;
-    type IntoIter: Iterator;
-    fn into_iter(self) -> Self::IntoIter;
-}
-
-impl<A: TrieAtom, V: TrieValue> IntoIterator for Trie<A, V> {
-    type Item = KeyValue<A, V>;
-    type IntoIter = TrieIntoIterator<A, V>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        // implementation ...
-    }
-}
-\end{lstlisting}
-
-However, all possible types implementing a particular trait which is not defined in the SUT itself is difficult. Rust compiler proceeds similarly to C++ compiler when compiling: Crates are compiled individually and independently and only then, for example, linked with the standard library. Nevertheless, in order to provide certain implementations of traits when generating tests, we manually create several widely used type definitions as well as their methods and implemented traits. These definitions are automatically loaded and used by our tool. We define all primitive data types as well as several container types such as \lstinline{std::vec::Vec}. Listing~\ref{lst:vec-definition} shows the shortened definition of \lstinline{std::vec::Vec}. Among other things, Vec implements the \lstinline{IntoIterator} trait and thus could be used as an argument to test the \lstinline{area} function from Listing~\ref{lst:intoiterator-trait}. Moreover, it uses a generic type \lstinline{T} which has no trait bounds. The method list is also provided so that the tool can create or modify an object of the respective type.
-
-\begin{lstlisting}[language={}, style=boxed, caption={std::vec::Vec type definition}, label=lst:vec-definition]
-name = std::vec::Vec
-generics = [(T, None)]
-traits = [std::clone::Clone, std::iter::IntoIterator, ...]
-methods = [new() -> Self<T>, len(&self) -> usize, ...]
-\end{lstlisting}
-
-In general, we mainly use primitive data types for a \ac{SUT} to keep the generated tests simple as far as this satisfies the defined trait bounds. To create a call to the example method \lstinline{FooBar::foo} (Figure~\ref{lst:generic-type-used-in-multiple-params}) in a generated test, we would do the following:
-
-\begin{lstlisting}[language=Rust, style=boxed, caption={A generic type A is used in multiple parameters and return value}, label=lst:generic-type-used-in-multiple-params]
-struct FooBar<A> {
-    // ...
-}
-
-impl<A> for FooBar<A> {
-    fn new() -> Self {
-        // ...
-    }
-
-    fn foo(&self, x: A, v: &Vec<A>) -> Option<A> {
-        // ...
-    }
-}
-\end{lstlisting}
-
-\begin{enumerate}
-    \item Look for a type that satisfies \lstinline{A}; \lstinline{A} has no bounds, so bind it to a primitive type, e.g., \lstinline{i32}. Now, with that information, we know that the parameters \lstinline{&self}, \lstinline{x}, and \lstinline{v} have to be of type \lstinline{FooBar<i32>}, \lstinline{i32}, and \lstinline{Vec<i32>}, respectively.
-    \item Using \lstinline{GenObject} we find that an instance of \lstinline{FooBar<A>} can be created by the constructor \lstinline{FooBar::new()}, thus, we define \lstinline{let f: FooBar<i32> = FooBar::new();}.
-    \item Generating a primitive like \lstinline{i32} is just a matter of defining some random value, like \lstinline{let x: i32 = 42i32;}.
-    \item Using \lstinline{GenObject}, find a generator that returns a \lstinline{Vec<i32>} or a \lstinline{Vec<T>} with some generic type \lstinline{T}.
-    \item From our custom type definition, we know that \lstinline{Vec::new()} returns a \lstinline{Vec<T>}. We need its inner elements to be of type \lstinline{i32}, which does satisfy the generic type \lstinline{T}, so we take it and define \lstinline{let v: Vec<i32> = Vec::new();}.
-    \item Now, we can use the defined variables to generate a call to the \lstinline{FooBar::foo} and store its returning value, whose bound type we are aware of, too, as shown in Listing~\ref{lst:example-generated-test}.
-\end{enumerate}
-
-\begin{lstlisting}[language=Rust, style=boxed, caption={An example test that invokes \lstinline{FooBar::foo}}, label=lst:example-generated-test]
-#[test]
-fn test_foobar_foo() {
-    let f: FooBar<i32> = FooBar::new();
-    let x: i32 = 42i32;
-    let v: Vec<i32> = Vec::new();
-    let o: Option<i32> = FooBar::foo(&f, x, &v);
 }
 \end{lstlisting}
 
@@ -1395,10 +1288,37 @@ fn foo(_1: i32, _2: i32) -> () {
 \subsubsection{Body Entry Instrumentation}
 Hier muss die Instrumentierung beschrieben werden, wie das Entry eines Codebodys instrumentiert wird (Root branch).
 
+\begin{lstlisting}[language=Rust, style=boxed, caption={Instrumented entry in the MIR of the \lstinline{foo} function}, label=lst:mir-instrument-root]
+    fn foo(_1: i32, _2: i32) -> () {
+        // Locals definition
+
+        bb0: {
+            _3 = monitor::trace_root(const 2_u64, const 3_u64) -> bb1;
+        }
+
+        bb1: {
+            _4 = _1;
+            _5 = _2;
+            _3 = Lt(move _4, move _5);
+            switchInt(move _3) -> [false: bb4, otherwise: bb2];
+        }
+
+        bb4: {
+            // print "x >= y"
+        }
+
+        bb2: {
+            // print "x < y"
+        }
+
+        // Other blocks
+    }
+    \end{lstlisting}
+
 \subsubsection{Branch Instrumentation}
-To trace the execution of a branch, we need to insert a call to our own tracing function after a branch has been taken and just before it starts to execute. A function call is always a terminator in \ac{MIR}, that is, we must insert a whole new basic block for each trace function invocation. Doing so, we first update a terminator where branching begins, e.g., \lstinline{switchInt}, to point to our artificial tracing blocks. Then, each tracing block must point to the original target block of a branching terminator. Listing~\ref{lst:-instrumented-mir-of-example-function-to-instrument} provides an instrumented version of the \ac{MIR} shown in Listing~\ref{lst:mir-of-example-function-to-instrument}.
+To trace the execution of a branch, we need to insert a call to our own tracing function after a branch has been taken and just before it starts to execute. A function call is always a terminator in \ac{MIR}, that is, we must insert a whole new basic block for each trace function invocation. Doing so, we first update a terminator where branching begins, e.g., \lstinline{switchInt}, to point to our artificial tracing blocks. Then, each tracing block must point to the original target block of a branching terminator. Listing~\ref{lst:mir-instrument-branch} provides an instrumented version of the \ac{MIR} shown in Listing~\ref{lst:mir-of-example-function-to-instrument}.
 \todo{Entry block instrumentation fehlt}
-\begin{lstlisting}[language={}, style=boxed, caption={Instrumented MIR of the \lstinline{foo} function}, label=lst:-instrumented-mir-of-example-function-to-instrument]
+\begin{lstlisting}[language={}, style=boxed, caption={Instrumented branches in the MIR of the \lstinline{foo} function}, label=lst:mir-instrument-branch]
 fn foo(_1: i32, _2: i32) -> () {
     // Locals definition
     // ...
@@ -1472,7 +1392,9 @@ monitor::trace_branch(
 By outsourcing calculations and the actual tracing to external \lstinline{monitor::trace_*} functions, we need to expend minimal effort to weave in code at this low-level. The \lstinline{monitor} module itself is a regular Rust source code file which we copy into the crate before compiling and instrumenting it. With this approach, \lstinline{monitor} is compiled with the actual crate and it is available to the instrumented code, so we can call the tracing functions directly.
 
 \subsubsection{Testability Transformation Instrumentation}
-Hier muss beschrieben werden, wie wir die Assertions in der MIR instrumentieren. Zum Beispiel werden in der MIR bei arithmetischen Operationen Checks eingeführt:
+Hier muss beschrieben werden, wie wir die Assertions in der MIR instrumentieren.
+Im ''Paper 1600 Bugs in 100 Projects'' werden die Transformations beschrieben, also kann man erwähnen, dass die künstlich eingeführten Checks vom Rust Compiler bereits gemacht werden, also müssen wir nur noch das Tracing einbauen, der Rest wird bereits vom Compiler geschenkt.
+Zum Beispiel werden in der MIR bei arithmetischen Operationen Checks eingeführt:
 \begin{lstlisting}[language={}, style=boxed, caption={MIR overflow check}, label=lst:mir-overflow-check]
 fn add(a: i8, b: i8) -> i8 {
     a + b
@@ -1515,6 +1437,209 @@ bb1: {
 }
 \end{lstlisting}
 
+\subsection{Test Construction}
+
+\subsubsection{Selection}
+
+\subsubsection{Crossover}
+
+\subsubsection{Mutation}
+
+
+\subsection{Handling Generics and Traits}
+\todo{Den Testaufbau an sich erklären: Statements, Variablen usw.}
+\todo{Der Abschnitt Generics sollte vielleicht erst später kommen, nach dem wir den Aufbau von Tests erklärt haben}
+\todo{Erklären warum wir immer let mut var im Test schreiben}
+A large part of \ac{SBST} approaches is applied to managed languages such as Java, since these offer a rich set of tools and features like reflection. It allows to analyze the code of the \ac{SUT} and extract information needed for generating tests by querying the appropriate language \ac{API}, like \lstinline{getGenericParameters} of a \lstinline{java.lang.reflect.Method} instance to get generic parameters. Wenn Tests für generische Elemente generiert werden, ist es manchmal schwierig, einen generischen Typparameter mit einem passenden konkreten Typ zu ersetzen, da die Ausführung von dem konkreten Typ abhängt\todo{Referenz zu Gordons Paper}. Wie im Listing~\ref{lst:java-isinstanceof} gezeigt wird, kann ein Ausführungspfad bei generischen Methoden durch Checks nach dem konkreten Typ einer generischen Instanz beeinflusst werden. Viele Ansätze zur Analyse von Java Programmen arbeiten auf dem Bytecode-Level, nachdem Type Erasure bereits passiert ist. Das heißt, dass Bytecode keine Generics kennt, sie werden zum Beispiel durch \lstinline{Object} ersetzt. Nun muss das Tool
+
+\begin{lstlisting}[language=Java, style=boxed, caption={The execution path of the generic Java method depends on the concrete type of the argument}, label=lst:java-isinstanceof]
+public class GenericsExample<T, K> {
+    public int typedInput(T value) {
+        if (value isinstanceof String) {
+            return 0;
+        } else if (value isinstanceof Integer) {
+            return 1;
+        } else if (value isinstanceof Double) {
+            return 2;
+        } else {
+            return 3;
+        }
+    }
+}
+\end{lstlisting}
+
+
+\begin{lstlisting}[language=Rust, style=boxed, caption={The execution path of the generic Rust function depends on the concrete type of the argument}, label=lst:rust-runtime-reflection]
+use std::fmt::Debug;
+use std::any::Any;
+
+fn typed_input<T: Any>(value: &T) -> i32 {
+    let value_any = value as &dyn Any;
+
+    if let Some(as_string) = value_any.downcast_ref::<String>() {
+        return 0;
+    } else if let Some(as_int) = value_any.downcast_ref::<i32>() {
+        return 1;
+    } else if let Some(as_double) = value_any.downcast_ref::<f64>() {
+        return 2;
+    } else {
+        return 3;
+    }
+}
+\end{lstlisting}
+
+% TODO reword
+The problem of generics becomes relevant whenever the test generation algorithm attempts to instantiate a new instance of a generic type, or to satisfy a parameter for a newly inserted method call. Assume that our test generation algorithm decides to add a call to the method \lstinline{new(bar: T)} of the struct \lstinline{Foo<T>}, which is defined as follows:
+\begin{lstlisting}[language=Rust, style=boxed, caption={}, label=lst:basic-generics-example]
+struct Foo<T> {
+    bar: T
+}
+
+impl<T> for Foo<T> {
+    fn new(bar: T) -> Self {
+        Self { bar }
+    }
+
+    fn update(&mut self, bar: T) {
+        // \dots
+    }
+}
+\end{lstlisting}
+
+Aus der \ac{HIR} Analyse wissen wir, dass \lstinline{T} ein Typparameter des Structs ist und durch keine weiteren Constraints gebunden ist. Das heißt, dass der Algorithmus in dem Fall einen beliebigen Typen statt \lstinline{T} füllen kann. Um den Aufwand bei den Tests kleiner zu halten, prüfen wir immer zuerst, ob wir einen generischen Typparameter nicht durch einen primitiven Typ aus der Standard Library füllen können, sofern die Constraints dies erlauben. Hier würde sich der Algorithmus zum Beispiel für \lstinline{isize} entscheiden. Somit würde folgender Methodenaufruf zum Test hinzugefügt:
+
+\begin{lstlisting}[language=Rust, style=boxed, caption={}, label=lst:basic-generics-example]
+#[test]
+fn rusty_test_0() {
+    // \dots
+    let mut isize_0 = 42isize;
+    let mut foo_0: Foo<isize> = Foo::new(isize_0);
+    // \dots
+}
+\end{lstlisting}
+
+Das Mapping \lstinline|{T -> isize}| zwischen dem generischen Typparameter und dem konkreten Typ wird für die Variable für die spätere Nutzung gespeichert. So kann zum Beispiel ein weiterer Methodenaufruf, e.g., \lstinline{update(&mut self, bar: T)}, auf der \lstinline{Foo} Instanz generiert werden. Für den Aufruf muss erst das passende Argument generiert werden. Dabei ist bereits bekannt, dass die Variable \lstinline{foo_0} den Typ \lstinline{Foo<isize>} und somit das Mapping von \lstinline{T} nach \lstinline{isize} hat. Auf dieser Wissensbasis generiert der Algorithmus zwei weitere Statements wie folgt:
+\begin{lstlisting}[language=Rust, style=boxed, caption={}, label=lst:basic-generics-example]
+#[test]
+fn rusty_test_0() {
+    // \dots
+    let mut isize_0 = 42isize;
+    let mut isize_1 = 145isize;
+    let mut foo_0: Foo<isize> = Foo::new(isize_0);
+    Foo::update(&mut foo_0, isize_1);
+    // \dots
+}
+\end{lstlisting}
+\todo{Beispiel mit Struct Generics und lokalen Methoden-Generics zeigen}
+% Generics Mixup Beispiel: https://doc.rust-lang.org/book/ch10-01-syntax.html
+
+%Listing~\ref{lst:java-interface-example} shows the function \lstinline{area} that accepts objects of type \lstinline{Shape}, that is, instances of classes that implement the interface. To test the \lstinline{area} function, one would have to find a type that implements the interface. Reflection can be used to query classes that do. This is possible because Java runs in a virtual machine that carries this information.
+
+%\begin{lstlisting}[language=Java, style=boxed, caption={A function that takes objects implementing an interface}, label=lst:java-interface-example]
+%public interface Shape {
+%    double area();
+%}
+%
+%public class Rectangle implements Shape {
+%  private double length;
+%  private double height;
+%
+%  @Override
+%  public double area() {
+%      return length * height;
+%  }
+%}
+%
+%public class Main {
+%    public static double area(Shape shape) {
+%        return shape.area();
+%    }
+%}
+%\end{lstlisting}
+
+
+Generics play an even greater role in Rust than in other object-oriented languages. More precisely, Rust is not a typical object-oriented language and instead of using direct types, for example as method parameters, as is often the case in Java, generics are rather used in conjunction with trait bounds. Trait bounds define what behavior a particular generic type must be capable of. Das reduziert die Anzahl der möglichen Typen, die statt des Typparameters eingesetzt werden können. Listing~\ref{lst:trait-bounds-example} implements the \lstinline{area} function in Rust, which takes a parameter of generic type~\lstinline{T}. \lstinline{T} must implement the \lstinline{HasArea} trait, which allows \lstinline{area} to access the trait's functions. Unlike Java, there is no Reflection provided in Rust. Source code is compiled directly to machine executable code, and all superfluous information is eliminated during the compilation process.
+
+\begin{lstlisting}[language=Rust, style=boxed, caption={A function that takes a generic types and specifies a bound}, label=lst:trait-bounds-example]
+trait HasArea {
+    fn area(&self) -> f64;
+}
+
+struct Rectangle { length: f64, height: f64 }
+
+impl HasArea for Rectangle {
+    fn area(&self) -> f64 { self.length * self.height }
+}
+
+// `T` must implement `HasArea`. Any type which meets
+// the bound can access `HasArea`'s function `area`.
+fn area<T: HasArea>(t: &T) -> f64 { t.area() }
+\end{lstlisting}
+
+Types that implement a particular trait must thus be found statically during compilation of the \ac{SUT} and thus annotated. Another difficulty is that traits themselves can be generic, as shown by the definition of \lstinline{IntoIterator} from the standard library and its implementation from the \textbf{trying}~\footnote{\url{https://crates.io/crates/trying}} crate in Listing~\ref{lst:intoiterator-trait}.
+
+\begin{lstlisting}[language=Rust, style=boxed, caption={IntoIterator implementation in the \textbf{trying} crate}, label=lst:intoiterator-trait]
+pub trait IntoIterator {
+    type Item;
+    type IntoIter: Iterator;
+    fn into_iter(self) -> Self::IntoIter;
+}
+
+impl<A: TrieAtom, V: TrieValue> IntoIterator for Trie<A, V> {
+    type Item = KeyValue<A, V>;
+    type IntoIter = TrieIntoIterator<A, V>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        // implementation ...
+    }
+}
+\end{lstlisting}
+
+However, finding all possible types implementing a particular trait which is not defined in the \ac{SUT} itself is difficult. Rust compiler proceeds similarly to C++ compiler when compiling: crates are compiled individually and independently and only then, for example, linked with the standard library. Vor allem bei Bibliotheken, zum Beispiel für Datenstruktur, deren \acp{API} möglichst generisch definiert werden, führt das zu Problemen. Oft sind die generischen Typparameter mit bestimmten Trait Bounds, zum Beispiel aus der Standard Library, versehen. Da wir nur das Crate and sich und seine Abhängigkeiten kompilieren, kommen wir so gar nicht zu den Typdefinitione Nevertheless, in order to provide certain implementations of traits when generating tests, we manually create several widely used type definitions as well as their methods and implemented traits. These definitions are automatically loaded and used by our tool. We define all primitive data types as well as several container types such as \lstinline{std::vec::Vec}. Listing~\ref{lst:vec-definition} shows the shortened definition of \lstinline{std::vec::Vec}. Among other things, Vec implements the \lstinline{IntoIterator} trait and thus could be used as an argument to test the \lstinline{area} function from Listing~\ref{lst:intoiterator-trait}. Moreover, it uses a generic type \lstinline{T} which has no trait bounds. The method list is also provided so that the tool can create or modify an object of the respective type.
+
+\begin{lstlisting}[language={}, style=boxed, caption={std::vec::Vec type definition}, label=lst:vec-definition]
+name = std::vec::Vec
+generics = [(T, None)]
+traits = [std::clone::Clone, std::iter::IntoIterator, ...]
+methods = [new() -> Self<T>, len(&self) -> usize, ...]
+\end{lstlisting}
+
+In general, we mainly use primitive data types for a \ac{SUT} to keep the generated tests simple as far as this satisfies the defined trait bounds. To create a call to the example method \lstinline{FooBar::foo} (Figure~\ref{lst:generic-type-used-in-multiple-params}) in a generated test, we would do the following:
+
+\begin{lstlisting}[language=Rust, style=boxed, caption={A generic type A is used in multiple parameters and return value}, label=lst:generic-type-used-in-multiple-params]
+struct FooBar<A> {
+    // \dots
+}
+
+impl<A> for FooBar<A> {
+    fn new() -> Self {
+        // \dots
+    }
+
+    fn foo(&self, x: A, v: &Vec<A>) -> Option<A> {
+        // \dots
+    }
+}
+\end{lstlisting}
+
+\begin{enumerate}
+    \item Look for a type that satisfies \lstinline{A}; \lstinline{A} has no bounds, so bind it to a primitive type, e.g., \lstinline{i32}. Now, with that information, we know that the parameters \lstinline{&self}, \lstinline{x}, and \lstinline{v} have to be of type \lstinline{FooBar<i32>}, \lstinline{i32}, and \lstinline{Vec<i32>}, respectively.
+    \item Using \lstinline{GenObject} we find that an instance of \lstinline{FooBar<A>} can be created by the constructor \lstinline{FooBar::new()}, thus, we define \lstinline{let f: FooBar<i32> = FooBar::new();}.
+    \item Generating a primitive like \lstinline{i32} is just a matter of defining some random value, like \lstinline{let x: i32 = 42i32;}.
+    \item Using \lstinline{GenObject}, find a generator that returns a \lstinline{Vec<i32>} or a \lstinline{Vec<T>} with some generic type \lstinline{T}.
+    \item From our custom type definition, we know that \lstinline{Vec::new()} returns a \lstinline{Vec<T>}. We need its inner elements to be of type \lstinline{i32}, which does satisfy the generic type \lstinline{T}, so we take it and define \lstinline{let v: Vec<i32> = Vec::new();}.
+    \item Now, we can use the defined variables to generate a call to the \lstinline{FooBar::foo} and store its returning value, whose bound type we are aware of, too, as shown in Listing~\ref{lst:example-generated-test}.
+\end{enumerate}
+
+\begin{lstlisting}[language=Rust, style=boxed, caption={An example test that invokes \lstinline{FooBar::foo}}, label=lst:example-generated-test]
+#[test]
+fn rusty_test_0() {
+    let foobar_0: FooBar<i32> = FooBar::new();
+    let i32_0: i32 = 42i32;
+    let vec_0: Vec<i32> = Vec::new();
+    let option_0: Option<i32> = FooBar::foo(&foobar_0, i32_0, &vec_0);
+}
+\end{lstlisting}
 
 \section{Evaluation}
 To determine how well a search-based approach performs with respect to code coverage and program crash detection, a set of experiments shall be conducted on a set of open-source Rust software, e.g., libraries. As there is already another tool available, KLEE, which uses \ac{DSE} and can also generate tests for Rust, it can be used in the experiments. KLEE-generated tests do not depend on the tool itself and can be executed outside of it the usual way. This opens the possibility to compute a source-based code coverage available in the Rust compiler for both tools. The experiments should answer the following questions:
@@ -1612,13 +1737,14 @@ Folgende Punkte gehören auf jeden Fall zu Future Work:
     \item Regression Testing mit Mutation Coverage.
     \item Testability Transformations als ein relativ einfacher Weg zum Finden von Common Bugs.
     \item Assertion Generierung basierend auf dem beobachteten Verhalten.
+    \item Bessere Genericsunterstützung vor allem für dynamic dispatch.
 \end{itemize}
 
 \newpage
 \appendix
 \input{acronyms}
 
-
+\newpage
 \bibliographystyle{unsrt}
 \bibliography{bibliography}
 %\nocite*{}
