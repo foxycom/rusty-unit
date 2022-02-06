@@ -282,5 +282,7 @@ evaluation/*
 */build/*
 testify/tests_debug/*
 jTestify/.gradle/*
+testify/log/**
+jTestify/logs/**
 
 
