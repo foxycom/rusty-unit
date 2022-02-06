@@ -82,7 +82,7 @@ public class SourceFile {
       out.write("\n");
 
       out.write("#[cfg(test)]\n");
-      out.write("mod testify_tests {\n");
+      out.write("mod rusty_tests {\n");
 
       var testCode = tests.stream()
           .map(testCase -> testCase.visit(visitor))

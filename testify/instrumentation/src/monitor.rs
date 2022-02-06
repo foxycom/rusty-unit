@@ -81,7 +81,7 @@ impl Into<u32> for UnaryOp {
     fn into(self) -> u32 {
         match self {
             UnaryOp::Not => 0,
-            UnaryOp::Neg => 1
+            UnaryOp::Neg => 1,
         }
     }
 }
@@ -91,8 +91,8 @@ struct Monitor {
     test_id: u64,
 }
 
-const ROOT_BRANCH: &'static str = "root[{}, {}]";
-const BRANCH: &'static str = "branch[{}, {}, {}]";
+const ROOT_BRANCH: &'static str = "{} root[{}, {}];";
+const BRANCH: &'static str = "{} branch[{}, {}, {}];";
 
 impl Monitor {
     pub fn set_test_id(&mut self, test_id: u64) {
@@ -100,11 +100,11 @@ impl Monitor {
     }
 
     pub fn trace_fn(&mut self, global_id: f64, id: f64) {
-        let msg = format!("root[{}, {}]", global_id, id);
+        let msg = format!("root[{}, {}];", global_id, id);
         self.send(&msg);
     }
     pub fn trace_branch(&mut self, global_id: u64, local_id: u64, block: u64, dist: f64) {
-        let msg = format!("branch[{} {} {} {}]", global_id, local_id, block, dist);
+        let msg = format!("branch[{} {} {} {}];", global_id, local_id, block, dist);
         self.send(&msg);
     }
 
@@ -116,10 +116,10 @@ impl Monitor {
         let connection = match TcpStream::connect("localhost:3333") {
             Ok(stream) => stream,
             Err(e) => {
-                println!("Failed to connect: {}", e);
-                panic!()
+                panic!("Failed to connect: {}", e);
             }
         };
+
         Monitor {
             connection,
             test_id: 0,
@@ -132,8 +132,11 @@ pub fn trace_fn(global_id: f64, id: f64) {
 }
 
 pub fn trace_branch_enum(global_id: u64, local_id: u64, block: u64, is_hit: bool) {
-    let dist = if is_hit {0.0} else {1.0};
-    MONITOR.with(|m| m.borrow_mut().trace_branch(global_id, local_id, block, dist));
+    let dist = if is_hit { 0.0 } else { 1.0 };
+    MONITOR.with(|m| {
+        m.borrow_mut()
+            .trace_branch(global_id, local_id, block, dist)
+    });
 }
 
 pub fn trace_branch_bool(
@@ -147,7 +150,10 @@ pub fn trace_branch_bool(
     is_hit: bool,
 ) {
     let dist = distance(left, right, op, branch_value, is_hit);
-    MONITOR.with(|m| m.borrow_mut().trace_branch(global_id, local_id, block, dist));
+    MONITOR.with(|m| {
+        m.borrow_mut()
+            .trace_branch(global_id, local_id, block, dist)
+    });
 }
 
 fn distance(left: f64, right: f64, op: BinaryOp, branch_value: bool, is_hit: bool) -> f64 {
@@ -220,5 +226,5 @@ fn distance(left: f64, right: f64, op: BinaryOp, branch_value: bool, is_hit: boo
 }
 
 pub fn set_test_id(id: u64) {
-    MONITOR.with (|m| m.borrow_mut().set_test_id (id));
+    MONITOR.with(|m| m.borrow_mut().set_test_id(id));
 }

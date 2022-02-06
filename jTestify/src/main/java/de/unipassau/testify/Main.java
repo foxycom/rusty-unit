@@ -16,7 +16,6 @@ import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFu
 import de.unipassau.testify.mir.Branch;
 import de.unipassau.testify.mir.MirAnalysis;
 import de.unipassau.testify.source.Crate;
-import de.unipassau.testify.test_case.fitness.Fitness;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.TestCaseGenerator;
 import de.unipassau.testify.test_case.UncoveredObjectives;
@@ -57,7 +56,7 @@ public class Main {
     var hirAnalysis = new HirAnalysis(JSONParser.parse(json));
 
     List<MinimizingFitnessFunction<TestCase>> objectives = MirAnalysis.getBranches().stream()
-        .map(Branch::getId).map(RandomFitness::new).collect(Collectors.toList());
+        .map(Branch::getGlobalId).map(RandomFitness::new).collect(Collectors.toList());
 
     var svd = new SVDImpl<>(objectives);
     var pareto = new Pareto<TestCase>();
@@ -91,7 +90,7 @@ public class Main {
 
     var solutions = mosa.findSolution();
 
-    solutions.forEach(System.out::println);
+    crate.addTests(solutions);
   }
 
 

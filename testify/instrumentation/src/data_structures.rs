@@ -363,6 +363,7 @@ where
     file.write_all(output.as_bytes()).unwrap();
 }
 
+/// A graph with nodes that are identified by basic block ids
 pub fn cdg(body: &Body<'_>) -> Graph<usize, usize> {
     let (cfg, cfg_table) = truncated_cfg(body);
     let (original_cfg, _) = original_cfg(body);

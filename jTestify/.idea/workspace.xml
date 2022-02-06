@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="a912695a-153b-4025-a29a-2aa6aaffd4b3" name="Changes" comment="Before moving typebindings to vars">
+      <change afterPath="$PROJECT_DIR$/build.gradle" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/server/DataRequester.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/server/TraceParser.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/Main.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/exec/TestCaseRunner.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/exec/TestCaseRunner.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/Branch.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/Branch.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/MirAnalysis.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/MirAnalysis.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/Crate.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/Crate.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/SourceFile.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/SourceFile.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/fitness/Fitness.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/fitness/Fitness.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/util/ExecUtil.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/util/ExecUtil.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../latex/thesis.tex" beforeDir="false" afterPath="$PROJECT_DIR$/../latex/thesis.tex" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../testify/instrumentation/src/data_structures.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/instrumentation/src/data_structures.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../testify/instrumentation/src/monitor.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/instrumentation/src/monitor.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../testify/server/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/server/src/main.rs" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ExternalProjectsData">
+    <projectState path="$PROJECT_DIR$">
+      <ProjectState />
+    </projectState>
+  </component>
+  <component name="ExternalProjectsManager">
+    <system id="GRADLE">
+      <state>
+        <task path="$PROJECT_DIR$">
+          <activation />
+        </task>
+        <projects_view>
+          <tree_state>
+            <expand>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="jTestify" type="f1a62948:ProjectNode" />
+              </path>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="jTestify" type="f1a62948:ProjectNode" />
+                <item name="Tasks" type="e4a08cd1:TasksNode" />
+              </path>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="jTestify" type="f1a62948:ProjectNode" />
+                <item name="Tasks" type="e4a08cd1:TasksNode" />
+                <item name="build" type="c8890929:TasksNode$1" />
+              </path>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="jTestify" type="f1a62948:ProjectNode" />
+                <item name="Run Configurations" type="7b0102dc:RunConfigurationsNode" />
+              </path>
+            </expand>
+            <select />
+          </tree_state>
+        </projects_view>
+      </state>
+    </system>
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Enum" />
+        <option value="package-info" />
+        <option value="JUnit5 Test Class" />
+        <option value="Interface" />
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
+  <component name="GitSEFilterConfiguration">
+    <file-type-list>
+      <filtered-out-file-type name="LOCAL_BRANCH" />
+      <filtered-out-file-type name="REMOTE_BRANCH" />
+      <filtered-out-file-type name="TAG" />
+      <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
+    </file-type-list>
+  </component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/Main.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/SourceFile.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/statement/Statement.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/statement/StructInitStmt.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/exec/TestCaseRunner.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/Crate.java" root0="FORCE_HIGHLIGHTING" />
+  </component>
+  <component name="MacroExpansionManager">
+    <option name="directoryName" value="365yxnbo" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="21sjKaeW7BqEJZpTfwx3RiKBGwG" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="com.intellij.testIntegration.createTest.CreateTestDialog.defaultLibrary" value="JUnit5" />
+    <property name="com.intellij.testIntegration.createTest.CreateTestDialog.defaultLibrarySuperClass.JUnit5" value="" />
+    <property name="full.screen.before.presentation.mode" value="false" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="project.structure.last.edited" value="Global Libraries" />
+    <property name="project.structure.proportion" value="0.17" />
+    <property name="project.structure.side.proportion" value="0.2" />
+    <property name="run.code.analysis.last.selected.profile" value="pProject Default" />
+    <property name="settings.editor.selected.configurable" value="reference.settingsdialog.project.gradle" />
+  </component>
+  <component name="RecentsManager">
+    <key name="CreateClassDialog.RecentsKey">
+      <recent name="de.unipassau.testify.algorithm" />
+    </key>
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
+      <recent name="$PROJECT_DIR$/coverage" />
+    </key>
+    <key name="CreateTestDialog.Recents.Supers">
+      <recent name="" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/main/resources" />
+    </key>
+    <key name="CreateTestDialog.RecentsKey">
+      <recent name="de.unipassau.testify.test_case.type" />
+      <recent name="de.unipassau.testify.test_case.operators" />
+      <recent name="de.unipassau.testify.util" />
+      <recent name="de.unipassau.testify.exec" />
+      <recent name="de.unipassau.testify.hir" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Application.DataRequester">
+    <configuration name="DataRequester" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="de.unipassau.testify.server.DataRequester" />
+      <module name="jTestify.main" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="de.unipassau.testify.server.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Run trying" type="Application" factoryName="Application">
+      <option name="ALTERNATIVE_JRE_PATH" value="$USER_HOME$/Library/Java/JavaVirtualMachines/azul-17.0.1/Contents/Home" />
+      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+      <option name="MAIN_CLASS_NAME" value="de.unipassau.testify.Main" />
+      <module name="jTestify.main" />
+      <option name="PROGRAM_PARAMETERS" value="-c $PROJECT_DIR$/../evaluation/trying-main -m src/lib.rs" />
+      <option name="VM_PARAMETERS" value="-Dlog4j2.configurationFile=file://$PROJECT_DIR$/src/main/resources/log4j2.properties" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="de.unipassau.testify.algorithm.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="TestCaseRunner" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="de.unipassau.testify.exec.TestCaseRunner" />
+      <module name="jTestify.main" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="de.unipassau.testify.exec.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="TestClient" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="de.unipassau.testify.server.TestClient" />
+      <module name="jTestify.main" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="de.unipassau.testify.server.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="TracingServer" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="de.unipassau.testify.server.TracingServer" />
+      <module name="jTestify.main" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="de.unipassau.testify.server.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="jTestify [clean]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value="clean" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Application.Run trying" />
+      <item itemvalue="Application.TracingServer" />
+      <item itemvalue="Application.TestClient" />
+      <item itemvalue="Application.DataRequester" />
+      <item itemvalue="Application.TestCaseRunner" />
+      <item itemvalue="Gradle.jTestify [clean]" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Application.TestCaseRunner" />
+        <item itemvalue="Application.DataRequester" />
+        <item itemvalue="Application.TestClient" />
+        <item itemvalue="Application.TracingServer" />
+        <item itemvalue="Gradle.jTestify [clean]" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="a912695a-153b-4025-a29a-2aa6aaffd4b3" name="Changes" comment="" />
+      <created>1638736625660</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1638736625660</updated>
+      <workItem from="1638736627379" duration="74580000" />
+      <workItem from="1639055757135" duration="866000" />
+      <workItem from="1639056639919" duration="30885000" />
+      <workItem from="1639151126965" duration="608000" />
+      <workItem from="1639208815306" duration="85230000" />
+      <workItem from="1639479998646" duration="33349000" />
+      <workItem from="1639580819115" duration="5000" />
+      <workItem from="1639762122641" duration="17680000" />
+      <workItem from="1639900728523" duration="24000" />
+      <workItem from="1639900755746" duration="985000" />
+      <workItem from="1639902765001" duration="11583000" />
+      <workItem from="1640072575198" duration="9071000" />
+      <workItem from="1640171290835" duration="598000" />
+      <workItem from="1640209928913" duration="109000" />
+      <workItem from="1640210049546" duration="17512000" />
+      <workItem from="1640527005012" duration="21869000" />
+      <workItem from="1640722335703" duration="8509000" />
+      <workItem from="1640976065254" duration="1830000" />
+      <workItem from="1642101464795" duration="697000" />
+      <workItem from="1642963582152" duration="13899000" />
+      <workItem from="1643132425013" duration="14783000" />
+      <workItem from="1643395670146" duration="18876000" />
+      <workItem from="1643552048942" duration="14366000" />
+      <workItem from="1644166925061" duration="9000" />
+    </task>
+    <task id="LOCAL-00001" summary="Same shit in Java">
+      <created>1639084312372</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1639084312372</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Before Tanyusha">
+      <created>1639222325873</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1639222325873</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Compilable tests">
+      <created>1639497290773</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1639497290773</updated>
+    </task>
+    <task id="LOCAL-00004" summary="Test case runner">
+      <created>1639900871223</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1639900871223</updated>
+    </task>
+    <task id="LOCAL-00005" summary="Add public markers to callables">
+      <created>1640038484631</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1640038484631</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Before moving typebindings to vars">
+      <created>1643058578655</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1643058578655</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
+    <servers />
+  </component>
+  <component name="UnknownFeatures">
+    <option featureType="com.intellij.fileTypeFactory" implementationName="*.log" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Same shit in Java" />
+    <MESSAGE value="Before Tanyusha" />
+    <MESSAGE value="Compilable tests" />
+    <MESSAGE value="Test case runner" />
+    <MESSAGE value="Add public markers to callables" />
+    <MESSAGE value="Before moving typebindings to vars" />
+    <option name="LAST_COMMIT_MESSAGE" value="Before moving typebindings to vars" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/json/EnumVariantDeserializer.java</url>
+          <line>24</line>
+          <option name="timeStamp" value="29" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/Param.java</url>
+          <line>58</line>
+          <option name="timeStamp" value="73" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/Main.java</url>
+          <line>92</line>
+          <option name="timeStamp" value="132" />
+        </line-breakpoint>
+        <breakpoint type="java-exception">
+          <properties class="java.lang.ExceptionInInitializerError" package="java.lang" />
+          <option name="timeStamp" value="16" />
+        </breakpoint>
+        <breakpoint enabled="true" type="java-exception">
+          <properties class="java.lang.IllegalStateException" package="java.lang" />
+          <option name="timeStamp" value="99" />
+        </breakpoint>
+        <breakpoint type="java-exception">
+          <properties class="java.util.NoSuchElementException" package="java.util" />
+          <option name="timeStamp" value="117" />
+        </breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+    <pin-to-top-manager>
+      <pinned-members>
+        <PinnedItemInfo parentTag="de.unipassau.testify.test_case.type.Generic" memberName="scope" />
+        <PinnedItemInfo parentTag="de.unipassau.testify.test_case.TestCase" memberName="typeBindings" />
+        <PinnedItemInfo parentTag="de.unipassau.testify.test_case.callable.EnumInit" memberName="variant" />
+        <PinnedItemInfo parentTag="de.unipassau.testify.test_case.Param" memberName="type" />
+        <PinnedItemInfo parentTag="de.unipassau.testify.test_case.type.TypeBinding" memberName="binding" />
+      </pinned-members>
+    </pin-to-top-manager>
+  </component>
+</project>

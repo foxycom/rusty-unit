@@ -1,7 +1,9 @@
 package de.unipassau.testify.source;
 
+import com.google.common.base.Preconditions;
 import de.unipassau.testify.source.SourceFile.FileType;
 import de.unipassau.testify.test_case.TestCase;
+import de.unipassau.testify.util.Rnd;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -81,6 +83,7 @@ public class Crate {
   }
 
   public void addTests(List<TestCase> testCases) {
+    Preconditions.checkState(!sourceFiles.isEmpty());
     Map<String, List<TestCase>> sorted = new HashMap<>();
     testCases.forEach(testCase -> {
       var filePathBinding = testCase.getFilePathBinding().orElse("UNBOUND");
@@ -90,8 +93,13 @@ public class Crate {
 
     sorted.forEach((path, tests) -> {
       if (path.equals("UNBOUND")) {
-        // TODO: 23.12.21 pick a random file
-        throw new RuntimeException("Not implemented yet");
+        // Take a random path
+        var file = Rnd.choice(sourceFiles);
+        try {
+          file.addTests(tests);
+        } catch (IOException | InterruptedException e) {
+          throw new RuntimeException(e);
+        }
       } else {
         var file = getFileByPath(path);
         try {
@@ -102,5 +110,4 @@ public class Crate {
       }
     });
   }
-
 }

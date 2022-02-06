@@ -5,12 +5,12 @@ import static java.util.stream.Collectors.toCollection;
 import com.google.common.base.Preconditions;
 import de.unipassau.testify.ddg.Dependency;
 import de.unipassau.testify.ddg.Node;
-import de.unipassau.testify.exception.NoAvailableArgException;
 import de.unipassau.testify.generators.TestIdGenerator;
 import de.unipassau.testify.hir.HirAnalysis;
 import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome;
 import de.unipassau.testify.metaheuristics.operators.Crossover;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
+import de.unipassau.testify.mir.Branch;
 import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.statement.PrimitiveStmt;
 import de.unipassau.testify.test_case.statement.Statement;
@@ -50,7 +50,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
   private int id;
   private List<Statement> statements;
-  private Map<Integer, Double> coverage;
+  private Map<Branch, Double> coverage;
   private final Graph<Node, Dependency> ddg;
 
   public TestCase(int id, HirAnalysis hirAnalysis, Mutation<TestCase> mutation,
@@ -124,7 +124,11 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     this.statements = statements;
   }
 
-  public void setCoverage(Map<Integer, Double> coverage) {
+  public void setCoverage(Branch branch, double distance) {
+    coverage.put(branch, distance);
+  }
+
+  public void setCoverage(Map<Branch, Double> coverage) {
     this.coverage = coverage;
   }
 
@@ -258,7 +262,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   }
 
   public String getName() {
-    return String.format("testify_%d", id);
+    return String.format("rusty_test_%d", id);
   }
 
   public Set<Type> instantiatedTypes() {
@@ -704,7 +708,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     return this;
   }
 
-  public Map<Integer, Double> getCoverage() {
+  public Map<Branch, Double> getCoverage() {
     if (coverage == null) {
       throw new IllegalStateException("Branch execution info is not initialized");
     }
