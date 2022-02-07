@@ -643,7 +643,7 @@ where
     }
 
 fn main() {
-    let pair: Pair<String, String> = make_pair("Hello".to_string(), 
+    let pair: Pair<String, String> = make_pair("Hello".to_string(),
         "world".to_string());
     let another_pair: Pair<usize, u32> = make_pair(4usize, 2u32);
 }
@@ -687,12 +687,12 @@ fn main() {
     let mut message = String::from("Hello");
     print(message); // Value moved here
     // Compile error, value borrowed here after move
-    message.push_str(" world!"); 
+    message.push_str(" world!");
 }
 
 fn print(message: String) {
     // message gets dropped when the execution goes out of scope
-    println!("{}", message); 
+    println!("{}", message);
 }
 \end{lstlisting}
 
@@ -703,7 +703,7 @@ fn main() {
     let mut message = String::from("Hello");
     print(&message); // A reference to message it passed to the function call
     // Variable message still owns the value after the call
-    message.push_str(" world!"); 
+    message.push_str(" world!");
 }
 
 fn print(message: &String) {
@@ -729,7 +729,7 @@ Das restriktive Ownership-Modell für die genetische Suche hat also bestimmte Im
 \subsubsection{Lifetimes}
 The lifetime of a reference determines the duration it is valid for. Each reference in Rust has a lifetime, and the compiler infers constraints for these lifetimes based on how they are used. The compiler will emit an error if the lifetime constraints cannot be satisfied. Sometimes the compiler requires hints for the relationship between the input and output lifetimes of a function. It will always require annotations on type definitions. This is important for two reasons. First, it allows the compiler to ensure that a reference never outlives the underlying value, and second, it allows the compiler to ensure that there never is an overlap of mutable access to a value.
 
-\newpage 
+\newpage
 \subsection{Overview of the Compiler}
 As with most compilers, the Rust compiler (\lstinline{rustc}) goes through several phases, each of which uses some \ac{IR} to facilitate computatations. In general, working directly with the source code is extremely inconvinient and error-prone. Source code is designed to be human-friendly while at the same time being unambiguous, but it's less convenient for doing something like type checking.
 
@@ -863,7 +863,7 @@ According to McMinn~\cite{McMinn_2004}, an encoding of the solution should be mo
     \item \textbf{Function statements} invoke free-standing functions, e.g., \lstinline{let a = foo()}. The parameters of the function must be values in~$\{v(s_k)~|~0 \leq k < i\}$. Value and type of a function statement are defined by its return value.
 \end{itemize}
 
-The collection of available structs, their constructors, methods, fields, and free-standing functions are so-called test cluster~\cite{Fraser_2011}. The size of a test suite as well as individual tests is dynamic and can change (almost) arbitrarily. Since there will be no test oracles available for most of the generated tests, the size of the test suite, as well as the individual tests, should have an upper limit, so that test oracles can be inserted later manually. Of course, it also makes sense not to let a test become completely blank. 
+The collection of available structs, their constructors, methods, fields, and free-standing functions are so-called test cluster~\cite{Fraser_2011}. The size of a test suite as well as individual tests is dynamic and can change (almost) arbitrarily. Since there will be no test oracles available for most of the generated tests, the size of the test suite, as well as the individual tests, should have an upper limit, so that test oracles can be inserted later manually. Of course, it also makes sense not to let a test become completely blank.
 
 Each statement that does not have the default return value~\lstinline{()} defines a new variable. However, a generated test cannot be composed arbitrarily of the above building blocks. Each test is subject to the same constraints as regular Rust programs, which are checked by the compiler~\cite{Tonella2004}. Constructors, methods, functions, and fields in a test are not limited to just the parts of the module under the test since complex sequences of calls might be necessary to define some arguments~\cite{Fraser2012}.
 
@@ -1062,10 +1062,45 @@ Um die Selektion von Parents für die nachkommende Generationen besser guiden zu
 
 Um die Suche voranzutreiben, können verschiedene Heuristiken verwendet werden. \todo{Welche gibt es überhaupt?} Eine der weitverbreitesten ist Branch Distance. McMinn~\cite{McMinn_2004} beschreibt eine Sammlung von Regeln, die rekursiv angewendet werden können, um Distanz bei allen möglichen Prädikaten zu berechnen. Wenn die Ausführung des \ac{SUT} bei gegebenen Inputdaten in einem bestimmten Branch landet, so kann eine lokale Suche angewendet werden. Es wird mit Hilfe einer lokalen Fitnessfunktion abgeleitet, wie nah das Prädikat zum Auswerten zu \lstinline{true} ist. Zum Beispiel, bei einem Prädikat~\lstinline{x >= 10} und~\lstinline{x = 5} (während der Ausführung) wird der \lstinline{false} Branch getroffen. Die Distanz zum \lstinline{true} Branch beträge somit~$10 - 5 + k$ mit~$k \geq 1$. Dabei wird jedes Prädikat im \ac{SUT} instrumentiert, um die Distanzen zu anderen Branches während der Ausführung des \ac{SUT} zu tracen. Die Branch-Distanz muss noch normalisiert werden (je nach Werten kann es schnell zu Extremen kommen). Arcuri~\cite{Arcuri_2011} beschreibt in seiner Arbeit, welchen Einfluss die Normalisierung der Branch-Distanz auf die Effektivität einer such-basierten Testgenerierung hat.
 
+\begin{table}[]
+\begin{tabular}{\textwidth}{lcr}
+\hline
+\textbf{Condition}  & \textbf{Distance True} & \textbf{Distance False} \\
+\hline
+x == y              & |x - y|                & 1                       \\
+x != y              & 1                      & |x - y|                 \\
+x \textgreater y    & y - x + 1              & x - y                   \\
+x \textgreater{}= y & y - x                  & x - y + 1               \\
+x \textless y       & x - y + 1              & y - x                   \\
+x \textless{}= y    & x - y                  & y - x + 1               \\ \hline
+\end{tabular}
+\label{tab:local-branch-distance-formulas}
+\caption{Local Branch Distance Calculation for Numeric Values}
+\end{table}
+
 \todo{Approach level}
 
 \subsection{Test Oracles and Testability Transformations}
-Traditionally, \ac{SBST} is applied to generate test suites that maximize some coverage criteria, e.g., in this case, branch coverage. However, search-based techniques usually do not make any use of automated oracles~\cite{Fraser2013}. A lack of formal specification of the behavior of a program results in generated tests that must be supplemented with oracles manually. A technique called \textit{testability transformation} tries to overcome this obstacle. A testability transformation is a source-to-source program transformation that seeks to improve the performance of some chosen test data generation technique~\cite{Harman2004}, e.g., reach difficult branches. Beyond that, a \ac{SUT} can be transformed in a way such that artificial branches are inserted into the code to guide the search into triggering some exceptional behavior and crash the program. For instance, EvoSuite~\cite{Fraser2013} employs multiple testability transformations such as array access transformation, division by zero transformation, or numerical overflow transformation. Those transformations do not increase code coverage in general but contribute to discovering potential unforeseen behavior and generating inputs that trigger it. Similar transformations can also be applied for Rust and shall be part of the approach. Even though EvoSuite transforms the bytecode of a \ac{SUT} to apply testability trasnformations, this can also be done on the source code level in Rust as done in Listing~\ref{lst:example-testability-transformation}.
+\label{sec:testability-transformations}
+Traditionally, \ac{SBST} is applied to generate test suites that maximize some coverage criteria, e.g., in this case, branch coverage. However, search-based techniques usually do not make any use of automated oracles~\cite{Fraser2013}. A lack of formal specification of the behavior of a program results in generated tests that must be supplemented with oracles manually. A technique called \textit{testability transformation} tries to overcome this obstacle. A testability transformation is a source-to-source program transformation that seeks to improve the performance of some chosen test data generation technique~\cite{Harman2004}, e.g., reach difficult branches. Beyond that, a \ac{SUT} can be transformed in a way such that artificial branches are inserted into the code to guide the search into triggering some exceptional behavior and crash the program. For instance, EvoSuite~\cite{Fraser2013} employs multiple testability transformations such as array access transformation (Listing~\ref{lst:evosuite-array-access-transformation}), division by zero transformation, or numerical overflow transformation. Those transformations do not increase code coverage in general but contribute to discovering potential unforeseen behavior and generating inputs that trigger it. Similar transformations can also be applied for Rust and are part of this approach.
+
+\begin{lstlisting}[language=Java, style=boxed, caption={Array access transformation as done in EvoSuite}, label=lst:evosuite-array-access-transformation]
+// Original method
+void foo(int x) {
+    bar[x] = 0;
+}
+
+// Transformed method for better testability
+void foo(int x) {
+    if (x < 0) {
+        throw new NegativeArraySizeException();
+    }
+    if (x >= bar.length) {
+        throw new ArrayIndexOutOfBoundsException();
+    }
+    bar[x] = 0;
+}
+\end{lstlisting}
 
 %\subsection{Test Minimization}
 %Da sich diese Arbeit vor allem auf das Generieren vor Tests beschränkt, die möglichst hohe Coverage erreichen, jedoch generell keine Testorakel automatisch zur Verfügung stellt, sollen die Tests möglich kurz gehalten werden und das wesentliche tun, um einen bestimmten Branch zu erreichen. Das erhöht ihre Lesbarkeit und Verstänlichkeit. Fraser und Arcuri~\cite{Fraser2013a} schlagen als Verbesserung für ihr EvoSuite Tool folgendes Verfahren vor: Für jeden Coverage Goal wird ein Test aus der generierten Test Suite ausgewählt, der diesen Goal abdeckt. Dieser Test wird wrt to the coverage goal minimiert, so dass Statements, die nicht zur Ausführung des Goals beitragen, gelöscht werden. Wenn ein Goal bereits von einem minimierten Test abgedeckt ist, so wird kein weiterer Test für diesen Goal der finalen Test Suite hinzugefügt. Auf diese Weise werden Tests lesbarer für einen Menschen und können somit leichter manuell um Testorakel ergänzt werden.
@@ -1083,8 +1118,6 @@ In this chapter we present essential parts of the implementation of the RustyUni
 \includegraphics[width=\textwidth]{new-overview}
 \label{fig:rustyunit-overview}
 \end{figure}
-
-
 
 \subsection{Using the Compiler Hooks}
 The Rust compiler design makes it possible to use it both, as an executable and as a collection of libraries. To this end, Rust provides compiler crates, which can be recognized by their common prefix, \lstinline{rustc}, such as \lstinline{rustc_driver}, which is an interface for running the compiler programmatically.
@@ -1171,7 +1204,7 @@ Since our wrapper uses \lstinline{rustc_private} features, we have to tell Cargo
 %The whole process starts, when we run the compiler for the first time on a target crate that we want to test. During this process we can already extract the available items like structs and their methods by traversing the \ac{HIR}.
 
 \subsection{HIR Analysis}
-For the purpose of test generation, \ac{HIR} and \ac{MIR} are of primary importance. First, we are interested in all possible functions, structs/enums, and their methods and fields in the crate we want to test. This information allows us to evaluate which statements we can use in a generated test at all and what types of instances do those statements produce. We call functions and methods generators since those can generate instances and values of the required types when we recursively search for a dependency. The fact that desugaring has already been performed in the \ac{HIR} has no influence at this point, because the transformations are only performed intra-procedurally. We are only interested in type and method definitions, their parameters and return types, which still remain unchanged at this level. Moreover, thanks to \ac{HIR} we can also determine the absolute path of a type, for example a parameter. Relative type names, such as \lstinline{File} instead of \lstinline{std::fs::File}, can lead to difficulties when compiling the generated tests due to missing imports. Thus, it is easier to carry a complete type path, and by means of \ac{HIR} we can easily query this. 
+For the purpose of test generation, \ac{HIR} and \ac{MIR} are of primary importance. First, we are interested in all possible functions, structs/enums, and their methods and fields in the crate we want to test. This information allows us to evaluate which statements we can use in a generated test at all and what types of instances do those statements produce. We call functions and methods generators since those can generate instances and values of the required types when we recursively search for a dependency. The fact that desugaring has already been performed in the \ac{HIR} has no influence at this point, because the transformations are only performed intra-procedurally. We are only interested in type and method definitions, their parameters and return types, which still remain unchanged at this level. Moreover, thanks to \ac{HIR} we can also determine the absolute path of a type, for example a parameter. Relative type names, such as \lstinline{File} instead of \lstinline{std::fs::File}, can lead to difficulties when compiling the generated tests due to missing imports. Thus, it is easier to carry a complete type path, and by means of \ac{HIR} we can easily query this.
 
 % TODO reword
 The top-level data structure in the \ac{HIR} is the \lstinline{Crate}, which stores the contents of the crate currently being compiled. The Rust compiler compiles crates independently and, thus, only ever constructs \ac{HIR} for the current crate. Technically, the \ac{HIR} \lstinline{Crate} structure contains a number of maps that serve to organize the content of the crate for easier access. For instance, the contents of individual items (e.g., modules, functions, traits, impls and so on) in the \ac{HIR} are not directly accessible in the parents. So, for example, if there is a module item \lstinline{foo} containing a function \lstinline{bar()}:
@@ -1181,9 +1214,9 @@ mod foo() {
     fn bar() { }
 }
 \end{lstlisting}
-then in the \ac{HIR}, the representation of module \lstinline{foo} would only have the ID \lstinline{I} of \lstinline{bar()}. To get the details of the function, we would lookup \lstinline{I} in the \lstinline{items} map of the \ac{HIR}, as shown in Listing~\ref{lst:hir-analysis}. One nice result from this representation is that one can iterate over all items in the crate by iterating over the key-value pairs in these maps (without the need to trawl through the whole \ac{HIR}). The other reason for such decoupled design is for better integration with incremental compilation. This way, if we gain access to some item, e.g., for the module \lstinline{foo}, we only gain access to the id for \lstinline{bar()}, and we must invoke some functions to lookup the contents of the function given its id. This gives the compiler a chance to observe that we accessed the data for \lstinline{bar()}, and then record the compilation dependency. 
+then in the \ac{HIR}, the representation of module \lstinline{foo} would only have the ID \lstinline{I} of \lstinline{bar()}. To get the details of the function, we would lookup \lstinline{I} in the \lstinline{items} map of the \ac{HIR}, as shown in Listing~\ref{lst:hir-analysis}. One nice result from this representation is that one can iterate over all items in the crate by iterating over the key-value pairs in these maps (without the need to trawl through the whole \ac{HIR}). The other reason for such decoupled design is for better integration with incremental compilation. This way, if we gain access to some item, e.g., for the module \lstinline{foo}, we only gain access to the id for \lstinline{bar()}, and we must invoke some functions to lookup the contents of the function given its id. This gives the compiler a chance to observe that we accessed the data for \lstinline{bar()}, and then record the compilation dependency.
 
-In Listing~\ref{lst:hir-analysis} we iterate over the \lstinline{items} map of the \ac{HIR} and extract the relevant elements like functions, structs, and methods by pattern matching the type of an item. Each item stores a \lstinline{Span} object, which shows its origin at the source code level, i.e., the source file it has been defined within. This is important for us because in Rust, unlike, for instance, in Java, unit tests can and should, by convention, be written into the files that contain the code to test. This also means that unit tests, also our generated tests, can invoke private functions and methods directly, which in turn can lead to higher coverage. 
+In Listing~\ref{lst:hir-analysis} we iterate over the \lstinline{items} map of the \ac{HIR} and extract the relevant elements like functions, structs, and methods by pattern matching the type of an item. Each item stores a \lstinline{Span} object, which shows its origin at the source code level, i.e., the source file it has been defined within. This is important for us because in Rust, unlike, for instance, in Java, unit tests can and should, by convention, be written into the files that contain the code to test. This also means that unit tests, also our generated tests, can invoke private functions and methods directly, which in turn can lead to higher coverage.
 
 % TODO also add enums and traits
 \begin{lstlisting}[language=Rust, style=boxed, caption={Iterate over the items in the HIR of a crate}, label=lst:hir-analysis]
@@ -1272,7 +1305,7 @@ Prosser introduced the notion of dominance in a 1959 paper on the analysis of fl
 \textit{We say box i dominates box j if every path (leading from input to output through the diagram) which passes through box j must also pass through box i. Thus box i dominates box j if box j is subordinate to box i in the program}~\cite{Prosser1959}. He did not specify the algorithm to compute dominance, though. Since then, several algorithms for calculating dominance have been presented. Post-dominance can be computed the same way on a \ac{CFG} with reversed edges, given that the \ac{CFG} has a single exit point. In this work, we use the \lstinline{petgraph} graph library for Rust, which provides an implementation of the simple, fast dominance algorithm~\cite{Cooper2001} by Cooper et al. Finally, we compute a \ac{CDG} for each method body based on the algorithm~\cite{Ferrante1987} described by Ferrante et al.
 
 \subsection{MIR Instrumentation}
-The only compiler callback we implement at is point is the \lstinline{config} function, which allows us to modify the \ac{MIR} of a target program on the fly. The internal compiler crates already provide a \lstinline{MutVisitor}~\footnote{\url{https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/trait.MutVisitor.html}} which can be used to traverse and modify \ac{MIR} objects. To trace the execution of branches of a \ac{SUT}, we need to insert additional code at relevant places in the \ac{MIR}. Those are mainly entry basic blocks (to trace if a body has been entered at all during an execution of a test) and basic blocks that introduce branches and split the execution flow, e.g., those having \lstinline{SwitchInt} and \lstinline{Assert} terminators. Technically, there are also other terminators which have more than one successor\todo{Elaborate on that}, e.g., \lstinline{Call}. However, their additional branch is used to point to basic blocks which unwind the stack in case the function being called panics. At this point, we are only interested in basic blocks that belong to the regular execution of the program. Listings~\ref{lst:example-function-to-instrument} and \ref{lst:mir-of-example-function-to-instrument} show an example function we want to instrument and the relevant parts of it's \ac{MIR}.
+The only compiler callback we implement at is point is the \lstinline{config} function, which allows us to modify the \ac{MIR} of a target program on the fly. The internal compiler crates already provide a \lstinline{MutVisitor}~\footnote{\url{https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/trait.MutVisitor.html}} which can be used to traverse and modify \ac{MIR} objects. To trace the execution of branches of a \ac{SUT}, we need to insert additional code at relevant places in the \ac{MIR}. Those are mainly entry basic blocks (to trace if a body has been entered at all during an execution of a test) and basic blocks that introduce branches and split the execution flow, e.g., those having \lstinline{SwitchInt} and \lstinline{Assert} terminators. Technically, there are also other terminators which have more than one successor, e.g., \lstinline{Call}s, which are function invocations. However, the optional additional branch is used to point to basic blocks which unwind the stack in case the function being called panics, i.e., the program crashes. At this point, we are only interested in basic blocks that belong to the regular execution of the program. Listings~\ref{lst:example-function-to-instrument} and \ref{lst:mir-of-example-function-to-instrument} show an example function we want to instrument and the relevant parts of it's \ac{MIR}.
 
 \begin{lstlisting}[language=Rust, style=boxed, caption={Example function to instrument}, label=lst:example-function-to-instrument]
 fn foo(x: i32, y: i32) {
@@ -1293,10 +1326,10 @@ fn foo(_1: i32, _2: i32) -> () {
         _4 = _1;
         _5 = _2;
         _3 = Lt(move _4, move _5);
-        switchInt(move _3) -> [false: bb3, otherwise: bb1];
+        switchInt(move _3) -> [false: bb2, otherwise: bb1];
     }
 
-    bb3: {
+    bb2: {
         // print "x >= y"
     }
 
@@ -1308,57 +1341,75 @@ fn foo(_1: i32, _2: i32) -> () {
 }
 \end{lstlisting}
 
+For simplicity, we will consider individual instrumentation methods separately in the next chapters. Effectively, however, they will all be used together to trace various aspects of program execution.
+
 \subsubsection{Body Entry Instrumentation}
-Hier muss die Instrumentierung beschrieben werden, wie das Entry eines Codebodys instrumentiert wird (Root branch).
+To trace the entry of a function, we have to insert a call to our monitor at the very beginning. A function call is always a terminator in \ac{MIR}; that is, we must insert a whole new basic block for each trace function invocation. It must be the very first block in the sequence of basic blocks of the respective function, i.e., \lstinline{bb0}, so we shift the original blocks by one and let our new artificial tracing block point to the original entry block, which is \lstinline{bb1} now. Since the \ac{MIR} graph of each function is an independent data structure, they all have independent identificators, e.g., the id of the module and the function currently being compiled. The combination of the two allows us to uniquely identify functions. The ids are assigned by the compiler and are already known at the time of instrumentation, which is why we only weave them in as constants. Assume that the id of the module in which the function \lstinline{foo} is defined is equal to $2$, and the id of the function itself is $3$. Then, after instrumenting the entry of the function, it's \ac{MIR} looks like:
 
-\begin{lstlisting}[language=Rust, style=boxed, caption={Instrumented entry in the MIR of the \lstinline{foo} function}, label=lst:mir-instrument-root]
-    fn foo(_1: i32, _2: i32) -> () {
-        // Locals definition
+\begin{lstlisting}[language=Rust, style=boxed, caption={}, label=lst:mir-instrument-root]
+fn foo(_1: i32, _2: i32) -> () {
+    // Locals definition
 
-        bb0: {
-            _3 = monitor::trace_root(const 2_u64, const 3_u64) -> bb1;
-        }
-
-        bb1: {
-            _4 = _1;
-            _5 = _2;
-            _3 = Lt(move _4, move _5);
-            switchInt(move _3) -> [false: bb4, otherwise: bb2];
-        }
-
-        bb4: {
-            // print "x >= y"
-        }
-
-        bb2: {
-            // print "x < y"
-        }
-
-        // Other blocks
+    bb0: {
+        _3 = monitor::trace_root(const 2_u64, const 3_u64) -> bb3;
     }
-    \end{lstlisting}
+
+    bb3: {
+        _4 = _1;
+        _5 = _2;
+        _3 = Lt(move _4, move _5);
+        switchInt(move _3) -> [false: bb2, otherwise: bb1];
+    }
+
+    bb2: {
+        // print "x >= y"
+    }
+
+    bb1: {
+        // print "x < y"
+    }
+
+    // Other blocks
+}
+\end{lstlisting}
+
+By outsourcing calculations and the actual tracing to external \lstinline{monitor::trace_*} functions, we need to expend minimal effort to weave in code at this low-level. The \lstinline{monitor} module itself is a regular Rust source code file which we copy into the crate before compiling and instrumenting it. It is a wrapper around the branch distance and tracing logic. With this approach, \lstinline{monitor} is compiled with the actual crate and is available to the instrumented code, so we can call the monitor functions directly. Assume, our \lstinline{main} function looks like this:
+\begin{lstlisting}[language=Rust, style=boxed, caption={}]
+fn main() {
+    foo(10, 20);
+    foo(10, 20);
+}
+\end{lstlisting}
+
+Then, we will get the following trace output after the instrumentation of the program:
+
+\begin{lstlisting}[language={}, style=boxed, caption={}]
+Visited root branch (2, 3)
+Visited root branch (2, 3)
+\end{lstlisting}
 
 \subsubsection{Branch Instrumentation}
-To trace the execution of a branch, we need to insert a call to our own tracing function after a branch has been taken and just before it starts to execute. A function call is always a terminator in \ac{MIR}, that is, we must insert a whole new basic block for each trace function invocation. Doing so, we first update a terminator where branching begins, e.g., \lstinline{switchInt}, to point to our artificial tracing blocks. Then, each tracing block must point to the original target block of a branching terminator. Listing~\ref{lst:mir-instrument-branch} provides an instrumented version of the \ac{MIR} shown in Listing~\ref{lst:mir-of-example-function-to-instrument}.
-\todo{Entry block instrumentation fehlt}
-\begin{lstlisting}[language={}, style=boxed, caption={Instrumented branches in the MIR of the \lstinline{foo} function}, label=lst:mir-instrument-branch]
+To trace the execution of a branch, we need to insert calls to the monitor after a branch has been taken and just before it starts to execute. Doing so, we first update a terminator where branching begins, e.g., \lstinline{switchInt}, to point to our artificial tracing blocks. Here, the number of tracing blocks per branch is equal to the number of branches. This is due to the fact that after a particular branch is taken, we want to trace the distance for all branches. This means that for each possible branch a call to the monitor is needed, i.e. a basic block. At this point, we know pretty much on what basis a particular branch is taken and can thus incorporate appropriate logic. Exact values are then inserted and traced at runtime. In the end, we put a chain of tracing blocks with length $l >= 2$ in each branch. Then, the last block of each tracing chain must point to the original target block of the branching terminator. Listing~\ref{lst:mir-instrument-branch} provides an instrumented version of the \ac{MIR} shown in Listing~\ref{lst:mir-of-example-function-to-instrument}.
+
+
+\begin{lstlisting}[language={}, style=boxed, caption={Instrumented branches in the \ac{MIR} of the \lstinline{foo} function}, label=lst:mir-instrument-branch]
 fn foo(_1: i32, _2: i32) -> () {
     // Locals definition
     // ...
-    let mut _11: monitor::Op;
-    let mut _12: monitor::Branch;
-    let mut _26: monitor::Op;
-    let mut _27: monitor::Branch;
+    let mut _11: monitor::BinaryOp;
+    let mut _26: monitor::BinaryOp;
+    let mut _34: monitor::BinaryOp;
+    let mut _40: monitor::BinaryOp;
 
 
     bb0: {
         _4 = _1;
         _5 = _2;
         _3 = Lt(move _4, move _5);
-        switchInt(move _3) -> [false: bb4, otherwise: bb5];
+        switchInt(move _3) -> [false: bb4, otherwise: bb6];
     }
 
-    bb3: {
+    bb2: {
         // print "x >= y"
     }
 
@@ -1368,57 +1419,177 @@ fn foo(_1: i32, _2: i32) -> () {
 
     bb4: {
         _8 = _1;
-        _7 = move _8 as i64 (Misc);
+        _7 = move _8 as f64 (Misc);
         _10 = _2;
-        _9 = move _10 as i64 (Misc);
+        _9 = move _10 as f64 (Misc);
         discriminant(_11) = 1;
-        discriminant(_12) = 0;
-        _6 = monitor::trace_branch(const 0_u64,
-                            const 1_u64,
+        _6 = monitor::trace_branch_bool(const 2_u64,
+                            const 3_u64,
+                            const 2_u64,
                             move _7,
                             move _9,
                             move _11,
-                            move _12) -> bb3;
+                            const false) -> bb5;
     }
 
     bb5: {
         _23 = _1;
-        _22 = move _23 as i64 (Misc);
+        _22 = move _23 as f64 (Misc);
         _25 = _2;
-        _24 = move _25 as i64 (Misc);
+        _24 = move _25 as f64 (Misc);
         discriminant(_26) = 1;
-        discriminant(_27) = 1;
-        _21 = monitor::trace_branch(const 1_u64,
-                            const 0_u64,
+        _21 = monitor::trace_branch_bool(const 2_u64,
+                            const 3_u64,
+                            const 1_u64,
                             move _22,
                             move _24,
                             move _26,
-                            move _27) -> bb1;
+                            const true) -> bb2;
+    }
+
+    bb6: {
+        _31 = _1;
+        _30 = move _31 as f64 (Misc);
+        _33 = _2;
+        _32 = move _33 as f64 (Misc);
+        discriminant(_34) = 1;
+        _29 = monitor::trace_branch_bool(const 2_u64,
+                            const 3_u64,
+                            const 2_u64,
+                            move _30,
+                            move _32,
+                            move _34,
+                            const false) -> bb7;
+    }
+
+    bb7: {
+        _37 = _1;
+        _36 = move _37 as f64 (Misc);
+        _39 = _2;
+        _38 = move _39 as f64 (Misc);
+        discriminant(_40) = 1;
+        _35 = monitor::trace_branch_bool(const 2_u64,
+                            const 3_u64,
+                            const 1_u64,
+                            move _36,
+                            move _38,
+                            move _40,
+                            const true) -> bb1;
     }
 
     // Other blocks
 }
 \end{lstlisting}
 
-In tracing blocks \lstinline{bb4} and \lstinline{bb5} we want to call an appropriate function and store all the information we need to identify and compute the branch distance later. For reference, Listing~\ref{lst:basic-block-in-regular-rust} shows how the basic block~\lstinline{bb5} would look like if it was written in regular Rust.
+In tracing chains (\lstinline{bb4}, \lstinline{bb5}) and (\lstinline{bb6}, \lstinline{bb7}) we want to invoke appropriate monitor functions and store all the information we need to identify and compute the branch distance. The instrumented \ac{CFG} is shown in Figure~\Cref{fig:instrumented-branch-cfg}. As with \lstinline{monitor::trace_root} in Listing~\ref{lst:mir-instrument-root}, for each tracing call, we specify the ids of the module and function, as well as the id of the branch which the tracing runs within. The branch id is usually the number of the block the branching terminator originally pointed to, e.g., in this case we have to branch ids: $1$ and $2$. We also store the the operands of the binary operation in the \lstinline{if} conditional, as well as the binary operation itself. In the end, the polarization of the branches remains, i.e., \lstinline{true} or \lstinline{false}. With this information we can distinguish in the monitor whether the given branch is hit or not and determine the distance with the help of the values and the binary operation. For example, assume we invoke \lstinline{foo(10, 20)} again, then, we get the following trace output:
 
-\begin{lstlisting}[language={}, style=boxed, caption={How would \lstinline{bb5} look like in regular Rust code}, label=lst:basic-block-in-regular-rust]
-monitor::trace_branch(
-        0, // visited branch ID
-        1, // opposite branch ID
-        x as i64,
-        y as i64,
-        monitor::Op::LT,
-        monitor::Branch::True);
+\begin{lstlisting}[language={}, style=boxed, caption={}, label=lst:mir-instrument-branch-trace-output]
+// bb6 gets executed
+Distance to branch (2, 3, 2) is 10.0
+
+// bb7 gets executed
+Distance to branch (2, 3, 1) is 0.0
 \end{lstlisting}
 
-By outsourcing calculations and the actual tracing to external \lstinline{monitor::trace_*} functions, we need to expend minimal effort to weave in code at this low-level. The \lstinline{monitor} module itself is a regular Rust source code file which we copy into the crate before compiling and instrumenting it. With this approach, \lstinline{monitor} is compiled with the actual crate and it is available to the instrumented code, so we can call the tracing functions directly.
+Since $10 < 20$, the execution takes the \lstinline{true} branch, i.e., the trace chain of blocks \lstinline{bb6} and \lstinline{bb7}. In \lstinline{bb6}, we trace the \lstinline{false} branch while the actually executed branch is \lstinline{true}. We know that because we can also evaluate the operation \lstinline{monitor::BinaryOp::LT} with the operands $10$ and $20$ in the monitor. To calculate the local branch distance, we resort to the formulas in Table~\ref{tab:local-branch-distance-formulas}.
+
+For reference, Listing~\ref{lst:basic-block-in-regular-rust} shows how the basic block~\lstinline{bb4} would look like if it was written in regular Rust.
+
+\begin{lstlisting}[language={}, style=boxed, caption={How would \lstinline{bb4} look like in regular Rust code}, label=lst:basic-block-in-regular-rust]
+monitor::trace_branch_bool(
+    2u64, // module id
+    3u64, // function id within the module
+    3u64, // branch block id within the function
+    x as f64,
+    y as f64,
+    monitor::BinaryOp::LT,
+    false // branch polarization
+);
+\end{lstlisting}
+
 
 \subsubsection{Testability Transformation Instrumentation}
-Hier muss beschrieben werden, wie wir die Assertions in der MIR instrumentieren.
-Im ''Paper 1600 Bugs in 100 Projects'' werden die Transformations beschrieben, also kann man erwähnen, dass die künstlich eingeführten Checks vom Rust Compiler bereits gemacht werden, also müssen wir nur noch das Tracing einbauen, der Rest wird bereits vom Compiler geschenkt.
-Zum Beispiel werden in der MIR bei arithmetischen Operationen Checks eingeführt:
-\begin{lstlisting}[language={}, style=boxed, caption={MIR overflow check}, label=lst:mir-overflow-check]
+% TODO reword
+In the following, we describe several transformations implemented in the RustyUnit test, some of which were presented by Fraser and Arcuri~\cite{Fraser2013} for the EvoSuite tool. The transformations are implemented at the \ac{MIR} level. To do this, we need to introduce more tracing blocks at crucial points. Basically, the Rust compiler transforms input programs in the same way as it is done with testability transformations, which are described in section 2. It inserts assertions at relevant places to check unexpected behavior, for example, whether an index is within array bounds or whether an arithmetic operation results in overflow or underflow.
+
+For instance, when an arithmetic operation is accessed with an inappropriate index, the program will panic and crash. This happens because the compiler inserts checks before each array access and verifes whether the index is within the bounds of the array. Assume the following function that takes an index and an \lstinline{i32} array and returns the value at the given position:
+\begin{lstlisting}[language=Rust, style=boxed, caption={}, label=lst:array-index-access-example]
+fn get(pos: usize, array: &[i32; 3]) -> i32 {
+    array[pos]
+}
+\end{lstlisting}
+
+The relevant part of it's \ac{MIR} looks like this:
+\begin{lstlisting}[language={}, style=boxed, caption={}, label=lst:mir-boundary-check]
+fn get(_1: usize, _2: &[i32; 3]) -> i32 {
+    // Locals  definition
+
+    bb0: {
+        _3 = _1;
+        _4 = const 3_usize;
+        _5 = Lt(_3, _4);
+        assert(move _5,
+            "index out of bounds: the length is {} but the index is {}",
+            move _4,
+            _3) -> bb1;
+    }
+
+    bb1: {
+        _0 = (*_2)[_3];
+        return;
+    }
+}
+\end{lstlisting}
+
+That is, the compiler inserts an assertion that checks whether the index is less than the length of the array, which is statically constant. If the index is greater than or equal to the length, the program crashes. The other case, i.e. negative index, cannot occur since the index must always be of type \lstinline{usize}, i.e. an unsigned type. Thus, there is no reason to verify this case.
+
+Now, we need to insert tracing blocks for both, the ''good'' and the ''bad'' case. We could insert two branches always before an assertion block. However, in this case we would have to insert another branching block $s$, for example with switchInt, and if applicable we would have to change the original preceding assertion block so that it points to s. In the block s we would also have to copy the logic from the assertion block, which makes the whole thing even more complicated. Another option would be to change the assertion itself. An assertion in MIR has an optional unwind edge which, in the "bad" case, points to a sequence of blocks to clean up before the program crashes, if there is anything to clean up. Assume the function \lstinline{get} from Listing~\ref{lst:array-index-access-example} does some allocations before accessing the array:
+\begin{lstlisting}[language=Rust, style=boxed, caption={}]
+fn get(pos: usize, array: &[i32; 3]) -> i32 {
+    let s = String::from("I'm using heap");
+    array[pos]
+}
+\end{lstlisting}
+
+Then, the the \ac{MIR} of the function becomes a bit different:
+\begin{lstlisting}[language={}, style=boxed, caption={}, label=lst:mir-boundary-check]
+fn get(_1: usize, _2: &[i32; 3]) -> i32 {
+    // Locals  definition
+    bb0: {
+        _3 = <String as From<&str>>::from(const "I'm using heap") -> bb1;
+    }
+
+    bb1: {
+        _4 = _1;
+        _5 = const 3_usize;
+        _6 = Lt(_4, _5);
+        assert(move _6,
+            "index out of bounds: the length is {} but the index is {}",
+            move _5,
+            _4) -> [success: bb2, unwind: bb4];
+    }
+
+    bb2: {
+        _0 = (*_2)[_4];
+        drop(_3) -> bb3;
+    }
+
+    bb3: {
+        return;
+    }
+
+    bb4 (cleanup): {
+        drop(_3) -> bb5; // drop the string
+    }
+
+    // Other blocks
+}
+\end{lstlisting}
+
+The assertion has now got a second edge. Regardless of whether the index is valid or not, the string will be cleaned up in any case. The behavior is similar to the \lstinline{finally} block from the \lstinline{try-catch} construct in Java. Now we want to exploit the unwind edge of assertions. If an assertion has an unwind edge, we insert the tracing chain between the assertion and and the existing cleanup blocks. Otherwise, we create an unwind edge and connect it to the tracing chain. The instrumentation of assertions is illustrated in Figure~\Cref{fig:instrumented-assertion}. Since there are two branches, we also add a tracing chain of two tracing blocks to each branch. So in case the index is not valid, we trace the executed path normally before the program exits. Thus we know that the respective test has covered the path. In addition, we get a guidance for the two possible cases.
+
+% OVERFLOW CHECK
+\begin{lstlisting}[language={}, style=boxed, caption={\ac{MIR} overflow check}, label=lst:mir-overflow-check]
 fn add(a: i8, b: i8) -> i8 {
     a + b
 }
@@ -1436,29 +1607,7 @@ bb0: {
 \end{lstlisting}
 
 Oder für array boundary check:
-\begin{lstlisting}[language={}, style=boxed, caption={MIR array boundary check}, label=lst:mir-boundary-check]
-fn get(pos: usize) -> i32 {
-    let mut array: [i32; 3] = [0; 3];
-    array[pos]
-}
 
-bb0: {
-    _2 = [const 0_i32; 3];
-    _3 = _1;
-    _4 = const 3_usize;
-    _5 = Lt(_3, _4);
-    assert(
-        move _5,
-         "index out of bounds: the length is {} but the index is {}",
-         move _4,
-         _3) -> bb1;
-}
-
-bb1: {
-    _0 = _2[_3];
-    return;
-}
-\end{lstlisting}
 
 \subsection{Test Construction}
 
