@@ -1063,8 +1063,9 @@ Um die Selektion von Parents für die nachkommende Generationen besser guiden zu
 Um die Suche voranzutreiben, können verschiedene Heuristiken verwendet werden. \todo{Welche gibt es überhaupt?} Eine der weitverbreitesten ist Branch Distance. McMinn~\cite{McMinn_2004} beschreibt eine Sammlung von Regeln, die rekursiv angewendet werden können, um Distanz bei allen möglichen Prädikaten zu berechnen. Wenn die Ausführung des \ac{SUT} bei gegebenen Inputdaten in einem bestimmten Branch landet, so kann eine lokale Suche angewendet werden. Es wird mit Hilfe einer lokalen Fitnessfunktion abgeleitet, wie nah das Prädikat zum Auswerten zu \lstinline{true} ist. Zum Beispiel, bei einem Prädikat~\lstinline{x >= 10} und~\lstinline{x = 5} (während der Ausführung) wird der \lstinline{false} Branch getroffen. Die Distanz zum \lstinline{true} Branch beträge somit~$10 - 5 + k$ mit~$k \geq 1$. Dabei wird jedes Prädikat im \ac{SUT} instrumentiert, um die Distanzen zu anderen Branches während der Ausführung des \ac{SUT} zu tracen. Die Branch-Distanz muss noch normalisiert werden (je nach Werten kann es schnell zu Extremen kommen). Arcuri~\cite{Arcuri_2011} beschreibt in seiner Arbeit, welchen Einfluss die Normalisierung der Branch-Distanz auf die Effektivität einer such-basierten Testgenerierung hat.
 
 \begin{table}[]
-\begin{tabular}{\textwidth}{lcr}
-\hline
+\centering
+\begin{tabular}{lcr}
+\hline 
 \textbf{Condition}  & \textbf{Distance True} & \textbf{Distance False} \\
 \hline
 x == y              & |x - y|                & 1                       \\
@@ -1084,7 +1085,7 @@ x \textless{}= y    & x - y                  & y - x + 1               \\ \hline
 \label{sec:testability-transformations}
 Traditionally, \ac{SBST} is applied to generate test suites that maximize some coverage criteria, e.g., in this case, branch coverage. However, search-based techniques usually do not make any use of automated oracles~\cite{Fraser2013}. A lack of formal specification of the behavior of a program results in generated tests that must be supplemented with oracles manually. A technique called \textit{testability transformation} tries to overcome this obstacle. A testability transformation is a source-to-source program transformation that seeks to improve the performance of some chosen test data generation technique~\cite{Harman2004}, e.g., reach difficult branches. Beyond that, a \ac{SUT} can be transformed in a way such that artificial branches are inserted into the code to guide the search into triggering some exceptional behavior and crash the program. For instance, EvoSuite~\cite{Fraser2013} employs multiple testability transformations such as array access transformation (Listing~\ref{lst:evosuite-array-access-transformation}), division by zero transformation, or numerical overflow transformation. Those transformations do not increase code coverage in general but contribute to discovering potential unforeseen behavior and generating inputs that trigger it. Similar transformations can also be applied for Rust and are part of this approach.
 
-\begin{lstlisting}[language=Java, style=boxed, caption={Array access transformation as done in EvoSuite}, label=lst:evosuite-array-access-transformation]
+\begin{lstlisting}[language=Java, style=boxed, caption={Array access transformation in EvoSuite for Java}, label=lst:evosuite-array-access-transformation]
 // Original method
 void foo(int x) {
     bar[x] = 0;
@@ -1388,6 +1389,13 @@ Visited root branch (2, 3)
 Visited root branch (2, 3)
 \end{lstlisting}
 
+\begin{figure}[h]
+\caption{Instrumented function entry}
+\centering
+\includegraphics[width=\textwidth]{comparison-instrumented-fn-entry}
+\label{fig:comparison-instrumented-fn-entry}
+\end{figure}
+
 \subsubsection{Branch Instrumentation}
 To trace the execution of a branch, we need to insert calls to the monitor after a branch has been taken and just before it starts to execute. Doing so, we first update a terminator where branching begins, e.g., \lstinline{switchInt}, to point to our artificial tracing blocks. Here, the number of tracing blocks per branch is equal to the number of branches. This is due to the fact that after a particular branch is taken, we want to trace the distance for all branches. This means that for each possible branch a call to the monitor is needed, i.e. a basic block. At this point, we know pretty much on what basis a particular branch is taken and can thus incorporate appropriate logic. Exact values are then inserted and traced at runtime. In the end, we put a chain of tracing blocks with length $l >= 2$ in each branch. Then, the last block of each tracing chain must point to the original target block of the branching terminator. Listing~\ref{lst:mir-instrument-branch} provides an instrumented version of the \ac{MIR} shown in Listing~\ref{lst:mir-of-example-function-to-instrument}.
 
@@ -1481,7 +1489,7 @@ fn foo(_1: i32, _2: i32) -> () {
 }
 \end{lstlisting}
 
-In tracing chains (\lstinline{bb4}, \lstinline{bb5}) and (\lstinline{bb6}, \lstinline{bb7}) we want to invoke appropriate monitor functions and store all the information we need to identify and compute the branch distance. The instrumented \ac{CFG} is shown in Figure~\Cref{fig:instrumented-branch-cfg}. As with \lstinline{monitor::trace_root} in Listing~\ref{lst:mir-instrument-root}, for each tracing call, we specify the ids of the module and function, as well as the id of the branch which the tracing runs within. The branch id is usually the number of the block the branching terminator originally pointed to, e.g., in this case we have to branch ids: $1$ and $2$. We also store the the operands of the binary operation in the \lstinline{if} conditional, as well as the binary operation itself. In the end, the polarization of the branches remains, i.e., \lstinline{true} or \lstinline{false}. With this information we can distinguish in the monitor whether the given branch is hit or not and determine the distance with the help of the values and the binary operation. For example, assume we invoke \lstinline{foo(10, 20)} again, then, we get the following trace output:
+In tracing chains (\lstinline{bb4}, \lstinline{bb5}) and (\lstinline{bb6}, \lstinline{bb7}) we want to invoke appropriate monitor functions and store all the information we need to identify and compute the branch distance. The \ac{CFG} before and after instrumentation is shown in Figure~\Cref{fig:comparison-instrumented-branch-cfg}. As with \lstinline{monitor::trace_root} in Listing~\ref{lst:mir-instrument-root}, for each tracing call, we specify the ids of the module and function, as well as the id of the branch which the tracing runs within. The branch id is usually the number of the block the branching terminator originally pointed to, e.g., in this case we have to branch ids: $1$ and $2$. We also store the the operands of the binary operation in the \lstinline{if} conditional, as well as the binary operation itself. In the end, the polarization of the branches remains, i.e., \lstinline{true} or \lstinline{false}. With this information we can distinguish in the monitor whether the given branch is hit or not and determine the distance with the help of the values and the binary operation. For example, assume we invoke \lstinline{foo(10, 20)} again, then, we get the following trace output:
 
 \begin{lstlisting}[language={}, style=boxed, caption={}, label=lst:mir-instrument-branch-trace-output]
 // bb6 gets executed
@@ -1507,6 +1515,12 @@ monitor::trace_branch_bool(
 );
 \end{lstlisting}
 
+\begin{figure}[h]
+\caption{Instrumentation of regular branches}
+\centering
+\includegraphics[width=\textwidth]{comparison-instrumented-branch-cfg}
+\label{fig:comparison-instrumented-branch-cfg}
+\end{figure}
 
 \subsubsection{Testability Transformation Instrumentation}
 % TODO reword
@@ -1552,7 +1566,7 @@ fn get(pos: usize, array: &[i32; 3]) -> i32 {
 \end{lstlisting}
 
 Then, the the \ac{MIR} of the function becomes a bit different:
-\begin{lstlisting}[language={}, style=boxed, caption={}, label=lst:mir-boundary-check]
+\begin{lstlisting}[language={}, style=boxed, caption={}, label=lst:mir-boundary-check-with-unwinding]
 fn get(_1: usize, _2: &[i32; 3]) -> i32 {
     // Locals  definition
     bb0: {
@@ -1586,7 +1600,14 @@ fn get(_1: usize, _2: &[i32; 3]) -> i32 {
 }
 \end{lstlisting}
 
-The assertion has now got a second edge. Regardless of whether the index is valid or not, the string will be cleaned up in any case. The behavior is similar to the \lstinline{finally} block from the \lstinline{try-catch} construct in Java. Now we want to exploit the unwind edge of assertions. If an assertion has an unwind edge, we insert the tracing chain between the assertion and and the existing cleanup blocks. Otherwise, we create an unwind edge and connect it to the tracing chain. The instrumentation of assertions is illustrated in Figure~\Cref{fig:instrumented-assertion}. Since there are two branches, we also add a tracing chain of two tracing blocks to each branch. So in case the index is not valid, we trace the executed path normally before the program exits. Thus we know that the respective test has covered the path. In addition, we get a guidance for the two possible cases.
+The assertion has now got a second edge. Regardless of whether the index is valid or not, the string will be cleaned up in any case. The behavior is similar to the \lstinline{finally} block from the \lstinline{try-catch} construct in Java. Now we want to exploit the unwind edge of assertions. If an assertion has an unwind edge, we insert the tracing chain between the assertion and and the existing cleanup blocks. Otherwise, we create an unwind edge and connect it to the tracing chain. The instrumentation of assertions is illustrated in Figure~\Cref{fig:comparison-instrumented-assertion}. Since there are two branches, we also add a tracing chain of two tracing blocks to each branch. So in case the index is not valid, we trace the executed path normally before the program exits. Thus we know that the respective test has covered the path. In addition, we get a guidance for the two possible cases.
+
+\begin{figure}[h]
+\caption{Instrumented assertion}
+\centering
+\includegraphics[width=\textwidth]{comparison-instrumented-assertion}
+\label{fig:comparison-instrumented-assertion}
+\end{figure}
 
 % OVERFLOW CHECK
 \begin{lstlisting}[language={}, style=boxed, caption={\ac{MIR} overflow check}, label=lst:mir-overflow-check]
@@ -1610,18 +1631,19 @@ Oder für array boundary check:
 
 
 \subsection{Test Construction}
+Kommt am 08.02.
 
 \subsubsection{Selection}
+Kommt am 08.02.
 
 \subsubsection{Crossover}
+Kommt am 08.02.
 
 \subsubsection{Mutation}
+Kommt am 09.02.
 
 
 \subsection{Handling Generics and Traits}
-\todo{Den Testaufbau an sich erklären: Statements, Variablen usw.}
-\todo{Der Abschnitt Generics sollte vielleicht erst später kommen, nach dem wir den Aufbau von Tests erklärt haben}
-\todo{Erklären warum wir immer let mut var im Test schreiben}
 A large part of \ac{SBST} approaches is applied to managed languages such as Java, since these offer a rich set of tools and features like reflection. It allows to analyze the code of the \ac{SUT} and extract information needed for generating tests by querying the appropriate language \ac{API}, like \lstinline{getGenericParameters} of a \lstinline{java.lang.reflect.Method} instance to get generic parameters. Wenn Tests für generische Elemente generiert werden, ist es manchmal schwierig, einen generischen Typparameter mit einem passenden konkreten Typ zu ersetzen, da die Ausführung von dem konkreten Typ abhängt\todo{Referenz zu Gordons Paper}. Wie im Listing~\ref{lst:java-isinstanceof} gezeigt wird, kann ein Ausführungspfad bei generischen Methoden durch Checks nach dem konkreten Typ einer generischen Instanz beeinflusst werden. Viele Ansätze zur Analyse von Java Programmen arbeiten auf dem Bytecode-Level, nachdem Type Erasure bereits passiert ist. Das heißt, dass Bytecode keine Generics kennt, sie werden zum Beispiel durch \lstinline{Object} ersetzt. Nun muss das Tool
 
 \begin{lstlisting}[language=Java, style=boxed, caption={The execution path of the generic Java method depends on the concrete type of the argument}, label=lst:java-isinstanceof]
@@ -1673,7 +1695,7 @@ impl<T> for Foo<T> {
     }
 
     fn update(&mut self, bar: T) {
-        // \dots
+        // ...
     }
 }
 \end{lstlisting}
@@ -1683,10 +1705,10 @@ Aus der \ac{HIR} Analyse wissen wir, dass \lstinline{T} ein Typparameter des Str
 \begin{lstlisting}[language=Rust, style=boxed, caption={}, label=lst:building-generic-test-1]
 #[test]
 fn rusty_test_0() {
-    // \dots
+    // ...
     let mut isize_0 = 42isize;
     let mut foo_0: Foo<isize> = Foo::new(isize_0);
-    // \dots
+    // ...
 }
 \end{lstlisting}
 
@@ -1694,14 +1716,15 @@ Das Mapping \lstinline|{T -> isize}| zwischen dem generischen Typparameter und d
 \begin{lstlisting}[language=Rust, style=boxed, caption={}, label=lst:building-generic-test-2]
 #[test]
 fn rusty_test_0() {
-    // \dots
+    // ...
     let mut isize_0 = 42isize;
     let mut isize_1 = 145isize;
     let mut foo_0: Foo<isize> = Foo::new(isize_0);
     Foo::update(&mut foo_0, isize_1);
-    // \dots
+    // ...
 }
 \end{lstlisting}
+
 \todo{Beispiel mit Struct Generics und lokalen Methoden-Generics zeigen}
 % Generics Mixup Beispiel: https://doc.rust-lang.org/book/ch10-01-syntax.html
 
@@ -1780,16 +1803,16 @@ In general, we mainly use primitive data types for a \ac{SUT} to keep the genera
 
 \begin{lstlisting}[language=Rust, style=boxed, caption={A generic type A is used in multiple parameters and return value}, label=lst:generic-type-used-in-multiple-params]
 struct FooBar<A> {
-    // \dots
+    // ...
 }
 
 impl<A> for FooBar<A> {
     fn new() -> Self {
-        // \dots
+        // ...
     }
 
     fn foo(&self, x: A, v: &Vec<A>) -> Option<A> {
-        // \dots
+        // ...
     }
 }
 \end{lstlisting}
@@ -1812,6 +1835,8 @@ fn rusty_test_0() {
     let option_0: Option<i32> = FooBar::foo(&foobar_0, i32_0, &vec_0);
 }
 \end{lstlisting}
+
+Fortführung folgt am 11.02.
 
 \newpage
 \section{Evaluation}
@@ -1851,14 +1876,15 @@ Für jede Ausführung eines Generierungszyklus soll ein bestimmtes Zeitbudget ge
 
 Um die Performanz der Tools zu messen, wird hier die sogenannte \textit{instrument-coverage} des Rust Compilers verwendet. Rust unterstützt eigentlich zwei Coverage-Arten. Zum einen, die \textit{gcov}, die die Debug Information verwendet, um von LLVM IR nach Quellcode zu mappen. Dabei wird die LLVM IR instrumentiert, um die ausgeführten Befehle zu zählen. Da LLVM jedoch nichts von der Codesturktur von Rust weiß, gehen auf diese Weise viele Details verloren und die gemessene Coverage ist nur eine Annäherung an die tatsächliche Coverage, was nur mittelmäßig gut ist. Zum anderen unterstützen die neueren Versionen des Rust Compilers die Quellcode-basierte Coverage, auch genannt \textit{instrument-coverage}. Hierbei wird Rust Code (seine MIR, um genau zu sein) direkt instrumentiert, bevor er in die LLVM IR umgewandelt wird. Da die MIR ein Mapping zwischen Quellcode und dem CFG eines Programms ist, können selbst Stellen wie short-circuited conditionals, closures, and match guards präzise abgebildet werden.
 
-Damit die \textit{instrument-coverage} benutzt werden kann, muss das SUT mit dem entsprechenden Flag \lstinline{-Z instrument-coverage} kompiliert werden. Hierbei wird eine \textit{profiler runtime} benötigt, die im \textit{nightly} Compiler bereits mit dabei ist. Somit wird ein entsprechendes SUT mit \raggedright\lstinline{RUSTFLAGS="-Z instrument-coverage" cargo +nightly build} gebaut. Bei der Ausführung des gebauten Programs bzw. Tests werden von LLVM entsprechende Coverage (\lstinline{profdata}) Dateien generiert, \todo{Inwieweit sollte man an dieser Stelle ins Detail gehen?} die nach dem Postprocessing die Line- sowie Branchcoverage per Quellcode-Datei des SUT enthalten. Das ist die Information, die bei dieser Evaluation herangezogen wird.
+Damit die \textit{instrument-coverage} benutzt werden kann, muss das SUT mit dem entsprechenden Flag \lstinline{-Z instrument-coverage} kompiliert werden. Hierbei wird eine \textit{profiler runtime} benötigt, die im \textit{nightly} Compiler bereits mit dabei ist. Somit wird ein entsprechendes SUT mit \raggedright\lstinline{RUSTFLAGS="-Z instrument-coverage" cargo +nightly build} gebaut. Bei der Ausführung des gebauten Programs bzw. Tests werden von LLVM entsprechende Coverage (\lstinline{profdata}) Dateien generiert, die nach dem Postprocessing die Line- sowie Branchcoverage per Quellcode-Datei des SUT enthalten. Das ist die Information, die bei dieser Evaluation herangezogen wird.
 
 Da beide Tools, \textit{KLEE} und \textit{RustyUnit}, Tests in Quellcode-Form generiert werden, können sie zusammen mit dem SUT kompiliert und ihre Quellcode-basierte Coverage direkt verglichen werden.
 
+Fortführung folgt am 11.02.
 
 
 \subsection{Threats to Validity}
-Die Geschichte mit interner und externer Validität...
+Überarbeitung folgt am 16.02.
 
 Die in der Evaluation verwendeten Crates sind eher klein gehalten und vor allem so, dass sie möglichst wenige Dependencies haben, d. h. in sich geschlossen bleiben. Sie interagieren nicht mit der Umgebung, z. B. mittels I/O, und wodurch die Ergebnisse nicht auf alle möglichen Rust Programme generalisiert werden können. Außerdem wird hier teilweise ein wichtiges Feature von Rust außer Acht gelassen: Die Codegenerierung mittels Makros. Der zur Kompilierzeit generierte Code, wie beispielsweise vom \lstinline{serde} Crate, stellt unter anderem Schwierigkeiten durch seine Komplexität dar, die einen extensiven Zeitaufwand benötigt. Des Weiteren werdem hier keine Multithreaded Programme behandelt. Streng genommen sind die hier generierten Tests nicht ganz Unit Tests, da sie unter anderem auf modulfremde Implementierungen zugreifen, um Argumente für einen bestimmten Methodaufruf zu generieren. Das wird normalerweise mittels Mocks gehandhabt \todo{Hier Referenz zu EvoSuite oder anderen Tools, die Typen vor allem in Java gut mocken können}. Leider funktioniert das in Rust bis jetzt nur mäßig gut, da Mocks nur für Traits gut funktionieren, jedoch nicht für konkrete Structs. \todo{Das kann jedoch von Vorteil sein, wenn wir zum Beispiel Traits wie IntoIterator haben, hmmmm...}.
 
@@ -1903,7 +1929,8 @@ PriorityQueue  &       -      &       -        &        -         &       -  &  
 
 \newpage
 \section{Future Work}
-Folgende Punkte gehören auf jeden Fall zu Future Work:
+Überarbeitung folgt am 14.02.
+
 \begin{itemize}
     \item Es sollte definitiv darauf geachtet werden, dass die Generierung an sich einfach schneller wird. Durch das öftere Rekompilieren kommt es bei größeren Programmen zu sehr langen Bottlenecks.
     \item Minimierung von generierten Tests und Entfernen von unnötigen Statements.
