@@ -5,22 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="a912695a-153b-4025-a29a-2aa6aaffd4b3" name="Changes" comment="Before moving typebindings to vars">
-      <change afterPath="$PROJECT_DIR$/build.gradle" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/server/DataRequester.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/server/TraceParser.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/Main.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/exec/TestCaseRunner.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/exec/TestCaseRunner.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/Branch.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/Branch.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/MirAnalysis.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/MirAnalysis.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/Crate.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/Crate.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/SourceFile.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/SourceFile.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/fitness/Fitness.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/fitness/Fitness.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/util/ExecUtil.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/util/ExecUtil.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../latex/img/testify-overview.png" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../latex/thesis.tex" beforeDir="false" afterPath="$PROJECT_DIR$/../latex/thesis.tex" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../testify/instrumentation/src/data_structures.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/instrumentation/src/data_structures.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../testify/instrumentation/src/monitor.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/instrumentation/src/monitor.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../testify/server/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/server/src/main.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -124,7 +111,7 @@
     <property name="project.structure.proportion" value="0.17" />
     <property name="project.structure.side.proportion" value="0.2" />
     <property name="run.code.analysis.last.selected.profile" value="pProject Default" />
-    <property name="settings.editor.selected.configurable" value="reference.settingsdialog.project.gradle" />
+    <property name="settings.editor.selected.configurable" value="preferences.lookFeel" />
   </component>
   <component name="RecentsManager">
     <key name="CreateClassDialog.RecentsKey">
@@ -289,6 +276,7 @@
       <workItem from="1643395670146" duration="18876000" />
       <workItem from="1643552048942" duration="14366000" />
       <workItem from="1644166925061" duration="9000" />
+      <workItem from="1644350240926" duration="4454000" />
     </task>
     <task id="LOCAL-00001" summary="Same shit in Java">
       <created>1639084312372</created>

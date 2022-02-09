@@ -913,7 +913,7 @@ Fraser und Zeller~\cite{Fraser2012} beschreiben in ihrer Arbeit zum Mutations-ba
 \end{algorithm}
 
 
-Die initiale Population wird zufällig generiert, wie im Algorithmus~\labelcref{alg:random-generation-of-a-test} dargestellt. Bevor die Tests generiert werden, werden alle verfügbaren Methoden, Konstruktoren und Funktionen, sowie Attribute von Structs statisch aus der \ac{HIR} des \ac{SUT} extrahiert. Bei einem zufällig generierten Test wird daraus ein zufälliger Aufruf eingefügt. Die evtl. notwendigen Argumente (ggf. inklusive des Aufrufers, das heißt des Methodeninhabers) werden dabei ebenfalls generiert. Dafür werden entsprechende Aufrufe, die Rückgabewerte von passenden Datentypen haben, rekursiv eingefügt (Algorithmus~\labelcref{alg:random-generation-of-args}), wenn im Test Case nicht bereits Instanzen eines solchen Datentyps definiert und entsprechend den Regeln aus \cref{sec:problem-representation} verwendbar sind. Während der Suche werden die Datentypen, die zu instanziieren bereits versucht wird, gemerkt, um unendliche Rekursionen zu vermeiden. Laut den Algorithmen~\labelcref{alg:random-generation-of-a-test} und~\labelcref{alg:random-generation-of-args} werden neue Objekte nur dann generiert, wenn sie nicht im Test bereits existieren. Fraser und Zeller~\cite{Fraser2012} schlagen jedoch vor, bestehende Objekte nur mit einer gewissen Wahrscheinlichkeit wiederzuverwenden, um Diversität in generierten Test Cases zu erhöhen. In ihren Experimenten haben sie festgestellt, dass eine Wahrscheinlichkeit von 90\% Prozent am effektivsten ist. Rust's affines Typsystem macht eine Wiederverwendung von bereits definierten Objekten komplizierter, da es analysiert werden muss, inwieweit eine bestimmte Variable in einem gegebenen Test noch verwendbar ist.Das heißt, dass eine bereits definierte Variable nur dann von einem neu eingefügten Statement~$s$ verwendet werden darf, wenn sie als frei verwendbar markiert ist und von keinem anderen Statement verwendet wird, das nach~$s$ kommt. Genauer werden die Regeln folgenderweise definiert: Sei~$t$ ein Test Case und $pos(s)$ eine Funktion, die die Position eines Statements~$s$ in der Sequenz von~$t$ zurückgibt. Sei~$o$ ein Objekt von einem Datentyp~$c$, das von einem Statement~$gen$ definiert wird. Ein neues Statement~$s'$ wird eingefügt, welches~$o$ verwendet. Es gilt für die Positionen:~$pos(gen) < pos(s')$. Außerdem gilt:
+Die initiale Population wird zufällig generiert, wie im Algorithmus~\labelcref{alg:random-generation-of-a-test} dargestellt. Bevor die Tests generiert werden, werden alle verfügbaren Methoden, Konstruktoren und Funktionen, sowie Attribute von Structs statisch aus der \ac{HIR} des \ac{SUT} extrahiert. Bei einem zufällig generierten Test wird daraus ein zufälliger Aufruf eingefügt. Die evtl. notwendigen Argumente (ggf. inklusive des Aufrufers, das heißt des Methodeninhabers) werden dabei ebenfalls generiert. Dafür werden entsprechende Aufrufe, die Rückgabewerte von passenden Datentypen haben, rekursiv eingefügt (Algorithmus~\labelcref{alg:genobject}), wenn im Test Case nicht bereits Instanzen eines solchen Datentyps definiert und entsprechend den Regeln aus \Cref{sec:problem-representation} verwendbar sind. Während der Suche werden die Datentypen, die zu instanziieren bereits versucht wird, gemerkt, um unendliche Rekursionen zu vermeiden. Laut den Algorithmen~\labelcref{alg:random-generation-of-a-test} und~\labelcref{alg:random-generation-of-args} werden neue Objekte nur dann generiert, wenn sie nicht im Test bereits existieren. Fraser und Zeller~\cite{Fraser2012} schlagen jedoch vor, bestehende Objekte nur mit einer gewissen Wahrscheinlichkeit wiederzuverwenden, um Diversität in generierten Test Cases zu erhöhen. In ihren Experimenten haben sie festgestellt, dass eine Wahrscheinlichkeit von 90\% Prozent am effektivsten ist. Rust's affines Typsystem macht eine Wiederverwendung von bereits definierten Objekten komplizierter, da es analysiert werden muss, inwieweit eine bestimmte Variable in einem gegebenen Test noch verwendbar ist. Das heißt, dass eine bereits definierte Variable nur dann von einem neu eingefügten Statement~$s$ verwendet werden darf, wenn sie als frei verwendbar markiert ist und von keinem anderen Statement verwendet wird, das nach~$s$ kommt. Genauer werden die Regeln folgenderweise definiert: Sei~$t$ ein Test Case und $pos(s)$ eine Funktion, die die Position eines Statements~$s$ in der Sequenz von~$t$ zurückgibt. Sei~$o$ ein Objekt von einem Datentyp~$c$, das von einem Statement~$gen$ definiert wird. Ein neues Statement~$s'$ wird eingefügt, welches~$o$ verwendet. Es gilt für die Positionen:~$pos(gen) < pos(s')$. Außerdem gilt:
 \begin{itemize}
     \item Wenn~$o$ von keinem Statement~$s \in t$ verwendet wird, darf~$o$ von~$s'$ konsumiert und ausgeliehen werden.
     \item Wenn~$o$ von einem Statement~$s \in t$ ausgeliehen wird, darf~$o$ von~$s'$ an der Position~$p_{borrow}$ mit ~$pos(gen) < p_{borrow}$ ebenfalls ausgeliehen oder an der Position~$p_{consume}$ mit~$pos(s) < p_{consume} < \left|t\right|$ konsumiert werden.
@@ -922,10 +922,10 @@ Die initiale Population wird zufällig generiert, wie im Algorithmus~\labelcref{
 Das Ganze wird mit Hilfe eines Data Dependence Graphen realisiert, in dem jedes Statement bzw. ein definiertes Objekt die Rolle eines Knoten hat und Beziehungen wie z. B. \textit{Consumes} oder \textit{Borrows} zwischen Statements und ihren Argumenten notiert werden können.
 
 
-Fraser und Zeller schlagen ebenfalls vor, wenn sich eine zufällige Generierung als schwierig erweist, kann Algorithmus~\labelcref{alg:random-generation-of-args} in eine umfassende Suche mit Backtracking umgewandelt werden. Auch wenn der Suchraum groß ist, sei das gar kein so großes Problem, da Teilsequenzen zur Generierung von Instanzen wiederverwendet werden können. Die Test Cases werden so lange auf diese Weise produziert, bis die gewünschte Größe der Population erreicht ist.
+Wir adoptieren den Algorithmus~\labelcref{alg:genobject} von Fraser und Zeller und versuchen damit, Abhängigkeiten zu generieren. Da wir nicht eine komplette Analyse aller möglichen Typen durchführen, kann es dazu kommen, dass \lstinline{GenObject} bei der Suche scheitert. In diesem Fall überspringen wir die jeweilige Methode bzw. Funktion, für die wir das Argument versucht haben, zu generieren. Das führt natürlich zu schlechteren Coverage Ergebnissen, eine vollständige Analyse aller möglichen Fälle ist jedoch nicht einfach und kann im Rahmen dieser Arbeit nicht durchgeführt werden. 
 
 \begin{algorithm}[t]
-\caption{$GenObject(c, G, M, t)$}\label{alg:random-generation-of-args}
+\caption{$GenObject(c, G, M, t)$}\label{alg:genobject}
 \begin{algorithmic}
 \Input
   \Desc{$c$}{Datatype of desired object}
@@ -1002,11 +1002,23 @@ a.m(20, 5);
 \end{lstlisting}
 
 \subsubsection{Crossover}
-Die einfachste Art von Crossover ist der One-Point-Crossover, so wie er in~\cref{sec:background-crossover} beschrieben ist. Die Chromosome werden hier jedoch in der natürlichen Art repräsentiert, als Sequenz von Statements, was dazu führt, dass beim Aufteilen und Durchtauschen von Köpfen eines Paars von Chromosomen auf die Abhängigkeiten der Statements geachtet werden muss. Tonella~\cite{Tonella2004} schlägt zwei Alternativen vor:
+Die einfachste Art von Crossover ist der One-Point-Crossover, so wie er in~\Cref{sec:background-crossover} beschrieben ist. Die Chromosome werden hier jedoch in der natürlichen Art repräsentiert, als Sequenz von Statements, was dazu führt, dass beim Aufteilen und Durchtauschen von Köpfen eines Paars von Chromosomen auf die Abhängigkeiten zwischen einzelnen Statements geachtet werden muss. Zum Beispiel besteht eine Abhängigkeit zwischen einem Methodenaufruf und seinen Argumenten, die wir in einem Test immer in einem eigenen Statement initialisieren. Wenn der Schnittpunkt einer Rekombination so eine Abhängigkeit zwischen Statements trifft, werden die so neu geschaffenen rekombinierten Test Cases in den meisten Fällen nicht vom Compiler akzeptiert. Tonella~\cite{Tonella2004} hat für dieses Problem zwei Lösungen vorgeschlagen:
+
 \begin{itemize}
-    \item Fehlende Abhängigkeiten von Statements können wie beim Mutationsoperator durch das Generieren ergänzt werden. \todo{Beispiel} Sollten bestimmte Definitionen dadurch überflüssig werden, dass ihre spätere Benutzung durch Rekombination in ein anderes Choromosom geschoben wurde, können diese gelöscht werden.
-    \item Abhängigkeiten von einem durch Rekombination verschobenen Teil eines Chromosoms werden unabhängig vom Crossover-Point ebenfalls in ein anderes Chromosom geschoben, sofern diese im ursprünglichen Chromosom nicht mehr benötigt werden. \todo{Beispiel}
+    \item Fehlende Abhängigkeiten von Statements können wie beim Mutationsoperator durch das Generieren ergänzt werden. Sollten bestimmte Definitionen dadurch überflüssig werden, dass ihre spätere Benutzung durch Rekombination in ein anderes Choromosom geschoben wurde, können diese gelöscht werden.
+    \item Abhängigkeiten von einem durch Rekombination verschobenen Teil eines Chromosoms werden unabhängig vom Crossover-Point ebenfalls in ein anderes Chromosom geschoben, sofern diese im ursprünglichen Chromosom nicht mehr benötigt werden, ansonsten könnten diese kopiert werden. 
 \end{itemize}
+
+Bei der Rekombination setzen wir auf die erste Option: Im Fall, dass Argumente eines rekombinierten Test Cases außenvor bleiben, generieren wir diese nachträglich mittels des \lstinline{GenObject} Algorithmus, sodass der Test Case wieder kompilierbar wird. In \Cref{fig:crossover-example} wird ein solcher Fall veranschaulicht. Es wird ein zufälliger Schnittpunkt in den beiden Test Cases blau und grün bestimmt. Durch Rekombination der Statements entstehen zwei neue Test Cases, die beide jedoch in der Form nicht kompilierbar sind, da sowohl im linken (\lstinline{hashmap_0}) als auch im rechten Test Case (\lstinline{f64_0}) Instanzen verwendet werden, die in den jeweiligen Tests gar nicht definiert sind. Aus diesem Grund müssen wir einen Repair-Schritt durchführen und fehlende Abhängigkeit generieren (in rot). 
+
+\begin{figure}[h]
+\caption{Crossover between two test cases with postprocessing}
+\centering
+\includegraphics[width=\textwidth]{crossover}
+\label{fig:crossover-example}
+\end{figure}
+
+Durch die Rekombination können einige Variablen aber auch überflüssig werden, wie zum Beispiel \lstinline{hashmap_0} im rechten rekombinierten Test Case. Diese ist für den Test nicht notwendig, macht diesen nur unübersichtlicher und erhöht nicht die Coverage. Solche Fälle können theoretisch mit Hilfe von Techniken wie Delta Debugging herausgefiltert werden, allerdings belassen wir sie erstmal, da sie keinen Schaden anrichten. 
 
 \subsubsection{Dependencies}
 Hat man beispielsweise ein Rust Programm wie in Listing~\ref{lst:example-rust-program}, welches raus einem Struct für Rechtecke und einem Struct, welcher Operationen auf dem Rechteck durchführt (was nicht ganz der guten Sitten des Software Engineering entspricht, daher sollte ein besseres Beispiel hergenommen werden).
@@ -1047,20 +1059,59 @@ let mut calculator_0 = Calculator::new();
 let f64_4 = areacalculator_0.area_by_value(rectangle_0);
 \end{lstlisting}
 
-Die im Testcase aus dem Listing~\ref{lst:example-testcase} können mit einer Art von Data-Dependence-Graph wie in Figure~\ref{fig:ddg-example}.
-
-\begin{figure}[h]
-\caption{Data-Dependence-Graph für den Testcase aus dem Listing~\ref{lst:example-testcase}}
-\centering
-\includegraphics[width=\textwidth]{DDG}
-\label{fig:ddg-example}
-\end{figure}
-\todo{Das Bild sollte "ein bisschen" kompakter sein}
 
 \subsubsection{Fitness Function}
-Um die Selektion von Parents für die nachkommende Generationen besser guiden zu können, werden alle Individuen in einer Population nach ihrer Fitness ausgewertet. Eine gute Fitnessfunktion ist sehr wichtig bei der Suche nach Lösungen. Lösungen, die in einer bestimmten Weise \"besser\" als andere sind, sollen mit besseren Fitnesswerten belohnt werden. Was auch immer eine bessere Fitness ist, eine höhere oder niedrigere Fitness hängt davon ab, ob die Suchstrategie versucht, die Fitnessfunktion zu maximieren oder zu minimieren~\cite{McMinn_2004}. Dieser Ansatz wird sich voraussichtlich auf Branch Coverage konzentieren. EvoSuite instrumentiert in der originalen Implementierung Java SUT auf Bytecode-Level und im Bytecode werden alle Loops usw. in die einfachen if-Verzweigungen überführt. Das Ziel ist es, die optimale Lösung zu finden, d. h. eine Test Suite, die möglichst hohe Branch-Coverage hat. Gleichzeitig soll es aber keine andere Testsuite geben, die bei gleicher Branch-Coverage kleiner ist bzw. kleinere Tests enthält. Einige Branches, sogenannte infeasible Branches, können evtl. gar nicht abgedeckt werden, entweder aufgrund der limitierten Repräsentation der Lösung oder weil es keine passenden Inputs existieren. Somit werden solche Tests bevorzugt bei der Evolvierung bevorzugt, die eine höhere Fitness bzgl. der Branch-Coverage haben. Bei zwei Tests mit der gleichen Coverage wird der kürzere bevorzugt.
+Um die Selektion von Parents für die nachkommende Generationen besser guiden zu können, werden alle Individuen in einer Population nach ihrer Fitness ausgewertet. Eine gute Fitnessfunktion ist sehr wichtig bei der Suche nach Lösungen. Lösungen, die in einer bestimmten Weise ''besser'' als andere sind, sollen mit besseren Fitnesswerten belohnt werden. Was auch immer eine bessere Fitness ist, eine höhere oder niedrigere Fitness hängt davon ab, ob die Suchstrategie versucht, die Fitnessfunktion zu maximieren oder zu minimieren~\cite{McMinn_2004}. 
 
-Um die Suche voranzutreiben, können verschiedene Heuristiken verwendet werden. \todo{Welche gibt es überhaupt?} Eine der weitverbreitesten ist Branch Distance. McMinn~\cite{McMinn_2004} beschreibt eine Sammlung von Regeln, die rekursiv angewendet werden können, um Distanz bei allen möglichen Prädikaten zu berechnen. Wenn die Ausführung des \ac{SUT} bei gegebenen Inputdaten in einem bestimmten Branch landet, so kann eine lokale Suche angewendet werden. Es wird mit Hilfe einer lokalen Fitnessfunktion abgeleitet, wie nah das Prädikat zum Auswerten zu \lstinline{true} ist. Zum Beispiel, bei einem Prädikat~\lstinline{x >= 10} und~\lstinline{x = 5} (während der Ausführung) wird der \lstinline{false} Branch getroffen. Die Distanz zum \lstinline{true} Branch beträge somit~$10 - 5 + k$ mit~$k \geq 1$. Dabei wird jedes Prädikat im \ac{SUT} instrumentiert, um die Distanzen zu anderen Branches während der Ausführung des \ac{SUT} zu tracen. Die Branch-Distanz muss noch normalisiert werden (je nach Werten kann es schnell zu Extremen kommen). Arcuri~\cite{Arcuri_2011} beschreibt in seiner Arbeit, welchen Einfluss die Normalisierung der Branch-Distanz auf die Effektivität einer such-basierten Testgenerierung hat.
+Bei der Suche verwenden wir die Branch Coverage, d. h., jeder Branch ist ein Target. Wenn ein Branch ausgeführt wird, wird der entsprechende Test in Bezug auf diesen Target als gut markiert. Wird eine Funktion oder Methode ausgeführt, ein Branch jedoch nicht, dann bestimmt die Fitness die Distanz des jeweiligen Test Cases zur einer Ausführung des Targets. Wir verwenden die weit verbreitete Definition der Fitness für Branch Coverage, \textit{approach level} und \textit{branch distance} Berechnung, die in der such-basierten Generierung der Test Daten eingesetzt wird~\cite{McMinn_2004}. Der Approach Level beschreibt wie weit ein Test Case von einem Target im \ac{CFG} entfernt war, wenn der Test Case vom Kurs abgewichen ist. Wir berechnen den Approach Level in der Anzahl der verfehlten Control Dependencies zwischen dem Target und dem Punkt, an dem der Test Case eine falsche Abzweigung genommen hat. Approach Level ist gleich 0 wenn alle kontrollabhängige Branches vom Test Case erreicht wurden. 
+
+\todo{Beispiel für Approach Level}
+
+% TODO reword
+The branch distance estimates how far the branch at which execution diverged is from evaluating to the necessary outcome. To determine these values, the test case has to be executed once on the unmodified software. If the target executed, then approach level and branch distance are 0. Otherwise, the rules from \Cref{tab:local-branch-distance-formulas} are used for calculation. Consider the following example function:
+
+\begin{lstlisting}[language=Rust, style=boxed, caption=, label=lst:example-branch-distance-nesting]
+fn foo(x: i32, y: i32) -> i32 {
+    if x < 5 {
+        if y >= 10 {
+            0
+        } else {
+            1
+        }
+    } else {
+        2
+    }
+}
+\end{lstlisting}
+
+Assume that a test invokes \lstinline{foo}. In \Cref{tab:example-fitness-calculation} werden Aufrufe von \lstinline{foo} mit verschiedenen Argumenten und die daraus resultierende approach level (AL) und branch distance (BD). 
+\begin{table}[h!]
+\centering
+\begin{tabular}{c|cc|cc|cc}
+\hline
+\textbf{Branch (Line)} & \multicolumn{2}{c|}{\textbf{foo(0, 5)}}                     & \multicolumn{2}{c|}{\textbf{foo(6, 1)}}                      & \multicolumn{2}{c}{\textbf{foo(0, 10)}}                     \\
+                       \hline
+ & \textbf{AL} & \textbf{BD} & \textbf{AL} & \textbf{BD} & \textbf{AL} & \textbf{BD} \\
+3-7                    & 0                       & 0                        & 0                       & 2                        & 0                       & 0                        \\
+9                      & 0                       & 5                        & 0                       & 0                        & 0                       & 5                        \\
+4                      & 0                       & 5                        & 1                       & 2                        & 0                       & 0                        \\
+6                      & 0                       & 0                        & 1                       & 2                        & 0                       & 1 \\ \hline                      
+\end{tabular}
+\caption{Fitness value calculation for different invocations of \lstinline{foo}}
+\label{tab:example-fitness-calculation}
+\end{table}
+
+% TODO reword
+As usual, the branch distance should not dominate the approach level, and therefore it is normalized in the range $[0, 1]$, for instance, using the following normalization function initially proposed by Arcuri~\cite{Arcuri_2011}:
+
+\[\alpha(x) = \frac{x}{x + 1}\]
+
+Damit können wir die Gesamtfitness eines Tests~$t$ bzgl. Target~$m$ berechnen:
+\[D_m(t) = \text{Approach Level} + \alpha(\text{Branch Distance})\]
+
+%EvoSuite instrumentiert in der originalen Implementierung Java SUT auf Bytecode-Level und im Bytecode werden alle Loops usw. in die einfachen if-Verzweigungen überführt. Das Ziel ist es, die optimale Lösung zu finden, d. h. eine Test Suite, die möglichst hohe Branch-Coverage hat. Gleichzeitig soll es aber keine andere Testsuite geben, die bei gleicher Branch-Coverage kleiner ist bzw. kleinere Tests enthält. Einige Branches, sogenannte infeasible Branches, können evtl. gar nicht abgedeckt werden, entweder aufgrund der limitierten Repräsentation der Lösung oder weil es keine passenden Inputs existieren. Somit werden solche Tests bevorzugt bei der Evolvierung bevorzugt, die eine höhere Fitness bzgl. der Branch-Coverage haben. Bei zwei Tests mit der gleichen Coverage wird der kürzere bevorzugt.
+
+%Um die Suche voranzutreiben, können verschiedene Heuristiken verwendet werden. \todo{Welche gibt es überhaupt?} Eine der weitverbreitesten ist Branch Distance. McMinn~\cite{McMinn_2004} beschreibt eine Sammlung von Regeln, die rekursiv angewendet werden können, um Distanz bei allen möglichen Prädikaten zu berechnen. Wenn die Ausführung des \ac{SUT} bei gegebenen Inputdaten in einem bestimmten Branch landet, so kann eine lokale Suche angewendet werden. Es wird mit Hilfe einer lokalen Fitnessfunktion abgeleitet, wie nah das Prädikat zum Auswerten zu \lstinline{true} ist. Zum Beispiel, bei einem Prädikat~\lstinline{x >= 10} und~\lstinline{x = 5} (während der Ausführung) wird der \lstinline{false} Branch getroffen. Die Distanz zum \lstinline{true} Branch beträge somit~$10 - 5 + k$ mit~$k \geq 1$. Dabei wird jedes Prädikat im \ac{SUT} instrumentiert, um die Distanzen zu anderen Branches während der Ausführung des \ac{SUT} zu tracen. Die Branch-Distanz muss noch normalisiert werden (je nach Werten kann es schnell zu Extremen kommen). Arcuri~\cite{Arcuri_2011} beschreibt in seiner Arbeit, welchen Einfluss die Normalisierung der Branch-Distanz auf die Effektivität einer such-basierten Testgenerierung hat.
 
 \begin{table}[]
 \centering
@@ -1075,11 +1126,9 @@ x \textgreater{}= y & y - x                  & x - y + 1               \\
 x \textless y       & x - y + 1              & y - x                   \\
 x \textless{}= y    & x - y                  & y - x + 1               \\ \hline
 \end{tabular}
+\caption{Local branch distance calculation for numeric values}
 \label{tab:local-branch-distance-formulas}
-\caption{Local Branch Distance Calculation for Numeric Values}
 \end{table}
-
-\todo{Approach level}
 
 \subsection{Test Oracles and Testability Transformations}
 \label{sec:testability-transformations}
@@ -1248,7 +1297,7 @@ fn hir_analysis(tcx: &TyCtxt<'_>, callables: &mut Vec<Callable>) {
 }
 \end{lstlisting}
 
-This way we can already generate random tests, since we know which functions or methods can be called. Listing~\ref{lst:hir-analysis-example} shows an example program. After the analysis, the following holds in terms of Algorithm~\ref{alg:random-generation-of-args}: $M = \{\lstinline{Address::new}, \lstinline{Person::new}, \lstinline{Person::address}, \lstinline{say_hello_to}, \lstinline{address_to_string}\}$. If we wanted to execute the \lstinline{address_to_string} function in an empty test $t = \{\}$, we would have to generate an argument of type \lstinline{Address}. Thanks to the information about the return type of a method, we can use $GenObject(Address, \{\}, M, t)$ to create either an \lstinline{Address} object using \lstinline{Address::new} or \lstinline{Person::address}. The latter one is a method, i.e., it expects a \lstinline{self} object argument which would require us to recursively search for a way to create an object of type \lstinline{Person}, e.g., by calling the constructor \lstinline{Person::new}.
+This way we can already generate random tests, since we know which functions or methods can be called. Listing~\ref{lst:hir-analysis-example} shows an example program. After the analysis, the following holds in terms of Algorithm~\ref{alg:genobject}: $M = \{\lstinline{Address::new}, \lstinline{Person::new}, \lstinline{Person::address}, \lstinline{say_hello_to}, \lstinline{address_to_string}\}$. If we wanted to execute the \lstinline{address_to_string} function in an empty test $t = \{\}$, we would have to generate an argument of type \lstinline{Address}. Thanks to the information about the return type of a method, we can use $GenObject(Address, \{\}, M, t)$ to create either an \lstinline{Address} object using \lstinline{Address::new} or \lstinline{Person::address}. The latter one is a method, i.e., it expects a \lstinline{self} object argument which would require us to recursively search for a way to create an object of type \lstinline{Person}, e.g., by calling the constructor \lstinline{Person::new}.
 
 \begin{lstlisting}[language=Rust, style=boxed, caption={After HIR analysis, we know how a \lstinline{Person} object can be generated to be used in \lstinline{say_hello_to}.}, label=lst:hir-analysis-example]
 struct Address {
@@ -1889,6 +1938,9 @@ Fortführung folgt am 11.02.
 Die in der Evaluation verwendeten Crates sind eher klein gehalten und vor allem so, dass sie möglichst wenige Dependencies haben, d. h. in sich geschlossen bleiben. Sie interagieren nicht mit der Umgebung, z. B. mittels I/O, und wodurch die Ergebnisse nicht auf alle möglichen Rust Programme generalisiert werden können. Außerdem wird hier teilweise ein wichtiges Feature von Rust außer Acht gelassen: Die Codegenerierung mittels Makros. Der zur Kompilierzeit generierte Code, wie beispielsweise vom \lstinline{serde} Crate, stellt unter anderem Schwierigkeiten durch seine Komplexität dar, die einen extensiven Zeitaufwand benötigt. Des Weiteren werdem hier keine Multithreaded Programme behandelt. Streng genommen sind die hier generierten Tests nicht ganz Unit Tests, da sie unter anderem auf modulfremde Implementierungen zugreifen, um Argumente für einen bestimmten Methodaufruf zu generieren. Das wird normalerweise mittels Mocks gehandhabt \todo{Hier Referenz zu EvoSuite oder anderen Tools, die Typen vor allem in Java gut mocken können}. Leider funktioniert das in Rust bis jetzt nur mäßig gut, da Mocks nur für Traits gut funktionieren, jedoch nicht für konkrete Structs. \todo{Das kann jedoch von Vorteil sein, wenn wir zum Beispiel Traits wie IntoIterator haben, hmmmm...}.
 
 Moreover, bei den generierten Tests möchte man unter anderem wissen, ob zwei Tests eigentlich equal und dadurch teilweise überflüssig sind, allerdings ist das ein ganz anderes Problem. Somit generieren wir einfach einen Haufen von Tests und hoffen auf das Beste. Um den Rest soll sich jemand in Future kümmern.
+
+MIR ist nicht stabil und kann sich in zukünftigen Versionen ändern, sodass die Implementierung nicht mehr zusammenpasst.
+
 \subsection{Code Coverage Comparison with Manually Written Tests}
 \begin{table}[]
 \begin{tabular*}{\textwidth}{l @{\extracolsep{\fill}} cccc}
