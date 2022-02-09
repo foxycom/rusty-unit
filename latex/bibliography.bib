@@ -1,36 +1,33 @@
-% Encoding: UTF-8
-
 @Article{,
-  author   = {Balasubramanian, Abhiram and Baranowski, Marek S. and Burtsev, Anton and Panda, Aurojit and Rakamari, Zvonimir and Ryzhyk, Leonid},
-  title    = {System Programming in Rust: Beyond Safety},
-  doi      = {10.1145/3139645.3139660},
-  issn     = {0163-5980},
-  issue    = {August 2017},
-  number   = {1},
-  url      = {https://doi.org/10.1145/3139645.3139660},
-  volume   = {51},
-  comment  = {Die Autoren schlagen Beispielimplementierungen für},
-  keywords = {rank4},
-  year     = {2017},
+  author  = {Balasubramanian, Abhiram and Baranowski, Marek S. and Burtsev, Anton and Panda, Aurojit and Rakamari, Zvonimir and Ryzhyk, Leonid},
+  title   = {System Programming in Rust: Beyond Safety},
+  doi     = {10.1145/3139645.3139660},
+  issn    = {0163-5980},
+  issue   = {August 2017},
+  number  = {1},
+  url     = {https://doi.org/10.1145/3139645.3139660},
+  volume  = {51},
+  comment = {Die Autoren schlagen Beispielimplementierungen für},
+  ranking = {rank4},
+  year    = {2017},
 }
 
 @InProceedings{,
   author    = {Levy, Amit and Campbell, Bradford and Ghena, Branden and Giffin, Daniel B. and Pannuto, Pat and Dutta, Prabal and Levis, Philip},
-  title     = {Multiprogramming a 64kB Computer Safely and Efficiently},
   booktitle = {Proceedings of the 26th Symposium on Operating Systems Principles},
-  year      = {2017},
+  title     = {Multiprogramming a 64kB Computer Safely and Efficiently},
+  doi       = {10.1145/3132747.3132786},
   isbn      = {9781450350853},
   pages     = {234-251},
-  doi       = {10.1145/3132747.3132786},
   url       = {https://doi.org/10.1145/3132747.3132786},
-  keywords  = {rank2},
+  ranking   = {rank2},
+  year      = {2017},
 }
 
 @InProceedings{,
   author    = {Evans, Ana Nora and Campbell, Bradford and Soffa, Mary Lou},
-  title     = {Is Rust Used Safely by Software Developers?},
   booktitle = {2020 IEEE/ACM 42nd International Conference on Software Engineering (ICSE)},
-  year      = {2020},
+  title     = {Is Rust Used Safely by Software Developers?},
   pages     = {246-257},
   abstract  = {Rust, an emerging programming language with explosive growth,
 provides a robust type system that enables programmers to write
@@ -54,7 +51,8 @@ central Rust repository’s interface to help Rust software developers
 be aware of when their Rust code is unsafe.},
   comment   = {Die Autoren untersuchen Open-Source Projekte, die in Rust geschrieben wurden und analysieren inwieweit die Entwickler der Projekte die unsicheren Features von Rust verwenden und die Sicherheiten des Compilers umgeben (unsafe code).
 Das Paper zitiert auch mehrere andere Artikel, die auf die Sicherheiten von Rust eingehen und die Sprache mit C und C++ vergleichen.},
-  keywords  = {rank5},
+  ranking   = {rank5},
+  year      = {2020},
 }
 
 @InProceedings{Anderson2016,
@@ -65,7 +63,7 @@ Das Paper zitiert auch mehrere andere Artikel, die auf die Sicherheiten von Rust
   isbn      = {9781450342056},
   pages     = {81-89},
   abstract  = {All modern web browsers --- Internet Explorer, Firefox, Chrome, Opera, and Safari --- have a core rendering engine written in C++. This language choice was made because it affords the systems programmer complete control of the underlying hardware features and memory in use, and it provides a transparent compilation model. Unfortunately, this language is complex (especially to new contributors!), challenging to write correct parallel code in, and highly susceptible to memory safety issues that potentially lead to security holes.Servo is a project started at Mozilla Research to build a new web browser engine that preserves the capabilities of these other browser engines but also both takes advantage of the recent trends in parallel hardware and is more memory-safe. We use a new language, Rust, that provides us a similar level of control of the underlying system to C++ but which statically prevents many memory safety issues and provides direct support for parallelism and concurrency.In this paper, we show how a language with an advanced type system can address many of the most common security issues and software engineering challenges in other browser engines, while still producing code that has the same performance and memory profile. This language is also quite accessible to new open source contributors and employees, even those without a background in C++ or systems programming. We also outline several pitfalls encountered along the way and describe some potential areas for future improvement.},
-  keywords  = {rank5},
+  ranking   = {rank5},
   year      = {2016},
 }
 
@@ -83,14 +81,14 @@ Das Paper zitiert auch mehrere andere Artikel, die auf die Sicherheiten von Rust
 @Article{,
   author   = {Lin, Yi and Blackburn, Stephen M. and Hosking, Antony L. and Norrish, Michael},
   title    = {Rust as a Language for High Performance GC Implementation},
-  journal  = {SIGPLAN Not.},
-  year     = {2016},
-  pages    = {89-98},
-  issn     = {0362-1340},
   doi      = {10.1145/3241624.2926707},
+  issn     = {0362-1340},
+  pages    = {89-98},
   abstract = {High performance garbage collectors build upon performance-critical low-level code, typically exhibit multiple levels of concurrency, and are prone to subtle bugs. Implementing, debugging and maintaining such collectors can therefore be extremely challenging. The choice of implementation language is a crucial consideration when building a collector. Typically, the drive for performance and the need for efficient support of low-level memory operations leads to the use of low-level languages like C or C++, which offer little by way of safety and software engineering benefits. This risks undermining the robustness and flexibility of the collector design. Rust's ownership model, lifetime specification, and reference borrowing deliver safety guarantees through a powerful static checker with little runtime overhead. These features make Rust a compelling candidate for a collector implementation language, but they come with restrictions that threaten expressiveness and efficiency. We describe our experience implementing an Immix garbage collector in Rust and C. We discuss the benefits of Rust, the obstacles encountered, and how we overcame them. We show that our Immix implementation has almost identical performance on micro benchmarks, compared to its implementation in C, and outperforms the popular BDW collector on the gcbench micro benchmark. We find that Rust's safety features do not create significant barriers to implementing a high performance collector. Though memory managers are usually considered low-level, our high performance implementation relies on very little unsafe code, with the vast majority of the implementation benefiting from Rust's safety. We see our experience as a compelling proof-of-concept of Rust as an implementation language for high performance garbage collection.},
   comment  = {Der Artikel beschreibt die Vorteile und Nachteile von Rust gegenüber C.},
-  keywords = {rank5},
+  journal  = {SIGPLAN Not.},
+  ranking  = {rank5},
+  year     = {2016},
 }
 
 @Article{,
@@ -111,20 +109,20 @@ Das Paper zitiert auch mehrere andere Artikel, die auf die Sicherheiten von Rust
 
 @InProceedings{,
   author    = {Qin, Boqin and Chen, Yilun and Yu, Zeming and Song, Linhai and Zhang, Yiying},
-  title     = {Understanding Memory and Thread Safety Practices and Issues in Real-World Rust Programs},
   booktitle = {Proceedings of the 41st ACM SIGPLAN Conference on Programming Language Design and Implementation},
-  year      = {2020},
-  pages     = {763–779},
+  title     = {Understanding Memory and Thread Safety Practices and Issues in Real-World Rust Programs},
   doi       = {10.1145/3385412.3386036},
+  pages     = {763–779},
   abstract  = {Rust is a young programming language designed for systems software development. It aims to provide safety guarantees like high-level languages and performance efficiency like low-level languages. The core design of Rust is a set of strict safety rules enforced by compile-time checking. To support more low-level controls, Rust allows programmers to bypass these compiler checks to write unsafe code. It is important to understand what safety issues exist in real Rust programs and how Rust safety mechanisms impact programming practices. We performed the first empirical study of Rust by close, manual inspection of 850 unsafe code usages and 170 bugs in five open-source Rust projects, five widely-used Rust libraries, two online security databases, and the Rust standard library. Our study answers three important questions: how and why do programmers write unsafe code, what memory-safety issues real Rust programs have, and what concurrency bugs Rust programmers make. Our study reveals interesting real-world Rust program behaviors and new issues Rust programmers make. Based on our study results, we propose several directions of building Rust bug detectors and built two static bug detectors, both of which revealed previously unknown bugs.},
-  keywords  = {rank5},
+  ranking   = {rank5},
+  year      = {2020},
 }
 
 @Unpublished{,
-  author   = {Jiang, Jianfeng and Xu, Hui and Zhou, Yangfan},
-  title    = {RULF: Rust Library Fuzzing via API Dependency Graph Traversal},
-  year     = {2021},
-  keywords = {rank2},
+  author  = {Jiang, Jianfeng and Xu, Hui and Zhou, Yangfan},
+  title   = {RULF: Rust Library Fuzzing via API Dependency Graph Traversal},
+  ranking = {rank2},
+  year    = {2021},
 }
 
 @InProceedings{8471992,
@@ -368,7 +366,7 @@ test oracle},
   comment   = {Eine gute Übersicht was SBST überhaupt ist und welche Arten von SBST momentan verbreitet sind: temporal testing, structural testing, functional testing, mit realen Anwendungsbeispielen.},
   file      = {:papers/Search-Based_Software_Testing_Past_Present_and_Future.pdf:PDF},
   groups    = {a72186:1},
-  keywords  = {rank5},
+  ranking   = {rank5},
   year      = {2011},
 }
 
@@ -405,8 +403,8 @@ Insgesamt wird im Paper jeder Schritt der Generierung und Evolution relativ gena
   file      = {:papers/05770604.pdf:PDF},
   groups    = {a72186:1},
   issn      = {2159-4848},
-  keywords  = {rank5},
   month     = {March},
+  ranking   = {rank5},
   year      = {2011},
 }
 
@@ -421,8 +419,8 @@ Insgesamt wird im Paper jeder Schritt der Generierung und Evolution relativ gena
   file      = {:papers/Longer_is_Better_On_the_Role_of_Test_Sequence_Length_in_Software_Testing.pdf:PDF},
   groups    = {a72186:1},
   issn      = {2159-4848},
-  keywords  = {rank4},
   month     = {April},
+  ranking   = {rank4},
   year      = {2010},
 }
 
@@ -488,16 +486,16 @@ Insgesamt wird im Paper jeder Schritt der Generierung und Evolution relativ gena
 }
 
 @Article{Fraser2015,
-  author   = {Fraser, Gordon and Arcuri, Andrea and McMinn, Phil},
-  title    = {A Memetic Algorithm for Whole Test Suite Generation},
-  pages    = {311--327},
-  volume   = {103},
-  comment  = {Feingranulare Erweiterung der genetischen Algorithme, noch zu lesen},
-  file     = {:papers/A-Memetic-Algorithm-for-whole-test-suite-gen_2015_Journal-of-Systems-and-Sof.pdf:PDF},
-  groups   = {a72186:1},
-  journal  = {Journal of Systems and Software},
-  keywords = {rank4},
-  year     = {2015},
+  author  = {Fraser, Gordon and Arcuri, Andrea and McMinn, Phil},
+  title   = {A Memetic Algorithm for Whole Test Suite Generation},
+  pages   = {311--327},
+  volume  = {103},
+  comment = {Feingranulare Erweiterung der genetischen Algorithme, noch zu lesen},
+  file    = {:papers/A-Memetic-Algorithm-for-whole-test-suite-gen_2015_Journal-of-Systems-and-Sof.pdf:PDF},
+  groups  = {a72186:1},
+  journal = {Journal of Systems and Software},
+  ranking = {rank4},
+  year    = {2015},
 }
 
 @InProceedings{6200103,
@@ -1757,6 +1755,70 @@ only to affected dependences.},
   title     = {Applications of boolean matrices to the analysis of flow diagrams},
   pages     = {133--138},
   year      = {1959},
+}
+
+@InProceedings{Romano2011,
+  author    = {Romano, Daniele and Di Penta, Massimiliano and Antoniol, Giuliano},
+  booktitle = {2011 Fourth IEEE International Conference on Software Testing, Verification and Validation},
+  title     = {An Approach for Search Based Testing of Null Pointer Exceptions},
+  doi       = {10.1109/ICST.2011.49},
+  pages     = {160-169},
+  year      = {2011},
+}
+
+@InProceedings{Bhattacharya2011,
+  author    = {Bhattacharya, Neelesh and Sakti, Abdelilah and Antoniol, Giuliano and Gu{\'e}h{\'e}neuc, Yann-Ga{\"e}l and Pesant, Gilles},
+  booktitle = {Search Based Software Engineering},
+  title     = {Divide-by-Zero Exception Raising via Branch Coverage},
+  editor    = {Cohen, Myra B. and {\'O} Cinn{\'e}ide, Mel},
+  isbn      = {978-3-642-23716-4},
+  pages     = {204--218},
+  publisher = {Springer Berlin Heidelberg},
+  abstract  = {In this paper, we discuss how a search-based branch coverage approach can be used to design an effective test data generation approach, specifically targeting divide-by-zero exceptions. We first propose a novel testability transformation combining approach level and branch distance. We then use different search strategies, i.e. hill climbing, simulated annealing, and genetic algorithm, to evaluate the performance of the novel testability transformation on a small synthetic example as well as on methods known to throw divide-by-zero exceptions, extracted from real world systems, namely Eclipse and Android. Finally, we also describe how the test data generation for divide-by-zero exceptions can be formulated as a constraint programming problem and compare the resolution of this problem with a genetic algorithm in terms of execution time. We thus report evidence that genetic algorithm using our novel testability transformation out-performs hill climbing and simulated annealing and a previous approach (in terms of numbers of fitness evaluation) but is out-performed by constraint programming (in terms of execution time).},
+  address   = {Berlin, Heidelberg},
+  year      = {2011},
+}
+
+@InProceedings{Korel1996,
+  author    = {Korel, B. and Al-Yami, A.M.},
+  booktitle = {Proceedings of IEEE 18th International Conference on Software Engineering},
+  title     = {Assertion-oriented automated test data generation},
+  doi       = {10.1109/ICSE.1996.493403},
+  pages     = {71-80},
+  year      = {1996},
+}
+
+@InProceedings{Tillmann2008,
+  author    = {Tillmann, Nikolai and de Halleux, Jonathan},
+  booktitle = {Tests and Proofs},
+  title     = {Pex--White Box Test Generation for .NET},
+  editor    = {Beckert, Bernhard and H{\"a}hnle, Reiner},
+  isbn      = {978-3-540-79124-9},
+  pages     = {134--153},
+  publisher = {Springer Berlin Heidelberg},
+  abstract  = {Pex automatically produces a small test suite with high code coverage for a .NET program. To this end, Pex performs a systematic program analysis (using dynamic symbolic execution, similar to path-bounded model-checking) to determine test inputs for Parameterized Unit Tests. Pex learns the program behavior by monitoring execution traces. Pex uses a constraint solver to produce new test inputs which exercise different program behavior. The result is an automatically generated small test suite which often achieves high code coverage. In one case study, we applied Pex to a core component of the .NET runtime which had already been extensively tested over several years. Pex found errors, including a serious issue.},
+  address   = {Berlin, Heidelberg},
+  year      = {2008},
+}
+
+@Article{Barr2013,
+  author     = {Barr, Earl T. and Vo, Thanh and Le, Vu and Su, Zhendong},
+  title      = {Automatic Detection of Floating-Point Exceptions},
+  doi        = {10.1145/2480359.2429133},
+  issn       = {0362-1340},
+  number     = {1},
+  pages      = {549–560},
+  url        = {https://doi.org/10.1145/2480359.2429133},
+  volume     = {48},
+  abstract   = {It is well-known that floating-point exceptions can be disastrous and writing exception-free numerical programs is very difficult. Thus, it is important to automatically detect such errors. In this paper, we present Ariadne, a practical symbolic execution system specifically designed and implemented for detecting floating-point exceptions. Ariadne systematically transforms a numerical program to explicitly check each exception triggering condition. Ariadne symbolically executes the transformed program using real arithmetic to find candidate real-valued inputs that can reach and trigger an exception. Ariadne converts each candidate input into a floating-point number, then tests it against the original program. In general, approximating floating-point arithmetic with real arithmetic can change paths from feasible to infeasible and vice versa. The key insight of this work is that, for the problem of detecting floating-point exceptions, this approximation works well in practice because, if one input reaches an exception, many are likely to, and at least one of them will do so over both floating-point and real arithmetic. To realize Ariadne, we also devised a novel, practical linearization technique to solve nonlinear constraints. We extensively evaluated Ariadne over 467 scalar functions in the widely used GNU Scientific Library (GSL). Our results show that Ariadne is practical and identifies a large number of real runtime exceptions in GSL. The GSL developers confirmed our preliminary findings and look forward to Ariadne's public release, which we plan to do in the near future.},
+  address    = {New York, NY, USA},
+  issue_date = {January 2013},
+  journal    = {SIGPLAN Not.},
+  keywords   = {symbolic execution, floating-point exceptions},
+  month      = {jan},
+  numpages   = {12},
+  publisher  = {Association for Computing Machinery},
+  year       = {2013},
 }
 
 @Comment{jabref-meta: databaseType:biblatex;}
