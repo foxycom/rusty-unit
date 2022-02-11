@@ -1,13 +1,15 @@
 use petgraph::algo::dominators::{simple_fast};
 use petgraph::dot::Dot;
 use petgraph::graph::NodeIndex;
-use petgraph::Graph;
+use petgraph::{Direction, Graph};
 use rustc_data_structures::graph::WithSuccessors;
 use rustc_middle::mir::{BasicBlock, Body, TerminatorKind};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::iter::{FromIterator};
+use log::debug;
+use rustc_middle::ty::layout::MaybeResult;
 
 pub const ENTRY: usize = usize::MAX;
 
@@ -58,6 +60,22 @@ pub fn truncated_cfg(body: &Body<'_>) -> (Graph<usize, usize>, HashMap<BasicBloc
                     });
             }
         }
+    }
+
+    // There might be cases where the cfg has multiple exits, e.g., with an explicit panic!
+    // Thus, we let all possible exits point to an artificial exit node
+    let mut exit_nodes = vec![];
+    for node in graph.node_indices() {
+        let outgoing_edges = graph.edges_directed(node, Direction::Outgoing);
+        if outgoing_edges.count() == 0 {
+            exit_nodes.push(node);
+        }
+    }
+
+    let absolute_exit = graph.add_node(usize::MAX);
+
+    for exit_node in exit_nodes {
+        graph.add_edge(exit_node, absolute_exit, 1);
     }
 
     (graph, table)
@@ -389,6 +407,7 @@ pub fn cdg(body: &Body<'_>) -> Graph<usize, usize> {
     let cfg_edges = cfg
         .edge_indices()
         .filter(|edge| {
+            // Find edges from a to b where b is not a strict dominator of a
             let (a, b) = cfg.edge_endpoints(*edge).unwrap();
             if let Some(mut dominators) = dominators.strict_dominators(a) {
                 dominators.find(|d| d == &b).is_none()
@@ -403,8 +422,6 @@ pub fn cdg(body: &Body<'_>) -> Graph<usize, usize> {
     let entry_index = *cdg_table
         .entry(ENTRY)
         .or_insert_with(|| cdg.add_node(ENTRY));
-
-    //println!("CFG: {}", Dot::new(&cfg));
 
     let mut dependent_nodes = HashSet::new();
     for edge in &cfg_edges {

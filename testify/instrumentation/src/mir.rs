@@ -1,30 +1,31 @@
 use crate::data_structures::cdg;
 use crate::get_testify_flags;
+use crate::mir::ValueDef::Var;
 use crate::util::get_cut_name;
 use crate::writer::MirWriter;
 use generation::branch::Branch;
-use generation::MIR_LOG_PATH;
+use generation::{INSTRUMENTED_MIT_LOG_PATH, MIR_LOG_PATH};
 use instrumentation::monitor::{BinaryOp, UnaryOp};
 use log::{debug, info, warn};
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{HirId, ItemKind};
+use rustc_index::vec::IndexVec;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::mir::visit::{MutVisitor, TyContext};
 use rustc_middle::mir::StatementKind::{Assign, SetDiscriminant};
 use rustc_middle::mir::{
-    BasicBlock, BasicBlockData, BinOp, Body, CastKind, Constant, ConstantKind, Local, LocalDecl,
-    LocalDecls, Location, Operand, Place, PlaceElem, Rvalue, SourceInfo, SourceScope, Statement,
-    StatementKind, SwitchTargets, Terminator, TerminatorKind, UnOp,
+    BasicBlock, BasicBlockData, BinOp, Body, CastKind, Constant, ConstantKind, HasLocalDecls,
+    Local, LocalDecl, LocalDecls, Location, Operand, Place, PlaceElem, Rvalue, SourceInfo,
+    SourceScope, Statement, StatementKind, SwitchTargets, Terminator, TerminatorKind, UnOp,
 };
 use rustc_middle::ty;
-use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::{Const, ConstKind, List, ScalarInt, Ty, TyCtxt, UintTy};
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 use std::borrow::Borrow;
 use std::fs::File;
-use crate::mir::ValueDef::Var;
 
 type CutPoint<'tcx> = (BasicBlock, usize, BasicBlockData<'tcx>);
 
@@ -81,11 +82,16 @@ pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'
             .collect::<Vec<_>>();
         writer.write_locals(&locals);
 
-        /*let blocks = basic_blocks
-        .iter_enumerated()
-        .map(|(block, data)| format!("{} -> {:?}", block.as_usize(), data))
-        .collect::<Vec<_>>();*/
-        //writer.write_basic_blocks(&blocks);
+        // Log instrumented version of the mir
+        let mut instrumented_writer = MirWriter::new(INSTRUMENTED_MIT_LOG_PATH);
+        instrumented_writer.new_body(&format!("{}", global_id));
+        instrumented_writer.write_locals(&locals);
+        let blocks = basic_blocks
+            .iter_enumerated()
+            .map(|(block, data)| format!("{} -> {:?}", block.as_usize(), data))
+            .collect::<Vec<_>>();
+        instrumented_writer.write_basic_blocks(&blocks);
+
 
         let branches = serde_json::to_string(&mir_visitor.branches).unwrap();
         writer.write_branches(&branches);
@@ -156,6 +162,7 @@ pub struct MirVisitor<'tcx> {
     branches: Vec<Branch>,
     cut_points: Vec<(BasicBlock, usize, Vec<(BasicBlock, BasicBlockData<'tcx>)>)>,
     basic_blocks_num: usize,
+    instrumentation: Vec<(BasicBlock, Vec<BasicBlockData<'tcx>>)>,
 }
 
 impl<'tcx> MirVisitor<'tcx> {
@@ -169,6 +176,7 @@ impl<'tcx> MirVisitor<'tcx> {
             branch_counter: 0,
             branches: vec![],
             cut_points: vec![],
+            instrumentation: vec![],
         }
     }
 
@@ -178,7 +186,7 @@ impl<'tcx> MirVisitor<'tcx> {
         body
     }
 
-    fn get_switch_value(&self, switch_ty: Ty<'tcx>, value: u128) -> &'tcx Const<'tcx> {
+    fn switch_value_to_const(&self, switch_ty: Ty<'tcx>, value: u128) -> &'tcx Const<'tcx> {
         let param_env = ty::ParamEnv::empty();
         let switch_ty = self.tcx.lift(switch_ty).unwrap();
         let size = self.tcx.layout_of(param_env.and(switch_ty)).unwrap().size;
@@ -296,12 +304,11 @@ impl<'tcx> MirVisitor<'tcx> {
 
     fn mk_call_terminator(
         &mut self,
-        local_decls: &mut LocalDecls<'tcx>,
         args: Vec<Operand<'tcx>>,
         point_to: BasicBlock,
         fn_def_id: DefId,
     ) -> Terminator<'tcx> {
-        let terminator_local = self.store_local_decl(local_decls, self.tcx.mk_unit());
+        let terminator_local = self.store_local_decl(self.tcx.mk_unit());
         let terminator_place = self.mk_place(terminator_local.index());
 
         let fn_ty = self.tcx.type_of(fn_def_id);
@@ -390,16 +397,18 @@ impl<'tcx> MirVisitor<'tcx> {
         }
     }
 
-    fn store_unit_local_decl(&mut self, local_decls: &mut LocalDecls<'tcx>) -> Local {
+    fn store_unit_local_decl(&mut self) -> Local {
         let unit_ty = self.tcx.mk_unit();
         let local_decl = self.mk_local_decl(unit_ty);
+        let local_decls = &mut self.body.local_decls;
         local_decls.push(local_decl);
         let local = Local::from(self.locals_num);
         self.locals_num += 1;
         local
     }
 
-    fn store_local_decl(&mut self, local_decls: &mut LocalDecls<'tcx>, ty: Ty<'tcx>) -> Local {
+    fn store_local_decl(&mut self, ty: Ty<'tcx>) -> Local {
+        let local_decls = &mut self.body.local_decls;
         let local_decl = LocalDecl::new(ty, Span::default());
         local_decls.push(local_decl);
         let local = Local::from(self.locals_num);
@@ -407,96 +416,110 @@ impl<'tcx> MirVisitor<'tcx> {
         local
     }
 
-    fn get_local_ty(&self, local_decls: &LocalDecls<'tcx>, local: Local) -> Ty<'tcx> {
+    fn get_local_ty(&self, local: Local) -> Ty<'tcx> {
+        let local_decls = self.body.local_decls();
         let decl = local_decls.get(local).unwrap();
         decl.ty
     }
 
+    fn mk_trace_branch_hit(&mut self, global_id: u64, target_block: usize) -> Vec<Operand<'tcx>> {
+        let trace_call_args = vec![
+            self.mk_const_int_operand(global_id),
+            self.mk_const_int_operand(target_block as u64),
+        ];
+
+        trace_call_args
+    }
+
+    fn mk_trace_statements_binary_op(
+        &mut self,
+        target_block: u64,
+        op: &BinaryOp,
+        left: &Box<ValueDef<'tcx>>,
+        right: &Box<ValueDef<'tcx>>,
+        is_true_branch: bool,
+    ) -> (Vec<Statement<'tcx>>, Vec<Operand<'tcx>>) {
+        let op_def_id = get_binary_op_def_id(&self.tcx);
+        let op_ty = self.tcx.type_of(op_def_id);
+        let op_enum_local = self.store_local_decl(op_ty);
+        let op_def_stmt = self.mk_enum_var_stmt(op_enum_local, (*op).into());
+
+        // If operand is a variable, then we have to create a new one and move the value
+        // to use it later in the trace call. If it's a const, we can use it directly
+        // as argument
+        let (left_operand_stmt, left_local) = match left.as_ref() {
+            ValueDef::Const(ty, val) => {
+                let left_local = self.store_local_decl(ty);
+                let operand = self.mk_const_operand(*ty, *val);
+
+                (
+                    self.mk_cast_const_as_f64_stmt(operand, left_local),
+                    left_local,
+                )
+            }
+            ValueDef::Var(place) => {
+                let left_ty = self.get_local_ty(place.local);
+                let left_local = self.store_local_decl(left_ty);
+                (
+                    self.mk_cast_local_as_f64_stmt(place.local, left_local),
+                    left_local,
+                )
+            }
+            _ => todo!("Operand is {:?}", left),
+        };
+
+        let (right_operand_stmt, right_local) = match right.as_ref() {
+            ValueDef::Const(ty, val) => {
+                let right_local = self.store_local_decl(ty);
+                let operand = self.mk_const_operand(*ty, *val);
+
+                (
+                    self.mk_cast_const_as_f64_stmt(operand, right_local),
+                    right_local,
+                )
+            }
+            ValueDef::Var(place) => {
+                let right_ty = self.get_local_ty(place.local);
+                let right_local = self.store_local_decl(right_ty);
+                (
+                    self.mk_cast_local_as_f64_stmt(place.local, right_local),
+                    right_local,
+                )
+            }
+            _ => todo!("Operand is {:?}", right),
+        };
+
+        let stmts = vec![op_def_stmt, left_operand_stmt, right_operand_stmt];
+
+        let trace_call_args = vec![
+            // Global id
+            self.mk_const_int_operand(self.global_id),
+            // Block id
+            self.mk_const_int_operand(target_block),
+            self.mk_move_operand(left_local),
+            self.mk_move_operand(right_local),
+            self.mk_move_operand(op_enum_local),
+            self.mk_const_bool_operand(is_true_branch),
+        ];
+        (stmts, trace_call_args)
+    }
+
     fn mk_trace_statements(
         &mut self,
-        local_decls: &mut LocalDecls<'tcx>,
-        block_id: usize,
-        branch_id: u64,
+        target_block: u64,
         value_def: &ValueDef<'tcx>,
         switch_value: Option<&'tcx Const>,
         is_hit: bool,
     ) -> (Vec<Statement<'tcx>>, Vec<Operand<'tcx>>) {
+        debug!("MIR: mk_trace_statements, {:?}", value_def);
         match value_def {
             ValueDef::BinaryOp(op, left, right) => {
-                let op_def_id = get_binary_op_def_id(&self.tcx);
-                let op_ty = self.tcx.type_of(op_def_id);
-                let op_enum_local = self.store_local_decl(local_decls, op_ty);
-                let op_def_stmt = self.mk_enum_var_stmt(op_enum_local, (*op).into());
-
-                // If operand is a variable, then we have to create a new one and move the value
-                // to use it later in the trace call. If it's a const, we can use it directly
-                // as argument
-                let (left_operand_stmt, left_local) = match left.as_ref() {
-                    ValueDef::Const(ty, val) => {
-                        let left_local = self.store_local_decl(local_decls, ty);
-                        let operand = self.mk_const_operand(*ty, *val);
-
-                        (
-                            self.mk_cast_const_as_f64_stmt(operand, left_local),
-                            left_local,
-                        )
-                    }
-                    ValueDef::Var(place) => {
-                        let left_ty = self.get_local_ty(local_decls, place.local);
-                        let left_local = self.store_local_decl(local_decls, left_ty);
-                        (
-                            self.mk_cast_local_as_f64_stmt(place.local, left_local),
-                            left_local,
-                        )
-                    }
-                    _ => todo!("Operand is {:?}", left),
-                };
-
-                let (right_operand_stmt, right_local) = match right.as_ref() {
-                    ValueDef::Const(ty, val) => {
-                        let right_local = self.store_local_decl(local_decls, ty);
-                        let operand = self.mk_const_operand(*ty, *val);
-
-                        (
-                            self.mk_cast_const_as_f64_stmt(operand, right_local),
-                            right_local,
-                        )
-                    }
-                    ValueDef::Var(place) => {
-                        let right_ty = self.get_local_ty(local_decls, place.local);
-                        let right_local = self.store_local_decl(local_decls, right_ty);
-                        (
-                            self.mk_cast_local_as_f64_stmt(place.local, right_local),
-                            right_local,
-                        )
-                    }
-                    _ => todo!("Operand is {:?}", right),
-                };
-
-                // We need to know whether we are executing a true or a false branch
-                let branch_value_arg = if let Some(switch_value) = switch_value {
-                    let flag = switch_value.val.try_to_bool().unwrap();
-                    self.mk_const_bool_operand(flag)
+                let is_true_branch = if let Some(_) = switch_value {
+                    false
                 } else {
-                    self.mk_const_bool_operand(true)
+                    true
                 };
-
-                let stmts = vec![op_def_stmt, left_operand_stmt, right_operand_stmt];
-
-                let trace_call_args = vec![
-                    // Global id
-                    self.mk_const_int_operand(self.global_id),
-                    // Local id
-                    self.mk_const_int_operand(branch_id),
-                    // Block id
-                    self.mk_const_int_operand(block_id as u64),
-                    self.mk_move_operand(left_local),
-                    self.mk_move_operand(right_local),
-                    self.mk_move_operand(op_enum_local),
-                    branch_value_arg,
-                    self.mk_const_bool_operand(is_hit),
-                ];
-                (stmts, trace_call_args)
+                self.mk_trace_statements_binary_op(target_block, op, left, right, is_true_branch)
             }
             ValueDef::Const(ty, val) => {
                 todo!("Const (ty: {:?}, val: {:?})", ty, val)
@@ -508,10 +531,8 @@ impl<'tcx> MirVisitor<'tcx> {
                 let trace_call_args = vec![
                     // Global id
                     self.mk_const_int_operand(self.global_id),
-                    // Local id
-                    self.mk_const_int_operand(branch_id),
                     // Block id
-                    self.mk_const_int_operand(block_id as u64),
+                    self.mk_const_int_operand(target_block as u64),
                     self.mk_const_bool_operand(is_hit),
                 ];
 
@@ -519,9 +540,7 @@ impl<'tcx> MirVisitor<'tcx> {
             }
             ValueDef::UnaryOp(op, inner_value_def) => match op {
                 UnaryOp::Not => self.mk_trace_statements(
-                    local_decls,
-                    block_id,
-                    branch_id,
+                    target_block,
                     inner_value_def,
                     switch_value,
                     !is_hit,
@@ -533,12 +552,11 @@ impl<'tcx> MirVisitor<'tcx> {
                 let trace_call_args = vec![
                     // Global id
                     self.mk_const_int_operand(self.global_id),
-                    // Local id
-                    self.mk_const_int_operand(branch_id),
                     // Block id
-                    self.mk_const_int_operand(block_id as u64),
+                    self.mk_const_int_operand(target_block as u64),
                     self.mk_const_bool_operand(is_hit),
                 ];
+                //panic!("Target block is {}", target_block as u64);
                 (stmts, trace_call_args)
             }
             ValueDef::Field(place, deref) => {
@@ -546,10 +564,8 @@ impl<'tcx> MirVisitor<'tcx> {
                 let trace_call_args = vec![
                     // Global id
                     self.mk_const_int_operand(self.global_id),
-                    // Local id
-                    self.mk_const_int_operand(branch_id),
                     // Block id
-                    self.mk_const_int_operand(block_id as u64),
+                    self.mk_const_int_operand(target_block as u64),
                     self.mk_const_bool_operand(is_hit),
                 ];
 
@@ -560,107 +576,18 @@ impl<'tcx> MirVisitor<'tcx> {
                 // constant value, i.e., switch_value, so what we need to construct is
                 // a trace to a binary EQ operation
 
-                // Define BinaryOp::Eq variable
-                let eq_op = BinaryOp::Eq;
-                let op_def_id = get_binary_op_def_id(&self.tcx);
-                let op_ty = self.tcx.type_of(op_def_id);
-                let op_enum_local = self.store_local_decl(local_decls, op_ty);
-                let op_def_stmt = self.mk_enum_var_stmt(op_enum_local, eq_op.into());
-
-                // Define the left operand, which is a some defined variable
-                let left_ty = self.get_local_ty(local_decls, place.local);
-                let left_local = self.store_local_decl(local_decls, left_ty);
-                let left_operand_stmt = self.mk_cast_local_as_f64_stmt(place.local, left_local);
-
-                // Define the right operand, which is a constant value due to the switchint value
-                let (right_ty, right_val) = switch_value
-                    .map(|sv| (sv.ty, sv.val)).expect("Switch value must be set");
-                let right_local = self.store_local_decl(local_decls, right_ty);
-                let right_operand = self.mk_const_operand(right_ty, right_val);
-                let right_operand_stmt = self.mk_cast_const_as_f64_stmt(right_operand, right_local);
-
-                // We need to know whether we execute the true or the false branch
-                let branch_value_arg = self.mk_const_bool_operand(is_hit);
-
-                let stmts = vec![op_def_stmt, left_operand_stmt, right_operand_stmt];
-
+                let stmts = vec![];
                 let trace_call_args = vec![
+                    // Global id
                     self.mk_const_int_operand(self.global_id),
-                    self.mk_const_int_operand(branch_id),
-                    self.mk_const_int_operand(block_id as u64),
-                    self.mk_move_operand(left_local),
-                    self.mk_move_operand(right_local),
-                    self.mk_move_operand(op_enum_local),
-                    branch_value_arg,
+                    // Block id
+                    self.mk_const_int_operand(target_block as u64),
                     self.mk_const_bool_operand(is_hit)
                 ];
                 (stmts, trace_call_args)
             }
             _ => todo!("Value def is {:?}", value_def),
         }
-    }
-
-    fn binary_branch(
-        &mut self,
-        local_decls: &mut LocalDecls<'tcx>,
-        operand_def: &ValueDef<'tcx>,
-        targets: &SwitchTargets,
-        branch_ids: &Vec<u64>,
-        my_branch_id: u64,
-        switch_value: Option<&'tcx Const>,
-        branch_ty: Ty<'tcx>,
-        source_block: BasicBlock,
-        target_block: BasicBlock,
-    ) -> Vec<(BasicBlock, BasicBlockData<'tcx>)> {
-        let mut blocks_sequence = Vec::with_capacity(targets.all_targets().len());
-        let trace_fn = find_trace_fn_for(&self.tcx, &operand_def);
-
-        for (idx, (value, target)) in targets.iter().enumerate() {
-            let branch_id = *branch_ids.get(idx).unwrap();
-            let is_hit = my_branch_id == branch_id;
-            let (stmts, args) = self.mk_trace_statements(
-                local_decls,
-                source_block.as_usize(),
-                branch_id,
-                operand_def,
-                switch_value,
-                is_hit,
-            );
-
-            let current_block = BasicBlock::from(self.basic_blocks_num);
-            self.basic_blocks_num += 1;
-            let next_block = BasicBlock::from(self.basic_blocks_num);
-
-            let terminator = self.mk_call_terminator(local_decls, args, next_block, trace_fn);
-            let trace_block = self.mk_basic_block(stmts, terminator);
-            blocks_sequence.push((current_block, trace_block));
-        }
-
-        let current_block = BasicBlock::from(self.basic_blocks_num);
-        self.basic_blocks_num += 1;
-        let branch_id = *branch_ids.last().unwrap();
-        let is_hit = branch_id == my_branch_id;
-        let (stmts, args) = self.mk_trace_statements(
-            local_decls,
-            source_block.as_usize(),
-            branch_id,
-            operand_def,
-            switch_value,
-            is_hit,
-        );
-
-        let terminator = self.mk_call_terminator(local_decls, args, target_block, trace_fn);
-
-        blocks_sequence.push((current_block, self.mk_basic_block(stmts, terminator)));
-
-        /*let branch = Branch::Decision(DecisionBranch::new(
-            my_branch_id,
-            source_block.as_usize(),
-            target_block.as_usize(),
-        ));
-        self.branches.push(branch);*/
-
-        blocks_sequence
     }
 
     fn get_place<'a>(&self, operand: &'a Operand<'tcx>) -> Option<&'a Place<'tcx>> {
@@ -808,6 +735,12 @@ impl<'tcx> MirVisitor<'tcx> {
             }
         }
 
+        for arg in self.body.args_iter() {
+            if place.local == arg {
+                return ValueDef::Var(Place::from(arg));
+            }
+        }
+
         todo!(
             "No place definition found for {:?}, projection: {:?}",
             place,
@@ -816,92 +749,158 @@ impl<'tcx> MirVisitor<'tcx> {
     }
 }
 
-impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
-    fn visit_body(&mut self, body: &mut Body<'tcx>) {
-        info!("MIR: Visiting body");
-        let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
+impl<'tcx> MirVisitor<'tcx> {
+    fn instrument_switch_int(
+        &mut self,
+        terminator: &mut Terminator<'tcx>,
+        source_block: BasicBlock,
+    ) {
+        let mut instrumentation = match &mut terminator.kind {
+            TerminatorKind::SwitchInt {
+                discr,
+                switch_ty,
+                targets,
+            } => {
+                debug!("MIR: Instrumenting switch int");
+                let switch_operand_place = self
+                    .get_place(discr)
+                    .expect("Place has been defined in a previous block");
+                let switch_operand_def = self.get_place_definition(switch_operand_place);
 
-        for (source_block, data) in basic_blocks.iter_enumerated_mut() {
-            if let Some(terminator) = &mut data.terminator {
-                match &mut terminator.kind {
-                    TerminatorKind::SwitchInt {
-                        discr,
-                        switch_ty,
-                        targets,
-                    } => {
-                        debug!("MIR: Basic block {}", source_block.as_usize());
-                        let operand_place = self
-                            .get_place(discr)
-                            .expect("Local has been defined in a previous block");
-                        let operand_def = self.get_place_definition(operand_place);
-
-                        if operand_def.is_const() {
-                            let (ty, val) = operand_def.expect_const();
-                            if ty.is_bool() {
-                                // No need to instrument it since this will always be the same branch
-                                continue;
-                            }
-                        }
-
-                        let branch_ids = targets
-                            .all_targets()
-                            .iter()
-                            .map(|_| self.next_branch_id())
-                            .collect::<Vec<_>>();
-                        let mut index = 0;
-                        for (target_index, (value, target)) in targets.iter().enumerate() {
-                            let branch_value = self.get_switch_value(switch_ty, value);
-                            let branch_id = *branch_ids.get(target_index).unwrap();
-                            debug!(
-                                "Operand: {:?}, branch value: {:?}",
-                                operand_def, branch_value
-                            );
-                            let tracing_blocks = self.binary_branch(
-                                local_decls,
-                                &operand_def,
-                                targets,
-                                &branch_ids,
-                                branch_id,
-                                Some(branch_value),
-                                switch_ty,
-                                source_block.clone(),
-                                target.clone(),
-                            );
-                            index = target_index;
-
-                            self.cut_points
-                                .push((source_block, target_index, tracing_blocks));
-                        }
-
-                        let branch_id = *branch_ids.last().unwrap();
-                        let tracing_blocks = self.binary_branch(
-                            local_decls,
-                            &operand_def,
-                            targets,
-                            &branch_ids,
-                            branch_id,
-                            None,
-                            switch_ty,
-                            source_block.clone(),
-                            targets.otherwise(),
-                        );
-                        self.cut_points
-                            .push((source_block, index + 1, tracing_blocks));
+                if switch_operand_def.is_const() {
+                    let (ty, val) = switch_operand_def.expect_const();
+                    if ty.is_bool() {
+                        // No need to instrument it since this will always be the same branch
+                        return;
                     }
-                    _ => {}
                 }
+
+                let branch_ids = targets
+                    .all_targets()
+                    .iter()
+                    .map(|t| t.as_u32() as u64)
+                    .collect::<Vec<u64>>();
+
+                debug!("MIR: Branch ids are {:?}", branch_ids);
+
+                let mut instrumentation = Vec::with_capacity(targets.all_targets().len());
+                let mut all_targets = targets
+                    .iter()
+                    .map(|(switch_value, target_block)| (Some(switch_value), target_block))
+                    .collect::<Vec<_>>();
+                all_targets.push((None, *targets.all_targets().last().unwrap()));
+
+                // Switch value is like false (0), or some numeric value, e.g., when comparing x == 2
+                for (idx, (switch_value, target_block)) in all_targets.iter().enumerate() {
+                    debug!(
+                        "MIR: Creating a tracing chain which points to {}",
+                        target_block.as_usize() as u64
+                    );
+                    let switch_value_const =
+                        switch_value.map(|sv| self.switch_value_to_const(switch_ty, sv));
+                    let (first_tracing_block, tracing_chain) = self
+                        .mk_tracing_chain_from_switch_int(
+                            &switch_operand_def,
+                            &branch_ids,
+                            switch_value_const,
+                            *target_block,
+                        );
+                    debug!(
+                        "MIR: First block (bb{})hain is: {:?}",
+                        first_tracing_block.as_usize(),
+                        tracing_chain
+                    );
+                    instrumentation.push((first_tracing_block, tracing_chain));
+                }
+
+                instrumentation
+            }
+            _ => panic!("Not a switch int"),
+        };
+
+        for (idx, (first_block, _)) in instrumentation.iter().enumerate() {
+            self.update_terminator(terminator, idx, *first_block);
+        }
+
+        self.instrumentation.append(&mut instrumentation);
+    }
+
+    fn mk_tracing_chain_from_switch_int(
+        &mut self,
+        switch_operand_def: &ValueDef<'tcx>,
+        branch_to_trace_ids: &Vec<u64>,
+        switch_value: Option<&'tcx Const>,
+        target_block: BasicBlock,
+    ) -> (BasicBlock, Vec<BasicBlockData<'tcx>>) {
+        let mut tracing_chain = Vec::with_capacity(branch_to_trace_ids.len());
+        let trace_fn = find_trace_fn_for(&self.tcx, &switch_operand_def);
+        let first_block = BasicBlock::from(self.basic_blocks_num);
+
+        let mut branches = branch_to_trace_ids.iter().peekable();
+        while let Some(&branch_to_trace_id) = branches.next() {
+            let is_branch_hit = branch_to_trace_id == target_block.as_u32() as u64;
+            self.basic_blocks_num += 1;
+
+            let next_block = if branches.peek().is_some() {
+                BasicBlock::from(self.basic_blocks_num)
+            } else {
+                // If this is the last element in the tracing chain, then point to the
+                // original basic block
+                target_block
+            };
+
+            debug!("MIR: Next block in chain is {}", next_block.as_usize());
+
+            if is_branch_hit {
+                let args = self.mk_trace_branch_hit(self.global_id, target_block.as_usize());
+                let trace_fn = find_trace_branch_hit_fn(&self.tcx);
+                let terminator = self.mk_call_terminator(args, next_block, trace_fn);
+                let trace_block = self.mk_basic_block(Vec::new(), terminator);
+                tracing_chain.push(trace_block);
+            } else {
+                let (stmts, args) = self.mk_trace_statements(
+                    branch_to_trace_id,
+                    switch_operand_def,
+                    switch_value,
+                    is_branch_hit,
+                );
+                let terminator = self.mk_call_terminator(args, next_block, trace_fn);
+                let trace_block = self.mk_basic_block(stmts, terminator);
+                tracing_chain.push(trace_block);
             }
         }
 
-        for (source_basic_block, idx, tracing_blocks) in &self.cut_points {
-            let (first_tracing_block, _) = tracing_blocks.first().unwrap();
-            tracing_blocks.iter().for_each(|(_, data)| {
-                let _ = basic_blocks.push(data.clone());
-            });
+        (first_block, tracing_chain)
+    }
+}
 
-            let block_data = basic_blocks.get_mut(*source_basic_block).unwrap();
-            let terminator = block_data.terminator.as_mut().unwrap();
-            self.update_terminator(terminator, *idx, *first_tracing_block);
+impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
+    fn visit_body(&mut self, body: &mut Body<'tcx>) {
+        self.super_body(body);
+
+        // Now push the tracing chains after they have created
+        for (_, tracing_chain) in &self.instrumentation {
+            let basic_blocks = body.basic_blocks_mut();
+            tracing_chain.iter().for_each(|tb| {
+                let _ = basic_blocks.push(tb.clone());
+            });
+        }
+
+        // Also apply local definitions
+
+        body.local_decls = self.body.local_decls.clone();
+
+    }
+
+    fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
+        if let Some(terminator) = &mut data.terminator {
+            match &mut terminator.kind {
+                TerminatorKind::SwitchInt { .. } => {
+                    debug!("MIR: (bb{}) switch int", block.as_usize());
+                    self.instrument_switch_int(terminator, block);
+                }
+                _ => {}
+            }
         }
     }
 
@@ -940,7 +939,10 @@ fn find_monitor_fn_by_name(tcx: &TyCtxt<'_>, name: &str) -> DefId {
             }
             None
         })
-        .expect("Could not find rusty_monitor.rs in the crate")
+        .expect(&format!(
+            "Could not find rusty_monitor::{} in the crate",
+            name
+        ))
 }
 
 fn find_trace_bool_fn(tcx: &TyCtxt<'_>) -> DefId {
@@ -958,11 +960,15 @@ fn find_trace_fn_for(tcx: &TyCtxt<'_>, value_def: &ValueDef<'_>) -> DefId {
         ValueDef::UnaryOp(_, inner_value_def) => find_trace_fn_for(tcx, inner_value_def.as_ref()),
         ValueDef::Field(_, _) => find_trace_enum_fn(tcx),
         ValueDef::Call => find_trace_enum_fn(tcx),
-        ValueDef::Var(_) => find_trace_bool_fn(tcx),
+        ValueDef::Var(_) => find_trace_enum_fn(tcx),
         _ => {
             todo!("Value def is {:?}", value_def)
         }
     }
+}
+
+fn find_trace_branch_hit_fn(tcx: &TyCtxt<'_>) -> DefId {
+    find_monitor_fn_by_name(tcx, "trace_branch_hit")
 }
 
 fn is_rusty_monitor(hir_id: HirId, tcx: &TyCtxt<'_>) -> bool {

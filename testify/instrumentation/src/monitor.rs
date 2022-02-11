@@ -103,8 +103,8 @@ impl Monitor {
         let msg = format!("root[{}, {}];", global_id, id);
         self.send(&msg);
     }
-    pub fn trace_branch(&mut self, global_id: u64, local_id: u64, block: u64, dist: f64) {
-        let msg = format!("branch[{} {} {} {}];", global_id, local_id, block, dist);
+    pub fn trace_branch(&mut self, global_id: u64, block: u64, dist: f64) {
+        let msg = format!("branch[{} {} {}];", global_id, block, dist);
         self.send(&msg);
     }
 
@@ -131,40 +131,40 @@ pub fn trace_fn(global_id: f64, id: f64) {
     MONITOR.with(|m| m.borrow_mut().trace_fn(global_id, id));
 }
 
-pub fn trace_branch_enum(global_id: u64, local_id: u64, block: u64, is_hit: bool) {
+pub fn trace_branch_enum(global_id: u64, block: u64, is_hit: bool) {
     let dist = if is_hit { 0.0 } else { 1.0 };
     MONITOR.with(|m| {
         m.borrow_mut()
-            .trace_branch(global_id, local_id, block, dist)
+            .trace_branch(global_id, block, dist)
     });
+}
+
+pub fn trace_branch_hit(global_id: u64, block: u64) {
+    MONITOR.with(|m| {
+        m.borrow_mut().trace_branch(global_id, block, 0.0);
+    })
 }
 
 pub fn trace_branch_bool(
     global_id: u64,
-    local_id: u64,
     block: u64,
     left: f64,
     right: f64,
     op: BinaryOp,
-    branch_value: bool,
-    is_hit: bool,
+    is_true_branch: bool,
 ) {
-    let dist = distance(left, right, op, branch_value, is_hit);
+    let dist = distance(left, right, op, is_true_branch);
     MONITOR.with(|m| {
         m.borrow_mut()
-            .trace_branch(global_id, local_id, block, dist)
+            .trace_branch(global_id, block, dist)
     });
 }
 
-fn distance(left: f64, right: f64, op: BinaryOp, branch_value: bool, is_hit: bool) -> f64 {
-    if is_hit {
-        return 0.0;
-    }
-
+fn distance(left: f64, right: f64, op: BinaryOp, is_true_branch: bool) -> f64 {
     match op {
         // left <= right
         BinaryOp::Le => {
-            if branch_value {
+            if is_true_branch {
                 // left <= right
                 right - left + 1.0
             } else {
@@ -174,7 +174,7 @@ fn distance(left: f64, right: f64, op: BinaryOp, branch_value: bool, is_hit: boo
         }
         // left < right
         BinaryOp::Lt => {
-            if branch_value {
+            if is_true_branch {
                 // left < right
                 right - left
             } else {
@@ -184,7 +184,7 @@ fn distance(left: f64, right: f64, op: BinaryOp, branch_value: bool, is_hit: boo
         }
         // left > right
         BinaryOp::Gt => {
-            if branch_value {
+            if is_true_branch {
                 // left > right
                 left - right
             } else {
@@ -194,7 +194,7 @@ fn distance(left: f64, right: f64, op: BinaryOp, branch_value: bool, is_hit: boo
         }
         // left >= right
         BinaryOp::Ge => {
-            if branch_value {
+            if is_true_branch {
                 // left >= right
                 left - right + 1.0
             } else {
@@ -204,7 +204,7 @@ fn distance(left: f64, right: f64, op: BinaryOp, branch_value: bool, is_hit: boo
         }
         // left == right
         BinaryOp::Eq => {
-            if branch_value {
+            if is_true_branch {
                 // left == right
                 1.0
             } else {
@@ -213,7 +213,7 @@ fn distance(left: f64, right: f64, op: BinaryOp, branch_value: bool, is_hit: boo
         }
         // left != right
         BinaryOp::Ne => {
-            if branch_value {
+            if is_true_branch {
                 // left != right
                 (left - right).abs()
             } else {

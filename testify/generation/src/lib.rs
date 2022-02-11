@@ -21,3 +21,4 @@ pub mod branch;
 
 pub const MIR_LOG_PATH: &'static str = "/Users/tim/Documents/master-thesis/testify/log/mir.log";
 pub const HIR_LOG_PATH: &'static str = "/Users/tim/Documents/master-thesis/testify/log/hir.json";
+pub const INSTRUMENTED_MIT_LOG_PATH: &'static str = "/Users/tim/Documents/master-thesis/testify/log/instrumented-mir.log";
