@@ -100,11 +100,11 @@ impl Monitor {
     }
 
     pub fn trace_fn(&mut self, global_id: f64, id: f64) {
-        let msg = format!("root[{}, {}];", global_id, id);
+        let msg = format!("{} root[{}, {}];", self.test_id, global_id, id);
         self.send(&msg);
     }
     pub fn trace_branch(&mut self, global_id: u64, block: u64, dist: f64) {
-        let msg = format!("branch[{} {} {}];", global_id, block, dist);
+        let msg = format!("{} branch[{} {} {}];", self.test_id, global_id, block, dist);
         self.send(&msg);
     }
 

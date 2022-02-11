@@ -60,6 +60,8 @@ public class TestCaseVisitor implements Visitor {
     var sb = new StringBuilder("#[test]\n");
     sb.append("fn ").append(testCase.getName()).append("() {\n");
 
+    sb.append("    rusty_monitor::set_test_id(").append(testCase.getId()).append(");\n");
+
     for (Statement statement : testCase) {
       sb.append("    ").append(visitStatement(statement)).append("\n");
     }

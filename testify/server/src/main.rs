@@ -41,7 +41,7 @@ fn handle_client(mut stream: TcpStream, traces: Trace) {
                     let serialized = traces.lock().as_ref().unwrap().join("\n") + "\n";
                     println!("Sending:\n{}", serialized);
                     stream.write(serialized.as_bytes()).unwrap();
-                    traces.lock().unwrap().clear();
+                    //traces.lock().unwrap().clear();
                     stream.shutdown(Shutdown::Both);
                 } else {
                     let mut lock = traces.lock();

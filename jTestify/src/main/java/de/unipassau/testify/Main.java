@@ -13,7 +13,6 @@ import de.unipassau.testify.hir.HirAnalysis;
 import de.unipassau.testify.json.JSONParser;
 import de.unipassau.testify.metaheuristics.chromosome.FixedSizePopulationGenerator;
 import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
-import de.unipassau.testify.mir.Branch;
 import de.unipassau.testify.mir.MirAnalysis;
 import de.unipassau.testify.source.Crate;
 import de.unipassau.testify.test_case.TestCase;
@@ -62,7 +61,8 @@ public class Main {
     /*List<MinimizingFitnessFunction<TestCase>> objectives = MirAnalysis.getBranches().stream()
         .map(Branch::getGlobalId).map(RandomFitness::new).collect(Collectors.toList());*/
 
-    List<MinimizingFitnessFunction<TestCase>> objectives = Collections.emptyList();
+    List<MinimizingFitnessFunction<TestCase>> objectives = MirAnalysis.targets().stream()
+        .map(t -> new RandomFitness()).collect(Collectors.toList());
 
     var svd = new SVDImpl<>(objectives);
     var pareto = new Pareto<TestCase>();

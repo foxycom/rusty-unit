@@ -5,7 +5,7 @@ import de.unipassau.testify.util.Rnd;
 
 public class RandomFitness extends Fitness {
 
-  public RandomFitness(int branchId) {
+  public RandomFitness() {
     super(null);
   }
 
