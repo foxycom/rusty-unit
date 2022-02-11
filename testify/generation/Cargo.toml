@@ -1,7 +1,7 @@
 [package]
 name = "generation"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -24,6 +24,8 @@ lazy_static = "1.4.0"
 regex = "1.5"
 which = "4.1.0"
 dircpy-stable = "0.3.5"
+env_logger = "0.9.0"
+log = "0.4.14"
 
 [target.'cfg(NOT_A_PLATFORM)'.dependencies]
 rustc_driver = {path = "/Users/tim/rust/compiler/rustc_driver"}
@@ -33,6 +35,5 @@ rustc_session = {path = "/Users/tim/rust/compiler/rustc_session"}
 rustc_data_structures = {path = "/Users/tim/rust/compiler/rustc_data_structures"}
 rustc_span = {path = "/Users/tim/rust/compiler/rustc_span"}
 rustc_hir = {path = "/Users/tim/rust/compiler/rustc_hir"}
-rustc_mir = {path = "/Users/tim/rust/compiler/rustc_mir"}
 rustc_serialize = {path = "/Users/tim/rust/compiler/rustc_serialize"}
 rustc_ast = {path = "/Users/tim/rust/compiler/rustc_ast"}

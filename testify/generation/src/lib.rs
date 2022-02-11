@@ -12,19 +12,12 @@ extern crate rustc_serialize;
 extern crate lazy_static;
 
 
-pub mod parser;
-pub mod test;
-pub mod analysis;
-pub mod types;
-pub mod algorithm;
-pub mod fitness;
-pub mod branch;
-pub mod chromosome;
+
 pub mod util;
 pub mod source;
-pub mod generators;
-pub mod fs_util;
-pub mod operators;
+pub mod types;
+pub mod analysis;
+pub mod branch;
 
 pub const MIR_LOG_PATH: &'static str = "/Users/tim/Documents/master-thesis/testify/log/mir.log";
 pub const HIR_LOG_PATH: &'static str = "/Users/tim/Documents/master-thesis/testify/log/hir.json";

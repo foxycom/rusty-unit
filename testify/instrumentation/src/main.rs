@@ -26,8 +26,6 @@ use rustc_driver::Compilation;
 use rustc_interface::interface::Compiler;
 use rustc_interface::{Config, Queries};
 use rustc_middle::ty::TyCtxt;
-use std::fs::{File, OpenOptions};
-use std::io::Write;
 use std::path::Path;
 use std::process;
 use std::process::exit;
@@ -123,14 +121,6 @@ pub fn sysroot() -> String {
     sysroot.to_string()
 }
 
-pub fn set_source_files(project: &Project) {
-    let mut source_file_map = hir::SOURCE_FILE_MAP.lock().unwrap();
-    for (pos, path) in project.rel_file_names().iter().enumerate() {
-        source_file_map.insert(path.to_path_buf(), pos);
-    }
-    drop(source_file_map);
-}
-
 pub fn get_compiler_args(args: &[String]) -> Vec<String> {
     let have_sys_root = arg_value(args, "--sysroot", |_| true).is_some();
     // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first argument.
@@ -163,12 +153,12 @@ pub fn get_compiler_args(args: &[String]) -> Vec<String> {
         rustc_args.push("--sysroot".to_owned());
         rustc_args.push(sysroot());
     }
-    /*rustc_args.push("--allow".to_owned());
-    rustc_args.push("dead_code".to_owned());*/
+    rustc_args.push("--allow".to_owned());
+    rustc_args.push("dead_code".to_owned());
     rustc_args.push("--allow".to_owned());
     rustc_args.push("deprecated".to_owned());
-    /*rustc_args.push("--allow".to_owned());
-    rustc_args.push("unused".to_owned());*/
+    rustc_args.push("--allow".to_owned());
+    rustc_args.push("unused".to_owned());
 
     rustc_args
 }
@@ -182,7 +172,6 @@ fn run_rustc() -> Result<(), i32> {
     let cut_name = get_cut_name(&testify_env_flags);
 
     let project = ProjectScanner::open(&crate_root);
-    set_source_files(&project);
     let rustc_args = get_compiler_args(&std_env_args);
     pass_to_rustc(&rustc_args, stage);
     return Ok(());
@@ -199,5 +188,8 @@ pub fn pass_to_rustc(rustc_args: &[String], stage: Stage) {
 }
 
 fn main() {
+    // Initialize the logger
+    env_logger::init();
+
     exit(run_rustc().err().unwrap_or(0))
 }

@@ -1,21 +1,19 @@
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
-use rustc_hir::intravisit::{Map, NestedVisitorMap, Visitor};
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{AssocItemKind, Body, BodyId, FnSig, ForeignItem, ForeignItemId, Generics, HirId, Impl, ImplItem, ImplItemId, ImplItemKind, Item, ItemId, ItemKind, Node, TraitItem, TraitItemId, VariantData, Visibility, VisibilityKind};
+use rustc_hir::{AssocItemKind, BodyId, FnSig, Generics, Impl, ImplItemKind, Item, ItemKind, VariantData, Visibility, VisibilityKind};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::ErrorOutputType;
 use rustc_span::Span;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use log::{debug, error, info, warn};
 use rustc_ast::CrateSugar;
 
 use crate::util::{get_cut_name, get_testify_flags};
 use crate::writer::HirWriter;
 use generation::analysis::HirAnalysis;
 use generation::types::{
-    Callable, ComplexT, EnumT, EnumVariant, FieldAccessItem, FunctionItem, Generic, MethodItem,
-    StaticFnItem, StructInitItem, T,
+    Callable, FieldAccessItem, FunctionItem, MethodItem,
+    StaticFnItem, StructInitItem,
 };
 use generation::util::{
     def_id_to_complex, fn_ret_ty_to_t, generics_to_ts, impl_to_struct_id, item_to_name,
@@ -45,18 +43,15 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
             continue;
         }
 
-        if file_path.as_ref().unwrap().ends_with("testify_monitor.rs") {
+        info!("HIR: Scanning file {:?}", file_path.as_ref());
+        if file_path.as_ref().unwrap().ends_with("rusty_monitor.rs") {
             continue;
         }
 
         match &item.kind {
             ItemKind::Fn(sig, generics, body_id) => {
-                if &item.ident.name.to_string() != "main" {
-                    /*println!(
-                        "Visited fn {} with def_id {:?}",
-                        item.ident.name.to_string(),
-                        item.def_id.to_def_id()
-                    );*/
+                if &item.ident.name.to_string() != "main" && allowed_item(item, &tcx){
+                    info!("HIR: Analyzing function {}", item_to_name(item, &tcx));
                     analyze_fn(
                         sig,
                         item.def_id,
@@ -70,12 +65,13 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
             }
             ItemKind::Impl(im) => {
                 if allowed_item(item, &tcx) {
-                    println!("Analyzing item {}", item_to_name(item, &tcx));
+                    info!("HIR: Analyzing impl {}", item_to_name(item, &tcx));
                     analyze_impl(im, file_path.unwrap(), &mut callables, &tcx)
                 }
             }
             ItemKind::Struct(s, g) => {
                 if allowed_item(item, &tcx) {
+                    info!("HIR: Analyzing struct {}", item_to_name(item, &tcx));
                     analyze_struct(item.def_id, s, g, &item.vis, file_path.unwrap(), &mut callables, &tcx);
                 }
             }
@@ -105,10 +101,6 @@ fn analyze_fn(
     tcx: &TyCtxt<'_>,
 ) {
     let hir_id = tcx.hir().local_def_id_to_hir_id(local_def_id);
-    let src_file_map = SOURCE_FILE_MAP.lock().unwrap();
-    let src_file_id = *src_file_map.get(&file_path).unwrap();
-    drop(src_file_map);
-
     let is_public = is_public(vis);
 
     let fn_decl = &sig.decl;
@@ -127,6 +119,10 @@ fn analyze_fn(
     }
 
     let return_type = fn_ret_ty_to_t(&fn_decl.output, hir_id, tcx);
+
+    if let Some(return_type) = &return_type {
+        debug!("HIR: Output type is {:?}", return_type);
+    }
 
     let function_item = FunctionItem::new(
         file_path.to_str().unwrap(),
@@ -149,16 +145,8 @@ fn analyze_struct(
     callables: &mut Vec<Callable>,
     tcx: &TyCtxt<'_>,
 ) {
-    println!(">> U8 type: {:?}", tcx.types.u8.kind());
     //let adt_def = tcx.adt_def(struct_local_def_id.to_def_id());
-    let src_file_map = SOURCE_FILE_MAP.lock().unwrap();
     let is_public = is_public(vis);
-
-    let src_file_id = *src_file_map.get(&file_path).expect(&format!(
-        "Source file map does not contain {:?}",
-        &file_path
-    ));
-    drop(src_file_map);
 
     let struct_generics = generics_to_ts(g, tcx);
     let struct_hir_id = tcx.hir().local_def_id_to_hir_id(struct_local_def_id);
@@ -176,7 +164,9 @@ fn analyze_struct(
                 let ty = ty_to_t(field.ty, Some(struct_hir_id), &struct_generics, tcx);
                 if let Some(ty) = ty {
                     let def_id = tcx.hir().local_def_id(struct_hir_id).to_def_id();
-                    println!("Def id is {:?}", def_id);
+
+                    debug!("HIR: Extracted field access item with def id {:?}", def_id);
+
                     let parent = def_id_to_complex(def_id, tcx).unwrap();
                     let field_item = FieldAccessItem::new(
                         file_path.to_str().unwrap(),
@@ -198,12 +188,11 @@ fn analyze_struct(
                     params.push(param);
                 } else {
                     // An unknown type, ignore function
-                    println!("Unknown field: {:?} ", field);
                     return;
                 }
             }
 
-            println!("Fields in struct {}: {:?}", parent_name, params);
+            debug!("HIR: Extracted struct init {}: {:?}", parent, params);
             callables.push(Callable::StructInit(StructInitItem::new(
                 file_path.to_str().unwrap(),
                 params,
@@ -215,13 +204,6 @@ fn analyze_struct(
 }
 
 fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tcx: &TyCtxt<'_>) {
-    let src_file_map = SOURCE_FILE_MAP.lock().unwrap();
-    let src_file_id = *src_file_map.get(&file_path).expect(&format!(
-        "Source file map does not contain {:?}",
-        &file_path
-    ));
-    drop(src_file_map);
-
     if let Some(_) = im.of_trait {
         // Skip trait implementation for now
         return;
@@ -239,10 +221,7 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
 
     let items = im.items;
 
-    println!(
-        "Analyzing impl: {:?}\nIt's generics are: {:?}",
-        im, impl_generics
-    );
+    debug!("HIR: Impl generics:\n{:?}", impl_generics);
     for item in items {
         let def_id = item.id.def_id;
 
@@ -252,12 +231,18 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                 let impl_item = tcx.hir().impl_item(item.id);
                 match &impl_item.kind {
                     ImplItemKind::Fn(sig, body_id) => {
-                        println!("Analyzing method {}", &impl_item.ident);
-                        println!("Visibility: {:?}", &impl_item.vis);
+                        debug!("HIR: (!) Found method {}, parent: {}", &impl_item.ident, parent_hir_id);
+
+                        let return_type = fn_ret_ty_to_t(&sig.decl.output, parent_hir_id, tcx);
+                        if let Some(return_type) = return_type.as_ref() {
+                            debug!("HIR: Return type is {:?}", &return_type);
+                        }
+
                         let is_public = is_public(&impl_item.vis);
                         let parent_name = node_to_name(&tcx.hir().get(parent_hir_id), tcx).unwrap();
                         if parent_name.contains("serde") {
                             // Skip too hard stuff
+                            warn!("HIR: Skipping serde method");
                             continue;
                         }
 
@@ -270,24 +255,19 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                             let param =
                                 ty_to_param(None, input, parent_hir_id, &overall_generics, tcx);
                             if let Some(param) = param {
+                                debug!("HIR: Extracting parameter {:?}", param);
                                 params.push(param);
                             } else {
                                 // An unknown type, ignore function
-                                println!("Unknown param: {:?} ", input);
-                                println!("Decl is: {:?}", &sig.decl);
+                                warn!("HIR: Unknown parameter, skipping method.");
+                                // {:?}, decl: {:?}", input, &sig.decl
                                 return;
                             }
                         }
 
-                        let return_type = fn_ret_ty_to_t(&sig.decl.output, parent_hir_id, tcx);
-
-                        if let Some(return_type) = return_type.as_ref() {
-                            println!(">> HIR Output: {:?}", &sig.decl.output);
-                            println!(">> Return type is: {:?}", &return_type);
-                        }
-
                         if !sig.decl.implicit_self.has_implicit_self() {
                             // Static method
+                            debug!("HIR: Method is static");
                             let static_method_item = StaticFnItem::new(
                                 file_path.to_str().unwrap(),
                                 params,
@@ -303,7 +283,7 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                             callables.push(static_method_callable);
                         } else {
                             // Dynamic method
-
+                            debug!("HIR: Method is associative");
                             let method_item = MethodItem::new(
                                 file_path.to_str().unwrap(),
                                 params,

@@ -1,8 +1,6 @@
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
 use serde::{Serialize, Deserialize};
-use crate::chromosome::Chromosome;
-use crate::fitness::FitnessValue;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Branch {
@@ -70,52 +68,3 @@ impl Hash for DecisionBranch {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct BranchManager {
-    branches: Vec<Branch>,
-    uncovered_branches: Vec<Branch>,
-}
-
-impl BranchManager {
-    pub fn new(branches: &[Branch]) -> Self {
-        BranchManager {
-            branches: branches.to_vec(),
-            uncovered_branches: branches.to_vec(),
-        }
-    }
-
-    pub fn branches(&self) -> &Vec<Branch> {
-        &self.branches
-    }
-    pub fn uncovered_branches(&self) -> &Vec<Branch> {
-        &self.uncovered_branches
-    }
-
-    pub fn set_branches(&mut self, branches: &[Branch]) {
-        self.branches = branches.to_vec();
-    }
-
-    pub fn set_current_population<C: Chromosome>(&mut self, population: &[C]) {
-        let uncovered_branches = self.compute_uncovered_branches(population);
-        self.uncovered_branches = uncovered_branches;
-    }
-
-    fn compute_uncovered_branches<C: Chromosome>(&self, population: &[C]) -> Vec<Branch> {
-        let mut uncovered_branches = vec![];
-        for branch in &self.branches {
-            let mut covered = false;
-            for individual in population {
-                if individual.fitness(branch).is_zero() {
-                    covered = true;
-                    break;
-                }
-            }
-
-            if !covered {
-                uncovered_branches.push(branch.clone());
-            }
-        }
-
-        uncovered_branches
-    }
-}

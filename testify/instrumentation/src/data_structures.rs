@@ -1,19 +1,13 @@
-use petgraph::algo::dominators::{simple_fast, Dominators};
-use petgraph::algo::has_path_connecting;
+use petgraph::algo::dominators::{simple_fast};
 use petgraph::dot::Dot;
 use petgraph::graph::NodeIndex;
-use petgraph::visit::{GraphBase, IntoNeighbors, Reversed, Visitable};
 use petgraph::Graph;
 use rustc_data_structures::graph::WithSuccessors;
-use rustc_hir::Path;
-use rustc_middle::mir::{BasicBlock, Body, Successors, TerminatorKind};
-use serde::{Deserialize, Serialize};
+use rustc_middle::mir::{BasicBlock, Body, TerminatorKind};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::iter::{Chain, FromIterator};
-use std::{iter, option, slice};
-use std::slice::Iter;
+use std::iter::{FromIterator};
 
 pub const ENTRY: usize = usize::MAX;
 

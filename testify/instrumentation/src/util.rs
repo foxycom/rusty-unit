@@ -26,7 +26,7 @@ pub fn get_crate_root(args: &[String]) -> String {
 }
 
 pub fn get_testify_flags() -> Vec<String> {
-    let var = std::env::var("TESTIFY_FLAGS").expect("TESTIFY_FLAGS is not set");
+    let var = std::env::var("RUSTY_UNIT").expect("RUSTY_UNIT env var is not set");
     var.split(" ").map(|a| a.to_owned()).collect()
 }
 

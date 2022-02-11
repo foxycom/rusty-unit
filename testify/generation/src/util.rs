@@ -2,7 +2,7 @@ use crate::types::{ComplexT, Generic, Param, Trait, T};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
-use rustc_hir::{FnRetTy, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, HirId, Impl, Item, ItemKind, Mutability, MutTy, Node, ParamName, PathSegment, PrimTy, QPath, Ty, TyKind, WherePredicate};
+use rustc_hir::{AnonConst, ArrayLen, FnRetTy, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, HirId, Impl, Item, ItemKind, Mutability, MutTy, Node, ParamName, PathSegment, PrimTy, QPath, Ty, TyKind, WherePredicate};
 use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{TyCtxt, TypeckResults};
@@ -15,6 +15,7 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::rc::Rc;
 use std::sync::Arc;
+use log::{debug, warn};
 use syn::{FnArg, ImplItemMethod, Path, ReturnType, Type};
 
 pub fn cargo_path() -> io::Result<PathBuf> {
@@ -83,7 +84,7 @@ pub fn ty_to_t(
                                 return Some(Arc::new(T::Generic(Generic::new(&name, bounds))));
                             }
                             //def_id_to_complex(*def_id, tcx)
-                            path_to_t(*def_id, path, defined_generics, tcx)
+                            path_to_t(*def_id, self_, path, defined_generics, tcx)
                         }
                         Res::PrimTy(prim_ty) => Some(Arc::new(T::from(*prim_ty))),
                         Res::SelfTy(trait_def_id, impl_) => {
@@ -106,21 +107,25 @@ pub fn ty_to_t(
         }
         TyKind::Slice(ty) => None,
         TyKind::OpaqueDef(item, generic_args) => {
-            println!("Skipping opaquedef of {:?} with generic args {:?}", item, generic_args);
+            warn!("HIR: Skipping opaquedef of {:?} with generic args {:?}", item, generic_args);
             None
         }
         TyKind::Tup(tys) => {
-            println!("Skipping tuple type def {:?}", tys);
+            warn!("HIR: Skipping tuple type def {:?}", tys);
+            None
+        }
+        TyKind::Array(ty, array_length) => {
+            warn!("HIR: Skipping array type");
             None
         }
         _ => todo!("Ty kind is: {:?}", &ty.kind),
     }
 }
 
-pub fn path_to_t(def_id: DefId, path: &rustc_hir::Path<'_>, defined_generics: &Vec<Arc<T>>, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
+pub fn path_to_t(def_id: DefId, self_: Option<HirId>, path: &rustc_hir::Path<'_>, defined_generics: &Vec<Arc<T>>, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
     let name = tcx.def_path_str(def_id);
     let generics = path.segments.iter().filter_map(|s| if let Some(args) = s.args {
-        Some(args.args.iter().filter_map(|a| generic_arg_to_t(a, defined_generics, tcx)).collect::<Vec<_>>())
+        Some(args.args.iter().filter_map(|a| generic_arg_to_t(a, self_, defined_generics, tcx)).collect::<Vec<_>>())
     } else {
         None
     }).flatten().collect::<Vec<_>>();
@@ -129,9 +134,9 @@ pub fn path_to_t(def_id: DefId, path: &rustc_hir::Path<'_>, defined_generics: &V
     Some(Arc::new(T::Complex(ComplexT::new(Some(def_id), &name, generics))))
 }
 
-pub fn generic_arg_to_t(generic_arg: &GenericArg, defined_generics: &Vec<Arc<T>>, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
+pub fn generic_arg_to_t(generic_arg: &GenericArg, self_: Option<HirId>, defined_generics: &Vec<Arc<T>>, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
     match generic_arg {
-        GenericArg::Type(ty) => ty_to_t(ty, None, defined_generics, tcx),
+        GenericArg::Type(ty) => ty_to_t(ty, self_, defined_generics, tcx),
         _ => None
     }
 }
@@ -397,6 +402,7 @@ fn def_path_data(data: &DefPathData) -> Option<String> {
         DefPathData::Ctor => None,
         DefPathData::AnonConst => None,
         DefPathData::ImplTrait => None,
+        DefPathData::ForeignMod => None
     }
 }
 

@@ -1,7 +1,3 @@
-use crate::chromosome::{
-    Arg, AssignStmt, FieldAccessStmt, FnInvStmt, MethodInvStmt, Statement, StaticFnInvStmt,
-    StructInitStmt,
-};
 use proc_macro2::{Ident, Span};
 use rustc_ast::{FloatTy, IntTy, UintTy};
 use rustc_hir::def_id::DefId;
@@ -19,64 +15,7 @@ use syn::{Expr, Type};
 use uuid::Uuid;
 
 lazy_static! {
-    pub static ref STR_TRAITS: HashSet<Trait> = {
-        let mut s = HashSet::new();
-        s.insert(Trait::new("std::clone::Clone"));
-        s.insert(Trait::new("std::cmp::Eq"));
-        s.insert(Trait::new("std::cmp::PartialEq"));
-        s.insert(Trait::new("std::hash::Hash"));
-        s.insert(Trait::new("std::default::Default"));
-        s
-    };
-    pub static ref UINT_TRAITS: HashSet<Trait> = {
-        let mut s = HashSet::new();
-        s.insert(Trait::new("std::marker::Copy"));
-        s.insert(Trait::new("std::clone::Clone"));
-        s.insert(Trait::new("std::hash::Hash"));
-        s.insert(Trait::new("std::cmp::Ord"));
-        s.insert(Trait::new("std::cmp::PartialOrd"));
-        s.insert(Trait::new("std::cmp::Eq"));
-        s.insert(Trait::new("std::cmp::PartialEq"));
-        s.insert(Trait::new("std::default::Default"));
-        s
-    };
-    pub static ref INT_TRAITS: HashSet<Trait> = {
-        let mut s = HashSet::new();
-        s.insert(Trait::new("std::marker::Copy"));
-        s.insert(Trait::new("std::clone::Clone"));
-        s.insert(Trait::new("std::hash::Hash"));
-        s.insert(Trait::new("std::cmp::Ord"));
-        s.insert(Trait::new("std::cmp::PartialOrd"));
-        s.insert(Trait::new("std::cmp::Eq"));
-        s.insert(Trait::new("std::cmp::PartialEq"));
-        s.insert(Trait::new("std::default::Default"));
-        s
-    };
-    pub static ref FLOAT_TRAITS: HashSet<Trait> = {
-        let mut s = HashSet::new();
-        s.insert(Trait::new("std::marker::Copy"));
-        s.insert(Trait::new("std::clone::Clone"));
-        s.insert(Trait::new("std::hash::Hash"));
-        s.insert(Trait::new("std::cmp::Ord"));
-        s.insert(Trait::new("std::cmp::PartialOrd"));
-        s.insert(Trait::new("std::cmp::Eq"));
-        s.insert(Trait::new("std::cmp::PartialEq"));
-        s.insert(Trait::new("std::default::Default"));
-        s
-    };
-    pub static ref BOOL_TRAITS: HashSet<Trait> = {
-        let mut s = HashSet::new();
-        s.insert(Trait::new("std::clone::Clone"));
-        s.insert(Trait::new("std::marker::Copy"));
-        s.insert(Trait::new("std::hash::Hash"));
-        s.insert(Trait::new("std::cmp::Ord"));
-        s.insert(Trait::new("std::cmp::PartialOrd"));
-        s.insert(Trait::new("std::cmp::Eq"));
-        s.insert(Trait::new("std::cmp::PartialEq"));
-        s.insert(Trait::new("std::default::Default"));
-        s
-    };
-    pub static ref TYPES: HashMap<Arc<T>, HashSet<Trait>> = {
+    /*pub static ref TYPES: HashMap<Arc<T>, HashSet<Trait>> = {
         let types = load_types().unwrap();
 
         let mut vec_traits = HashSet::new();
@@ -92,8 +31,7 @@ lazy_static! {
             m.insert(ty, implementations);
         }
         m
-    };
-    pub static ref STD_CALLABLES: Vec<Callable> = load_callables().unwrap();
+    };*/
 }
 
 static TYPE_PROVIDERS_DIR: &'static str =
@@ -102,57 +40,6 @@ static IMPLEMENTATIONS_DIR: &'static str =
     "/Users/tim/Documents/master-thesis/testify/providers/implementations";
 static CALLABLES_DIR: &'static str =
     "/Users/tim/Documents/master-thesis/testify/providers/callables";
-
-fn load_callables() -> std::io::Result<Vec<Callable>> {
-    let variants = vec![
-        EnumVariant::new("Some", vec![T::Generic(Generic::new("T", vec![]))]),
-        EnumVariant::new("None", vec![]),
-    ];
-    let t = T::Enum(EnumT::new(None, "std::option::Option", vec![], variants));
-    println!("---HELLO {}", serde_json::to_string(&t).unwrap());
-    let callables = fs::read_dir(CALLABLES_DIR)?
-        .map(|entry| {
-            let entry = entry.unwrap();
-            let path = entry.path();
-            if path.is_dir() {
-                panic!("Should not be a dir");
-            }
-
-            let callable_content = fs::read_to_string(path.as_path()).unwrap();
-            let callables: Vec<Callable> = serde_json::from_str(&callable_content).unwrap();
-            callables
-        })
-        .flatten()
-        .collect::<Vec<_>>();
-
-    Ok(callables)
-}
-
-fn load_types() -> std::io::Result<Vec<(Arc<T>, HashSet<Trait>)>> {
-    let mut types = Vec::new();
-    for entry in fs::read_dir(TYPE_PROVIDERS_DIR)? {
-        let entry = entry?;
-        let path = entry.path();
-        if path.is_dir() {
-            panic!("Should not be a dir");
-        }
-
-        // Load type
-        let type_content = fs::read_to_string(path.as_path())?;
-        let ty = serde_json::from_str(&type_content)?;
-
-        let type_file = path.file_name().unwrap();
-        let implementations_path = PathBuf::from(IMPLEMENTATIONS_DIR).join(type_file);
-
-        // Load implemented traits
-        let implementations_content = fs::read_to_string(implementations_path)?;
-        let implementations: HashSet<Trait> = serde_json::from_str(&implementations_content)?;
-
-        types.push((ty, implementations));
-    }
-
-    Ok(types)
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Callable {
@@ -206,36 +93,6 @@ impl Callable {
             Callable::Primitive(_) => None,
             Callable::FieldAccess(field_access_item) => Some(&field_access_item.parent),
             Callable::StructInit(struct_init_item) => Some(struct_init_item.return_type()),
-        }
-    }
-
-    pub fn to_stmt(&self, args: Vec<Arg>, bounded_generics: Vec<Arc<T>>) -> Statement {
-        match self {
-            Callable::Method(method_item) => Statement::MethodInvocation(MethodInvStmt::new(
-                method_item.clone(),
-                args,
-                bounded_generics,
-            )),
-            Callable::StaticFunction(fn_item) => Statement::StaticFnInvocation(
-                StaticFnInvStmt::new(fn_item.clone(), args, bounded_generics),
-            ),
-            Callable::Function(fn_item) => Statement::FunctionInvocation(FnInvStmt::new(
-                fn_item.clone(),
-                args,
-                bounded_generics,
-            )),
-            Callable::Primitive(primitive_item) => Statement::PrimitiveAssignment(AssignStmt::new(
-                primitive_item.clone(),
-                bounded_generics,
-            )),
-            Callable::FieldAccess(field_access_item) => Statement::FieldAccess(
-                FieldAccessStmt::new(field_access_item.clone(), bounded_generics),
-            ),
-            Callable::StructInit(struct_init_item) => Statement::StructInit(StructInitStmt::new(
-                struct_init_item.clone(),
-                args,
-                bounded_generics,
-            )),
         }
     }
 
@@ -359,7 +216,7 @@ pub struct FunctionItem {
     pub fn_id: Option<HirId>,
     pub name: String,
     pub src_file_path: String,
-    pub is_public: bool
+    pub is_public: bool,
 }
 
 impl FunctionItem {
@@ -482,6 +339,7 @@ pub enum T {
     Complex(ComplexT),
     Generic(Generic),
     Enum(EnumT),
+    Array(Box<ArrayT>),
 }
 
 impl Debug for T {
@@ -495,6 +353,7 @@ impl Debug for T {
             T::Complex(complex_ty) => Debug::fmt(complex_ty, f),
             T::Generic(generic_ty) => Debug::fmt(generic_ty, f),
             T::Enum(enum_ty) => Debug::fmt(enum_ty, f),
+            T::Array(array_ty) => Debug::fmt(array_ty, f)
         }
     }
 }
@@ -522,6 +381,10 @@ impl PartialEq for T {
                 T::Enum(other_enum) => enum_ty == other_enum,
                 _ => false,
             },
+            T::Array(array_ty) => match other {
+                T::Array(other_array) => array_ty == other_array,
+                _ => false
+            }
         }
     }
 }
@@ -578,6 +441,7 @@ impl T {
             T::Generic(generic) => generic.name().to_string(),
             T::Ref(r) => r.name(),
             T::Enum(enum_ty) => enum_ty.name().to_owned(),
+            T::Array(_) => String::from("array")
         }
     }
 
@@ -588,6 +452,7 @@ impl T {
             T::Generic(generic) => generic.name().to_string(),
             T::Ref(r) => r.full_name(),
             T::Enum(enum_ty) => enum_ty.full_name(),
+            T::Array(_) => String::from("array")
         }
     }
 
@@ -598,6 +463,7 @@ impl T {
             T::Generic(generic) => todo!(),
             T::Ref(r) => r.var_string(),
             T::Enum(enum_ty) => enum_ty.name().split("::").last().unwrap().to_string(),
+            T::Array(_) => String::from("array")
         }
     }
 
@@ -608,6 +474,7 @@ impl T {
             T::Generic(generic) => unimplemented!(),
             T::Ref(r) => r.id(),
             T::Enum(enum_ty) => enum_ty.def_id(),
+            T::Array(array_ty) => array_ty.def_id()
         }
     }
 
@@ -618,16 +485,15 @@ impl T {
             T::Generic(generic) => unimplemented!(),
             T::Ref(r) => r.expect_id(),
             T::Enum(enum_ty) => enum_ty.def_id().unwrap(),
+            T::Array(array_ty) => array_ty.def_id.unwrap()
         }
     }
 
     pub fn is_prim(&self) -> bool {
         match self {
             T::Prim(_) => true,
-            T::Complex(_) => false,
-            T::Generic(_) => false,
             T::Ref(r) => r.is_prim(),
-            T::Enum(_) => false,
+            _ => false
         }
     }
 
@@ -694,6 +560,7 @@ impl T {
             T::Generic(generic) => None,
             T::Ref(r) => r.generics(),
             T::Enum(enum_ty) => todo!(),
+            T::Array(_) => None,
         }
     }
 
@@ -728,7 +595,44 @@ impl Display for T {
                 Display::fmt(r.as_ref(), f)
             }
             T::Enum(enum_ty) => Display::fmt(enum_ty, f),
+            T::Array(array) => Display::fmt(array, f)
         }
+    }
+}
+
+#[derive(Clone, Hash, Eq, Serialize, Deserialize)]
+pub struct ArrayT {
+    #[serde(skip)]
+    def_id: Option<DefId>,
+    length: usize,
+    ty: T,
+}
+
+impl Debug for ArrayT {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl Display for ArrayT {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}; {}]", self.ty, self.length)
+    }
+}
+
+impl ArrayT {
+    pub fn new(def_id: Option<DefId>, ty: T, length: usize) -> Self {
+        Self { def_id, ty, length }
+    }
+
+    pub fn def_id(&self) -> Option<DefId> {
+        self.def_id
+    }
+}
+
+impl PartialEq for ArrayT {
+    fn eq(&self, other: &Self) -> bool {
+        self.ty == other.ty && self.length == other.length
     }
 }
 
@@ -1079,68 +983,6 @@ impl PrimT {
             PrimT::Str => "str",
             PrimT::Bool => "bool",
             PrimT::Char => "char",
-        }
-    }
-
-    pub fn implementors_of(trayt: &Trait) -> HashSet<PrimT> {
-        let mut implementators = HashSet::new();
-
-        if INT_TRAITS.contains(trayt) {
-            vec![
-                IntT::Isize,
-                IntT::I8,
-                IntT::I16,
-                IntT::I32,
-                IntT::I64,
-                IntT::I128,
-            ]
-            .iter()
-            .for_each(|i| {
-                let _ = implementators.insert(PrimT::Int(*i));
-            });
-        }
-
-        if UINT_TRAITS.contains(trayt) {
-            vec![
-                UintT::Usize,
-                UintT::U8,
-                UintT::U16,
-                UintT::U32,
-                UintT::U64,
-                UintT::U128,
-            ]
-            .iter()
-            .for_each(|t| {
-                let _ = implementators.insert(PrimT::Uint(*t));
-            });
-        }
-
-        if FLOAT_TRAITS.contains(trayt) {
-            implementators.insert(PrimT::Float(FloatT::F32));
-            implementators.insert(PrimT::Float(FloatT::F64));
-        }
-
-        if BOOL_TRAITS.contains(trayt) {
-            implementators.insert(PrimT::Bool);
-        }
-
-        if STR_TRAITS.contains(trayt) {
-            implementators.insert(PrimT::Str);
-        }
-
-        implementators
-    }
-
-    pub fn implements(&self, trayt: &Trait) -> bool {
-        match self {
-            PrimT::Int(_) => INT_TRAITS.contains(trayt),
-            PrimT::Uint(_) => UINT_TRAITS.contains(trayt),
-            PrimT::Float(_) => FLOAT_TRAITS.contains(trayt),
-            PrimT::Str => STR_TRAITS.contains(trayt),
-            PrimT::Bool => BOOL_TRAITS.contains(trayt),
-            PrimT::Char => {
-                todo!()
-            }
         }
     }
 }

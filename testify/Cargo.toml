@@ -1,7 +1,7 @@
 [package]
 name = "testify"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 
 [lib]
 name = "testify"
@@ -49,7 +49,6 @@ rustc_session = {path = "/Users/tim/rust/compiler/rustc_session"}
 rustc_data_structures = {path = "/Users/tim/rust/compiler/rustc_data_structures"}
 rustc_span = {path = "/Users/tim/rust/compiler/rustc_span"}
 rustc_hir = {path = "/Users/tim/rust/compiler/rustc_hir"}
-rustc_mir = {path = "/Users/tim/rust/compiler/rustc_mir"}
 
 [dev-dependencies]
 mockall = "0.10.2"
