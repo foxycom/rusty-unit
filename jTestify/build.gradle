@@ -13,6 +13,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.0'
     implementation 'org.json:json:20210307'
     implementation 'org.jgrapht:jgrapht-core:1.5.1'
+    implementation 'org.jgrapht:jgrapht-io:1.5.1'
     implementation 'org.javatuples:javatuples:1.2'
     implementation 'com.google.guava:guava:31.0.1-jre'
     implementation 'org.apache.logging.log4j:log4j-api:2.16.0'

@@ -34,7 +34,7 @@ public class DataRequester {
       throw new RuntimeException("Not implemented yet");
     }
 
-    return traces;
+    throw new RuntimeException("Not implemented yet");
   }
 
   public static void main(String[] args) throws IOException {

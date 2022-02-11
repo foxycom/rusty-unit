@@ -54,6 +54,8 @@ public enum RefItem implements Callable {
     this.params = params;
   }
 
+
+
   @Override
   public Type getReturnType() {
     return returnType;
@@ -95,6 +97,11 @@ public enum RefItem implements Callable {
       throw new RuntimeException("Must be exactly one argument");
     }
     return new RefStmt(testCase, args.get(0), returnValue, this);
+  }
+
+  @Override
+  public String getSrcFilePath() {
+    return null;
   }
 
   @Override

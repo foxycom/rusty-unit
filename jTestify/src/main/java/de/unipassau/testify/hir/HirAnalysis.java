@@ -58,6 +58,13 @@ public class HirAnalysis {
     return callables;
   }
 
+  public List<Callable> getCallables(String filePath) {
+    return callables.stream().filter(
+            callable -> callable.getSrcFilePath() != null
+                && callable.getSrcFilePath().equals(filePath))
+        .toList();
+  }
+
   public List<Callable> generatorsOf(Type type, String filePath) {
     return generatorsOf(type, filePath, Callable.class);
   }
@@ -68,7 +75,7 @@ public class HirAnalysis {
     var stream = callables.stream()
         .filter(subClass::isInstance)
         .filter(callable -> callable.getReturnType() != null
-        && callable.getReturnType().canBeSameAs(type));
+            && callable.getReturnType().canBeSameAs(type));
 
     if (filePath != null) {
       logger.debug("File path is not null, applying filtering");

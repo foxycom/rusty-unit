@@ -4,6 +4,7 @@ import de.unipassau.testify.generator.OffspringGenerator;
 import de.unipassau.testify.metaheuristics.algorithm.GeneticAlgorithm;
 import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome;
 import de.unipassau.testify.metaheuristics.chromosome.FixedSizePopulationGenerator;
+import de.unipassau.testify.source.ChromosomeContainer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,13 +17,15 @@ public class MOSA<C extends AbstractTestCaseChromosome<C>> implements GeneticAlg
   private final Archive<C> archive;
   private final PreferenceSorter<C> preferenceSorter;
   private final SVD<C> svd;
+  private final ChromosomeContainer<C> container;
 
   public MOSA(int maxGenerations, int populationSize,
       FixedSizePopulationGenerator<C> populationGenerator,
       OffspringGenerator<C> offspringGenerator,
       PreferenceSorter<C> preferenceSorter,
       Archive<C> archive,
-      SVD<C> svd) {
+      SVD<C> svd,
+      ChromosomeContainer<C> container) {
     this.maxGenerations = maxGenerations;
     this.populationSize = populationSize;
     this.populationGenerator = populationGenerator;
@@ -30,6 +33,7 @@ public class MOSA<C extends AbstractTestCaseChromosome<C>> implements GeneticAlg
     this.archive = archive;
     this.preferenceSorter = preferenceSorter;
     this.svd = svd;
+    this.container = container;
   }
 
 
@@ -37,10 +41,16 @@ public class MOSA<C extends AbstractTestCaseChromosome<C>> implements GeneticAlg
   public List<C> findSolution() {
     var population = populationGenerator.get();
 
+    // TODO: 10.02.22 run tests
+    container.addAll(population);
+    container.executeWithInstrumentation();
+
     archive.update(population);
 
     for (int gen = 0; gen < maxGenerations; gen++) {
       var offspring = offspringGenerator.get(population);
+
+      // TODO: 10.02.22 run tests
 
       archive.update(offspring);
       var combined = new ArrayList<C>(population.size() + offspring.size());

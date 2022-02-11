@@ -11,7 +11,7 @@ use std::iter::{FromIterator};
 use log::debug;
 use rustc_middle::ty::layout::MaybeResult;
 
-pub const ENTRY: usize = usize::MAX;
+pub const ENTRY: usize = 42069;
 
 pub fn truncated_cfg(body: &Body<'_>) -> (Graph<usize, usize>, HashMap<BasicBlock, NodeIndex>) {
     let mut graph = Graph::new();
@@ -72,7 +72,7 @@ pub fn truncated_cfg(body: &Body<'_>) -> (Graph<usize, usize>, HashMap<BasicBloc
         }
     }
 
-    let absolute_exit = graph.add_node(usize::MAX);
+    let absolute_exit = graph.add_node(ENTRY);
 
     for exit_node in exit_nodes {
         graph.add_edge(exit_node, absolute_exit, 1);

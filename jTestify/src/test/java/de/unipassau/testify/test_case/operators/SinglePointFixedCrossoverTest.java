@@ -153,6 +153,6 @@ class SinglePointFixedCrossoverTest {
 
     System.out.println(parentB.visit(debugVisitor));
     var childA = crossover.crossOver(parentA, parentB, 2);
-    System.out.println(childA.visit(visitor));
+    //System.out.println(childA.visit(visitor));
   }
 }

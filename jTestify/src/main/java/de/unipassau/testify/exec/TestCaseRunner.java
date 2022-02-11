@@ -1,13 +1,13 @@
 package de.unipassau.testify.exec;
 
 import com.jayway.jsonpath.JsonPath;
+import de.unipassau.testify.source.ChromosomeContainer;
 import de.unipassau.testify.test_case.TestCase;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -17,7 +17,7 @@ import org.javatuples.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TestCaseRunner {
+public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
 
   public static final String INSTRUMENTER_PATH = "/Users/tim/Documents/master-thesis/testify/target/debug/instrumentation";
 
@@ -116,16 +116,6 @@ public class TestCaseRunner {
     }
   }
 
-  public void runWithInstrumentation(String path, String crateName)
-      throws IOException, InterruptedException {
-    var directory = new File(path);
-    if (executeTestsWithInstrumentation(directory, crateName) != 0) {
-      throw new RuntimeException("Could not execute tests with instrumentation");
-    }
-
-    throw new RuntimeException("Not implemented yet");
-  }
-
   private int executeTestsWithInstrumentation(File directory, String crateName)
       throws IOException, InterruptedException {
     var processBuilder = new ProcessBuilder("cargo", "+nightly-aarch64-apple-darwin", "test",
@@ -134,7 +124,7 @@ public class TestCaseRunner {
 
     var env = processBuilder.environment();
     env.put("RUSTC_WRAPPER", INSTRUMENTER_PATH);
-    env.put("TESTIFY_FLAGS",
+    env.put("RUSTY_UNIT",
         String.format("--stage=instrument --crate=%s --crate-name=%s", directory.toString(),
             crateName));
     var process = processBuilder.start();
@@ -143,9 +133,27 @@ public class TestCaseRunner {
 
   public static void main(String[] args) throws IOException, InterruptedException {
     var runner = new TestCaseRunner();
+    var coverage = runner.run("/Users/tim/Documents/master-thesis/evaluation/current");
+    System.out.println(coverage.lineCoverage);
     /*var llvmCoverage = runner.run("/Users/tim/Documents/master-thesis/evaluation/current");
     System.out.printf("Line coverage: %.2f", llvmCoverage.lineCoverage);*/
-    runner.runWithInstrumentation("/Users/tim/Documents/master-thesis/evaluation/current", "trying");
+    //runner.runWithInstrumentation("/Users/tim/Documents/master-thesis/evaluation/current", "trying");
 
+  }
+
+  @Override
+  public LLVMCoverage run(ChromosomeContainer<TestCase> container) {
+    throw new RuntimeException("Not implemented yet");
+  }
+
+  @Override
+  public int runWithInstrumentation(ChromosomeContainer<TestCase> container)
+      throws IOException, InterruptedException {
+    var directory = new File(container.getPath());
+    if (executeTestsWithInstrumentation(directory, container.getName()) != 0) {
+      throw new RuntimeException("Could not execute tests with instrumentation");
+    }
+
+    throw new RuntimeException("Not implemented yet");
   }
 }

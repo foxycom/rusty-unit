@@ -1,6 +1,8 @@
 package de.unipassau.testify.source;
 
 import com.google.common.base.Preconditions;
+import de.unipassau.testify.exec.ChromosomeExecutor;
+import de.unipassau.testify.exec.TestCaseRunner;
 import de.unipassau.testify.source.SourceFile.FileType;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.util.Rnd;
@@ -16,14 +18,16 @@ import java.util.Locale;
 import java.util.Map;
 import org.apache.commons.io.FileUtils;
 
-public class Crate {
+public class Crate implements ChromosomeContainer<TestCase> {
 
   private static final String MONITOR_PATH = "/Users/tim/Documents/master-thesis/testify/instrumentation/src/monitor.rs";
   private final Path originalRoot;
   private final Path executionRoot;
   private final List<SourceFile> sourceFiles;
+  private final ChromosomeExecutor<TestCase> executor;
+  private final String crateName;
 
-  public static Crate parse(Path root, List<Path> mainFiles) throws IOException {
+  public static Crate parse(Path root, List<Path> mainFiles, String crateName) throws IOException {
     var executionRoot = getExecutionRoot(root);
 
     var sourceFiles = Files.walk(root)
@@ -40,23 +44,31 @@ public class Crate {
           }
         }).toList();
 
-    return new Crate(root, getExecutionRoot(root), sourceFiles);
+    return new Crate(crateName, root, getExecutionRoot(root), sourceFiles, new TestCaseRunner());
   }
 
   private static Path getExecutionRoot(Path root) {
     return Paths.get("/Users/tim/Documents/master-thesis/evaluation/current");
   }
 
-  private Crate(Path originalRoot, Path executionRoot,
-      List<SourceFile> sourceFiles) throws IOException {
+  private Crate(String crateName, Path originalRoot, Path executionRoot,
+      List<SourceFile> sourceFiles, ChromosomeExecutor<TestCase> executor) throws IOException {
     this.originalRoot = originalRoot;
     this.executionRoot = executionRoot;
     this.sourceFiles = sourceFiles;
+    this.executor = executor;
+    this.crateName = crateName;
     copyToExecutionDir();
   }
 
   public SourceFile getFileByPath(String path) {
-    return sourceFiles.stream().filter(s -> s.getExecutionPath().endsWith(path)).findFirst().get();
+    var maybeFile = sourceFiles.stream().filter(s -> s.getExecutionPath().endsWith(path))
+        .findFirst();
+    if (maybeFile.isPresent()) {
+      return maybeFile.get();
+    } else {
+      throw new RuntimeException("No file found");
+    }
   }
 
   public Path getOriginalRoot() {
@@ -75,14 +87,15 @@ public class Crate {
     FileUtils.copyDirectory(originalRoot.toFile(), executionRoot.toFile());
 
     var monitorFile = new File(MONITOR_PATH);
-    var executionMonitorFile = Paths.get(executionRoot.toString(), "src", "testify_monitor.rs");
+    var executionMonitorFile = Paths.get(executionRoot.toString(), "src", "rusty_monitor.rs");
     com.google.common.io.Files.copy(monitorFile, executionMonitorFile.toFile());
     for (SourceFile sourceFile : sourceFiles) {
       sourceFile.onCopied();
     }
   }
 
-  public void addTests(List<TestCase> testCases) {
+  @Override
+  public void addAll(List<TestCase> testCases) {
     Preconditions.checkState(!sourceFiles.isEmpty());
     Map<String, List<TestCase>> sorted = new HashMap<>();
     testCases.forEach(testCase -> {
@@ -110,4 +123,25 @@ public class Crate {
       }
     });
   }
+
+  @Override
+  public void executeWithInstrumentation() {
+
+    try {
+      executor.runWithInstrumentation(this);
+    } catch (IOException | InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Override
+  public String getPath() {
+    return executionRoot.toString();
+  }
+
+  @Override
+  public String getName() {
+    return crateName;
+  }
+
 }

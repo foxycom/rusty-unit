@@ -11,6 +11,7 @@ import de.unipassau.testify.test_case.type.Enum;
 import de.unipassau.testify.test_case.type.Enum.EnumVariant;
 import de.unipassau.testify.test_case.type.Generic;
 import de.unipassau.testify.test_case.type.Ref;
+import de.unipassau.testify.test_case.type.Trait;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.prim.Int.ISize;
 import java.io.IOException;
@@ -41,6 +42,11 @@ class HirAnalysisTest {
     var generators = analysis.generatorsOf(option, null);
 
     assertThat(generators.size()).isAtLeast(2);
+  }
+
+  @Test
+  void testRefIsizeDoesNotImplementDefault() {
+    assertThat(analysis.typesImplementing(List.of(new Trait("std::default::Default")))).isEmpty();
   }
 
   @Test

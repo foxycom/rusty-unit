@@ -107,6 +107,9 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         .filter(s -> !s.isPublic())
         .map(Statement::getSrcFilePath)
         .collect(Collectors.toSet());
+    if (paths.size() > 1) {
+      throw new RuntimeException();
+    }
     Preconditions.checkState(paths.size() <= 1);
 
     return paths.stream().findFirst();
@@ -344,8 +347,15 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   }
 
   public boolean insertRandomStmt() {
-    var callable = Rnd.choice(hirAnalysis.getCallables());
-    logger.info("Selected callable: {}", callable);
+    var filePathBinding = getFilePathBinding();
+    Callable callable;
+    if (filePathBinding.isPresent()) {
+      callable = Rnd.choice(hirAnalysis.getCallables(filePathBinding.get()));
+    } else {
+      callable = Rnd.choice(hirAnalysis.getCallables());
+    }
+
+    logger.info("Inserting random stmt. Selected callable: {}", callable);
 
     return insertCallable(callable);
   }

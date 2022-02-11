@@ -22,11 +22,14 @@ public class TraceParser {
       var localId = Integer.parseInt(data[1]);
       var blockId = Integer.parseInt(data[2]);
       var distance = Double.parseDouble(data[3]);
-      return Triplet.with(
+
+      throw new RuntimeException("Not implemented yet");
+      /*return Triplet.with(
           testId,
-          MirAnalysis.getDecisionBranch(globalId, localId, blockId),
+          //MirAnalysis.getDecisionBranch(globalId, localId, blockId),
+          null,
           distance
-      );
+      );*/
     } else if (line.startsWith("root")) {
       throw new RuntimeException("Not implemented yet");
     } else {

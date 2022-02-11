@@ -1,4 +1,4 @@
-use crate::data_structures::cdg;
+use crate::data_structures::{cdg, log_graph_to};
 use crate::get_testify_flags;
 use crate::mir::ValueDef::Var;
 use crate::util::get_cut_name;
@@ -68,6 +68,10 @@ pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'
         writer.write_basic_blocks(&blocks);
 
         let cdg = cdg(&body);
+        log_graph_to(
+            &cdg,
+            "/Users/tim/Documents/master-thesis/testify/cdg.dot",
+        );
         writer.write_cdg(serde_json::to_string(&cdg).as_ref().unwrap());
 
         // INSTRUMENT

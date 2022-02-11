@@ -60,9 +60,8 @@ public class SourceFile {
 
   public void onCopied() throws IOException {
     if (type == FileType.MAIN) {
-
       try (var out = new BufferedWriter(new FileWriter(executionPath.toFile()))) {
-        out.write("pub mod testify_monitor;\n");
+        out.write("pub mod rusty_monitor;\n");
         var content = Files.readString(originalPath);
         out.write(content);
       }
@@ -74,7 +73,7 @@ public class SourceFile {
 
     try (var out = new BufferedWriter(new FileWriter(executionPath.toFile()))) {
       if (type == FileType.MAIN) {
-        out.write("pub mod testify_monitor;\n");
+        out.write("pub mod rusty_monitor;\n");
       }
 
       var content = Files.readString(originalPath);

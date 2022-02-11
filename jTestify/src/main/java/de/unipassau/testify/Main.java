@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -44,19 +45,24 @@ public class Main {
 
     @Option(shortName = "m")
     List<String> getMainFiles();
+
+    @Option(shortName = "n")
+    String getCrateName();
   }
 
   public static void main(String[] args) throws IOException, InterruptedException {
     var cli = CliFactory.parseArguments(CLI.class, args);
     var crate = Crate.parse(Paths.get(cli.getCrateRoot()),
-        cli.getMainFiles().stream().map(Path::of).toList());
+        cli.getMainFiles().stream().map(Path::of).toList(), cli.getCrateName());
 
     var file = new File("/Users/tim/Documents/master-thesis/testify/log/hir.json");
     var json = Files.readString(file.toPath());
     var hirAnalysis = new HirAnalysis(JSONParser.parse(json));
 
-    List<MinimizingFitnessFunction<TestCase>> objectives = MirAnalysis.getBranches().stream()
-        .map(Branch::getGlobalId).map(RandomFitness::new).collect(Collectors.toList());
+    /*List<MinimizingFitnessFunction<TestCase>> objectives = MirAnalysis.getBranches().stream()
+        .map(Branch::getGlobalId).map(RandomFitness::new).collect(Collectors.toList());*/
+
+    List<MinimizingFitnessFunction<TestCase>> objectives = Collections.emptyList();
 
     var svd = new SVDImpl<>(objectives);
     var pareto = new Pareto<TestCase>();
@@ -85,12 +91,12 @@ public class Main {
         offspringGenerator,
         preferenceSorter,
         archive,
-        svd
+        svd,
+        crate
     );
 
     var solutions = mosa.findSolution();
 
-    crate.addTests(solutions);
   }
 
 
