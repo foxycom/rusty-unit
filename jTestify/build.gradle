@@ -2,7 +2,7 @@ plugins {
     id 'java'
 }
 
-group 'org.example'
+group 'de.unipassau'
 version '1.0-SNAPSHOT'
 
 repositories {
@@ -22,6 +22,7 @@ dependencies {
     implementation 'com.jayway.jsonpath:json-path:2.6.0'
     implementation 'com.lexicalscope.jewelcli:jewelcli:0.8.9'
     implementation 'commons-io:commons-io:2.11.0'
+    implementation 'redis.clients:jedis:4.1.1'
 
     testImplementation 'org.mockito:mockito-junit-jupiter:4.1.0'
     testImplementation 'org.mockito:mockito-core:4.1.0'

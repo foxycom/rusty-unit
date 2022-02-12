@@ -13,12 +13,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class SourceFile {
-
-  private static final Path LOG_PATH = Paths.get(System.getProperty("user.dir"), "logs",
-      "serialization.log");
-  private static final Path ERROR_PATH = Paths.get(System.getProperty("user.dir"), "logs",
-      "serialization.error");
-  private static final String TEST_WRITER = "/Users/tim/Documents/master-thesis/testify/target/debug/writer";
   private Path originalPath;
   private Path executionPath;
   private FileType type;

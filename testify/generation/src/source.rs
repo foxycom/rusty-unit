@@ -20,7 +20,7 @@ use toml::value::Table;
 use toml::Value;
 
 pub const OUTPUT_ROOT: &'static str = "/Users/tim/Documents/master-thesis/evaluation/current";
-pub const LOG_DIR: &'static str = "/Users/tim/Documents/master-thesis/testify/log";
+pub const LOG_DIR: &'static str = "/Users/tim/Documents/master-thesis/tmp/testify";
 
 pub struct AnalysisError;
 

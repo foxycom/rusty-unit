@@ -13,12 +13,11 @@ path = "src/bin/main.rs"
 
 [workspace]
 members = [
-    "server",
+    "writer",
     "examples",
     "instrumentation",
     "generation",
     "common",
-    "writer"
 ]
 
 exclude = [

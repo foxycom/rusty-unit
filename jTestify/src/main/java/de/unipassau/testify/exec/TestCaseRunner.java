@@ -23,10 +23,10 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
 
   private static final Logger logger = LoggerFactory.getLogger(TestCaseRunner.class);
 
-  private static final Path COVERAGE_DIR = Paths.get(System.getProperty("user.dir"), "coverage");
-  private static final Path LOG_PATH = Paths.get(System.getProperty("user.dir"), "logs",
+  private static final Path COVERAGE_DIR = Paths.get(System.getProperty("user.dir"), "..", "tmp", "coverage");
+  private static final Path LOG_PATH = Paths.get(System.getProperty("user.dir"), "..", "tmp", "logs",
       "tests.log");
-  private static final Path ERROR_PATH = Paths.get(System.getProperty("user.dir"), "logs",
+  private static final Path ERROR_PATH = Paths.get(System.getProperty("user.dir"), "..", "tmp", "logs",
       "tests.error");
   private static final Path SCRIPTS_PATH = Paths.get(System.getProperty("user.dir"), "scripts");
 

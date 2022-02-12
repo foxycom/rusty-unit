@@ -27,7 +27,17 @@ public class TraceParser {
           distance
       );
     } else if (line.startsWith("root")) {
-      throw new RuntimeException("Not implemented yet");
+      var dataBegin = line.indexOf("[") + 1;
+      var dataEnd = line.indexOf("]");
+      var data = line.substring(dataBegin, dataEnd).split(" ");
+
+      var globalId = Integer.parseInt(data[0]);
+
+      return Triplet.with(
+          testId,
+          BasicBlock.of(globalId, 0),
+          0.0
+      );
     } else {
       throw new RuntimeException("Not implemented yet");
     }

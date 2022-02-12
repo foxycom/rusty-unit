@@ -32,7 +32,6 @@ public class DataRequester {
 
     Map<Integer, List<Pair<BasicBlock, Double>>> coverage = new HashMap<>();
     while ((line = in.readLine()) != null) {
-      System.out.printf("Line is %s%n", line);
       var result = TraceParser.parse(line);
 
       coverage.putIfAbsent(result.getValue0(), new ArrayList<>());

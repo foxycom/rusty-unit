@@ -27,7 +27,7 @@ use rustc_interface::interface::Compiler;
 use rustc_interface::{Config, Queries};
 use rustc_middle::ty::TyCtxt;
 use std::path::Path;
-use std::process;
+use std::{fs, process};
 use std::process::exit;
 use crate::util::{get_crate_root, get_testify_flags, get_stage, Stage, get_cut_name};
 
@@ -168,10 +168,11 @@ fn run_rustc() -> Result<(), i32> {
 
     let testify_env_flags = get_testify_flags();
     let stage = get_stage(&testify_env_flags);
-    let crate_root = get_crate_root(&testify_env_flags);
-    let cut_name = get_cut_name(&testify_env_flags);
+    if let Stage::Analyze = stage {
 
-    let project = ProjectScanner::open(&crate_root);
+        fs::remove_dir_all()
+    }
+
     let rustc_args = get_compiler_args(&std_env_args);
     pass_to_rustc(&rustc_args, stage);
     return Ok(());

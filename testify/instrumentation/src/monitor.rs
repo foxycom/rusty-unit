@@ -1,6 +1,6 @@
+use redis::Connection;
 use std::cell::RefCell;
 use std::io::{Read, Write};
-use std::net::TcpStream;
 use std::rc::Rc;
 use std::str::from_utf8;
 
@@ -87,7 +87,7 @@ impl Into<u32> for UnaryOp {
 }
 
 struct Monitor {
-    connection: TcpStream,
+    connection: redis::Connection,
     test_id: u64,
 }
 
@@ -100,25 +100,37 @@ impl Monitor {
     }
 
     pub fn trace_fn(&mut self, global_id: f64, id: f64) {
-        let msg = format!("{} root[{}, {}];", self.test_id, global_id, id);
-        self.send(&msg);
+        let msg = format!("{} root[{}, {}]", self.test_id, global_id, id);
+        let _: () = redis::cmd("SADD")
+            .arg("traces")
+            .arg(&msg)
+            .query(&mut self.connection)
+            .expect("Could not store trace to redis");
     }
     pub fn trace_branch(&mut self, global_id: u64, block: u64, dist: f64) {
-        let msg = format!("{} branch[{} {} {}];", self.test_id, global_id, block, dist);
-        self.send(&msg);
+        let msg = format!("{} branch[{} {} {}]", self.test_id, global_id, block, dist);
+        let _: () = redis::cmd("SADD")
+            .arg("traces")
+            .arg(&msg)
+            .query(&mut self.connection)
+            .expect("Could not store trace to redis");
     }
 
-    fn send(&mut self, msg: &str) {
-        self.connection.write(msg.as_bytes()).unwrap();
+    fn clear(connection: &mut Connection) {
+        let _: () = redis::cmd("DEL")
+            .arg("traces")
+            .query(connection)
+            .expect("Could not clear redis storage");
     }
 
     fn new() -> Self {
-        let connection = match TcpStream::connect("localhost:3333") {
-            Ok(stream) => stream,
-            Err(e) => {
-                panic!("Failed to connect: {}", e);
-            }
-        };
+        let client =
+            redis::Client::open("redis://127.0.0.1/").expect("Could not open connection to redis");
+        let mut connection = client
+            .get_connection()
+            .expect("Could not obtain connection from client");
+
+        Self::clear(&mut connection);
 
         Monitor {
             connection,
@@ -133,10 +145,7 @@ pub fn trace_fn(global_id: f64, id: f64) {
 
 pub fn trace_branch_enum(global_id: u64, block: u64, is_hit: bool) {
     let dist = if is_hit { 0.0 } else { 1.0 };
-    MONITOR.with(|m| {
-        m.borrow_mut()
-            .trace_branch(global_id, block, dist)
-    });
+    MONITOR.with(|m| m.borrow_mut().trace_branch(global_id, block, dist));
 }
 
 pub fn trace_branch_hit(global_id: u64, block: u64) {
@@ -154,10 +163,7 @@ pub fn trace_branch_bool(
     is_true_branch: bool,
 ) {
     let dist = distance(left, right, op, is_true_branch);
-    MONITOR.with(|m| {
-        m.borrow_mut()
-            .trace_branch(global_id, block, dist)
-    });
+    MONITOR.with(|m| m.borrow_mut().trace_branch(global_id, block, dist));
 }
 
 fn distance(left: f64, right: f64, op: BinaryOp, is_true_branch: bool) -> f64 {
