@@ -1,24 +1,19 @@
+use log::{debug, error, info, warn};
+use rustc_data_structures::snapshot_vec::VecLike;
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
-use rustc_hir::{AssocItemKind, BodyId, FnSig, Generics, Impl, ImplItemKind, Item, ItemKind, VariantData, Visibility, VisibilityKind};
+use rustc_hir::{AssocItemKind, BodyId, EnumDef, FnSig, Generics, HirId, Impl, ImplItemKind, Item, ItemKind, Variant, VariantData, Visibility, VisibilityKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use log::{debug, error, info, warn};
 use rustc_ast::CrateSugar;
 
 use crate::util::{get_cut_name, get_testify_flags};
 use crate::writer::HirWriter;
 use generation::analysis::HirAnalysis;
-use generation::types::{
-    Callable, FieldAccessItem, FunctionItem, MethodItem,
-    StaticFnItem, StructInitItem,
-};
-use generation::util::{
-    def_id_to_complex, fn_ret_ty_to_t, generics_to_ts, impl_to_struct_id, item_to_name,
-    node_to_name, span_to_path, ty_to_param, ty_to_t,
-};
+use generation::types::{Callable, EnumInitItem, EnumVariant, FieldAccessItem, FunctionItem, MethodItem, Param, StaticFnItem, StructInitItem, T};
+use generation::util::{def_id_to_complex, def_id_to_enum, fn_ret_ty_to_t, generics_to_ts, impl_to_struct_id, item_to_name, node_to_name, span_to_path, ty_to_param, ty_to_t};
 use generation::{HIR_LOG_PATH, LOG_DIR};
 lazy_static! {
     pub static ref SOURCE_FILE_MAP: Arc<Mutex<HashMap<PathBuf, usize>>> =
@@ -50,7 +45,7 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
 
         match &item.kind {
             ItemKind::Fn(sig, generics, body_id) => {
-                if &item.ident.name.to_string() != "main" && allowed_item(item, &tcx){
+                if &item.ident.name.to_string() != "main" && allowed_item(item, &tcx) {
                     info!("HIR: Analyzing function {}", item_to_name(item, &tcx));
                     analyze_fn(
                         sig,
@@ -72,7 +67,29 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
             ItemKind::Struct(s, g) => {
                 if allowed_item(item, &tcx) {
                     info!("HIR: Analyzing struct {}", item_to_name(item, &tcx));
-                    analyze_struct(item.def_id, s, g, &item.vis, file_path.unwrap(), &mut callables, &tcx);
+                    analyze_struct(
+                        item.def_id,
+                        s,
+                        g,
+                        &item.vis,
+                        file_path.unwrap(),
+                        &mut callables,
+                        &tcx,
+                    );
+                }
+            }
+            ItemKind::Enum(enum_def, g) => {
+                if allowed_item(item, &tcx) {
+                    info!("HIR: Analyzing enum {}", item_to_name(item, &tcx));
+                    analyze_enum(
+                        item.def_id,
+                        enum_def,
+                        g,
+                        &item.vis,
+                        file_path.unwrap(),
+                        &mut callables,
+                        &tcx,
+                    );
                 }
             }
             _ => {}
@@ -135,6 +152,72 @@ fn analyze_fn(
     );
     let fn_callable = Callable::Function(function_item);
     callables.push(fn_callable);
+}
+
+fn analyze_enum(
+    enum_local_def_id: LocalDefId,
+    enum_def: &EnumDef,
+    generics: &Generics,
+    visibility: &Visibility,
+    file_path: PathBuf,
+    callables: &mut Vec<Callable>,
+    tcx: &TyCtxt<'_>,
+) {
+    let is_public = is_public(visibility);
+    let enum_generics = generics_to_ts(generics, tcx);
+    let enum_hir_id = tcx.hir().local_def_id_to_hir_id(enum_local_def_id);
+    let enum_def_id = tcx.hir().local_def_id(enum_hir_id).to_def_id();
+
+    let parent = def_id_to_enum(enum_def_id, tcx).unwrap();
+    let parent_name = node_to_name(&tcx.hir().get(enum_hir_id), tcx).unwrap();
+    if parent_name.contains("serde") {
+        // Skip too hard stuff
+        return;
+    }
+
+    for variant in enum_def.variants {
+        let variant_name = variant.ident.name.to_ident_string();
+
+        let variant = extract_enum_variant(variant, enum_hir_id, &enum_generics, tcx);
+        if let Some(variant) = variant {
+            debug!("HIR: Extracted enum variant {}::{}", &parent_name, &variant_name);
+            let enum_init = Callable::EnumInit(EnumInitItem::new(
+                file_path.to_str().unwrap(),
+                variant,
+                parent.clone(),
+                is_public
+            ));
+            callables.push(enum_init);
+        } else {
+            warn!("HIR: Could not extract enum variant {}::{}", &parent_name, &variant_name);
+        }
+    }
+}
+
+fn extract_enum_variant(variant: &Variant, hir_id: HirId, generics: &Vec<Arc<T>>, tcx: &TyCtxt<'_>) -> Option<EnumVariant> {
+    match &variant.data {
+        VariantData::Struct(fields, _) => {
+            let ctor_hir_id = variant.data.ctor_hir_id().unwrap();
+            let def_id = tcx.hir().local_def_id(ctor_hir_id).to_def_id();
+            let struct_type = def_id_to_complex(def_id, tcx).unwrap();
+            let struct_name = node_to_name(&tcx.hir().get(ctor_hir_id), tcx).unwrap();
+            let v = EnumVariant::Struct(variant.ident.name.to_ident_string(), Param::new(Some(&struct_name), struct_type, false));
+            Some(v)
+        }
+        VariantData::Tuple(fields, _) => {
+            let params = fields.iter()
+                .filter_map(|f| ty_to_t(&f.ty, None, generics, tcx))
+                .map(|ty| Param::new(None, ty, false))
+                .collect::<Vec<_>>();
+            if params.len() < fields.len() {
+                return None;
+            }
+
+            let v = EnumVariant::Tuple(variant.ident.name.to_ident_string(), params);
+            Some(v)
+        },
+        VariantData::Unit(_) => Some(EnumVariant::Unit(variant.ident.name.to_ident_string()))
+    }
 }
 
 fn analyze_struct(
@@ -232,7 +315,10 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                 let impl_item = tcx.hir().impl_item(item.id);
                 match &impl_item.kind {
                     ImplItemKind::Fn(sig, body_id) => {
-                        debug!("HIR: (!) Found method {}, parent: {}", &impl_item.ident, parent_hir_id);
+                        debug!(
+                            "HIR: (!) Found method {}, parent: {}",
+                            &impl_item.ident, parent_hir_id
+                        );
 
                         let return_type = fn_ret_ty_to_t(&sig.decl.output, parent_hir_id, tcx);
                         if let Some(return_type) = return_type.as_ref() {
@@ -310,12 +396,10 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
 fn is_public(vis: &Visibility<'_>) -> bool {
     match &vis.node {
         VisibilityKind::Public => true,
-        VisibilityKind::Crate(sugar) => {
-            match sugar {
-                CrateSugar::PubCrate => true,
-                _ => false
-            }
-        }
-        _ => false
+        VisibilityKind::Crate(sugar) => match sugar {
+            CrateSugar::PubCrate => true,
+            _ => false,
+        },
+        _ => false,
     }
 }

@@ -3,7 +3,6 @@
     "name": "std::vec::Vec",
     "generics": [{
       "Generic": {
-        "scope": "70d9a9ff-ab8c-40c8-bbfd-08e3d57f18ec",
         "name": "T",
         "bounds": []
       }

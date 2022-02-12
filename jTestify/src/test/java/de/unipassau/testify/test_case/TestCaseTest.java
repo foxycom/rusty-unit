@@ -173,7 +173,7 @@ class TestCaseTest {
 
   @Test
   void testGenerateOptionOfUsizeRef() {
-    var genericVariant = new Enum.EnumVariant("Some", List.of(
+    /*var genericVariant = new Enum.EnumVariant("Some", List.of(
         new Param(new Generic("T", Collections.emptyList()), false, null)
     ));
     var genericOption = new Enum("Option",
@@ -213,7 +213,7 @@ class TestCaseTest {
 
     testCase.insertCallable(structInit);
     var visitor = new TestCaseVisitor();
-    System.out.println(testCase.visit(visitor));
+    System.out.println(testCase.visit(visitor));*/
   }
 
   @Test

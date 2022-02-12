@@ -49,31 +49,10 @@ pub enum Callable {
     Primitive(PrimitiveItem),
     FieldAccess(FieldAccessItem),
     StructInit(StructInitItem),
+    EnumInit(EnumInitItem),
 }
 
 impl Callable {
-    pub fn params(&self) -> &Vec<Param> {
-        match self {
-            Callable::Method(method_item) => &method_item.params,
-            Callable::StaticFunction(fn_item) => &fn_item.params,
-            Callable::Function(fn_item) => &fn_item.params,
-            Callable::Primitive(primitive_item) => primitive_item.params(),
-            Callable::FieldAccess(_) => unimplemented!(),
-            Callable::StructInit(struct_init_item) => struct_init_item.params(),
-        }
-    }
-
-    pub fn params_mut(&mut self) -> &mut Vec<Param> {
-        match self {
-            Callable::Method(m) => &mut m.params,
-            Callable::StaticFunction(f) => &mut f.params,
-            Callable::Function(f) => &mut f.params,
-            Callable::Primitive(p) => &mut p.params,
-            Callable::FieldAccess(_) => unimplemented!(),
-            Callable::StructInit(s) => &mut s.params,
-        }
-    }
-
     pub fn return_type(&self) -> Option<&Arc<T>> {
         match self {
             Callable::Method(method_item) => method_item.return_type.as_ref(),
@@ -82,6 +61,7 @@ impl Callable {
             Callable::Primitive(primitive_item) => Some(&primitive_item.ty),
             Callable::FieldAccess(field_access_item) => Some(&field_access_item.ty),
             Callable::StructInit(struct_init_item) => Some(struct_init_item.return_type()),
+            Callable::EnumInit(enum_init_item) => Some(enum_init_item.return_type()),
         }
     }
 
@@ -93,6 +73,7 @@ impl Callable {
             Callable::Primitive(_) => None,
             Callable::FieldAccess(field_access_item) => Some(&field_access_item.parent),
             Callable::StructInit(struct_init_item) => Some(struct_init_item.return_type()),
+            Callable::EnumInit(enum_init_item) => Some(enum_init_item.return_type()),
         }
     }
 
@@ -104,6 +85,7 @@ impl Callable {
             Callable::Primitive(_) => unimplemented!(),
             Callable::FieldAccess(_) => unimplemented!(),
             Callable::StructInit(_) => unimplemented!(),
+            Callable::EnumInit(_) => unimplemented!(),
         }
     }
 }
@@ -126,10 +108,45 @@ impl PrimitiveItem {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EnumInitItem {
+    pub return_type: Arc<T>,
+    pub src_file_path: String,
+    pub variant: EnumVariant,
+    pub is_public: bool,
+}
+
+impl EnumInitItem {
+    pub fn new(
+        src_file_path: &str,
+        variant: EnumVariant,
+        return_type: Arc<T>,
+        is_public: bool,
+    ) -> Self {
+        Self {
+            src_file_path: src_file_path.to_string(),
+            variant,
+            return_type,
+            is_public,
+        }
+    }
+
+    pub fn variant(&self) -> &EnumVariant {
+        &self.variant
+    }
+
+    pub fn return_type(&self) -> &Arc<T> {
+        &self.return_type
+    }
+
+    pub fn params(&self) -> Vec<Param> {
+        self.variant.params()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StructInitItem {
     pub params: Vec<Param>,
     pub return_type: Arc<T>,
-
     pub src_file_path: String,
 }
 
@@ -353,7 +370,7 @@ impl Debug for T {
             T::Complex(complex_ty) => Debug::fmt(complex_ty, f),
             T::Generic(generic_ty) => Debug::fmt(generic_ty, f),
             T::Enum(enum_ty) => Debug::fmt(enum_ty, f),
-            T::Array(array_ty) => Debug::fmt(array_ty, f)
+            T::Array(array_ty) => Debug::fmt(array_ty, f),
         }
     }
 }
@@ -383,8 +400,8 @@ impl PartialEq for T {
             },
             T::Array(array_ty) => match other {
                 T::Array(other_array) => array_ty == other_array,
-                _ => false
-            }
+                _ => false,
+            },
         }
     }
 }
@@ -441,7 +458,7 @@ impl T {
             T::Generic(generic) => generic.name().to_string(),
             T::Ref(r) => r.name(),
             T::Enum(enum_ty) => enum_ty.name().to_owned(),
-            T::Array(_) => String::from("array")
+            T::Array(_) => String::from("array"),
         }
     }
 
@@ -452,7 +469,7 @@ impl T {
             T::Generic(generic) => generic.name().to_string(),
             T::Ref(r) => r.full_name(),
             T::Enum(enum_ty) => enum_ty.full_name(),
-            T::Array(_) => String::from("array")
+            T::Array(_) => String::from("array"),
         }
     }
 
@@ -463,7 +480,7 @@ impl T {
             T::Generic(generic) => todo!(),
             T::Ref(r) => r.var_string(),
             T::Enum(enum_ty) => enum_ty.name().split("::").last().unwrap().to_string(),
-            T::Array(_) => String::from("array")
+            T::Array(_) => String::from("array"),
         }
     }
 
@@ -474,7 +491,7 @@ impl T {
             T::Generic(generic) => unimplemented!(),
             T::Ref(r) => r.id(),
             T::Enum(enum_ty) => enum_ty.def_id(),
-            T::Array(array_ty) => array_ty.def_id()
+            T::Array(array_ty) => array_ty.def_id(),
         }
     }
 
@@ -485,7 +502,7 @@ impl T {
             T::Generic(generic) => unimplemented!(),
             T::Ref(r) => r.expect_id(),
             T::Enum(enum_ty) => enum_ty.def_id().unwrap(),
-            T::Array(array_ty) => array_ty.def_id.unwrap()
+            T::Array(array_ty) => array_ty.def_id.unwrap(),
         }
     }
 
@@ -493,7 +510,7 @@ impl T {
         match self {
             T::Prim(_) => true,
             T::Ref(r) => r.is_prim(),
-            _ => false
+            _ => false,
         }
     }
 
@@ -595,7 +612,7 @@ impl Display for T {
                 Display::fmt(r.as_ref(), f)
             }
             T::Enum(enum_ty) => Display::fmt(enum_ty, f),
-            T::Array(array) => Display::fmt(array, f)
+            T::Array(array) => Display::fmt(array, f),
         }
     }
 }
@@ -722,7 +739,7 @@ pub struct EnumT {
     #[serde(skip)]
     def_id: Option<DefId>,
     name: String,
-    generics: Vec<T>,
+    generics: Vec<Arc<T>>,
     variants: Vec<EnumVariant>,
     is_local: bool,
 }
@@ -760,7 +777,7 @@ impl EnumT {
     pub fn new(
         def_id: Option<DefId>,
         name: &str,
-        generics: Vec<T>,
+        generics: Vec<Arc<T>>,
         variants: Vec<EnumVariant>,
     ) -> Self {
         let is_local = if let Some(def_id) = def_id {
@@ -796,25 +813,49 @@ impl EnumT {
 }
 
 #[derive(Debug, Clone, Hash, Eq, Serialize, Deserialize)]
-pub struct EnumVariant {
-    name: String,
-    inner_types: Vec<T>,
+pub enum EnumVariant {
+    Struct(String, Param),
+    Tuple(String, Vec<Param>),
+    Unit(String),
+}
+
+impl EnumVariant {
+    pub fn name(&self) -> &str {
+        match self {
+            EnumVariant::Struct(name, _) => name,
+            EnumVariant::Tuple(name, _) => name,
+            EnumVariant::Unit(name) => name
+        }
+    }
+
+    pub fn params(&self) -> Vec<Param> {
+        match self {
+            EnumVariant::Struct(_, p) => vec![p.clone()],
+            EnumVariant::Tuple(_, p) => p.clone(),
+            EnumVariant::Unit(_) => vec![]
+        }
+    }
 }
 
 impl PartialEq for EnumVariant {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && self.inner_types == other.inner_types
-    }
-}
-
-impl EnumVariant {
-    pub fn new(name: &str, inner_types: Vec<T>) -> Self {
-        Self {
-            name: name.to_string(),
-            inner_types,
+        match self {
+            EnumVariant::Struct(name, s) => match other {
+                EnumVariant::Struct(other_name, o) => name == other_name && s == o,
+                _ => false,
+            },
+            EnumVariant::Tuple(name, p) => match other {
+                EnumVariant::Tuple(other_name, o) => name == other_name && p == o,
+                _ => false,
+            },
+            EnumVariant::Unit(name) => match other {
+                EnumVariant::Unit(other_name) => name == other_name,
+                _ => false,
+            },
         }
     }
 }
+
 
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Generic {
@@ -887,11 +928,17 @@ impl Display for Trait {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Eq, Hash, Serialize, Deserialize)]
 pub struct Param {
     ty: Arc<T>,
     mutable: bool,
     name: Option<String>,
+}
+
+impl PartialEq for Param {
+    fn eq(&self, other: &Self) -> bool {
+        self.mutable == other.mutable && self.ty == other.ty && self.name == other.name
+    }
 }
 
 impl Debug for Param {

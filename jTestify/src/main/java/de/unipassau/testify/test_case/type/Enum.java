@@ -2,7 +2,9 @@ package de.unipassau.testify.test_case.type;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import de.unipassau.testify.json.EnumVariantDeserializer;
 import de.unipassau.testify.test_case.Param;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -172,23 +174,16 @@ public class Enum implements Type {
     return new Enum(this);
   }
 
-  @JsonDeserialize(as = EnumVariant.class)
-  public static class EnumVariant {
+  @JsonDeserialize(using = EnumVariantDeserializer.class)
+  public static abstract class EnumVariant {
 
-    private String name;
-    private List<Param> params;
+    protected String name;
 
     public EnumVariant() {
     }
 
-    public EnumVariant(String name, List<Param> params) {
+    public EnumVariant(String name) {
       this.name = name;
-      this.params = params;
-    }
-
-    public EnumVariant(EnumVariant other) {
-      this.name = other.name;
-      this.params = other.params.stream().map(Param::copy).toList();
     }
 
     public String getName() {
@@ -199,22 +194,118 @@ public class Enum implements Type {
       this.name = name;
     }
 
+    public abstract EnumVariant bindGenerics(TypeBinding binding);
+
+    public abstract List<Param> getParams();
+
+    public abstract boolean hasParams();
+
+    public abstract void setParams(List<Param> params);
+
+    public abstract EnumVariant copy();
+  }
+
+  public static class UnitEnumVariant extends EnumVariant {
+    public UnitEnumVariant(String name) {
+      super(name);
+    }
+
+    @Override
+    public EnumVariant bindGenerics(TypeBinding binding) {
+      return this;
+    }
+
+    @Override
+    public List<Param> getParams() {
+      return Collections.emptyList();
+    }
+
+    @Override
+    public boolean hasParams() {
+      return false;
+    }
+
+    @Override
+    public void setParams(List<Param> params) {
+      throw new RuntimeException("setParams is not implemented");
+    }
+
+    @Override
+    public EnumVariant copy() {
+      return new UnitEnumVariant(name);
+    }
+  }
+
+  public static class StructEnumVariant extends EnumVariant {
+    public StructEnumVariant() {
+      throw new RuntimeException("Not implemented yet");
+    }
+
+    @Override
+    public EnumVariant bindGenerics(TypeBinding binding) {
+      throw new RuntimeException("bindGenerics is not implemented");
+    }
+
+    @Override
+    public List<Param> getParams() {
+      throw new RuntimeException("getParams is not implemented");
+    }
+
+    @Override
+    public boolean hasParams() {
+      throw new RuntimeException("hasParams is not implemented");
+    }
+
+    @Override
+    public void setParams(List<Param> params) {
+      throw new RuntimeException("setParams is not implemented");
+    }
+
+    @Override
+    public EnumVariant copy() {
+      throw new RuntimeException("copy is not implemented");
+    }
+
+  }
+
+  public static class TupleEnumVariant extends EnumVariant {
+    private List<Param> params;
+
+    public TupleEnumVariant(String name, List<Param> params) {
+      super(name);
+      this.params = params;
+    }
+
+    public TupleEnumVariant(TupleEnumVariant other) {
+      this.name = other.name;
+      this.params = other.params.stream().map(Param::copy).toList();
+    }
+
+    @Override
     public boolean hasParams() {
       return !params.isEmpty();
     }
 
+    @Override
     public List<Param> getParams() {
       return params;
     }
 
+    @Override
     public EnumVariant bindGenerics(TypeBinding binding) {
-      var copy = new EnumVariant(this);
+      var copy = new TupleEnumVariant(this);
       copy.params = copy.params.stream().map(p -> p.bindGenerics(binding)).toList();
       return copy;
     }
 
+    @Override
     public void setParams(List<Param> params) {
       this.params = params;
+    }
+
+    @Override
+    public EnumVariant copy() {
+      return new TupleEnumVariant(this);
     }
 
     @Override
@@ -225,7 +316,7 @@ public class Enum implements Type {
       if (o == null || getClass() != o.getClass()) {
         return false;
       }
-      EnumVariant that = (EnumVariant) o;
+      TupleEnumVariant that = (TupleEnumVariant) o;
       return name.equals(that.name) && params.equals(that.params);
     }
 
@@ -233,6 +324,5 @@ public class Enum implements Type {
     public int hashCode() {
       return Objects.hash(name, params);
     }
-
   }
 }

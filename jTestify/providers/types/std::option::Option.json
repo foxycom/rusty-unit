@@ -4,7 +4,6 @@
     "generics": [
       {
         "Generic": {
-          "scope": "2cdb0558-32c9-4f83-a731-f95d4b0aac7f",
           "name": "T",
           "bounds": []
         }
@@ -12,22 +11,22 @@
     ],
     "variants": [
       {
-        "name": "Some",
-        "params": [
-          {
-            "ty": {
-              "Generic": {
-                "scope": "2cdb0558-32c9-4f83-a731-f95d4b0aac7f",
-                "name": "T",
-                "bounds": []
+        "Tuple": [
+          "Some",
+          [
+            {
+              "ty": {
+                "Generic": {
+                  "name": "T",
+                  "bounds": []
+                }
               }
             }
-          }
+          ]
         ]
       },
       {
-        "name": "None",
-        "params": []
+        "Unit": "None"
       }
     ],
     "is_local": false

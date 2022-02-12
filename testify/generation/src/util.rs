@@ -1,4 +1,4 @@
-use crate::types::{ComplexT, Generic, Param, Trait, T};
+use crate::types::{ComplexT, Generic, Param, Trait, T, EnumT, EnumVariant};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
@@ -142,26 +142,6 @@ pub fn generic_arg_to_t(generic_arg: &GenericArg, self_: Option<HirId>, defined_
 }
 
 pub fn def_id_to_complex(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
-    /*let ty = tcx.type_of(def_id);
-    match ty.kind() {
-        rustc_middle::ty::TyKind::Adt(_, substs) => {
-            let generics = substs
-                .non_erasable_generics()
-                .filter_map(|kind| generic_to_t(kind, tcx))
-                .collect::<Vec<_>>();
-
-            if generics.len() != substs_len(substs) {
-                println!("Not all generics could be parsed: {:?}", substs);
-                return None;
-            }
-            let name = tcx.def_path_str(def_id);
-            let t = T::Complex(ComplexT::new(Some(def_id), &name, generics));
-
-            Some(t)
-        }
-        _ => todo!(),
-    }*/
-
     let ty = tcx.type_of(def_id);
     match ty.kind() {
         rustc_middle::ty::TyKind::Adt(_, substs) => {
@@ -171,7 +151,7 @@ pub fn def_id_to_complex(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
                 .collect::<Vec<_>>();
 
             if generics.len() != substs_len(substs) {
-                println!("Not all generics could be parsed: {:?}", substs);
+                warn!("HIR: not all generics could be parsed: {:?}", substs);
                 return None;
             }
             let name = tcx.def_path_str(def_id);
@@ -180,6 +160,29 @@ pub fn def_id_to_complex(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
             Some(Arc::new(t))
         }
         _ => todo!(),
+    }
+}
+
+pub fn def_id_to_enum(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
+    let ty = tcx.type_of(def_id);
+    match ty.kind() {
+        rustc_middle::ty::TyKind::Adt(_, substs) => {
+            let generics = substs
+                .non_erasable_generics()
+                .filter_map(|kind| generic_to_t(kind, tcx))
+                .collect::<Vec<_>>();
+            if generics.len() != substs.len() {
+                warn!("HIR: not all generics could be parsed: {:?}", substs);
+                return None;
+            }
+
+            let name = tcx.def_path_str(def_id);
+            let variants = vec![];
+            let t = T::Enum(EnumT::new(Some(def_id), &name, generics, variants));
+
+            Some(Arc::new(t))
+        }
+        _ => todo!()
     }
 }
 

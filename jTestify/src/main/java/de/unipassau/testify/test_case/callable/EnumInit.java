@@ -1,6 +1,7 @@
 package de.unipassau.testify.test_case.callable;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
@@ -13,18 +14,24 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+@JsonDeserialize(as = EnumInit.class)
 public class EnumInit implements Callable {
 
-  private Enum type;
+  @JsonProperty("return_type")
+  private Type type;
   private EnumVariant variant;
   @JsonProperty("is_public")
   private boolean isPublic;
+  @JsonProperty("src_file_path")
   private String srcFilePath;
 
   public EnumInit(Enum type, EnumVariant variant, boolean isPublic) {
     this.type = type;
     this.variant = variant;
     this.isPublic = isPublic;
+  }
+
+  public EnumInit() {
   }
 
   @Override
