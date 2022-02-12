@@ -4,7 +4,7 @@ use crate::mir::ValueDef::Var;
 use crate::util::get_cut_name;
 use crate::writer::MirWriter;
 use generation::branch::Branch;
-use generation::{INSTRUMENTED_MIT_LOG_PATH, MIR_LOG_PATH};
+use generation::{INSTRUMENTED_MIR_LOG_PATH, LOG_DIR, MIR_LOG_PATH};
 use instrumentation::monitor::{BinaryOp, UnaryOp};
 use log::{debug, info, warn};
 use rustc_data_structures::graph::WithNumNodes;
@@ -26,6 +26,7 @@ use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 use std::borrow::Borrow;
 use std::fs::File;
+use std::path::Path;
 
 type CutPoint<'tcx> = (BasicBlock, usize, BasicBlockData<'tcx>);
 
@@ -46,7 +47,8 @@ pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'
             return tcx.arena.alloc(body);
         }
 
-        let mut writer = MirWriter::new(MIR_LOG_PATH);
+        let mir_output_path = Path::new(LOG_DIR).join(MIR_LOG_PATH);
+        let mut writer = MirWriter::new(mir_output_path);
         let item_name = tcx.hir().opt_name(hir_id);
         if let None = item_name {
             return tcx.arena.alloc(body);
@@ -86,8 +88,9 @@ pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'
             .collect::<Vec<_>>();
         writer.write_locals(&locals);
 
+        let instrumented_mir_output_path = Path::new(LOG_DIR).join(INSTRUMENTED_MIR_LOG_PATH);
         // Log instrumented version of the mir
-        let mut instrumented_writer = MirWriter::new(INSTRUMENTED_MIT_LOG_PATH);
+        let mut instrumented_writer = MirWriter::new(instrumented_mir_output_path);
         instrumented_writer.new_body(&format!("{}", global_id));
         instrumented_writer.write_locals(&locals);
         let blocks = basic_blocks

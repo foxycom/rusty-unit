@@ -1,6 +1,8 @@
 package de.unipassau.testify.source;
 
+import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
+import com.google.common.io.FileWriteMode;
 import de.unipassau.testify.exec.ChromosomeExecutor;
 import de.unipassau.testify.exec.TestCaseRunner;
 import de.unipassau.testify.source.SourceFile.FileType;
@@ -92,6 +94,30 @@ public class Crate implements ChromosomeContainer<TestCase> {
     for (SourceFile sourceFile : sourceFiles) {
       sourceFile.onCopied();
     }
+
+    // Add redis dependency
+    var cargoToml = findCargoToml();
+    addDependencies(cargoToml);
+  }
+
+  private void addDependencies(Path cargoToml) throws IOException {
+    var sink = com.google.common.io.Files.asCharSink(cargoToml.toFile(), Charsets.UTF_8,
+        FileWriteMode.APPEND);
+    sink.write("\n[dependencies.redis]\nversion = \"*\"\n");
+
+    //[dependencies.redis]
+    //version = "*"
+  }
+
+  private Path findCargoToml() {
+    var tomlFiles = FileUtils.listFiles(executionRoot.toFile(), new String[]{"toml"}, true);
+    if (tomlFiles.isEmpty()) {
+      throw new RuntimeException(String.format("No Cargo.toml found in %s", executionRoot));
+    } else if (tomlFiles.size() > 1) {
+      throw new RuntimeException("Multiple Cargo.toml files not supported yet");
+    }
+
+    return tomlFiles.stream().findFirst().get().toPath();
   }
 
   @Override

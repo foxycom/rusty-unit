@@ -121,8 +121,19 @@ public class HirAnalysis {
 
     callables.addAll(enumInits);
     callables.addAll(loadArtificialCallables());
+    callables.addAll(loadFunctions());
 
     return callables;
+  }
+
+  private static List<Callable> loadFunctions() throws IOException {
+    var mapper = new ObjectMapper();
+    var javaType = mapper.getTypeFactory().constructCollectionType(List.class, Callable.class);
+
+    var functionsPath = Paths.get(PROVIDERS_PATH, "functions.json");
+    var content = Files.readString(functionsPath);
+
+    return mapper.readValue(content, javaType);
   }
 
   private static List<Callable> loadArtificialCallables() {

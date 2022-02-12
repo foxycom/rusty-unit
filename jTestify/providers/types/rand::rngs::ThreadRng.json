@@ -1,0 +1,7 @@
+{
+  "Complex": {
+    "name": "rand::rngs::ThreadRng",
+    "generics": [],
+    "is_local": false
+  }
+}

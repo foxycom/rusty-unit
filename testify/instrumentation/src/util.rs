@@ -25,6 +25,11 @@ pub fn get_crate_root(args: &[String]) -> String {
     }
 }
 
+pub fn rustc_get_crate_name(rustc_args: &[String]) -> String {
+    let pos = rustc_args.iter().position(|a| a == "--crate-name").unwrap();
+    rustc_args.get(pos + 1).map(|s| s.to_string()).unwrap()
+}
+
 pub fn get_testify_flags() -> Vec<String> {
     let var = std::env::var("RUSTY_UNIT").expect("RUSTY_UNIT env var is not set");
     var.split(" ").map(|a| a.to_owned()).collect()

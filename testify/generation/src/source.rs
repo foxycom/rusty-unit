@@ -1,4 +1,4 @@
-use crate::{util, HIR_LOG_PATH, MIR_LOG_PATH};
+use crate::{util};
 use dircpy_stable::copy_dir;
 use proc_macro2::{Ident, Span};
 use quote::ToTokens;
@@ -20,7 +20,6 @@ use toml::value::Table;
 use toml::Value;
 
 pub const OUTPUT_ROOT: &'static str = "/Users/tim/Documents/master-thesis/evaluation/current";
-pub const LOG_DIR: &'static str = "/Users/tim/Documents/master-thesis/tmp/testify";
 
 pub struct AnalysisError;
 

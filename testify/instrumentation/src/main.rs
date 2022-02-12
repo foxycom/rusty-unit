@@ -2,34 +2,40 @@
 mod data_structures;
 mod hir;
 mod mir;
-mod writer;
 mod util;
+mod writer;
 
 #[macro_use]
 extern crate lazy_static;
 
+extern crate rustc_ast;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_hir;
+extern crate rustc_index;
 extern crate rustc_interface;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
-extern crate rustc_index;
-extern crate rustc_ast;
 
 use crate::hir::hir_analysis;
 use crate::mir::{CUSTOM_OPT_MIR_ANALYSIS, CUSTOM_OPT_MIR_INSTRUMENTATION};
+use crate::util::{get_crate_root, get_cut_name, get_stage, get_testify_flags, rustc_get_crate_name, Stage};
 use generation::source::{Project, ProjectScanner};
+use generation::LOG_DIR;
+use log::{debug, info};
 use rustc_driver::Compilation;
 use rustc_interface::interface::Compiler;
 use rustc_interface::{Config, Queries};
 use rustc_middle::ty::TyCtxt;
 use std::path::Path;
-use std::{fs, process};
 use std::process::exit;
-use crate::util::{get_crate_root, get_testify_flags, get_stage, Stage, get_cut_name};
+use std::{fs, process};
+
+pub struct EmptyCallbacks {}
+
+impl rustc_driver::Callbacks for EmptyCallbacks {}
 
 pub struct CompilerCallbacks {
     stage: Stage,
@@ -131,11 +137,7 @@ pub fn get_compiler_args(args: &[String]) -> Vec<String> {
 
     if wrapper_mode {
         // we still want to be able to invoke it normally though
-        rustc_args = args
-            .iter()
-            .skip(1)
-            .map(|s| s.to_string())
-            .collect();
+        rustc_args = args.iter().skip(1).map(|s| s.to_string()).collect();
     } else {
         rustc_args = args
             .iter()
@@ -169,19 +171,36 @@ fn run_rustc() -> Result<(), i32> {
     let testify_env_flags = get_testify_flags();
     let stage = get_stage(&testify_env_flags);
     if let Stage::Analyze = stage {
-
-        fs::remove_dir_all()
+        if let Ok(_) = fs::remove_dir_all(LOG_DIR) {
+            debug!("MAIN: Cleared the log directory");
+        } else {
+            debug!("MAIN: There was no log directory");
+        }
+        fs::create_dir_all(LOG_DIR).expect("Could not create the log directory");
     }
 
+    let rusty_flags = get_testify_flags();
+    let cut = get_cut_name(&rusty_flags);
     let rustc_args = get_compiler_args(&std_env_args);
-    pass_to_rustc(&rustc_args, stage);
+
+    let do_instrument = rustc_get_crate_name(&rustc_args) == cut;
+
+    pass_to_rustc(&rustc_args, stage, do_instrument);
     return Ok(());
 }
 
-pub fn pass_to_rustc(rustc_args: &[String], stage: Stage) {
-    let mut callbacks = CompilerCallbacks::new(stage);
+pub fn pass_to_rustc(rustc_args: &[String], stage: Stage, instrumentation: bool) {
+    let err = if instrumentation {
+        // The crate we want to analyze, so throw up the instrumentation
+        info!("MAIN: Instrumenting crate");
+        let mut callbacks = CompilerCallbacks::new(stage);
+        rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
+    } else {
+        // A dependency, don't do anything to prevent breaking incremental compilation
+        let mut callbacks = EmptyCallbacks {};
+        rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
+    };
 
-    let err = rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run();
     if err.is_err() {
         eprintln!("Error while compiling dependency");
         std::process::exit(-1);

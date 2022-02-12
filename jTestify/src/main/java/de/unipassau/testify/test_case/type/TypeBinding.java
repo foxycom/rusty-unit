@@ -53,6 +53,10 @@ public class TypeBinding {
   }
 
   public Type getBindingFor(Generic generic) {
+    if (!binding.containsKey(generic)) {
+      // TODO: 12.02.22 remove
+      System.out.println();
+    }
     return Objects.requireNonNull(binding.get(generic), "Does not contain " + generic);
   }
 

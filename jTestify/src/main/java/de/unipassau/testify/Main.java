@@ -1,5 +1,7 @@
 package de.unipassau.testify;
 
+import static de.unipassau.testify.Constants.HIR_LOG_PATH;
+
 import com.lexicalscope.jewel.cli.CliFactory;
 import com.lexicalscope.jewel.cli.Option;
 import de.unipassau.testify.algorithm.ArchiveImpl;
@@ -27,7 +29,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -54,12 +55,11 @@ public class Main {
     var crate = Crate.parse(Paths.get(cli.getCrateRoot()),
         cli.getMainFiles().stream().map(Path::of).toList(), cli.getCrateName());
 
-    var file = new File("/Users/tim/Documents/master-thesis/testify/log/hir.json");
-    var json = Files.readString(file.toPath());
-    var hirAnalysis = new HirAnalysis(JSONParser.parse(json));
+    // TODO: 12.02.22 run instrumentation of the crate
 
-    /*List<MinimizingFitnessFunction<TestCase>> objectives = MirAnalysis.getBranches().stream()
-        .map(Branch::getGlobalId).map(RandomFitness::new).collect(Collectors.toList());*/
+    var hirLog = new File(HIR_LOG_PATH);
+    var json = Files.readString(hirLog.toPath());
+    var hirAnalysis = new HirAnalysis(JSONParser.parse(json));
 
     List<MinimizingFitnessFunction<TestCase>> objectives = MirAnalysis.targets().stream()
         .map(t -> new RandomFitness()).collect(Collectors.toList());

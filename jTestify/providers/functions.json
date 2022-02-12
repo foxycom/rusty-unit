@@ -1,0 +1,17 @@
+[
+  {
+    "Function": {
+      "params": [],
+      "return_type": {
+        "Complex": {
+          "name": "rand::rngs::ThreadRng",
+          "generics": [],
+          "is_local": false
+        }
+      },
+      "name": "rand::thread_rng",
+      "src_file_path": null,
+      "is_public": true
+    }
+  }
+]

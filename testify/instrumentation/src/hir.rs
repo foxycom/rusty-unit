@@ -3,7 +3,7 @@ use rustc_hir::{AssocItemKind, BodyId, FnSig, Generics, Impl, ImplItemKind, Item
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use log::{debug, error, info, warn};
 use rustc_ast::CrateSugar;
@@ -19,7 +19,7 @@ use generation::util::{
     def_id_to_complex, fn_ret_ty_to_t, generics_to_ts, impl_to_struct_id, item_to_name,
     node_to_name, span_to_path, ty_to_param, ty_to_t,
 };
-use generation::HIR_LOG_PATH;
+use generation::{HIR_LOG_PATH, LOG_DIR};
 lazy_static! {
     pub static ref SOURCE_FILE_MAP: Arc<Mutex<HashMap<PathBuf, usize>>> =
         Arc::new(Mutex::new(HashMap::new()));
@@ -82,7 +82,8 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
     let mut analysis = HirAnalysis::new();
     analysis.set_callables(callables);
 
-    let mut writer = HirWriter::new(HIR_LOG_PATH);
+    let hir_output_path = Path::new(LOG_DIR).join(HIR_LOG_PATH);
+    let mut writer = HirWriter::new(hir_output_path);
     writer.write_analysis(&analysis);
 }
 

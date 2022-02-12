@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import de.unipassau.testify.test_case.callable.Callable;
+import de.unipassau.testify.test_case.callable.Function;
 import de.unipassau.testify.test_case.callable.Method;
 import de.unipassau.testify.test_case.callable.StaticMethod;
 import de.unipassau.testify.test_case.callable.StructInit;
@@ -41,6 +42,7 @@ public class CallableDeserializer extends StdDeserializer<Callable> {
       case "StaticFunction" -> mapper.readValue(node.toString(), StaticMethod.class);
       case "Method" -> mapper.readValue(node.toString(), Method.class);
       case "StructInit" -> mapper.readValue(node.toString(), StructInit.class);
+      case "Function" -> mapper.readValue(node.toString(), Function.class);
       default -> throw new RuntimeException("Not implemented: " + callableType);
     };
   }

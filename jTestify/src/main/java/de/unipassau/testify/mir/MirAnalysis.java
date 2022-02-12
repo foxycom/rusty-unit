@@ -1,5 +1,7 @@
 package de.unipassau.testify.mir;
 
+import static de.unipassau.testify.Constants.MIR_LOG_PATH;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -9,9 +11,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class MirAnalysis {
-
-  public static final String MIR_LOG_PATH = "/Users/tim/Documents/master-thesis/testify/log/mir.log";
-
   private static final Map<Integer, CDG> CDGs = parseCDGs();
 
   private static Map<Integer, CDG> parseCDGs() {

@@ -17,6 +17,8 @@ public class Constants {
   public static final double P_RANDOM_PERTURBATION = getDouble("p-random-perturbation");
   public static final int MAX_DELTA = getInt("max-delta");
   public static final int MAX_INT = getInt("max-int");
+  public static final String MIR_LOG_PATH = properties.getProperty("mir-log-path");
+  public static final String HIR_LOG_PATH = properties.getProperty("hir-log-path");
 
   private static Properties loadProperties() {
     var properties = new Properties();

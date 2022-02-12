@@ -9,6 +9,3 @@ extern crate rustc_span;
 
 #[macro_use]
 extern crate derive_builder;
-
-
-pub mod serialization;

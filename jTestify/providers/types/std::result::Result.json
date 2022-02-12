@@ -1,0 +1,52 @@
+{
+  "Enum": {
+    "name": "std::result::Result",
+    "generics": [
+      {
+        "Generic": {
+          "scope": "sdfsdf-32c9-4f83-a731-f95d4b0aac7f",
+          "name": "T",
+          "bounds": []
+        }
+      },
+      {
+        "Generic": {
+          "scope": "sdfsdf-32c9-4f83-a731-f95d4b0aac7f",
+          "name": "E",
+          "bounds": []
+        }
+      }
+    ],
+    "variants": [
+      {
+        "name": "Ok",
+        "params": [
+          {
+            "ty": {
+              "Generic": {
+                "scope": "sdfsdf-32c9-4f83-a731-f95d4b0aac7f",
+                "name": "T",
+                "bounds": []
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Err",
+        "params": [
+          {
+            "ty": {
+              "Generic": {
+                "scope": "sdfsdf-32c9-4f83-a731-f95d4b0aac7f",
+                "name": "E",
+                "bounds": []
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "is_local": false
+  }
+}
