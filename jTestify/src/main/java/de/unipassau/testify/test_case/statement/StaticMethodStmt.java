@@ -45,7 +45,7 @@ public class StaticMethodStmt extends CallableStmt {
     var argsCopy = args.stream()
         .map(a -> a.copy(testCase))
         .collect(toCollection(ArrayList::new));
-    var returnValueCopy = returnValue.copy(testCase);
+    var returnValueCopy = (returnValue == null ) ? null : returnValue.copy(testCase);
     return new StaticMethodStmt(testCase, argsCopy, returnValueCopy, method);
   }
 

@@ -4,28 +4,24 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b12c22c4-b5f7-4f70-8970-848dd736b280" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/statement/FunctionStmt.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../.idea/.gitignore" beforeDir="false" />
+    <list default="true" id="b12c22c4-b5f7-4f70-8970-848dd736b280" name="Changes" comment="Update">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/providers/callables/std::vec::Vec.json" beforeDir="false" afterPath="$PROJECT_DIR$/providers/callables/std::vec::Vec.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/providers/types/std::option::Option.json" beforeDir="false" afterPath="$PROJECT_DIR$/providers/types/std::option::Option.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/providers/types/std::result::Result.json" beforeDir="false" afterPath="$PROJECT_DIR$/providers/types/std::result::Result.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/providers/types/std::vec::Vec.json" beforeDir="false" afterPath="$PROJECT_DIR$/providers/types/std::vec::Vec.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/json/CallableDeserializer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/json/CallableDeserializer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/exec/TestCaseRunner.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/exec/TestCaseRunner.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/exec/TestClient.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/exec/TestServer.java" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/json/EnumVariantDeserializer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/json/EnumVariantDeserializer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/callable/EnumInit.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/callable/EnumInit.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/callable/Function.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/callable/Function.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/Enum.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/Enum.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/de/unipassau/testify/hir/HirAnalysisTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/de/unipassau/testify/hir/HirAnalysisTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/de/unipassau/testify/test_case/TestCaseTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/de/unipassau/testify/test_case/TestCaseTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../testify/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../testify/.idea/modules.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../testify/.idea/testify.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../testify/.idea/vcs.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../testify/generation/src/types.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/generation/src/types.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../testify/generation/src/util.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/generation/src/util.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../testify/instrumentation/src/hir.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/instrumentation/src/hir.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/server/DataRequester.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/server/RedisStorage.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/server/RedisStorage.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/ChromosomeContainer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/ChromosomeContainer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/Crate.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/Crate.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/SourceFile.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/SourceFile.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/statement/FunctionStmt.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/statement/FunctionStmt.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/statement/StaticMethodStmt.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/statement/StaticMethodStmt.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/Generic.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/Generic.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../testify/instrumentation/instrument.sh" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/instrumentation/instrument.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../testify/instrumentation/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/instrumentation/src/main.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../testify/instrumentation/src/mir.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/instrumentation/src/mir.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../testify/instrumentation/src/monitor.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/instrumentation/src/monitor.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -55,6 +51,9 @@
       <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
     </file-type-list>
   </component>
+  <component name="MacroExpansionManager">
+    <option name="directoryName" value="r08hgin6" />
+  </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
@@ -74,9 +73,22 @@
     <property name="project.structure.last.edited" value="Project" />
     <property name="project.structure.proportion" value="0.0" />
     <property name="project.structure.side.proportion" value="0.0" />
-    <property name="settings.editor.selected.configurable" value="fileTemplates" />
+    <property name="settings.editor.selected.configurable" value="preferences.general" />
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Application.Run">
+    <configuration name="RedisStorage" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="de.unipassau.testify.server.RedisStorage" />
+      <module name="jTestify.main" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="de.unipassau.testify.server.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="Run" type="Application" factoryName="Application">
       <option name="MAIN_CLASS_NAME" value="de.unipassau.testify.Main" />
       <module name="jTestify.main" />
@@ -91,6 +103,30 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
+    <configuration name="TestCaseRunner" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="de.unipassau.testify.exec.TestCaseRunner" />
+      <module name="jTestify.main" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="de.unipassau.testify.exec.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <list>
+      <item itemvalue="Application.Run" />
+      <item itemvalue="Application.TestCaseRunner" />
+      <item itemvalue="Application.RedisStorage" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Application.RedisStorage" />
+        <item itemvalue="Application.TestCaseRunner" />
+      </list>
+    </recent_temporary>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
@@ -101,20 +137,51 @@
       <option name="presentableId" value="Default" />
       <updated>1644698379089</updated>
       <workItem from="1644698381167" duration="139000" />
-      <workItem from="1644698524374" duration="4747000" />
+      <workItem from="1644698524374" duration="10009000" />
+      <workItem from="1644754308373" duration="73000" />
+      <workItem from="1644756638268" duration="3000" />
+      <workItem from="1644756667590" duration="3915000" />
     </task>
+    <task id="LOCAL-00001" summary="Update">
+      <created>1644703983025</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1644703983025</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Update" />
+    <option name="LAST_COMMIT_MESSAGE" value="Update" />
+  </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/json/EnumVariantDeserializer.java</url>
-          <line>36</line>
-          <option name="timeStamp" value="8" />
+          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/TypeBinding.java</url>
+          <line>57</line>
+          <option name="timeStamp" value="9" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/exec/TestCaseRunner.java</url>
+          <line>155</line>
+          <option name="timeStamp" value="15" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

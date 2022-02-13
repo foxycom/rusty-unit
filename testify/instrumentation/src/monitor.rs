@@ -99,8 +99,8 @@ impl Monitor {
         self.test_id = test_id;
     }
 
-    pub fn trace_fn(&mut self, global_id: f64, id: f64) {
-        let msg = format!("{} root[{}, {}]", self.test_id, global_id, id);
+    pub fn trace_fn(&mut self, global_id: u64) {
+        let msg = format!("{} root[{}]", self.test_id, global_id);
         let _: () = redis::cmd("SADD")
             .arg("traces")
             .arg(&msg)
@@ -114,6 +114,7 @@ impl Monitor {
             .arg(&msg)
             .query(&mut self.connection)
             .expect("Could not store trace to redis");
+        println!("SADD to redis");
     }
 
     fn clear(connection: &mut Connection) {
@@ -124,23 +125,24 @@ impl Monitor {
     }
 
     fn new() -> Self {
+        println!("Connected");
         let client =
             redis::Client::open("redis://127.0.0.1/").expect("Could not open connection to redis");
         let mut connection = client
             .get_connection()
             .expect("Could not obtain connection from client");
 
-        Self::clear(&mut connection);
+        //Self::clear(&mut connection);
 
         Monitor {
             connection,
-            test_id: 0,
+            test_id: u64::MAX,
         }
     }
 }
 
-pub fn trace_fn(global_id: f64, id: f64) {
-    MONITOR.with(|m| m.borrow_mut().trace_fn(global_id, id));
+pub fn trace_fn(global_id: u64) {
+    MONITOR.with(|m| m.borrow_mut().trace_fn(global_id));
 }
 
 pub fn trace_branch_enum(global_id: u64, block: u64, is_hit: bool) {

@@ -76,7 +76,7 @@ public class SourceFile {
 
       out.write("#[cfg(test)]\n");
       out.write("mod rusty_tests {\n");
-      out.write("\tuse crate::rusty_monitor;\n");
+      out.write("\tuse crate::*;\n");
 
       var testCode = tests.stream()
           .map(testCase -> testCase.visit(visitor))

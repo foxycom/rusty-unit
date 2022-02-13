@@ -1,6 +1,7 @@
 package de.unipassau.testify.exec;
 
 import com.jayway.jsonpath.JsonPath;
+import de.unipassau.testify.server.RedisStorage;
 import de.unipassau.testify.source.ChromosomeContainer;
 import de.unipassau.testify.test_case.TestCase;
 import java.io.BufferedReader;
@@ -24,9 +25,9 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
   private static final Logger logger = LoggerFactory.getLogger(TestCaseRunner.class);
 
   private static final Path COVERAGE_DIR = Paths.get(System.getProperty("user.dir"), "..", "tmp", "coverage");
-  private static final Path LOG_PATH = Paths.get(System.getProperty("user.dir"), "..", "tmp", "logs",
+  private static final Path LOG_PATH = Paths.get(System.getProperty("user.dir"), "..", "tmp", "jTestify",
       "tests.log");
-  private static final Path ERROR_PATH = Paths.get(System.getProperty("user.dir"), "..", "tmp", "logs",
+  private static final Path ERROR_PATH = Paths.get(System.getProperty("user.dir"), "..", "tmp", "jTestify",
       "tests.error");
   private static final Path SCRIPTS_PATH = Paths.get(System.getProperty("user.dir"), "scripts");
 
@@ -124,6 +125,7 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
 
     var env = processBuilder.environment();
     env.put("RUSTC_WRAPPER", INSTRUMENTER_PATH);
+    env.put("RUST_LOG", "info");
     env.put("RUSTY_UNIT",
         String.format("--stage=instrument --crate=%s --crate-name=%s", directory.toString(),
             crateName));
@@ -149,11 +151,22 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
   @Override
   public int runWithInstrumentation(ChromosomeContainer<TestCase> container)
       throws IOException, InterruptedException {
+    RedisStorage.clear();
+
     var directory = new File(container.getPath());
     if (executeTestsWithInstrumentation(directory, container.getName()) != 0) {
       throw new RuntimeException("Could not execute tests with instrumentation");
     }
 
-    throw new RuntimeException("Not implemented yet");
+    var coverage = RedisStorage.requestTraces();
+    if (coverage.isEmpty()) {
+      throw new RuntimeException("Coverage is empty");
+    }
+    for (TestCase testCase : container.chromosomes()) {
+      var testCoverage = coverage.get(testCase.getId());
+      testCase.setCoverage(testCoverage);
+    }
+
+    return 0;
   }
 }

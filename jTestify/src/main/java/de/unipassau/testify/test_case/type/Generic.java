@@ -52,7 +52,7 @@ public class Generic implements Type {
 
   @Override
   public List<Type> generics() {
-    return Collections.emptyList();
+    return Collections.singletonList(this);
   }
 
   @Override

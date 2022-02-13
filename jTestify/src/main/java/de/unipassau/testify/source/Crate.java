@@ -28,6 +28,7 @@ public class Crate implements ChromosomeContainer<TestCase> {
   private final List<SourceFile> sourceFiles;
   private final ChromosomeExecutor<TestCase> executor;
   private final String crateName;
+  private final List<TestCase> testCases;
 
   public static Crate parse(Path root, List<Path> mainFiles, String crateName) throws IOException {
     var executionRoot = getExecutionRoot(root);
@@ -60,6 +61,7 @@ public class Crate implements ChromosomeContainer<TestCase> {
     this.sourceFiles = sourceFiles;
     this.executor = executor;
     this.crateName = crateName;
+    this.testCases = new ArrayList<>();
     copyToExecutionDir();
   }
 
@@ -122,6 +124,9 @@ public class Crate implements ChromosomeContainer<TestCase> {
 
   @Override
   public void addAll(List<TestCase> testCases) {
+    this.testCases.clear();
+    this.testCases.addAll(testCases);
+
     Preconditions.checkState(!sourceFiles.isEmpty());
     Map<String, List<TestCase>> sorted = new HashMap<>();
     testCases.forEach(testCase -> {
@@ -151,10 +156,15 @@ public class Crate implements ChromosomeContainer<TestCase> {
   }
 
   @Override
-  public void executeWithInstrumentation() {
+  public List<TestCase> chromosomes() {
+    return testCases;
+  }
 
+  @Override
+  public void executeWithInstrumentation() {
+    // Write tests into the source files
     try {
-      executor.runWithInstrumentation(this);
+      var statusCode = executor.runWithInstrumentation(this);
     } catch (IOException | InterruptedException e) {
       throw new RuntimeException(e);
     }

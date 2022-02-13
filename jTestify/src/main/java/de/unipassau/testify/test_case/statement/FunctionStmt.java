@@ -53,7 +53,7 @@ public class FunctionStmt extends CallableStmt {
         .collect(Collectors.toCollection(ArrayList::new));
     VarReference returnValueCopy = null;
     if (returnValue != null) {
-      returnValueCopy = returnValueCopy.copy(testCase);
+      returnValueCopy = returnValue.copy(testCase);
     }
 
     return new FunctionStmt(testCase, argsCopy, returnValueCopy, function);

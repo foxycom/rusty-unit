@@ -5,6 +5,7 @@ import java.util.List;
 
 public interface ChromosomeContainer<C extends AbstractTestCaseChromosome<C>> {
   void addAll(List<C> chromosomes);
+  List<C> chromosomes();
   void executeWithInstrumentation();
   String getPath();
   String getName();

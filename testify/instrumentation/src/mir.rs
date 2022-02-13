@@ -6,7 +6,7 @@ use crate::writer::MirWriter;
 use generation::branch::Branch;
 use generation::{INSTRUMENTED_MIR_LOG_PATH, LOG_DIR, MIR_LOG_PATH};
 use instrumentation::monitor::{BinaryOp, UnaryOp};
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{HirId, ItemKind};
@@ -129,12 +129,6 @@ pub const CUSTOM_OPT_MIR_INSTRUMENTATION: for<'tcx> fn(
     let global_id: u32 = def.index.into();
 
     let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
-    local_decls.iter_enumerated().for_each(|(local, decl)| {
-        debug!("MIR: {:?} -> {:?}", local, decl);
-    });
-    basic_blocks.iter_enumerated().for_each(|(block, data)| {
-        debug!("MIR: {:?} -> {:?}", block, data);
-    });
 
     // INSTRUMENT
     let mut mir_visitor = MirVisitor::new(global_id as u64, body.clone(), tcx);
@@ -142,20 +136,13 @@ pub const CUSTOM_OPT_MIR_INSTRUMENTATION: for<'tcx> fn(
 
     let (basic_blocks, local_decls) = instrumented_body.basic_blocks_and_local_decls_mut();
 
-    local_decls.iter_enumerated().for_each(|(local, decl)| {
-        debug!("MIR: {:?} -> {:?}", local, decl);
-    });
-
-    basic_blocks.iter_enumerated().for_each(|(block, data)| {
-        debug!("MIR: {:?} -> {:?}", block, data);
-    });
-
     return tcx.arena.alloc(instrumented_body);
 };
 
 fn allowed_item(id: DefId) -> bool {
     let name = format!("{:?}", id);
-    !(name.contains("serialize") || name.contains("deserialize"))
+    // || name.contains("tests")
+    !(name.contains("serialize") || name.contains("deserialize") )
 }
 
 pub struct MirVisitor<'tcx> {

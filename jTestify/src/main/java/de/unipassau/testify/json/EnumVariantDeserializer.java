@@ -33,9 +33,6 @@ public class EnumVariantDeserializer extends StdDeserializer<EnumVariant> {
     var entry = node.fields().next();
     var variantSpec = entry.getKey();
     var variantNode = entry.getValue();
-    if (variantNode.toString().contains("{\"name\":\"E\",\"bounds\":[]}}")) {
-      System.out.println();
-    }
     return createEnumVariant(variantSpec, variantNode);
   }
 

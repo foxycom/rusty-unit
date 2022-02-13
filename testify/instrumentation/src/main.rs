@@ -24,7 +24,7 @@ use crate::mir::{CUSTOM_OPT_MIR_ANALYSIS, CUSTOM_OPT_MIR_INSTRUMENTATION};
 use crate::util::{get_crate_root, get_cut_name, get_stage, get_testify_flags, rustc_get_crate_name, Stage};
 use generation::source::{Project, ProjectScanner};
 use generation::LOG_DIR;
-use log::{debug, info};
+use log::{debug, info, warn};
 use rustc_driver::Compilation;
 use rustc_interface::interface::Compiler;
 use rustc_interface::{Config, Queries};
@@ -148,6 +148,9 @@ pub fn get_compiler_args(args: &[String]) -> Vec<String> {
         rustc_args.insert(0, "".to_owned());
     }
 
+    rustc_args.push("--emit".to_string());
+    rustc_args.push("mir".to_string());
+
     // this conditional check for the --sysroot flag is there so users can call
     // `clippy_driver` directly
     // without having to pass --sysroot or anything
@@ -192,7 +195,7 @@ fn run_rustc() -> Result<(), i32> {
 pub fn pass_to_rustc(rustc_args: &[String], stage: Stage, instrumentation: bool) {
     let err = if instrumentation {
         // The crate we want to analyze, so throw up the instrumentation
-        info!("MAIN: Instrumenting crate");
+        info!("MAIN: Instrumenting crate {}", rustc_get_crate_name(&rustc_args));
         let mut callbacks = CompilerCallbacks::new(stage);
         rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
     } else {
