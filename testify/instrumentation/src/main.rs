@@ -199,7 +199,7 @@ pub fn pass_to_rustc(rustc_args: &[String], stage: Stage, instrumentation: bool)
         let mut callbacks = CompilerCallbacks::new(stage);
         rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
     } else {
-        // A dependency, don't do anything to prevent breaking incremental compilation
+        // A dependency, don't do anything, otherwise we might break incremental compilation
         let mut callbacks = EmptyCallbacks {};
         rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
     };

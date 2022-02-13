@@ -19,8 +19,12 @@ public class RedisStorage {
 
     for (String trace : traces) {
       var result = TraceParser.parse(trace);
-      var testId = result.getValue0();
 
+      if (result == null) {
+        continue;
+      }
+
+      var testId = result.getValue0();
       coverage.putIfAbsent(testId, new HashMap<>());
 
       var basicBlock = result.getValue1();
@@ -35,7 +39,7 @@ public class RedisStorage {
   }
 
   public static void clear() {
-    //jedis.del("traces");
+    jedis.del("traces");
   }
 
   public static void main(String[] args) {

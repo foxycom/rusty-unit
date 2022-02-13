@@ -26,6 +26,7 @@ use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 use std::borrow::Borrow;
 use std::fs::File;
+use std::ops::Add;
 use std::path::Path;
 
 type CutPoint<'tcx> = (BasicBlock, usize, BasicBlockData<'tcx>);
@@ -141,8 +142,7 @@ pub const CUSTOM_OPT_MIR_INSTRUMENTATION: for<'tcx> fn(
 
 fn allowed_item(id: DefId) -> bool {
     let name = format!("{:?}", id);
-    // || name.contains("tests")
-    !(name.contains("serialize") || name.contains("deserialize") )
+    !(name.contains("serialize") || name.contains("deserialize") || name.contains("tests"))
 }
 
 pub struct MirVisitor<'tcx> {
@@ -498,14 +498,22 @@ impl<'tcx> MirVisitor<'tcx> {
         (stmts, trace_call_args)
     }
 
-    fn mk_trace_statements(
+    fn mk_trace_statements_entry(&mut self) -> Vec<Operand<'tcx>> {
+        let args = vec![
+            self.mk_const_int_operand(self.global_id)
+        ];
+
+        args
+    }
+
+    fn mk_trace_statements_switch_int(
         &mut self,
         target_block: u64,
         value_def: &ValueDef<'tcx>,
         switch_value: Option<&'tcx Const>,
         is_hit: bool,
     ) -> (Vec<Statement<'tcx>>, Vec<Operand<'tcx>>) {
-        debug!("MIR: mk_trace_statements, {:?}", value_def);
+        //debug!("MIR: mk_trace_statements_switch_int, {:?}", value_def);
         match value_def {
             ValueDef::BinaryOp(op, left, right) => {
                 let is_true_branch = if let Some(_) = switch_value {
@@ -533,7 +541,7 @@ impl<'tcx> MirVisitor<'tcx> {
                 (stmts, trace_call_args)
             }
             ValueDef::UnaryOp(op, inner_value_def) => match op {
-                UnaryOp::Not => self.mk_trace_statements(
+                UnaryOp::Not => self.mk_trace_statements_switch_int(
                     target_block,
                     inner_value_def,
                     switch_value,
@@ -741,9 +749,79 @@ impl<'tcx> MirVisitor<'tcx> {
             place.projection
         )
     }
+
+    fn shift_block_pointers(&self, body: &mut Body<'tcx>) {
+        let basic_blocks = body.basic_blocks_mut();
+        for basic_block in basic_blocks {
+            if let Some(terminator) = &mut basic_block.terminator {
+                match &mut terminator.kind {
+                    TerminatorKind::Goto { target } => {
+                        *target = *target + 1;
+                    }
+                    TerminatorKind::SwitchInt { targets, .. } => {
+                        for target in targets.all_targets_mut() {
+                            *target = *target + 1;
+                        }
+                    }
+                    TerminatorKind::Resume => {}
+                    TerminatorKind::Abort => {}
+                    TerminatorKind::Return => {}
+                    TerminatorKind::Unreachable => {}
+                    TerminatorKind::Drop { target, unwind, .. } => {
+                        *target = *target + 1;
+                        *unwind = unwind.map(|u| u + 1);
+                    }
+                    TerminatorKind::DropAndReplace { target, unwind, .. } => {
+                        *target = *target + 1;
+                        *unwind = unwind.map(|u| u + 1);
+                    }
+                    TerminatorKind::Call { destination, cleanup, .. } => {
+                        *destination = destination.map(|(place, bb)| (place, bb + 1));
+                        *cleanup = cleanup.map(|c| c + 1);
+                    }
+                    TerminatorKind::Assert { target, cleanup, .. } => {
+                        *target = *target + 1;
+                        *cleanup = cleanup.map(|c| c + 1);
+                    }
+                    TerminatorKind::Yield { resume, drop, .. } => {
+                        *resume = *resume + 1;
+                        *drop = drop.map(|d| d + 1);
+                    }
+                    TerminatorKind::GeneratorDrop => {}
+                    TerminatorKind::FalseEdge { real_target, imaginary_target } => {
+                        *real_target = *real_target + 1;
+                        *imaginary_target = *imaginary_target + 1;
+                    }
+                    TerminatorKind::FalseUnwind { real_target, unwind } => {
+                        *real_target = *real_target + 1;
+                        *unwind = unwind.map(|u| u + 1);
+                    }
+                    TerminatorKind::InlineAsm { destination, cleanup, .. } => {
+                        *destination = destination.map(|d| d + 1);
+                        *cleanup = cleanup.map(|c| c + 1);
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl<'tcx> MirVisitor<'tcx> {
+    fn instrument_first_block(&mut self, body: &mut Body<'tcx>) {
+        self.basic_blocks_num += 1;
+
+        // We have to shift all pointers by 1, like switch_int and so on
+        self.shift_block_pointers(body);
+
+        let args = self.mk_trace_statements_entry();
+        let trace_fn = find_trace_entry_fn(&self.tcx);
+        let terminator = self.mk_call_terminator(args, BasicBlock::from(1usize), trace_fn);
+        let trace_block = self.mk_basic_block(vec![], terminator);
+
+        let basic_blocks = body.basic_blocks_mut();
+        basic_blocks.raw.insert(0, trace_block);
+    }
+
     fn instrument_switch_int(
         &mut self,
         terminator: &mut Terminator<'tcx>,
@@ -775,7 +853,7 @@ impl<'tcx> MirVisitor<'tcx> {
                     .map(|t| t.as_u32() as u64)
                     .collect::<Vec<u64>>();
 
-                debug!("MIR: Branch ids are {:?}", branch_ids);
+                //debug!("MIR: Branch ids are {:?}", branch_ids);
 
                 let mut instrumentation = Vec::with_capacity(targets.all_targets().len());
                 let mut all_targets = targets
@@ -786,10 +864,10 @@ impl<'tcx> MirVisitor<'tcx> {
 
                 // Switch value is like false (0), or some numeric value, e.g., when comparing x == 2
                 for (idx, (switch_value, target_block)) in all_targets.iter().enumerate() {
-                    debug!(
+                    /*debug!(
                         "MIR: Creating a tracing chain which points to {}",
                         target_block.as_usize() as u64
-                    );
+                    );*/
                     let switch_value_const =
                         switch_value.map(|sv| self.switch_value_to_const(switch_ty, sv));
                     let (first_tracing_block, tracing_chain) = self
@@ -799,11 +877,11 @@ impl<'tcx> MirVisitor<'tcx> {
                             switch_value_const,
                             *target_block,
                         );
-                    debug!(
+                    /*debug!(
                         "MIR: First block (bb{})hain is: {:?}",
                         first_tracing_block.as_usize(),
                         tracing_chain
-                    );
+                    );*/
                     instrumentation.push((first_tracing_block, tracing_chain));
                 }
 
@@ -843,7 +921,7 @@ impl<'tcx> MirVisitor<'tcx> {
                 target_block
             };
 
-            debug!("MIR: Next block in chain is {}", next_block.as_usize());
+            //debug!("MIR: Next block in chain is {}", next_block.as_usize());
 
             if is_branch_hit {
                 let args = self.mk_trace_branch_hit(self.global_id, target_block.as_usize());
@@ -852,7 +930,7 @@ impl<'tcx> MirVisitor<'tcx> {
                 let trace_block = self.mk_basic_block(Vec::new(), terminator);
                 tracing_chain.push(trace_block);
             } else {
-                let (stmts, args) = self.mk_trace_statements(
+                let (stmts, args) = self.mk_trace_statements_switch_int(
                     branch_to_trace_id,
                     switch_operand_def,
                     switch_value,
@@ -870,6 +948,8 @@ impl<'tcx> MirVisitor<'tcx> {
 
 impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
     fn visit_body(&mut self, body: &mut Body<'tcx>) {
+        self.instrument_first_block(body);
+
         self.super_body(body);
 
         // Now push the tracing chains after they have created
@@ -887,8 +967,10 @@ impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
     }
 
     fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
+
         if let Some(terminator) = &mut data.terminator {
             match &mut terminator.kind {
+                // Instrument branching
                 TerminatorKind::SwitchInt { .. } => {
                     debug!("MIR: (bb{}) switch int", block.as_usize());
                     self.instrument_switch_int(terminator, block);
@@ -941,6 +1023,10 @@ fn find_monitor_fn_by_name(tcx: &TyCtxt<'_>, name: &str) -> DefId {
 
 fn find_trace_bool_fn(tcx: &TyCtxt<'_>) -> DefId {
     find_monitor_fn_by_name(tcx, "trace_branch_bool")
+}
+
+fn find_trace_entry_fn(tcx: &TyCtxt<'_>) -> DefId {
+    find_monitor_fn_by_name(tcx, "trace_entry")
 }
 
 fn find_trace_enum_fn(tcx: &TyCtxt<'_>) -> DefId {

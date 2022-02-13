@@ -50,6 +50,8 @@ public class MOSA<C extends AbstractTestCaseChromosome<C>> implements GeneticAlg
     for (int gen = 0; gen < maxGenerations; gen++) {
       var offspring = offspringGenerator.get(population);
 
+      container.addAll(population);
+      container.executeWithInstrumentation();
       // TODO: 10.02.22 run tests
 
       archive.update(offspring);

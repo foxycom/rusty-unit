@@ -10,7 +10,13 @@ public class TraceParser {
    * A root line example: <test id> root[<global id> <local id>]
    */
   public static Triplet<Integer, BasicBlock, Double> parse(String line) {
-    var testId = Integer.parseInt(line.substring(0, line.indexOf(" ")));
+    int testId;
+    try {
+      testId = Integer.parseInt(line.substring(0, line.indexOf(" ")));
+    } catch (NumberFormatException e) {
+      return null;
+    }
+
     line = line.substring(line.indexOf(" ") + 1);
     if (line.startsWith("branch")) {
       var dataBegin = line.indexOf("[") + 1;

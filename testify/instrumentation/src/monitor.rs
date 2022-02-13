@@ -141,7 +141,7 @@ impl Monitor {
     }
 }
 
-pub fn trace_fn(global_id: u64) {
+pub fn trace_entry(global_id: u64) {
     MONITOR.with(|m| m.borrow_mut().trace_fn(global_id));
 }
 
