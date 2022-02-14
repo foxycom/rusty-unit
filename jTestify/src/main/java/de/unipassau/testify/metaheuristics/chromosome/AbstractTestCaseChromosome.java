@@ -40,4 +40,6 @@ public abstract class AbstractTestCaseChromosome<C extends AbstractTestCaseChrom
   public Iterator<Statement> iterator() {
     return getStatements().iterator();
   }
+
+  public abstract boolean fails();
 }

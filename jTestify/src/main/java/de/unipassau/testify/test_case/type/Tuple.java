@@ -62,7 +62,7 @@ public class Tuple implements Type {
   }
 
   @Override
-  public TypeEquality canBeSameAs(Type other) {
+  public boolean canBeSameAs(Type other) {
     if (other.isTuple()) {
       var otherTuple = other.asTuple();
       return Streams.zip(types.stream(), otherTuple.types.stream(), Pair::with)
@@ -70,6 +70,17 @@ public class Tuple implements Type {
     } else {
       return other.isGeneric();
     }
+  }
+
+  @Override
+  public boolean wraps(Type type) {
+    return types.stream()
+        .anyMatch(innerType -> innerType.canBeSameAs(type) || innerType.wraps(type));
+  }
+
+  @Override
+  public boolean canBeIndirectlySameAs(Type other) {
+    return types.stream().anyMatch(ty -> ty.canBeSameAs(other) || ty.canBeIndirectlySameAs(other));
   }
 
   @Override

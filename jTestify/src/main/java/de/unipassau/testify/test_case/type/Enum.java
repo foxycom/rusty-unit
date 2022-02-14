@@ -86,6 +86,12 @@ public class Enum implements Type {
     }
   }
 
+  @Override
+  public boolean canBeIndirectlySameAs(Type other) {
+    return variants.stream().anyMatch(v -> v.getParams().stream()
+        .anyMatch(p -> p.getType().equals(other) || p.getType().canBeIndirectlySameAs(other)));
+  }
+
   public boolean isSameEnum(Enum other) {
     return isLocal == other.isLocal && name.equals(other.name);
   }
@@ -93,6 +99,11 @@ public class Enum implements Type {
   @Override
   public List<Type> generics() {
     return generics;
+  }
+
+  @Override
+  public boolean wraps(Type type) {
+    return generics.stream().anyMatch(g -> g.canBeSameAs(type) || g.wraps(type));
   }
 
   @Override
@@ -142,7 +153,8 @@ public class Enum implements Type {
     var sb = new StringBuilder(name);
     if (!generics.isEmpty()) {
       sb.append("<");
-      var genericNames = generics.stream().map(Type::toGenericString).collect(Collectors.joining(", "));
+      var genericNames = generics.stream().map(Type::toGenericString)
+          .collect(Collectors.joining(", "));
       sb.append(genericNames);
       sb.append(">");
     }
@@ -206,6 +218,7 @@ public class Enum implements Type {
   }
 
   public static class UnitEnumVariant extends EnumVariant {
+
     public UnitEnumVariant(String name) {
       super(name);
     }
@@ -237,6 +250,7 @@ public class Enum implements Type {
   }
 
   public static class StructEnumVariant extends EnumVariant {
+
     public StructEnumVariant() {
       throw new RuntimeException("Not implemented yet");
     }
@@ -269,6 +283,7 @@ public class Enum implements Type {
   }
 
   public static class TupleEnumVariant extends EnumVariant {
+
     private List<Param> params;
 
     public TupleEnumVariant(String name, List<Param> params) {

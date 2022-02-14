@@ -1,0 +1,8 @@
+[
+  {
+    "name": "std::clone::Clone"
+  },
+  {
+    "name": "std::marker::Copy"
+  }
+]

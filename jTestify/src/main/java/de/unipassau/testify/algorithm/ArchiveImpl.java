@@ -28,7 +28,7 @@ public class ArchiveImpl<C extends AbstractTestCaseChromosome<C>> implements Arc
       for (var testCase : population) {
         var score = u.getFitness(testCase);
         var length = testCase.getStatements().size();
-        if (score == 0 && length <= bestLength) {
+        if (score == 0 && length <= bestLength && !testCase.fails()) {
           // replace bestTestCase with testCase in archive
           replaceBy(bestTestCase, testCase);
           bestTestCase = testCase;

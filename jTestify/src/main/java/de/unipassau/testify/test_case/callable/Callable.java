@@ -20,7 +20,6 @@ public interface Callable {
   Type getParent();
   void setParent(Type parent);
   boolean returnsValue();
-
   boolean isPublic();
   void setPublic(boolean isPublic);
   Statement toStmt(TestCase testCase, List<VarReference> args, VarReference returnValue);

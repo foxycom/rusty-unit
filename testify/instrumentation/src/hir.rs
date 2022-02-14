@@ -2,12 +2,13 @@ use log::{debug, error, info, warn};
 use rustc_data_structures::snapshot_vec::VecLike;
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_hir::{AssocItemKind, BodyId, EnumDef, FnSig, Generics, HirId, Impl, ImplItemKind, Item, ItemKind, Variant, VariantData, Visibility, VisibilityKind};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{DefIdTree, TyCtxt};
 use rustc_span::Span;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use rustc_ast::CrateSugar;
+use rustc_middle::mir::{Body, HasLocalDecls};
 
 use crate::util::{get_cut_name, get_testify_flags};
 use crate::writer::HirWriter;
@@ -20,7 +21,40 @@ lazy_static! {
         Arc::new(Mutex::new(HashMap::new()));
 }
 
+fn analyze_tcx(tcx: &TyCtxt<'_>) {
+    for key in tcx.mir_keys(()) {
+        let def_id = key.to_def_id();
+        if tcx.def_path_str(def_id).contains("rusty_monitor") {
+            continue;
+        }
+
+       /* info!("ANALYSIS: Mir key is {:?}",  def_id);
+        let impl_of_method = tcx.impl_of_method(def_id);
+        if let Some(impl_of_method) = impl_of_method {
+            info!("Is method of impl {:?}", impl_of_method);
+            info!("Item name: {}", tcx.item_name(def_id));
+            let mir: &Body<'_> = tcx.optimized_mir(def_id);
+
+            let generics = tcx.generics_of(def_id);
+            if !generics.params.is_empty() {
+                for param in generics.params.iter() {
+                    info!("Generic is: {:?}", param);
+                    info!("Bounds: {:?}", tcx.item_bounds(def_id));
+                }
+                info!("Bounds")
+            }
+            let mut i = 1;
+            info!("Return type is: {:?}", mir.return_ty().kind());
+        }*/
+
+
+    }
+
+}
+
 pub fn hir_analysis(tcx: TyCtxt<'_>) {
+    analyze_tcx(&tcx);
+
     let testify_flags = get_testify_flags();
     let cut_name = get_cut_name(testify_flags.as_ref());
     let current_crate_name = tcx.crate_name(LOCAL_CRATE);
@@ -205,6 +239,7 @@ fn extract_enum_variant(variant: &Variant, hir_id: HirId, generics: &Vec<Arc<T>>
             Some(v)
         }
         VariantData::Tuple(fields, _) => {
+            debug!("--> ENUM extracting {:?}", hir_id);
             let params = fields.iter()
                 .filter_map(|f| ty_to_t(&f.ty, None, generics, tcx))
                 .map(|ty| Param::new(None, ty, false))

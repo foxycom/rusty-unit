@@ -50,6 +50,15 @@ public class Ref implements Type {
   }
 
   @Override
+  public boolean canBeIndirectlySameAs(Type other) {
+    if (other.isRef()) {
+      return innerType.canBeSameAs(other.asRef().getInnerType());
+    } else {
+      return other.isGeneric();
+    }
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;

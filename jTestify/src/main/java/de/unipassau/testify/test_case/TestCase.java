@@ -52,6 +52,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   private List<Statement> statements;
   private Map<BasicBlock, Double> coverage;
   private final Graph<Node, Dependency> ddg;
+  private boolean fails;
 
   public TestCase(int id, HirAnalysis hirAnalysis, Mutation<TestCase> mutation,
       Crossover<TestCase> crossover) {
@@ -84,6 +85,15 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
   public void setId(int id) {
     this.id = id;
+  }
+
+  @Override
+  public boolean fails() {
+    return fails;
+  }
+
+  public void setFails(boolean fails) {
+    this.fails = fails;
   }
 
   @Override
@@ -444,6 +454,9 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       throw new RuntimeException("Not allowed");
     } else {
       var generators = hirAnalysis.generatorsOf(param.getType(), getFilePathBinding().orElse(null));
+      /*if (generators.isEmpty()) {
+        generators = hirAnalysis.wrappingGeneratorsOf(param.getType(), getFilePathBinding().orElse(null));
+      }*/
       return generateArgFromGenerators(param.getType(), generators, typesToGenerate);
     }
   }
@@ -464,10 +477,16 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       return Optional.of(generatePrimitive(type.asPrimitive()));
     } else if (type.isComplex() || type.isEnum()) {
       var generators = hirAnalysis.generatorsOf(type, getFilePathBinding().orElse(null));
+      /*if (generators.isEmpty()) {
+        generators = hirAnalysis.wrappingGeneratorsOf(type, getFilePathBinding().orElse(null));
+      }*/
       logger.debug("Found " + generators.size() + " generators");
       return generateArgFromGenerators(type, generators, typesToGenerate);
     } else if (type.isRef()) {
       var generators = hirAnalysis.generatorsOf(type, getFilePathBinding().orElse(null));
+      /*if (generators.isEmpty()) {
+        generators = hirAnalysis.wrappingGeneratorsOf(type, getFilePathBinding().orElse(null));
+      }*/
       logger.debug("Found " + generators.size() + " generators");
       return generateArgFromGenerators(type, generators, typesToGenerate);
     } else {
@@ -543,10 +562,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     return Optional.of(type.replaceGenerics(boundedGenerics));
   }
 
-  private List<Type> bindGenerics(Callable callable, List<VarReference> args) {
-    throw new RuntimeException("Not implemented");
-  }
-
   private VarReference generatePrimitive(Prim prim) {
     logger.debug("Starting to generate a primitive");
     var val = prim.random();
@@ -610,6 +625,9 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       generics.removeAll(typeBinding.getGenerics());
       typeBinding.addGenerics(generics);
     }
+
+    // Before bounding randomly other generics, look for generators that already can
+    // satisfy our partially bounded type
 
     typeBinding.getUnboundGenerics()
         .stream()

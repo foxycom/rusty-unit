@@ -1,9 +1,11 @@
 package de.unipassau.testify.test_case;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.TypeBinding;
 
+@JsonDeserialize(as = Param.class)
 public class Param {
 
   @JsonProperty("ty")

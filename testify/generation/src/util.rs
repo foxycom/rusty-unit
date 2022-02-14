@@ -5,7 +5,7 @@ use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_hir::{AnonConst, ArrayLen, FnRetTy, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, HirId, Impl, Item, ItemKind, Mutability, MutTy, Node, ParamName, PathSegment, PrimTy, QPath, Ty, TyKind, WherePredicate};
 use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{TyCtxt, TypeckResults};
+use rustc_middle::ty::{AdtKind, TyCtxt, TypeckResults};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{FileName, RealFileName, Span};
 use std::io;
@@ -63,28 +63,40 @@ pub fn ty_to_t(
                 QPath::Resolved(_, path) => {
                     match &path.res {
                         Res::Def(def_kind, def_id) => {
-                            if let DefKind::TyParam = def_kind {
-                                let name = path
-                                    .segments
-                                    .iter()
-                                    .map(|s| s.ident.name.to_ident_string())
-                                    .collect::<Vec<_>>()
-                                    .join("::");
+                            match def_kind {
+                                DefKind::Struct | DefKind::Enum => {
+                                    assert!(defined_generics.is_empty());
+                                    let generics = tcx.generics_of(def_id);
+                                    debug!("--> Generics are: {:?}", generics);
+                                    path_to_t(def_kind, *def_id, self_, path, defined_generics, tcx)
+                                }
+                                DefKind::TyParam => {
+                                    let name = path
+                                        .segments
+                                        .iter()
+                                        .map(|s| s.ident.name.to_ident_string())
+                                        .collect::<Vec<_>>()
+                                        .join("::");
 
-                                let bounds = if let Some(bounds) = defined_generics
-                                    .iter()
-                                    .find(|g| g.name() == name)
-                                    .map(|g| g.expect_generic().bounds())
-                                {
-                                    bounds.clone()
-                                } else {
-                                    vec![]
-                                };
+                                    let bounds = if let Some(bounds) = defined_generics
+                                        .iter()
+                                        .find(|g| g.name() == name)
+                                        .map(|g| g.expect_generic().bounds())
+                                    {
+                                        bounds.clone()
+                                    } else {
+                                        vec![]
+                                    };
 
-                                return Some(Arc::new(T::Generic(Generic::new(&name, bounds))));
+                                    return Some(Arc::new(T::Generic(Generic::new(&name, bounds))));
+                                }
+
+                                DefKind::Impl => {
+                                    warn!("HIR: impl is being returned");
+                                    None
+                                }
+                                _ => None
                             }
-                            //def_id_to_complex(*def_id, tcx)
-                            path_to_t(*def_id, self_, path, defined_generics, tcx)
                         }
                         Res::PrimTy(prim_ty) => Some(Arc::new(T::from(*prim_ty))),
                         Res::SelfTy(trait_def_id, impl_) => {
@@ -133,7 +145,14 @@ pub fn ty_to_t(
     }
 }
 
-pub fn path_to_t(def_id: DefId, self_: Option<HirId>, path: &rustc_hir::Path<'_>, defined_generics: &Vec<Arc<T>>, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
+pub fn path_to_t(
+    def_kind: &DefKind,
+    def_id: DefId,
+    self_: Option<HirId>,
+    path: &rustc_hir::Path<'_>,
+    defined_generics: &Vec<Arc<T>>,
+    tcx: &TyCtxt<'_>
+) -> Option<Arc<T>> {
     let name = tcx.def_path_str(def_id);
     let generics = path.segments.iter().filter_map(|s| if let Some(args) = s.args {
         Some(args.args.iter().filter_map(|a| generic_arg_to_t(a, self_, defined_generics, tcx)).collect::<Vec<_>>())
@@ -141,12 +160,19 @@ pub fn path_to_t(def_id: DefId, self_: Option<HirId>, path: &rustc_hir::Path<'_>
         None
     }).flatten().collect::<Vec<_>>();
 
+    match def_kind {
+        DefKind::Enum => {
+            Some(Arc::new(T::Enum(EnumT::new(Some(def_id), &name, generics, vec![]))))
+        }
+        DefKind::Struct => {
+            Some(Arc::new(T::Complex(ComplexT::new(Some(def_id), &name, generics))))
+        }
+        _ => unimplemented!()
+    }
 
-    Some(Arc::new(T::Complex(ComplexT::new(Some(def_id), &name, generics))))
 }
 
 pub fn generic_arg_to_t(generic_arg: &GenericArg, self_: Option<HirId>, defined_generics: &Vec<Arc<T>>, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
-    debug!("--> Looking at {:?}", generic_arg);
     match generic_arg {
         GenericArg::Type(ty) => ty_to_t(ty, self_, defined_generics, tcx),
         _ => None
@@ -156,7 +182,7 @@ pub fn generic_arg_to_t(generic_arg: &GenericArg, self_: Option<HirId>, defined_
 pub fn def_id_to_complex(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
     let ty = tcx.type_of(def_id);
     match ty.kind() {
-        rustc_middle::ty::TyKind::Adt(_, substs) => {
+        rustc_middle::ty::TyKind::Adt(adt_def, substs) => {
             let generics = substs
                 .non_erasable_generics()
                 .filter_map(|kind| generic_to_t(kind, tcx))
@@ -167,9 +193,23 @@ pub fn def_id_to_complex(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
                 return None;
             }
             let name = tcx.def_path_str(def_id);
-            let t = T::Complex(ComplexT::new(Some(def_id), &name, generics));
+            match adt_def.adt_kind() {
+                AdtKind::Struct => {
+                    let t = T::Complex(ComplexT::new(Some(def_id), &name, generics));
 
-            Some(Arc::new(t))
+                    Some(Arc::new(t))
+                }
+                AdtKind::Union => {
+                    warn!("HIR: Skipping tuple");
+                    None
+                }
+                AdtKind::Enum => {
+                    let t = T::Enum(EnumT::new(Some(def_id), &name, generics, vec![]));
+                    Some(Arc::new(t))
+                }
+            }
+
+
         }
         _ => todo!(),
     }

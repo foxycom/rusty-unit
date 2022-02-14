@@ -17,7 +17,13 @@ public interface Type {
 
   String varString();
 
-  TypeEquality canBeSameAs(Type other);
+  boolean canBeSameAs(Type other);
+
+  boolean canBeIndirectlySameAs(Type other);
+
+  default boolean wraps(Type type) {
+    return false;
+  }
 
   default boolean isPrim() {
     return false;

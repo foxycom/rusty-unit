@@ -81,6 +81,11 @@ public class Complex implements Type {
     }
   }
 
+  @Override
+  public boolean canBeIndirectlySameAs(Type other) {
+    return canBeSameAs(other);
+  }
+
   public boolean isSameType(Complex other) {
     return name.equals(other.name) && isLocal == other.isLocal;
   }

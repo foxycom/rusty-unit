@@ -51,6 +51,11 @@ public class Generic implements Type {
   }
 
   @Override
+  public boolean canBeIndirectlySameAs(Type other) {
+    return canBeSameAs(other);
+  }
+
+  @Override
   public List<Type> generics() {
     return Collections.singletonList(this);
   }

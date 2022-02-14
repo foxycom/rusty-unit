@@ -1,6 +1,7 @@
 package de.unipassau.testify.exec;
 
 import com.jayway.jsonpath.JsonPath;
+import de.unipassau.testify.exception.TestCaseDoesNotCompileException;
 import de.unipassau.testify.server.RedisStorage;
 import de.unipassau.testify.source.ChromosomeContainer;
 import de.unipassau.testify.test_case.TestCase;
@@ -9,11 +10,16 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
+import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
+import org.apache.commons.io.IOUtils;
 import org.javatuples.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,10 +30,13 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
 
   private static final Logger logger = LoggerFactory.getLogger(TestCaseRunner.class);
 
-  private static final Path COVERAGE_DIR = Paths.get(System.getProperty("user.dir"), "..", "tmp", "coverage");
-  private static final Path LOG_PATH = Paths.get(System.getProperty("user.dir"), "..", "tmp", "jTestify",
+  private static final Path COVERAGE_DIR = Paths.get(System.getProperty("user.dir"), "..", "tmp",
+      "coverage");
+  private static final Path LOG_PATH = Paths.get(System.getProperty("user.dir"), "..", "tmp",
+      "jTestify",
       "tests.log");
-  private static final Path ERROR_PATH = Paths.get(System.getProperty("user.dir"), "..", "tmp", "jTestify",
+  private static final Path ERROR_PATH = Paths.get(System.getProperty("user.dir"), "..", "tmp",
+      "jTestify",
       "tests.error");
   private static final Path SCRIPTS_PATH = Paths.get(System.getProperty("user.dir"), "scripts");
 
@@ -117,10 +126,11 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
     }
   }
 
-  private int executeTestsWithInstrumentation(File directory, String crateName)
-      throws IOException, InterruptedException {
+  private Optional<List<Integer>> executeTestsWithInstrumentation(File directory, String crateName)
+      throws IOException, InterruptedException, TestCaseDoesNotCompileException {
     var processBuilder = new ProcessBuilder("cargo", "+nightly-aarch64-apple-darwin", "test",
-        "rusty_tests").directory(directory).redirectOutput(LOG_PATH.toFile())
+        "rusty_tests")
+        .directory(directory)
         .redirectError(ERROR_PATH.toFile());
 
     var env = processBuilder.environment();
@@ -130,7 +140,29 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
         String.format("--stage=instrument --crate=%s --crate-name=%s", directory.toString(),
             crateName));
     var process = processBuilder.start();
-    return process.waitFor();
+    var output = IOUtils.toString(process.getInputStream(), Charset.defaultCharset());
+    var statusCode = process.waitFor();
+
+    if (statusCode != 0) {
+      if (output.contains("test result: FAILED.")) {
+        // Some tests failed
+
+        List<Integer> failedTests = new ArrayList<>();
+        for (String line : output.split("\n")) {
+          if (line.startsWith("test") && line.endsWith("FAILED")) {
+            var data = line.substring(line.lastIndexOf("_") + 1, line.indexOf(" ..."));
+            var testId = Integer.parseInt(data);
+            failedTests.add(testId);
+          }
+        }
+        return Optional.of(failedTests);
+      } else {
+        // Tests did not compile
+        throw new TestCaseDoesNotCompileException();
+      }
+    } else {
+      return Optional.empty();
+    }
   }
 
   public static void main(String[] args) throws IOException, InterruptedException {
@@ -154,13 +186,23 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
     RedisStorage.clear();
 
     var directory = new File(container.getPath());
-    if (executeTestsWithInstrumentation(directory, container.getName()) != 0) {
-      throw new RuntimeException("Could not execute tests with instrumentation");
+    Optional<List<Integer>> failedTests;
+    try {
+      failedTests = executeTestsWithInstrumentation(directory, container.getName());
+    } catch (TestCaseDoesNotCompileException e) {
+      throw new RuntimeException("Huh?", e);
     }
 
+    failedTests.ifPresent(tests -> logger.info(tests.size() + " tests failed"));
     var coverage = RedisStorage.requestTraces();
 
     for (TestCase testCase : container.chromosomes()) {
+      failedTests.ifPresent(tests -> {
+        if (tests.contains(testCase.getId())) {
+          testCase.setFails(true);
+        }
+      });
+
       var testCoverage = coverage.get(testCase.getId());
       testCase.setCoverage(testCoverage);
     }
