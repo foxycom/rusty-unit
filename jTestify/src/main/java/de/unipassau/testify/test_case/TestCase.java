@@ -1,5 +1,6 @@
 package de.unipassau.testify.test_case;
 
+import static de.unipassau.testify.Constants.P_LOCAL_VARIABLES;
 import static java.util.stream.Collectors.toCollection;
 
 import com.google.common.base.Preconditions;
@@ -12,6 +13,8 @@ import de.unipassau.testify.metaheuristics.operators.Crossover;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
 import de.unipassau.testify.mir.BasicBlock;
 import de.unipassau.testify.test_case.callable.Callable;
+import de.unipassau.testify.test_case.callable.Method;
+import de.unipassau.testify.test_case.callable.RefItem;
 import de.unipassau.testify.test_case.statement.PrimitiveStmt;
 import de.unipassau.testify.test_case.statement.Statement;
 import de.unipassau.testify.test_case.type.Generic;
@@ -29,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -166,7 +170,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
     VarReference var;
     if (!usableVariables.isEmpty()) {
-      // TODO Reuse a variable
       var = Rnd.choice(usableVariables);
     } else {
       var generatedArg = generateArg(parameter);
@@ -190,7 +193,11 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     List<VarReference> variables = new ArrayList<>(paramTypes.size());
     for (Type paramType : paramTypes) {
       var var = satisfyParameter(pos, paramType);
-      var.ifPresent(variables::add);
+
+      // Don't use the same variable twice in an invocation
+      if (var.isPresent() && !variables.contains(var.get())) {
+        variables.add(var.get());
+      }
     }
 
     return variables;
@@ -202,7 +209,10 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
   public void addStmt(Statement stmt) {
     int insertPosition = 0;
-    if (stmt.isPrimitiveStmt()) {
+    if (stmt.args().isEmpty()) {
+      // Insert position is 0
+      insertStmt(0, stmt);
+    } else if (stmt.isPrimitiveStmt()) {
       statements.add(insertPosition, stmt);
     } else if (stmt.isCallableStmt()) {
       var callableStmt = stmt.asCallableStmt();
@@ -225,6 +235,11 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       var refStmt = stmt.asRefStmt();
       insertPosition = refStmt.arg().position();
       insertStmt(Integer.min(size(), insertPosition + 1), refStmt);
+    } else if (stmt.isTupleStmt()) {
+      var tupleStmt = stmt.asTupleStmt();
+      insertPosition = tupleStmt.args().stream().map(VarReference::position)
+          .reduce(0, Integer::max);
+      insertStmt(Integer.min(size(), insertPosition + 1), stmt);
     } else {
       throw new RuntimeException("Not implemented");
     }
@@ -268,7 +283,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   public Optional<Integer> stmtPosition(Statement stmt) {
     var pos = statements.indexOf(stmt);
     if (pos < 0) {
-      logger.warn("Could not find position of a statement in test");
+      logger.warn("({}) Could not find position of a statement in test", id);
     }
     return Optional.of(pos);
   }
@@ -362,24 +377,109 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   public boolean insertRandomStmt() {
     var filePathBinding = getFilePathBinding();
     Callable callable;
-    if (filePathBinding.isPresent()) {
+
+    var possiblemMethods = hirAnalysis.methodsOf(variables());
+    if (Rnd.get().nextDouble() < P_LOCAL_VARIABLES && !possiblemMethods.isEmpty()) {
+      var variableAndMethod = Rnd.choice(possiblemMethods);
+      return insertMethodOnExistingVariable(variableAndMethod.getValue0(),
+          variableAndMethod.getValue1());
+    } else if (filePathBinding.isPresent()) {
       callable = Rnd.choice(hirAnalysis.getCallables(filePathBinding.get()));
     } else {
       callable = Rnd.choice(hirAnalysis.getCallables());
     }
 
-    logger.info("Inserting random stmt. Selected callable: {}", callable);
+    logger.info("({}) Inserting random stmt. Selected callable: {}", id, callable);
 
     return insertCallable(callable);
   }
 
-  public boolean insertCallable(Callable callable) {
-    logger.debug("Inserting callable {}", callable);
+  private boolean insertMethodOnExistingVariable(VarReference owner, Method method) {
+    logger.info("({}) Inserting a method on existing variable {}", id, owner);
+    var args = new ArrayList<VarReference>(method.getParams().size());
 
-    Set<Generic> generics = callable.getParams().stream()
+    LinkedHashSet<Generic> generics = method.getParams().stream()
         .map(Param::getType)
         .map(TypeUtil::getDeepGenerics)
-        .collect(HashSet::new, HashSet::addAll, HashSet::addAll);
+        .collect(LinkedHashSet::new, LinkedHashSet::addAll, LinkedHashSet::addAll);
+
+    generics.addAll(
+        method.getParent().generics().stream().map(Type::asGeneric).collect(Collectors.toSet())
+    );
+
+    if (method.returnsValue()) {
+      generics.addAll(TypeUtil.getDeepGenerics(method.getReturnType()));
+    }
+
+    var ownerTypeBinding = TypeBinding.fromTypes(method.getSelfParam().getType(), owner.type());
+    var genericsTypeBinding = new TypeBinding(generics);
+    var typeBinding = ownerTypeBinding.leftOuterMerge(genericsTypeBinding);
+
+    typeBinding.getUnboundGenerics().stream().map(g -> Pair.with(g, getTypeFor(g)))
+        .filter(p -> p.getValue1().isPresent())
+        .forEach(p -> typeBinding.bindGeneric(p.getValue0(), p.getValue1().get()));
+
+    VarReference selfArgument = owner;
+    if (method.getSelfParam().isByReference() && !owner.type().isRef()) {
+      var type = method.getSelfParam().getType().bindGenerics(typeBinding);
+      selfArgument = createVariable(type);
+      Statement refStmt = (method.getSelfParam().getType().asRef().isMutable())
+          ? RefItem.MUTABLE.toStmt(this, List.of(owner), selfArgument)
+          : RefItem.IMMUTABLE.toStmt(this, List.of(owner), selfArgument);
+
+      var refTypeBinding = TypeBinding.fromTypes(type, owner.type());
+      selfArgument.setBinding(refTypeBinding);
+      statements.add(refStmt);
+    }
+
+    args.add(selfArgument);
+
+    if (method.getSelfParam().isGeneric()) {
+      // We know the concrete type of the owner variable at this point, so bind it
+      // We have to set all other bindings, as there might be some
+      typeBinding.bindGeneric(method.getSelfParam().getType().asGeneric(), owner.type());
+    }
+
+    typeBinding.getUnboundGenerics().stream()
+        .map(g -> Pair.with(g, getTypeFor(g)))
+        .filter(p -> p.getValue1().isPresent())
+        .forEach(p -> typeBinding.bindGeneric(p.getValue0(), p.getValue1().get()));
+
+    if (typeBinding.hasUnboundedGeneric()) {
+      logger.warn("({}) Could not bind all generics: {}", id, typeBinding.getUnboundGenerics());
+      return false;
+    }
+
+    for (int i = 1; i < method.getParams().size(); i++) {
+      var param = method.getParams().get(i);
+      var boundParam = param.bindGenerics(typeBinding);
+      var arg = generateArg(boundParam);
+      arg.ifPresent(args::add);
+    }
+
+    if (args.size() != method.getParams().size()) {
+      return false;
+    }
+
+    VarReference returnValue = null;
+    if (method.returnsValue()) {
+      // TODO: 14.02.22 there probably will be some troubles with type binding
+      returnValue = createVariable(method.getReturnType().bindGenerics(typeBinding));
+      returnValue.setBinding(typeBinding);
+    }
+
+    var stmt = method.toStmt(this, args, returnValue);
+    statements.add(stmt);
+    return true;
+  }
+
+  public boolean insertCallable(Callable callable) {
+    logger.debug("({}) Inserting callable {}", id, callable);
+
+    LinkedHashSet<Generic> generics = callable.getParams().stream()
+        .map(Param::getType)
+        .map(TypeUtil::getDeepGenerics)
+        .collect(LinkedHashSet::new, LinkedHashSet::addAll, LinkedHashSet::addAll);
     if (callable.isMethod()) {
       generics.addAll(callable.getParent().generics().stream().map(Type::asGeneric)
           .collect(Collectors.toSet()));
@@ -389,21 +489,21 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       generics.addAll(TypeUtil.getDeepGenerics(callable.getReturnType()));
     }
 
-    logger.debug("It's generics are: {}", generics);
+    logger.debug("({}) It's generics are: {}", id, generics);
 
     var typeBinding = new TypeBinding(generics);
 
     generics.stream().map(g -> Pair.with(g, getTypeFor(g))).filter(p -> p.getValue1().isPresent())
         .forEach(p -> typeBinding.bindGeneric(p.getValue0(), p.getValue1().get()));
     if (typeBinding.hasUnboundedGeneric()) {
-      logger.warn("Could not bind all generics: {}", typeBinding.getUnboundGenerics());
+      logger.warn("({}) Could not bind all generics: {}", id, typeBinding.getUnboundGenerics());
       return false;
     }
 
     var args = callable.getParams().stream()
         .map(p -> {
           Type typeToGenerate = p.getType().bindGenerics(typeBinding);
-          logger.debug("Bounded param {} to {}", p, typeToGenerate);
+          logger.debug("({}) Bounded param {} to {}", id, p, typeToGenerate);
 
           return generateArg(typeToGenerate);
         })
@@ -412,7 +512,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         .collect(toCollection(ArrayList::new));
 
     if (args.size() != callable.getParams().size()) {
-      logger.warn("Could not generate all arguments");
+      logger.warn("({}) Could not generate all arguments", id);
       return false;
     }
 
@@ -423,7 +523,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     }
 
     var stmt = callable.toStmt(this, args, returnValue);
-    logger.info("Pushing " + stmt + " at the end of the test");
+    logger.info("({}) Pushing " + stmt + " at the end of the test", id);
     statements.add(stmt);
     return true;
   }
@@ -447,7 +547,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
   private Optional<VarReference> generateArg(Param param,
       Set<Type> typesToGenerate) {
-    logger.debug("Starting to generate an argument for param {}", param);
+    logger.debug("({}) Starting to generate an argument for param {}", id, param);
     if (param.isPrimitive()) {
       var type = param.getType().asPrimitive();
       return Optional.of(generatePrimitive(type));
@@ -472,7 +572,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
   private Optional<VarReference> generateArg(Type type,
       Set<Type> typesToGenerate) {
-    logger.debug("Starting to generate an argument for type {}", type);
+    logger.debug("({}) Starting to generate an argument for type {}", id, type);
     // TODO reuse existing variables if possible, e.g., introduce a boolean flag or so
     if (type.isPrim()) {
       return Optional.of(generatePrimitive(type.asPrimitive()));
@@ -481,14 +581,14 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       /*if (generators.isEmpty()) {
         generators = hirAnalysis.wrappingGeneratorsOf(type, getFilePathBinding().orElse(null));
       }*/
-      logger.debug("Found " + generators.size() + " generators");
+      logger.debug("({}) Found " + generators.size() + " generators", id);
       return generateArgFromGenerators(type, generators, typesToGenerate);
     } else if (type.isRef()) {
       var generators = hirAnalysis.generatorsOf(type, getFilePathBinding().orElse(null));
       /*if (generators.isEmpty()) {
         generators = hirAnalysis.wrappingGeneratorsOf(type, getFilePathBinding().orElse(null));
       }*/
-      logger.debug("Found " + generators.size() + " generators");
+      logger.debug("({}) Found " + generators.size() + " generators", id);
       return generateArgFromGenerators(type, generators, typesToGenerate);
     } else {
       throw new RuntimeException("Not implemented: " + type);
@@ -564,7 +664,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   }
 
   private VarReference generatePrimitive(Prim prim) {
-    logger.debug("Starting to generate a primitive");
+    logger.debug("({}) Starting to generate a primitive", id);
     var val = prim.random();
     var var = createVariable(prim);
     var stmt = new PrimitiveStmt(this, var, val);
@@ -575,7 +675,8 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   private Optional<VarReference> generateArgFromGenerators(Type type, List<Callable> generators,
       Set<Type> typesToGenerate) {
 
-    logger.debug("Starting to generate a " + type + " with " + generators.size() + " generator options");
+    logger.debug("({}) Starting to generate a {} with {} generator options", id, type,
+        generators.size());
     boolean retry = true;
     Callable generator = null;
     while (retry && !generators.isEmpty()) {
@@ -589,7 +690,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         // We already try to generate a type which is needed as an argument for the call
         // Hence, this would probably lead to infinite recursive chain. Remove the
         // generator and retry with another one.
-        logger.debug("Removing candidate generator since we already try to generate it");
+        logger.debug("({}) Removing candidate generator since we already try to generate it", id);
         generators.remove(candidateGenerator);
         retry = true;
       } else {
@@ -600,11 +701,11 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     // fn foo<A>(x: A, v: Vec<A>) -> Option<A>;
 
     if (generator == null) {
-      logger.warn("Could not find appropriate generator for {}", type);
+      logger.warn("({}) Could not find appropriate generator for {}", id, type);
       return Optional.empty();
     }
 
-    logger.debug("Selected generator: {} (Total: {})", generator, generators.size());
+    logger.debug("({}) Selected generator: {} (Total: {})", id, generator, generators.size());
 
     var typeBinding = TypeUtil.getNecessaryBindings(generator.getReturnType(), type);
 
@@ -691,7 +792,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   }
 
   private VarReference createVariable(Type type) {
-    logger.debug("Created variable of type {}", type);
+    logger.debug("({}) Created variable of type {}", id, type);
     return new VarReference(this, type);
   }
 

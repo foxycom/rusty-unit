@@ -40,6 +40,8 @@ public class TypeUtil {
     } else {
       if (generic.isRef() && concrete.isRef()) {
         return getNecessaryBindingsInner(generic.asRef().getInnerType(), concrete.asRef().getInnerType(), typeBinding);
+      } else if (!generic.generics().isEmpty() && concrete.generics().isEmpty()) {
+        throw new RuntimeException();
       }
       IntStream.range(0, generic.generics().size()).forEach(
           i -> getNecessaryBindingsInner(generic.generics().get(i), concrete.generics().get(i),

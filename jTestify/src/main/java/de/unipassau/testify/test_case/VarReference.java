@@ -93,6 +93,10 @@ public class VarReference {
     }
   }
 
+  public TestCase testCase() {
+    return testCase;
+  }
+
   public boolean isConsumed() {
     return testCase.getStatements().stream().anyMatch(stmt -> stmt.consumes(this));
   }

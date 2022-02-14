@@ -6,10 +6,12 @@ import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.util.Rnd;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.javatuples.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -129,7 +131,7 @@ public abstract class CallableStmt implements Statement {
       } else {
         return a;
       }
-    }).toList();
+    }).collect(Collectors.toCollection(ArrayList::new));
   }
 
   @Override

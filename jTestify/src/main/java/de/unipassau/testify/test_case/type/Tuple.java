@@ -65,7 +65,8 @@ public class Tuple implements Type {
   public boolean canBeSameAs(Type other) {
     if (other.isTuple()) {
       var otherTuple = other.asTuple();
-      return Streams.zip(types.stream(), otherTuple.types.stream(), Pair::with)
+      return types.size() == otherTuple.types.size()
+          && Streams.zip(types.stream(), otherTuple.types.stream(), Pair::with)
           .allMatch(pair -> pair.getValue0().canBeSameAs(pair.getValue1()));
     } else {
       return other.isGeneric();
@@ -85,7 +86,7 @@ public class Tuple implements Type {
 
   @Override
   public List<Type> generics() {
-    return types.stream().map(Type::generics).flatMap(List::stream).toList();
+    return types;
   }
 
   @Override

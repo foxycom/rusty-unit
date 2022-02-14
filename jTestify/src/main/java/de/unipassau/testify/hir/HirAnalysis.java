@@ -3,13 +3,12 @@ package de.unipassau.testify.hir;
 import static java.util.stream.Collectors.toCollection;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import de.unipassau.testify.test_case.Param;
-import de.unipassau.testify.test_case.TestCase;
+import de.unipassau.testify.test_case.VarReference;
 import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.EnumInit;
+import de.unipassau.testify.test_case.callable.Method;
 import de.unipassau.testify.test_case.callable.RefItem;
 import de.unipassau.testify.test_case.callable.TupleInit;
-import de.unipassau.testify.test_case.type.Generic;
 import de.unipassau.testify.test_case.type.Trait;
 import de.unipassau.testify.test_case.type.Type;
 import java.io.IOException;
@@ -18,7 +17,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +24,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.javatuples.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,6 +63,29 @@ public class HirAnalysis {
             callable -> callable.getSrcFilePath() != null
                 && callable.getSrcFilePath().equals(filePath))
         .toList();
+  }
+
+  public List<Pair<VarReference, Method>> methodsOf(List<VarReference> variables) {
+    return callables.stream()
+        .filter(Callable::isMethod)
+        .map(callable -> (Method) callable)
+        .map(method -> variables.stream()
+            .filter(v -> method.getParent().canBeSameAs(v.type()))
+            .filter(v -> {
+              var selfParam = method.getSelfParam();
+              var testCase = v.testCase();
+              if (selfParam.isByReference()) {
+                return v.isBorrowableAt(testCase.size());
+              } else {
+                return v.isConsumableAt(testCase.size());
+              }
+            })
+            .map(v -> Pair.with(v, method))
+            .toList())
+        .flatMap(List::stream)
+        .collect(Collectors.toList());
+
+
   }
 
   public List<Callable> generatorsOf(Type type, String filePath) {
@@ -191,7 +213,7 @@ public class HirAnalysis {
 
   private static List<Callable> loadArtificialCallables() {
 
-    return List.of(RefItem.INSTANCE, TupleInit.DEFAULT, TupleInit.SINGLE, TupleInit.PAIR,
+    return List.of(RefItem.MUTABLE, RefItem.IMMUTABLE, TupleInit.DEFAULT, TupleInit.SINGLE, TupleInit.PAIR,
         TupleInit.TRIPLETT);
   }
 

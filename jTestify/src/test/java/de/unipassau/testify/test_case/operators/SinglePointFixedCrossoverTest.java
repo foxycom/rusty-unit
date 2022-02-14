@@ -1,13 +1,10 @@
 package de.unipassau.testify.test_case.operators;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.Lists;
 import de.unipassau.testify.hir.HirAnalysis;
-import de.unipassau.testify.metaheuristics.operators.Crossover;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
@@ -22,9 +19,7 @@ import de.unipassau.testify.test_case.statement.RefStmt;
 import de.unipassau.testify.test_case.statement.Statement;
 import de.unipassau.testify.test_case.statement.StaticMethodStmt;
 import de.unipassau.testify.test_case.type.Complex;
-import de.unipassau.testify.test_case.type.Enum;
 import de.unipassau.testify.test_case.type.Ref;
-import de.unipassau.testify.test_case.type.prim.UInt;
 import de.unipassau.testify.test_case.type.prim.UInt.USize;
 import de.unipassau.testify.test_case.visitor.CrossoverDebugVisitor;
 import de.unipassau.testify.test_case.visitor.TestCaseVisitor;
@@ -105,7 +100,7 @@ class SinglePointFixedCrossoverTest {
     var vecStmt = new StaticMethodStmt(testCase, Collections.emptyList(), vec, vecConstructor);
 
     var vecRef = new VarReference(testCase, new Ref(vecType, true));
-    var vecRefStmt = new RefStmt(testCase, vec, vecRef, RefItem.INSTANCE);
+    var vecRefStmt = new RefStmt(testCase, vec, vecRef, RefItem.MUTABLE);
 
     var grade = new VarReference(testCase, USize.INSTANCE);
     var gradeStmt = new PrimitiveStmt(testCase, grade, new UIntValue(45, USize.INSTANCE));
@@ -144,7 +139,7 @@ class SinglePointFixedCrossoverTest {
     var vecRefType = new Ref(vecType, true);
 
     when(analysis.generatorsOf(vecRefType, ""))
-        .thenReturn(Lists.newArrayList(RefItem.INSTANCE));
+        .thenReturn(Lists.newArrayList(RefItem.MUTABLE));
 
     when(analysis.generatorsOf(vecType, "")).thenReturn(Lists.newArrayList(vecConstructor));
 

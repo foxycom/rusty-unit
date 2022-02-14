@@ -16,6 +16,7 @@ public class Constants {
   public static final double P_CHANGE_PARAMETER = getDouble("p-change-parameter");
   public static final double P_CROSSOVER = getDouble("p-crossover");
   public static final double P_RANDOM_PERTURBATION = getDouble("p-random-perturbation");
+  public static final double P_LOCAL_VARIABLES = getDouble("p-local-variables");
   public static final int POPULATION_SIZE = getInt("population-size");
   public static final int GENERATIONS = getInt("generations");
   public static final int MAX_DELTA = getInt("max-delta");

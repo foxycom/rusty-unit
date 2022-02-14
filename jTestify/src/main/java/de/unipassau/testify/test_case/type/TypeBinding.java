@@ -1,8 +1,11 @@
 package de.unipassau.testify.test_case.type;
 
+import com.google.common.collect.Sets;
 import com.google.common.collect.Streams;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -15,7 +18,7 @@ public class TypeBinding {
 
   private Map<Generic, Type> binding;
 
-  public TypeBinding(Set<Generic> generics, List<Type> actualTypes) {
+  public TypeBinding(LinkedHashSet<Generic> generics, List<Type> actualTypes) {
     if (generics.size() != actualTypes.size()) {
       throw new IllegalArgumentException("Lengths should be equal");
     }
@@ -31,12 +34,34 @@ public class TypeBinding {
         .collect(Collectors.toMap(Pair::getValue0, Pair::getValue1));
   }
 
-  public TypeBinding(Set<Generic> generics) {
+  public TypeBinding(LinkedHashSet<Generic> generics) {
     this(generics, generics.stream().map(g -> (Type) null).toList());
   }
 
   public TypeBinding() {
     binding = new HashMap<>();
+  }
+
+  public static TypeBinding fromTypes(Type generic, Type concrete) {
+    if (generic.isGeneric()) {
+      LinkedHashSet<Generic> generics = Sets.newLinkedHashSet();
+      generics.add(generic.asGeneric());
+      return new TypeBinding(generics, List.of(concrete));
+    } else {
+      var combinations = Streams.zip(generic.generics().stream(), concrete.generics().stream(),
+              Pair::with)
+          .filter(p -> p.getValue0().isGeneric())
+          .map(p -> Pair.with(p.getValue0().asGeneric(), p.getValue1())).toList();
+
+      LinkedHashSet<Generic> generics = new LinkedHashSet<>(combinations.size());
+      List<Type> actualTypes = new ArrayList<>(combinations.size());
+      combinations.forEach(p -> {
+        generics.add(p.getValue0());
+        actualTypes.add(p.getValue1());
+      });
+
+      return new TypeBinding(generics, actualTypes);
+    }
   }
 
   public boolean hasBindingFor(Generic generic) {
@@ -81,9 +106,9 @@ public class TypeBinding {
     return binding.values().stream().anyMatch(Objects::isNull);
   }
 
-  public TypeBinding merge(TypeBinding other) {
+  public TypeBinding leftOuterMerge(TypeBinding other) {
     var merged = new HashMap<>(binding);
-    other.binding.forEach((key, value) -> merged.merge(key, value, (left, right) -> left));
+    other.binding.forEach(merged::putIfAbsent);
     var typeBinding = new TypeBinding();
     typeBinding.binding = merged;
     return typeBinding;

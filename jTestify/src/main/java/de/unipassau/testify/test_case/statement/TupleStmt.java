@@ -7,6 +7,7 @@ import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
 import de.unipassau.testify.test_case.callable.TupleInit;
 import de.unipassau.testify.test_case.type.Type;
+import de.unipassau.testify.util.Rnd;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -103,6 +104,24 @@ public class TupleStmt implements Statement {
   @Override
   public boolean uses(VarReference var) {
     return args.stream().anyMatch(a -> a.equals(var));
+  }
+
+  @Override
+  public boolean mutate(TestCase testCase) {
+    var p = 1d / params().size();
+    boolean changed = false;
+    for (int i = 0; i < params().size(); i++) {
+      if (Rnd.get().nextDouble() < p) {
+        var param = params().get(i).bindGenerics(returnValue.getBinding());
+        var oldArg = args().get(i);
+        var newArg = testCase.generateArg(param);
+        newArg.ifPresent(a -> replace(oldArg, a));
+
+        changed = true;
+      }
+    }
+
+    return changed;
   }
 
   @Override

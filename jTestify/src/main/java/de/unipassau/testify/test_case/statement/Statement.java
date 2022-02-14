@@ -171,11 +171,10 @@ public interface Statement {
     while (numParamsOfThatType + 1 > usableVariables.size()) {
       logger.info("Too few usable variables, trying to generate another one");
       var var = testCase().generateArg(paramType);
-      if (var.isPresent()) {
+      if (var.isPresent() && var.get().position() < position()) {
         usableVariables.add(var.get());
         logger.info("Generated variable of type {}", var.get().type());
       }
-      var.ifPresent(usableVariables::add);
     }
 
     if (usableVariables.isEmpty()) {

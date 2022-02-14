@@ -6,6 +6,8 @@ import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.visitor.TestCaseVisitor;
 import de.unipassau.testify.test_case.visitor.Visitor;
 import de.unipassau.testify.util.Rnd;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +20,7 @@ public class BasicMutation implements Mutation<TestCase> {
     logger.info("Starting mutation on testcase:\n{}\n{}", testCase,
         testCase.getTypeBindingsString());
     var copy = testCase.copy();
-    if (copy.getId() == 159) {
+    if (copy.getId() == 178) {
       System.out.println();
     }
 
@@ -118,7 +120,14 @@ public class BasicMutation implements Mutation<TestCase> {
     var changed = false;
     if (var.isPresent()) {
       var returnValue = var.get();
-      var alternatives = testCase.variablesOfType(returnValue.type(), pos);
+      var alternatives = testCase.variablesOfType(returnValue.type(), pos)
+          .stream().filter(a -> {
+            if (stmt.borrows(var.get())) {
+              return a.isBorrowableAt(pos);
+            } else {
+              return a.isConsumableAt(pos);
+            }
+          }).collect(Collectors.toCollection(ArrayList::new));
       alternatives.remove(returnValue);
 
       if (!alternatives.isEmpty()) {

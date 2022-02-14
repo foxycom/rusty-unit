@@ -61,12 +61,14 @@ public class Param {
       throw new RuntimeException("Something is wrong");
     }
 
+    var copy = new Param(this);
     if (type.isGeneric()) {
-      var copy = new Param(this);
       copy.type = binding.getBindingFor(type.asGeneric());
-      return copy;
+    } else {
+      copy.type = type.bindGenerics(binding);
     }
-    return this;
+
+    return copy;
   }
 
   public boolean isPrimitive() {

@@ -37,6 +37,10 @@ public class Method implements Callable {
     this.name = name;
   }
 
+  public Param getSelfParam() {
+    return params.get(0);
+  }
+
   @Override
   public String getName() {
     return name;

@@ -13,9 +13,15 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public enum RefItem implements Callable {
-  INSTANCE(new Param(
+  MUTABLE(new Param(
       new Generic("T", Collections.emptyList()),
       true,
+      null
+  ), true),
+
+  IMMUTABLE(new Param(
+      new Generic("T", Collections.emptyList()),
+      false,
       null
   ), true);
 
