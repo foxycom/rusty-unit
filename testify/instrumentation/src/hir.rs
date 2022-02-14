@@ -28,32 +28,38 @@ fn analyze_tcx(tcx: &TyCtxt<'_>) {
             continue;
         }
 
-       /* info!("ANALYSIS: Mir key is {:?}",  def_id);
-        let impl_of_method = tcx.impl_of_method(def_id);
-        if let Some(impl_of_method) = impl_of_method {
-            info!("Is method of impl {:?}", impl_of_method);
-            info!("Item name: {}", tcx.item_name(def_id));
-            let mir: &Body<'_> = tcx.optimized_mir(def_id);
+        /* info!("ANALYSIS: Mir key is {:?}",  def_id);
+         let impl_of_method = tcx.impl_of_method(def_id);
+         if let Some(impl_of_method) = impl_of_method {
+             info!("Is method of impl {:?}", impl_of_method);
+             info!("Item name: {}", tcx.item_name(def_id));
+             let mir: &Body<'_> = tcx.optimized_mir(def_id);
 
-            let generics = tcx.generics_of(def_id);
-            if !generics.params.is_empty() {
-                for param in generics.params.iter() {
-                    info!("Generic is: {:?}", param);
-                    info!("Bounds: {:?}", tcx.item_bounds(def_id));
-                }
-                info!("Bounds")
-            }
-            let mut i = 1;
-            info!("Return type is: {:?}", mir.return_ty().kind());
-        }*/
+             let generics = tcx.generics_of(def_id);
+             if !generics.params.is_empty() {
+                 for param in generics.params.iter() {
+                     info!("Generic is: {:?}", param);
+                     info!("Bounds: {:?}", tcx.item_bounds(def_id));
+                 }
+                 info!("Bounds")
+             }
+             let mut i = 1;
+             info!("Return type is: {:?}", mir.return_ty().kind());
+         }*/
+    }
+}
 
+fn get_params(body: &Body<'_>) -> Vec<Param> {
+    //let params = Vec::with_capacity(body.arg_count);
+    for local in body.args_iter() {
+        let arg = body.local_decls().get(local).unwrap();
 
     }
 
+    todo!()
 }
 
 pub fn hir_analysis(tcx: TyCtxt<'_>) {
-    analyze_tcx(&tcx);
 
     let testify_flags = get_testify_flags();
     let cut_name = get_cut_name(testify_flags.as_ref());
@@ -219,7 +225,7 @@ fn analyze_enum(
                 file_path.to_str().unwrap(),
                 variant,
                 parent.clone(),
-                is_public
+                is_public,
             ));
             callables.push(enum_init);
         } else {
@@ -238,8 +244,8 @@ fn extract_enum_variant(variant: &Variant, hir_id: HirId, generics: &Vec<Arc<T>>
             let v = EnumVariant::Struct(variant.ident.name.to_ident_string(), Param::new(Some(&struct_name), struct_type, false));
             Some(v)
         }
-        VariantData::Tuple(fields, _) => {
-            debug!("--> ENUM extracting {:?}", hir_id);
+        VariantData::Tuple(fields, variant_hir_id) => {
+            debug!("--> ENUM variant extracting {:?}", variant_hir_id);
             let params = fields.iter()
                 .filter_map(|f| ty_to_t(&f.ty, None, generics, tcx))
                 .map(|ty| Param::new(None, ty, false))
@@ -250,7 +256,7 @@ fn extract_enum_variant(variant: &Variant, hir_id: HirId, generics: &Vec<Arc<T>>
 
             let v = EnumVariant::Tuple(variant.ident.name.to_ident_string(), params);
             Some(v)
-        },
+        }
         VariantData::Unit(_) => Some(EnumVariant::Unit(variant.ident.name.to_ident_string()))
     }
 }

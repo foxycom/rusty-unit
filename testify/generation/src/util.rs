@@ -6,7 +6,7 @@ use rustc_hir::{AnonConst, ArrayLen, FnRetTy, GenericArg, GenericBound, GenericP
 use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{AdtKind, TyCtxt, TypeckResults};
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::{CrateNum, LocalDefId};
 use rustc_span::{FileName, RealFileName, Span};
 use std::io;
 use std::io::Write;
@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::rc::Rc;
 use std::sync::Arc;
-use log::{debug, warn};
+use log::{debug, info, warn};
 use syn::{FnArg, ImplItemMethod, Path, ReturnType, Type};
 
 pub fn cargo_path() -> io::Result<PathBuf> {
@@ -65,10 +65,8 @@ pub fn ty_to_t(
                         Res::Def(def_kind, def_id) => {
                             match def_kind {
                                 DefKind::Struct | DefKind::Enum => {
-                                    assert!(defined_generics.is_empty());
-                                    let generics = tcx.generics_of(def_id);
-                                    debug!("--> Generics are: {:?}", generics);
-                                    path_to_t(def_kind, *def_id, self_, path, defined_generics, tcx)
+                                    let generics = path_to_generics(path, self_, defined_generics, tcx);
+                                    path_to_t(def_kind, *def_id, self_, path, &generics, tcx)
                                 }
                                 DefKind::TyParam => {
                                     let name = path
@@ -123,19 +121,13 @@ pub fn ty_to_t(
             None
         }
         TyKind::Tup(tys) => {
-            if tys.is_empty() {
-                // The default return value ()
-                let ts = tys.iter().filter_map(|ty| ty_to_t(ty, self_, defined_generics, tcx))
-                    .collect::<Vec<_>>();
-                if ts.len() != tys.len() {
-                    warn!("HIR: Could not extract tuple of ({:?})", tys);
-                    return None;
-                }
-                Some(Arc::new(T::Tuple(TupleT::new(ts))))
-            } else {
-                warn!("HIR: Skipping tuple type def {:?}", tys);
-                None
+            let ts = tys.iter().filter_map(|ty| ty_to_t(ty, self_, defined_generics, tcx))
+                .collect::<Vec<_>>();
+            if ts.len() != tys.len() {
+                warn!("HIR: Could not extract tuple of ({:?})", tys);
+                return None;
             }
+            Some(Arc::new(T::Tuple(TupleT::new(ts))))
         }
         TyKind::Array(ty, array_length) => {
             warn!("HIR: Skipping array type");
@@ -143,6 +135,16 @@ pub fn ty_to_t(
         }
         _ => todo!("Ty kind is: {:?}", &ty.kind),
     }
+}
+
+pub fn path_to_generics(path: &rustc_hir::Path<'_>, self_: Option<HirId>, defined_generics: &Vec<Arc<T>>, tcx: &TyCtxt<'_>) -> Vec<Arc<T>> {
+    let generics = path.segments.iter().filter_map(|s| if let Some(args) = s.args {
+        Some(args.args.iter().filter_map(|a| generic_arg_to_t(a, self_, defined_generics, tcx)).collect::<Vec<_>>())
+    } else {
+        None
+    }).flatten().collect::<Vec<_>>();
+
+    generics
 }
 
 pub fn path_to_t(
@@ -154,11 +156,7 @@ pub fn path_to_t(
     tcx: &TyCtxt<'_>
 ) -> Option<Arc<T>> {
     let name = tcx.def_path_str(def_id);
-    let generics = path.segments.iter().filter_map(|s| if let Some(args) = s.args {
-        Some(args.args.iter().filter_map(|a| generic_arg_to_t(a, self_, defined_generics, tcx)).collect::<Vec<_>>())
-    } else {
-        None
-    }).flatten().collect::<Vec<_>>();
+    let generics = path_to_generics(path, self_, defined_generics, tcx);
 
     match def_kind {
         DefKind::Enum => {
@@ -330,6 +328,7 @@ pub fn generic_bound_to_trait(bound: &GenericBound<'_>, tcx: &TyCtxt<'_>) -> Opt
     match bound {
         GenericBound::Trait(trait_ref, _) => {
             let def_id = trait_ref.trait_ref.trait_def_id()?;
+
             let name = tcx.def_path_str(def_id);
             Some(Trait::new(&name))
         }

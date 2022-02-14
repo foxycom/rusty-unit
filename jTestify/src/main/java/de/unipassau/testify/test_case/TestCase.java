@@ -423,6 +423,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     }
 
     var stmt = callable.toStmt(this, args, returnValue);
+    logger.info("Pushing " + stmt + " at the end of the test");
     statements.add(stmt);
     return true;
   }

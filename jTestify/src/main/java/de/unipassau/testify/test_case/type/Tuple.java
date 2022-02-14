@@ -16,7 +16,7 @@ public class Tuple implements Type {
   }
 
   public Tuple(Tuple other) {
-    this.types = other.types.stream().map(Type::copy).toList();
+    this.types = other.types.stream().map(Type::copy).peek(Objects::requireNonNull).toList();
   }
 
   public Tuple(List<Type> types) {
@@ -109,6 +109,23 @@ public class Tuple implements Type {
 
     copy.types = types.stream().map(ty -> ty.bindGenerics(binding)).toList();
     return copy;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Tuple tuple = (Tuple) o;
+    return types.equals(tuple.types);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(types);
   }
 
   @Override

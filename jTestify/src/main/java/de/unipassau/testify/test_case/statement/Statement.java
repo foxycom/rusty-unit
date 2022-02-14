@@ -128,6 +128,7 @@ public interface Statement {
     boolean changed = false;
     for (int iParam = 0; iParam < params().size(); iParam++) {
       if (Rnd.get().nextDouble() < pChangeParam) {
+        logger.info("Mutating argument #{}", iParam);
         if (mutateParameter(iParam)) {
           changed = true;
         }
@@ -168,8 +169,12 @@ public interface Statement {
     // If there are fewer objects than parameters of that type,
     // we consider adding an instance
     while (numParamsOfThatType + 1 > usableVariables.size()) {
-      logger.info("Still too few usable variables, trying to generate another one");
+      logger.info("Too few usable variables, trying to generate another one");
       var var = testCase().generateArg(paramType);
+      if (var.isPresent()) {
+        usableVariables.add(var.get());
+        logger.info("Generated variable of type {}", var.get().type());
+      }
       var.ifPresent(usableVariables::add);
     }
 
@@ -179,6 +184,7 @@ public interface Statement {
     }
 
     var replacement = Rnd.choice(usableVariables);
+    logger.info("Replacing argument at position {}", pos);
     replaceAt(pos, replacement);
 
     return true;

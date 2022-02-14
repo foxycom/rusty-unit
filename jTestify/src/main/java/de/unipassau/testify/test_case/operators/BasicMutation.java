@@ -54,7 +54,7 @@ public class BasicMutation implements Mutation<TestCase> {
       }
     }
 
-    logger.debug("Inserted " + count + " statements");
+    logger.debug("Inserted {} statements", count);
     return changed;
   }
 
@@ -66,6 +66,7 @@ public class BasicMutation implements Mutation<TestCase> {
     var changed = false;
     for (int position = 0; position < testCase.size(); position++) {
       if (Rnd.get().nextDouble() <= p) {
+        logger.info("Mutating statement at position {}", position);
         var stmt = testCase.stmtAt(position).orElseThrow();
         if (stmt.mutate(testCase)) {
           count++;

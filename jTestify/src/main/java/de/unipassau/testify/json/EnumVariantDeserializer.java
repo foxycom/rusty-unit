@@ -44,9 +44,6 @@ public class EnumVariantDeserializer extends StdDeserializer<EnumVariant> {
       case "Tuple" -> {
         var variantName = node.get(0).asText();
 
-        if (variantName.equals("Exploded")) {
-          System.out.println();
-        }
         var collectionType = mapper.getTypeFactory().constructCollectionType(List.class, Param.class);
         var javaType = mapper.constructType(collectionType);
         var params = mapper.<List<Param>>readValue(node.get(1).toString(), javaType);

@@ -46,7 +46,7 @@ public class VarReference {
     return Streams.zip(IntStream.range(0, testCase.size()).boxed(),
             testCase.getStatements().stream(), Pair::with)
         .filter(pair -> pair.getValue1().returnValue().isPresent()
-            && pair.getValue1().returnValue().get() == this)
+            && pair.getValue1().returnValue().get().equals(this))
         .map(Pair::getValue0)
         .findFirst().get();
 
