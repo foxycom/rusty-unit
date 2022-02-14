@@ -166,24 +166,43 @@ public class EnumStmt implements Statement {
         .generatorsOf(enumInit.getReturnType(), enumInit.getSrcFilePath(), EnumInit.class);
     var mutatedEnumInit = Rnd.choice(variants);
 
-    if (params().isEmpty()) {
+    if (mutatedEnumInit.getParams().isEmpty()) {
       args.clear();
       var changed = !mutatedEnumInit.equals(enumInit);
       enumInit = (EnumInit) mutatedEnumInit;
       return changed;
-    }
-
-    var pChangeParam = 1d / params().size();
-    var changed = false;
-    for (int iParam = 0; iParam < params().size(); iParam++) {
-      if (Rnd.get().nextDouble() < pChangeParam) {
-        if (mutateParameter(iParam)) {
-          changed = true;
+    } else if (mutatedEnumInit.equals(enumInit)) {
+      var pChangeParam = 1d / params().size();
+      var changed = false;
+      for (int iParam = 0; iParam < params().size(); iParam++) {
+        if (Rnd.get().nextDouble() < pChangeParam) {
+          if (mutateParameter(iParam)) {
+            changed = true;
+          }
         }
       }
-    }
 
-    return changed;
+      return changed;
+    } else {
+      boolean changed = false;
+
+      List<VarReference> args = new ArrayList<>(mutatedEnumInit.getParams().size());
+      for (int iParam = 0; iParam < mutatedEnumInit.getParams().size(); iParam++) {
+        var param = mutatedEnumInit.getParams().get(iParam);
+        var boundedParam = param.bindGenerics(returnValue.getBinding());
+        var newVariable = testCase.generateArg(boundedParam);
+        newVariable.ifPresent(args::add);
+      }
+
+      if (args.size() == mutatedEnumInit.getParams().size()) {
+        enumInit = (EnumInit) mutatedEnumInit;
+
+        setArgs(args);
+        changed = true;
+      }
+
+      return changed;
+    }
   }
 
   @Override

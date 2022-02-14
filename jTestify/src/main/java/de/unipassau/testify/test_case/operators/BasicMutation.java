@@ -18,6 +18,9 @@ public class BasicMutation implements Mutation<TestCase> {
     logger.info("Starting mutation on testcase:\n{}\n{}", testCase,
         testCase.getTypeBindingsString());
     var copy = testCase.copy();
+    if (copy.getId() == 159) {
+      System.out.println();
+    }
 
     if (Rnd.get().nextDouble() <= Constants.P_TEST_DELETE) {
       // delete some statemsnts

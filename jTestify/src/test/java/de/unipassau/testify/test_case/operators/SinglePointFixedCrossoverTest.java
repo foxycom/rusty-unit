@@ -104,14 +104,14 @@ class SinglePointFixedCrossoverTest {
     var vecConstructor = new StaticMethod("new", Collections.emptyList(), vecType, vecType, "");
     var vecStmt = new StaticMethodStmt(testCase, Collections.emptyList(), vec, vecConstructor);
 
-    var vecRef = new VarReference(testCase, new Ref(vecType));
+    var vecRef = new VarReference(testCase, new Ref(vecType, true));
     var vecRefStmt = new RefStmt(testCase, vec, vecRef, RefItem.INSTANCE);
 
     var grade = new VarReference(testCase, USize.INSTANCE);
     var gradeStmt = new PrimitiveStmt(testCase, grade, new UIntValue(45, USize.INSTANCE));
 
     var pushMethod = new Method("push", List.of(
-        new Param(new Ref(vecType), false, null),
+        new Param(new Ref(vecType, true), false, null),
         new Param(USize.INSTANCE, false, null)
     ), null, vecType);
     var vecPushStmt = new MethodStmt(testCase, List.of(
@@ -141,7 +141,7 @@ class SinglePointFixedCrossoverTest {
 
     var vecType = new Complex("Vec", List.of(USize.INSTANCE), false);
     var vecConstructor = new StaticMethod("new", Collections.emptyList(), vecType, vecType, "");
-    var vecRefType = new Ref(vecType);
+    var vecRefType = new Ref(vecType, true);
 
     when(analysis.generatorsOf(vecRefType, ""))
         .thenReturn(Lists.newArrayList(RefItem.INSTANCE));

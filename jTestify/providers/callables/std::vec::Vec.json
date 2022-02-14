@@ -40,7 +40,7 @@
       "params": [
         {
           "ty": {
-            "Ref": {
+            "Ref": [{
               "Complex": {
                 "name": "std::vec::Vec",
                 "generics": [
@@ -53,7 +53,7 @@
                 ],
                 "is_local": false
               }
-            }
+            }, true]
           },
           "mutable": true,
           "name": null
@@ -94,7 +94,7 @@
       "params": [
         {
           "ty": {
-            "Ref": {
+            "Ref": [{
               "Complex": {
                 "name": "std::vec::Vec",
                 "generics": [
@@ -107,7 +107,7 @@
                 ],
                 "is_local": false
               }
-            }
+            }, true]
           },
           "mutable": true,
           "name": null
@@ -171,7 +171,7 @@
       "params": [
         {
           "ty": {
-            "Ref": {
+            "Ref": [{
               "Complex": {
                 "name": "std::vec::Vec",
                 "generics": [
@@ -184,14 +184,14 @@
                 ],
                 "is_local": false
               }
-            }
+            }, true]
           },
           "mutable": true,
           "name": null
         },
         {
           "ty": {
-            "Ref": {
+            "Ref": [{
               "Complex": {
                 "name": "std::vec::Vec",
                 "generics": [
@@ -204,7 +204,7 @@
                 ],
                 "is_local": false
               }
-            }
+            }, true]
           },
           "mutable": true,
           "name": null
@@ -233,6 +233,26 @@
   {
     "Method": {
       "params": [
+        {
+          "ty": {
+            "Ref": [{
+              "Complex": {
+                "name": "std::vec::Vec",
+                "generics": [
+                  {
+                    "Generic": {
+                      "name": "T",
+                      "bounds": []
+                    }
+                  }
+                ],
+                "is_local": false
+              }
+            }, true]
+          },
+          "mutable": true,
+          "name": null
+        }
       ],
       "return_type": {
         "Prim": {

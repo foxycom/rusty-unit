@@ -1,6 +1,7 @@
 package de.unipassau.testify.test_case.statement;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Streams;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
@@ -12,6 +13,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.javatuples.Pair;
 
 public class TupleStmt implements Statement {
 
@@ -75,6 +77,32 @@ public class TupleStmt implements Statement {
   @Override
   public List<Type> actualParamTypes() {
     return args.stream().peek(Objects::requireNonNull).map(VarReference::type).toList();
+  }
+
+  @Override
+  public boolean consumes(VarReference var) {
+    return Streams.zip(params().stream(), args.stream(), Pair::with)
+        .filter(pair -> pair.getValue1().equals(var))
+        .anyMatch(pair -> !pair.getValue0().isByReference());
+  }
+
+  @Override
+  public boolean borrows(VarReference var) {
+    return Streams.zip(params().stream(), args.stream(), Pair::with)
+        .filter(pair -> pair.getValue1().equals(var))
+        .anyMatch(pair -> pair.getValue0().isByReference());
+  }
+
+  @Override
+  public boolean mutates(VarReference var) {
+    return Streams.zip(params().stream(), args.stream(), Pair::with)
+        .filter(pair -> pair.getValue1().equals(var))
+        .anyMatch(pair -> pair.getValue0().isByReference() && pair.getValue0().isMutable());
+  }
+
+  @Override
+  public boolean uses(VarReference var) {
+    return args.stream().anyMatch(a -> a.equals(var));
   }
 
   @Override

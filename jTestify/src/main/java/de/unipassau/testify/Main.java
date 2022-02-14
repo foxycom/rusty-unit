@@ -1,6 +1,8 @@
 package de.unipassau.testify;
 
+import static de.unipassau.testify.Constants.GENERATIONS;
 import static de.unipassau.testify.Constants.HIR_LOG_PATH;
+import static de.unipassau.testify.Constants.POPULATION_SIZE;
 
 import com.lexicalscope.jewel.cli.CliFactory;
 import com.lexicalscope.jewel.cli.Option;
@@ -74,7 +76,7 @@ public class Main {
     var crossover = new SinglePointFixedCrossover();
     var selection = new RankSelection<>(objectives, svd, preferenceSorter);
     var populationGenerator = new FixedSizePopulationGenerator<>(
-        new TestCaseGenerator(hirAnalysis, mutation, crossover), 20);
+        new TestCaseGenerator(hirAnalysis, mutation, crossover), POPULATION_SIZE);
 
     //var population = populationGenerator.get();
 
@@ -86,8 +88,8 @@ public class Main {
     var archive = new ArchiveImpl<>(objectives);
 
     var mosa = new MOSA<>(
-        10,
-        20,
+        GENERATIONS,
+        POPULATION_SIZE,
         populationGenerator,
         offspringGenerator,
         preferenceSorter,
@@ -97,6 +99,7 @@ public class Main {
     );
 
     var solutions = mosa.findSolution();
+
 
   }
 

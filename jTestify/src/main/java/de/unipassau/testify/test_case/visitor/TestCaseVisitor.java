@@ -57,14 +57,7 @@ public class TestCaseVisitor implements Visitor {
 
   @Override
   public String visitTestCase(TestCase testCase) {
-    if (testCase.getId() == 47) {
-      var returnValue = testCase.stmtAt(3).get().returnValue().get();
-      var arg = testCase.stmtAt(4).get().args().get(0);
-
-      var equal = returnValue.equals(arg);
-
-      System.out.println();
-    }
+  
     var sb = new StringBuilder("#[test]\n");
     sb.append("fn ").append(testCase.getName()).append("() {\n");
 

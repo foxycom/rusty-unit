@@ -14,7 +14,10 @@ public class Constants {
   public static final double P_TEST_DELETE = getDouble("p-test-delete");
   public static final double P_STMT_INSERT = getDouble("p-statement-insert");
   public static final double P_CHANGE_PARAMETER = getDouble("p-change-parameter");
+  public static final double P_CROSSOVER = getDouble("p-crossover");
   public static final double P_RANDOM_PERTURBATION = getDouble("p-random-perturbation");
+  public static final int POPULATION_SIZE = getInt("population-size");
+  public static final int GENERATIONS = getInt("generations");
   public static final int MAX_DELTA = getInt("max-delta");
   public static final int MAX_INT = getInt("max-int");
   public static final String MIR_LOG_PATH = properties.getProperty("mir-log-path");

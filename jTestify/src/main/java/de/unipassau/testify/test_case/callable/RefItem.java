@@ -26,7 +26,7 @@ public enum RefItem implements Callable {
 
   RefItem(Param param, boolean isPublic) {
     this.params = Collections.singletonList(param);
-    this.returnType = new Ref(param.getType());
+    this.returnType = new Ref(param.getType(), true);
     this.isPublic = isPublic;
   }
 
@@ -52,7 +52,7 @@ public enum RefItem implements Callable {
     }
 
     this.params = params;
-    this.returnType = new Ref(params.get(0).getType());
+    this.returnType = new Ref(params.get(0).getType(), true);
   }
 
   @Override

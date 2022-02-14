@@ -349,9 +349,11 @@ impl FieldAccessItem {
     }
 }
 
+
+
 #[derive(Clone, Hash, Eq, Serialize, Deserialize)]
 pub enum T {
-    Ref(Arc<T>),
+    Ref(Arc<T>, bool),
     Prim(PrimT),
     Complex(ComplexT),
     Generic(Generic),
@@ -363,7 +365,7 @@ pub enum T {
 impl Debug for T {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            T::Ref(ty) => {
+            T::Ref(ty, _) => {
                 write!(f, "&");
                 Debug::fmt(ty, f)
             }
@@ -392,8 +394,8 @@ impl PartialEq for T {
                 T::Generic(other_generic) => generic == other_generic,
                 _ => false,
             },
-            T::Ref(r) => match other {
-                T::Ref(other_r) => r == other_r,
+            T::Ref(r, _) => match other {
+                T::Ref(other_r, _) => r == other_r,
                 _ => false,
             },
             T::Enum(enum_ty) => match other {
@@ -462,81 +464,17 @@ impl T {
             T::Prim(prim) => prim.name_str().to_string(),
             T::Complex(complex) => complex.name().to_string(),
             T::Generic(generic) => generic.name().to_string(),
-            T::Ref(r) => r.name(),
+            T::Ref(r, _) => r.name(),
             T::Enum(enum_ty) => enum_ty.name().to_owned(),
             T::Array(_) => String::from("array"),
             T::Tuple(_) => String::from("tuple")
         }
     }
 
-    pub fn full_name(&self) -> String {
-        match self {
-            T::Prim(prim) => prim.name_str().to_string(),
-            T::Complex(complex) => complex.full_name(),
-            T::Generic(generic) => generic.name().to_string(),
-            T::Ref(r) => r.full_name(),
-            T::Enum(enum_ty) => enum_ty.full_name(),
-            T::Array(_) => String::from("array"),
-            T::Tuple(_) => String::from("tuple")
-        }
-    }
-
-    pub fn var_string(&self) -> String {
-        match self {
-            T::Prim(prim) => prim.name_str().to_string(),
-            T::Complex(complex) => complex.name().split("::").last().unwrap().to_string(),
-            T::Generic(generic) => todo!(),
-            T::Ref(r) => r.var_string(),
-            T::Enum(enum_ty) => enum_ty.name().split("::").last().unwrap().to_string(),
-            T::Array(_) => String::from("array"),
-            T::Tuple(_) => String::from("tuple")
-        }
-    }
-
-    pub fn id(&self) -> Option<DefId> {
-        match self {
-            T::Prim(_) => unimplemented!(),
-            T::Complex(complex) => complex.def_id(),
-            T::Generic(generic) => unimplemented!(),
-            T::Ref(r) => r.id(),
-            T::Enum(enum_ty) => enum_ty.def_id(),
-            T::Array(array_ty) => array_ty.def_id(),
-            T::Tuple(_) => unimplemented!()
-        }
-    }
-
-    pub fn expect_id(&self) -> DefId {
-        match self {
-            T::Prim(_) => unimplemented!(),
-            T::Complex(complex) => complex.def_id().unwrap(),
-            T::Generic(generic) => unimplemented!(),
-            T::Ref(r) => r.expect_id(),
-            T::Enum(enum_ty) => enum_ty.def_id().unwrap(),
-            T::Array(array_ty) => array_ty.def_id.unwrap(),
-            T::Tuple(_) => unimplemented!()
-        }
-    }
-
     pub fn is_prim(&self) -> bool {
         match self {
             T::Prim(_) => true,
-            T::Ref(r) => r.is_prim(),
-            _ => false,
-        }
-    }
-
-    pub fn is_complex(&self) -> bool {
-        match self {
-            T::Complex(_) => true,
-            T::Ref(r) => r.is_complex(),
-            _ => false,
-        }
-    }
-
-    pub fn is_enum(&self) -> bool {
-        match self {
-            T::Enum(_) => true,
-            T::Ref(r) => r.is_enum(),
+            T::Ref(r, _) => r.is_prim(),
             _ => false,
         }
     }
@@ -544,7 +482,7 @@ impl T {
     pub fn is_generic(&self) -> bool {
         match self {
             T::Generic(_) => true,
-            T::Ref(r) => r.is_generic(),
+            T::Ref(r, _) => r.is_generic(),
             _ => false,
         }
     }
@@ -552,52 +490,9 @@ impl T {
     pub fn expect_generic(&self) -> &Generic {
         match self {
             T::Generic(generic) => generic,
-            T::Ref(r) => r.expect_generic(),
+            T::Ref(r, _) => r.expect_generic(),
             _ => panic!("Is not generic"),
         }
-    }
-
-    pub fn expect_complex(&self) -> &ComplexT {
-        match self {
-            T::Complex(complex) => complex,
-            T::Ref(r) => r.expect_complex(),
-            _ => panic!("Is not complex"),
-        }
-    }
-
-    pub fn expect_primitive(&self) -> &PrimT {
-        match self {
-            T::Prim(prim) => prim,
-            T::Ref(r) => r.expect_primitive(),
-            _ => panic!(),
-        }
-    }
-
-    pub fn expect_enum(&self) -> &EnumT {
-        match self {
-            T::Ref(r) => r.expect_enum(),
-            T::Enum(enum_ty) => enum_ty,
-            _ => panic!("Is not enum"),
-        }
-    }
-
-    pub fn to_ident(&self) -> Expr {
-        let name = self.full_name();
-
-        let ident = name
-            .split("::")
-            .map(|segment| Ident::new(segment, Span::call_site()))
-            .collect::<Vec<_>>();
-        let expr = syn::parse_quote! {
-            #(#ident)::*
-        };
-
-        return match self {
-            T::Ref(_) => syn::parse_quote! {
-                &#expr
-            },
-            _ => expr,
-        };
     }
 }
 
@@ -607,7 +502,7 @@ impl Display for T {
             T::Prim(prim) => write!(f, "{}", prim.name_str()),
             T::Complex(complex) => Display::fmt(complex, f),
             T::Generic(generic) => Display::fmt(generic, f),
-            T::Ref(r) => {
+            T::Ref(r, _) => {
                 write!(f, "&");
                 Display::fmt(r.as_ref(), f)
             }
@@ -1009,7 +904,7 @@ impl Param {
 
     pub fn by_reference(&self) -> bool {
         match self.ty.as_ref() {
-            T::Ref(_) => true,
+            T::Ref(_, _) => true,
             _ => false,
         }
     }
@@ -1020,7 +915,7 @@ impl Param {
 
     pub fn real_ty(&self) -> &Arc<T> {
         match self.ty.as_ref() {
-            T::Ref(ty) => ty,
+            T::Ref(ty, _) => ty,
             _ => &self.ty,
         }
     }

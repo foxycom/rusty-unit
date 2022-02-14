@@ -7,6 +7,7 @@ import java.util.Objects;
 @JsonDeserialize(as = Ref.class)
 public class Ref implements Type {
 
+  private boolean mutable;
   private Type innerType;
 
   public Ref() {
@@ -14,10 +15,20 @@ public class Ref implements Type {
 
   public Ref(Ref other) {
     this.innerType = other.innerType.copy();
+    this.mutable = other.mutable;
   }
 
-  public Ref(Type innerType) {
+  public Ref(Type innerType, boolean mutable) {
+    this.mutable = mutable;
     this.innerType = innerType;
+  }
+
+  public boolean isMutable() {
+    return mutable;
+  }
+
+  public void setMutable(boolean mutable) {
+    this.mutable = mutable;
   }
 
   @Override
@@ -52,10 +63,15 @@ public class Ref implements Type {
   @Override
   public boolean canBeIndirectlySameAs(Type other) {
     if (other.isRef()) {
-      return innerType.canBeSameAs(other.asRef().getInnerType());
+      var otherRef = other.asRef();
+      if (otherRef.isMutable() || !this.isMutable()) {
+        return innerType.canBeSameAs(other.asRef().getInnerType());
+      }
     } else {
       return other.isGeneric();
     }
+
+    return false;
   }
 
   @Override
@@ -67,12 +83,12 @@ public class Ref implements Type {
       return false;
     }
     Ref ref = (Ref) o;
-    return innerType.equals(ref.innerType);
+    return innerType.equals(ref.innerType) && ref.mutable == this.mutable;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(innerType);
+    return Objects.hash(innerType, mutable);
   }
 
   @Override
@@ -87,12 +103,12 @@ public class Ref implements Type {
 
   @Override
   public Type replaceGenerics(List<Type> generics) {
-    return new Ref(innerType.replaceGenerics(Objects.requireNonNull(generics)));
+    return new Ref(innerType.replaceGenerics(Objects.requireNonNull(generics)), mutable);
   }
 
   @Override
   public Type bindGenerics(TypeBinding binding) {
-    return new Ref(innerType.bindGenerics(binding));
+    return new Ref(innerType.bindGenerics(binding), mutable);
   }
 
   @Override
@@ -111,7 +127,11 @@ public class Ref implements Type {
 
   @Override
   public String toString() {
-    return String.format("&mut %s", innerType);
+    if (mutable) {
+      return String.format("&mut %s", innerType);
+    } else {
+      return String.format("&%s", innerType);
+    }
   }
 
   @Override

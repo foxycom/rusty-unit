@@ -1,5 +1,7 @@
 package de.unipassau.testify.generator;
 
+import static de.unipassau.testify.Constants.P_CROSSOVER;
+
 import de.unipassau.testify.metaheuristics.operators.Selection;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.UncoveredObjectives;
@@ -8,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class OffspringGeneratorImpl implements OffspringGenerator<TestCase> {
-  private final double pXover = 0.7;
   private final Selection<TestCase> selection;
   private final UncoveredObjectives<TestCase> uncoveredObjectives;
 
@@ -29,7 +30,7 @@ public class OffspringGeneratorImpl implements OffspringGenerator<TestCase> {
       TestCase offspring1;
       TestCase offspring2;
 
-      if (Rnd.get().nextDouble() < pXover) {
+      if (Rnd.get().nextDouble() < P_CROSSOVER) {
         var offspring = parent1.crossover(parent2);
         offspring1 = offspring.getValue0();
         offspring2 = offspring.getValue1();
@@ -41,15 +42,6 @@ public class OffspringGeneratorImpl implements OffspringGenerator<TestCase> {
       offspring1 = offspring1.mutate();
       offspring2 = offspring2.mutate();
 
-      try {
-        /*if (!offspring1.isEvaluated())
-          offspring1.call();
-        if (!offspring2.isEvaluated())
-          offspring2.call();*/
-        // TODO execute test cases
-      } catch (Exception e) {
-        throw new RuntimeException("Malformed test case", e);
-      }
 
       if (population.size() - offspringPopulation.size() >= 2) {
         offspringPopulation.add(offspring1);

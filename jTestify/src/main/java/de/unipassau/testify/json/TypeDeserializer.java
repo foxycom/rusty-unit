@@ -43,11 +43,12 @@ public class TypeDeserializer extends StdDeserializer<Type> {
       case "Complex" -> mapper.readValue(node.toString(), Complex.class);
       case "Generic" -> mapper.readValue(node.toString(), Generic.class);
       case "Ref" -> {
-        var entry = node.fields().next();
+        var mutable = node.get(1).asBoolean();
+        var entry = node.get(0).fields().next();
         var innerTypeName = entry.getKey();
         var innerNode = entry.getValue();
         var innerType = createType(innerTypeName, innerNode);
-        yield new Ref(innerType);
+        yield new Ref(innerType, mutable);
       }
       case "Prim" -> mapper.readValue(node.toString(), Prim.class);
       case "Enum" -> mapper.readValue(node.toString(), Enum.class);

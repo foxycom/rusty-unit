@@ -56,7 +56,11 @@ pub fn ty_to_t(
 ) -> Option<Arc<T>> {
     match &ty.kind {
         TyKind::Rptr(_, mut_ty) => ty_to_t(mut_ty.ty, self_, defined_generics, tcx).map(|t| Arc::from({
-            T::Ref(t)
+            let mutable = match mut_ty.mutbl {
+                Mutability::Mut => true,
+                Mutability::Not => false
+            };
+            T::Ref(t, mutable)
         })),
         TyKind::Path(q_path) => {
             match q_path {
@@ -258,13 +262,12 @@ pub fn tys_to_t(ty: rustc_middle::ty::Ty, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
         rustc_middle::ty::TyKind::Param(param) => {
             let name = param.name.to_string();
             let generic_param = Arc::new(T::Generic(Generic::new(&name, vec![])));
-            if ty.is_region_ptr() {
-                println!("GENERIC PTR //: {:?}", ty);
-
+            Some(generic_param)
+            /*if ty.is_region_ptr() {
                 Some(Arc::new(T::Ref(generic_param)))
             } else {
-                Some(generic_param)
-            }
+
+            }*/
         }
         _ => todo!("Ty is {:?}", ty),
     }
