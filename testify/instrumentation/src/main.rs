@@ -214,5 +214,11 @@ fn main() {
     // Initialize the logger
     env_logger::init();
 
+    let mut a = 32;
+    let mut b = 42;
+    let c = &mut a;
+    let d = &mut b;
+    let tuple = (c, d);
+
     exit(run_rustc().err().unwrap_or(0))
 }

@@ -1,0 +1,89 @@
+[
+  {
+    "Method": {
+      "params": [
+        {
+          "ty": {
+            "Enum": {
+              "name": "std::option::Option",
+              "generics": [
+                {
+                  "Generic": {
+                    "name": "T",
+                    "bounds": []
+                  }
+                }
+              ],
+              "variants": [
+                {
+                  "Tuple": [
+                    "Some",
+                    [
+                      {
+                        "ty": {
+                          "Generic": {
+                            "name": "T",
+                            "bounds": []
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "Unit": "None"
+                }
+              ],
+              "is_local": false
+            }
+          },
+          "mutable": false,
+          "name": null
+        }
+      ],
+      "return_type": {
+        "Generic": {
+          "name": "T",
+          "bounds": []
+        }
+      },
+      "parent": {
+        "Enum": {
+          "name": "std::option::Option",
+          "generics": [
+            {
+              "Generic": {
+                "name": "T",
+                "bounds": []
+              }
+            }
+          ],
+          "variants": [
+            {
+              "Tuple": [
+                "Some",
+                [
+                  {
+                    "ty": {
+                      "Generic": {
+                        "name": "T",
+                        "bounds": []
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            {
+              "Unit": "None"
+            }
+          ],
+          "is_local": false
+        }
+      },
+      "name": "unwrap",
+      "src_file_path": null,
+      "is_public": true
+    }
+  }
+]

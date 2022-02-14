@@ -11,6 +11,7 @@ import de.unipassau.testify.test_case.type.Complex;
 import de.unipassau.testify.test_case.type.Enum;
 import de.unipassau.testify.test_case.type.Generic;
 import de.unipassau.testify.test_case.type.Ref;
+import de.unipassau.testify.test_case.type.Tuple;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.prim.Prim;
 import java.io.IOException;
@@ -50,6 +51,7 @@ public class TypeDeserializer extends StdDeserializer<Type> {
       }
       case "Prim" -> mapper.readValue(node.toString(), Prim.class);
       case "Enum" -> mapper.readValue(node.toString(), Enum.class);
+      case "Tuple" -> mapper.readValue(node.toString(), Tuple.class);
       default -> throw new RuntimeException("Not implemented: "+ typeName);
     };
   }

@@ -8,6 +8,7 @@ import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.EnumInit;
 import de.unipassau.testify.test_case.callable.RefItem;
+import de.unipassau.testify.test_case.callable.TupleInit;
 import de.unipassau.testify.test_case.type.Generic;
 import de.unipassau.testify.test_case.type.Trait;
 import de.unipassau.testify.test_case.type.Type;
@@ -69,12 +70,24 @@ public class HirAnalysis {
     return generatorsOf(type, filePath, Callable.class);
   }
 
+  /**
+   * Returns the generators which can either generate a type that
+   * 1) is the same, e.g., u32 == u32
+   * 2) is generic and can be the given type wrt the trait bounds, e.g., T: Default == u32
+   * 3) is a container and some inner type can be same as given type, e.g., Vec<u32> == u32
+   *
+   * @param type The type to look for.
+   * @param filePath
+   * @param subClass
+   * @param <S>
+   * @return The generators of the type.
+   */
   public <S extends Callable> List<Callable> generatorsOf(Type type, String filePath,
       Class<S> subClass) {
     logger.debug("Looking for generators of " + type);
     var stream = callables.stream()
         .filter(subClass::isInstance)
-        .filter(callable -> callable.getReturnType() != null
+        .filter(callable -> callable.returnsValue()
             && callable.getReturnType().canBeSameAs(type));
 
     if (filePath != null) {
@@ -137,8 +150,9 @@ public class HirAnalysis {
   }
 
   private static List<Callable> loadArtificialCallables() {
-    var refCallable = RefItem.INSTANCE;
-    return List.of(refCallable);
+
+    return List.of(RefItem.INSTANCE, TupleInit.DEFAULT, TupleInit.SINGLE, TupleInit.PAIR,
+        TupleInit.TRIPLETT);
   }
 
   private static Map<Type, Set<Trait>> loadStdTypeProviders() throws IOException {

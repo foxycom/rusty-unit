@@ -20,6 +20,7 @@ import de.unipassau.testify.source.Crate;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.TestCaseGenerator;
 import de.unipassau.testify.test_case.UncoveredObjectives;
+import de.unipassau.testify.test_case.fitness.Fitness;
 import de.unipassau.testify.test_case.fitness.RandomFitness;
 import de.unipassau.testify.test_case.operators.BasicMutation;
 import de.unipassau.testify.test_case.operators.RankSelection;
@@ -62,7 +63,7 @@ public class Main {
     var hirAnalysis = new HirAnalysis(JSONParser.parse(json));
 
     List<MinimizingFitnessFunction<TestCase>> objectives = MirAnalysis.targets().stream()
-        .map(t -> new RandomFitness()).collect(Collectors.toList());
+        .map(Fitness::new).collect(Collectors.toList());
 
     var svd = new SVDImpl<>(objectives);
     var pareto = new Pareto<TestCase>();

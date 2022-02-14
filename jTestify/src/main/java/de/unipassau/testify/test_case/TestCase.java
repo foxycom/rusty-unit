@@ -132,6 +132,9 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   }
 
   public void setCoverage(Map<BasicBlock, Double> coverage) {
+    if (coverage == null) {
+      return;
+    }
     this.coverage = coverage;
   }
 
@@ -190,7 +193,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   public void addStmt(Statement stmt) {
     int insertPosition = 0;
     if (stmt.isPrimitiveStmt()) {
-      statements.add(stmt);
+      statements.add(insertPosition, stmt);
     } else if (stmt.isCallableStmt()) {
       var callableStmt = stmt.asCallableStmt();
       insertPosition = callableStmt.args().stream().map(VarReference::position)
@@ -549,7 +552,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     var val = prim.random();
     var var = createVariable(prim);
     var stmt = new PrimitiveStmt(this, var, val);
-    statements.add(stmt);
+    statements.add(0, stmt);
     return var;
   }
 
@@ -719,10 +722,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   }
 
   public Map<BasicBlock, Double> getCoverage() {
-    if (coverage == null) {
-      throw new IllegalStateException("Branch execution info is not initialized");
-    }
-
     return coverage;
   }
 }

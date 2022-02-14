@@ -29,6 +29,10 @@ public interface Callable {
     return false;
   }
 
+  default boolean generates(Type type) {
+    return false;
+  }
+
   default String getSrcFilePath() {
     throw new RuntimeException("Not with me");
   }

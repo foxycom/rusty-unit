@@ -357,6 +357,7 @@ pub enum T {
     Generic(Generic),
     Enum(EnumT),
     Array(Box<ArrayT>),
+    Tuple(TupleT),
 }
 
 impl Debug for T {
@@ -371,6 +372,7 @@ impl Debug for T {
             T::Generic(generic_ty) => Debug::fmt(generic_ty, f),
             T::Enum(enum_ty) => Debug::fmt(enum_ty, f),
             T::Array(array_ty) => Debug::fmt(array_ty, f),
+            T::Tuple(types) => Debug::fmt(types, f)
         }
     }
 }
@@ -402,6 +404,10 @@ impl PartialEq for T {
                 T::Array(other_array) => array_ty == other_array,
                 _ => false,
             },
+            T::Tuple(types) => match other {
+                T::Tuple(other_types) => types == other_types,
+                _ => false
+            }
         }
     }
 }
@@ -459,6 +465,7 @@ impl T {
             T::Ref(r) => r.name(),
             T::Enum(enum_ty) => enum_ty.name().to_owned(),
             T::Array(_) => String::from("array"),
+            T::Tuple(_) => String::from("tuple")
         }
     }
 
@@ -470,6 +477,7 @@ impl T {
             T::Ref(r) => r.full_name(),
             T::Enum(enum_ty) => enum_ty.full_name(),
             T::Array(_) => String::from("array"),
+            T::Tuple(_) => String::from("tuple")
         }
     }
 
@@ -481,6 +489,7 @@ impl T {
             T::Ref(r) => r.var_string(),
             T::Enum(enum_ty) => enum_ty.name().split("::").last().unwrap().to_string(),
             T::Array(_) => String::from("array"),
+            T::Tuple(_) => String::from("tuple")
         }
     }
 
@@ -492,6 +501,7 @@ impl T {
             T::Ref(r) => r.id(),
             T::Enum(enum_ty) => enum_ty.def_id(),
             T::Array(array_ty) => array_ty.def_id(),
+            T::Tuple(_) => unimplemented!()
         }
     }
 
@@ -503,6 +513,7 @@ impl T {
             T::Ref(r) => r.expect_id(),
             T::Enum(enum_ty) => enum_ty.def_id().unwrap(),
             T::Array(array_ty) => array_ty.def_id.unwrap(),
+            T::Tuple(_) => unimplemented!()
         }
     }
 
@@ -570,17 +581,6 @@ impl T {
         }
     }
 
-    pub fn generics(&self) -> Option<&Vec<Arc<T>>> {
-        match self {
-            T::Prim(_) => None,
-            T::Complex(complex) => Some(complex.generics()),
-            T::Generic(generic) => None,
-            T::Ref(r) => r.generics(),
-            T::Enum(enum_ty) => todo!(),
-            T::Array(_) => None,
-        }
-    }
-
     pub fn to_ident(&self) -> Expr {
         let name = self.full_name();
 
@@ -613,6 +613,14 @@ impl Display for T {
             }
             T::Enum(enum_ty) => Display::fmt(enum_ty, f),
             T::Array(array) => Display::fmt(array, f),
+            T::Tuple(types) => {
+                let results = types.types.iter().map(|t| Display::fmt(t.as_ref(), f)).collect::<Vec<_>>();
+                if let Some(result) = results.last() {
+                    *result
+                } else {
+                    Ok(())
+                }
+            }
         }
     }
 }
@@ -650,6 +658,38 @@ impl ArrayT {
 impl PartialEq for ArrayT {
     fn eq(&self, other: &Self) -> bool {
         self.ty == other.ty && self.length == other.length
+    }
+}
+
+#[derive(Clone, Hash, Eq, Serialize, Deserialize)]
+pub struct TupleT {
+    types: Vec<Arc<T>>,
+}
+
+impl Debug for TupleT {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl Display for TupleT {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let types = self.types.iter().map(|ty| format!("{}", ty)).collect::<Vec<_>>();
+        write!(f, "({})", types.join(", "))
+    }
+}
+
+impl PartialEq for TupleT {
+    fn eq(&self, other: &Self) -> bool {
+        self.types == other.types
+    }
+}
+
+impl TupleT {
+    pub fn new(types: Vec<Arc<T>>) -> Self {
+        Self {
+            types
+        }
     }
 }
 

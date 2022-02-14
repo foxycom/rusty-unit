@@ -3,6 +3,7 @@ package de.unipassau.testify.test_case.type;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.json.TypeDeserializer;
 import de.unipassau.testify.test_case.type.prim.Prim;
+import java.util.Collections;
 import java.util.List;
 
 @JsonDeserialize(using = TypeDeserializer.class)
@@ -16,7 +17,7 @@ public interface Type {
 
   String varString();
 
-  boolean canBeSameAs(Type other);
+  TypeEquality canBeSameAs(Type other);
 
   default boolean isPrim() {
     return false;
@@ -38,7 +39,15 @@ public interface Type {
     return false;
   }
 
+  default boolean isTuple() {
+    return false;
+  }
+
   default Complex asComplex() {
+    throw new RuntimeException("Not with me");
+  }
+
+  default Tuple asTuple() {
     throw new RuntimeException("Not with me");
   }
 

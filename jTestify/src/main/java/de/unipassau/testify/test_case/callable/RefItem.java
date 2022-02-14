@@ -21,7 +21,7 @@ public enum RefItem implements Callable {
 
 
   private List<Param> params;
-  private final Type returnType;
+  private Type returnType;
   private boolean isPublic;
 
   RefItem(Param param, boolean isPublic) {
@@ -52,9 +52,8 @@ public enum RefItem implements Callable {
     }
 
     this.params = params;
+    this.returnType = new Ref(params.get(0).getType());
   }
-
-
 
   @Override
   public Type getReturnType() {

@@ -1,4 +1,4 @@
-use crate::types::{ComplexT, Generic, Param, Trait, T, EnumT, EnumVariant};
+use crate::types::{ComplexT, Generic, Param, Trait, T, EnumT, EnumVariant, TupleT};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
@@ -111,8 +111,19 @@ pub fn ty_to_t(
             None
         }
         TyKind::Tup(tys) => {
-            warn!("HIR: Skipping tuple type def {:?}", tys);
-            None
+            if tys.is_empty() {
+                // The default return value ()
+                let ts = tys.iter().filter_map(|ty| ty_to_t(ty, self_, defined_generics, tcx))
+                    .collect::<Vec<_>>();
+                if ts.len() != tys.len() {
+                    warn!("HIR: Could not extract tuple of ({:?})", tys);
+                    return None;
+                }
+                Some(Arc::new(T::Tuple(TupleT::new(ts))))
+            } else {
+                warn!("HIR: Skipping tuple type def {:?}", tys);
+                None
+            }
         }
         TyKind::Array(ty, array_length) => {
             warn!("HIR: Skipping array type");
@@ -135,6 +146,7 @@ pub fn path_to_t(def_id: DefId, self_: Option<HirId>, path: &rustc_hir::Path<'_>
 }
 
 pub fn generic_arg_to_t(generic_arg: &GenericArg, self_: Option<HirId>, defined_generics: &Vec<Arc<T>>, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
+    debug!("--> Looking at {:?}", generic_arg);
     match generic_arg {
         GenericArg::Type(ty) => ty_to_t(ty, self_, defined_generics, tcx),
         _ => None

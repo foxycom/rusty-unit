@@ -11,7 +11,7 @@ use rustc_data_structures::graph::WithNumNodes;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{HirId, ItemKind};
 use rustc_index::vec::IndexVec;
-use rustc_middle::mir::interpret::{ConstValue, Scalar};
+use rustc_middle::mir::interpret::{Allocation, ConstValue, Scalar};
 use rustc_middle::mir::visit::{MutVisitor, TyContext};
 use rustc_middle::mir::StatementKind::{Assign, SetDiscriminant};
 use rustc_middle::mir::{
@@ -21,13 +21,14 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
-use rustc_middle::ty::{Const, ConstKind, List, ScalarInt, Ty, TyCtxt, UintTy};
+use rustc_middle::ty::{Const, ConstKind, List, Region, RegionKind, ScalarInt, Ty, TyCtxt, TypeAndMut, UintTy};
 use rustc_span::Span;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{Align, VariantIdx};
 use std::borrow::Borrow;
 use std::fs::File;
 use std::ops::Add;
 use std::path::Path;
+use rustc_ast::Mutability;
 
 type CutPoint<'tcx> = (BasicBlock, usize, BasicBlockData<'tcx>);
 
@@ -57,7 +58,7 @@ pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'
 
         info!("MIR: Analyzing {:?}", def);
 
-        let global_id: u32 = def.index.into();
+        let global_id = def_id_to_str(def, &tcx);
         writer.new_body(&format!("{}", global_id));
         let basic_blocks = body.basic_blocks();
         let blocks = basic_blocks
@@ -78,7 +79,7 @@ pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'
         writer.write_cdg(serde_json::to_string(&cdg).as_ref().unwrap());
 
         // INSTRUMENT
-        let mut mir_visitor = MirVisitor::new(global_id as u64, body.clone(), tcx);
+        let mut mir_visitor = MirVisitor::new(&global_id, body.clone(), tcx);
 
         let mut instrumented_body = mir_visitor.visit();
         let (basic_blocks, local_decls) = instrumented_body.basic_blocks_and_local_decls_mut();
@@ -127,18 +128,22 @@ pub const CUSTOM_OPT_MIR_INSTRUMENTATION: for<'tcx> fn(
 
     info!("MIR: Instrumenting {:?}", def);
 
-    let global_id: u32 = def.index.into();
+    let global_id = def_id_to_str(def, &tcx);
 
     let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
 
     // INSTRUMENT
-    let mut mir_visitor = MirVisitor::new(global_id as u64, body.clone(), tcx);
+    let mut mir_visitor = MirVisitor::new(&global_id, body.clone(), tcx);
     let mut instrumented_body = mir_visitor.visit();
 
     let (basic_blocks, local_decls) = instrumented_body.basic_blocks_and_local_decls_mut();
 
     return tcx.arena.alloc(instrumented_body);
 };
+
+fn def_id_to_str(def_id: DefId, tcx: &TyCtxt<'_>) -> String {
+    tcx.def_path_str(def_id)
+}
 
 fn allowed_item(id: DefId) -> bool {
     let name = format!("{:?}", id);
@@ -150,7 +155,7 @@ pub struct MirVisitor<'tcx> {
     body: Body<'tcx>,
     // We need this to pretend this to be a global id since we cannot access anything outside
     // of the optimized_mir function
-    global_id: u64,
+    global_id: String,
     locals_num: usize,
     branch_counter: u64,
     branches: Vec<Branch>,
@@ -160,10 +165,10 @@ pub struct MirVisitor<'tcx> {
 }
 
 impl<'tcx> MirVisitor<'tcx> {
-    fn new(global_id: u64, body: Body<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+    fn new(global_id: &str, body: Body<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         MirVisitor {
             tcx,
-            global_id,
+            global_id: global_id.to_string(),
             locals_num: body.local_decls.len(),
             basic_blocks_num: body.num_nodes(),
             body,
@@ -211,6 +216,27 @@ impl<'tcx> MirVisitor<'tcx> {
         const_arg
     }
 
+    fn mk_const_str(&self, str: &str) -> &'tcx Const<'tcx> {
+        let str_ty = self.mk_str_ty();
+
+        let allocation = Allocation::from_bytes_byte_aligned_immutable(str.as_bytes());
+        let val = ConstKind::Value(
+            ConstValue::Slice {
+                data: self.tcx.intern_const_alloc(allocation),
+                start: 0,
+                end: str.len()
+            }
+        );
+
+        let const_arg = Const {
+            ty: str_ty,
+            val
+        };
+
+        let const_arg = self.tcx.mk_const(const_arg);
+        const_arg
+    }
+
     fn mk_const(&self, ty: Ty<'tcx>, val: ConstKind<'tcx>) -> &'tcx Const<'tcx> {
         let constant = Const { ty, val };
 
@@ -229,6 +255,10 @@ impl<'tcx> MirVisitor<'tcx> {
 
         let const_arg = self.tcx.mk_const(const_arg);
         const_arg
+    }
+
+    fn mk_str_ty(&self) -> Ty<'tcx> {
+        self.tcx.mk_ref(&RegionKind::ReErased, TypeAndMut { ty: self.tcx.types.str_, mutbl: Mutability::Not })
     }
 
     fn mk_move_operand(&self, local: Local) -> Operand<'tcx> {
@@ -277,6 +307,14 @@ impl<'tcx> MirVisitor<'tcx> {
             span: Default::default(),
             user_ty: None,
             literal: ConstantKind::Ty(self.mk_const_int(data)),
+        }))
+    }
+
+    fn mk_const_str_operand(&self, str: &str) -> Operand<'tcx> {
+        Operand::Constant(Box::new(Constant {
+            span: Default::default(),
+            user_ty: None,
+            literal: ConstantKind::Ty(self.mk_const_str(str))
         }))
     }
 
@@ -416,9 +454,9 @@ impl<'tcx> MirVisitor<'tcx> {
         decl.ty
     }
 
-    fn mk_trace_branch_hit(&mut self, global_id: u64, target_block: usize) -> Vec<Operand<'tcx>> {
+    fn mk_trace_branch_hit(&mut self, target_block: usize) -> Vec<Operand<'tcx>> {
         let trace_call_args = vec![
-            self.mk_const_int_operand(global_id),
+            self.mk_const_str_operand(&self.global_id),
             self.mk_const_int_operand(target_block as u64),
         ];
 
@@ -487,7 +525,7 @@ impl<'tcx> MirVisitor<'tcx> {
 
         let trace_call_args = vec![
             // Global id
-            self.mk_const_int_operand(self.global_id),
+            self.mk_const_str_operand(&self.global_id),
             // Block id
             self.mk_const_int_operand(target_block),
             self.mk_move_operand(left_local),
@@ -500,7 +538,7 @@ impl<'tcx> MirVisitor<'tcx> {
 
     fn mk_trace_statements_entry(&mut self) -> Vec<Operand<'tcx>> {
         let args = vec![
-            self.mk_const_int_operand(self.global_id)
+            self.mk_const_str_operand(&self.global_id)
         ];
 
         args
@@ -532,7 +570,7 @@ impl<'tcx> MirVisitor<'tcx> {
 
                 let trace_call_args = vec![
                     // Global id
-                    self.mk_const_int_operand(self.global_id),
+                    self.mk_const_str_operand(&self.global_id),
                     // Block id
                     self.mk_const_int_operand(target_block as u64),
                     self.mk_const_bool_operand(is_hit),
@@ -553,7 +591,7 @@ impl<'tcx> MirVisitor<'tcx> {
                 let stmts = vec![];
                 let trace_call_args = vec![
                     // Global id
-                    self.mk_const_int_operand(self.global_id),
+                    self.mk_const_str_operand(&self.global_id),
                     // Block id
                     self.mk_const_int_operand(target_block as u64),
                     self.mk_const_bool_operand(is_hit),
@@ -565,7 +603,7 @@ impl<'tcx> MirVisitor<'tcx> {
                 let stmts = vec![];
                 let trace_call_args = vec![
                     // Global id
-                    self.mk_const_int_operand(self.global_id),
+                    self.mk_const_str_operand(&self.global_id),
                     // Block id
                     self.mk_const_int_operand(target_block as u64),
                     self.mk_const_bool_operand(is_hit),
@@ -581,7 +619,7 @@ impl<'tcx> MirVisitor<'tcx> {
                 let stmts = vec![];
                 let trace_call_args = vec![
                     // Global id
-                    self.mk_const_int_operand(self.global_id),
+                    self.mk_const_str_operand(&self.global_id),
                     // Block id
                     self.mk_const_int_operand(target_block as u64),
                     self.mk_const_bool_operand(is_hit)
@@ -924,7 +962,7 @@ impl<'tcx> MirVisitor<'tcx> {
             //debug!("MIR: Next block in chain is {}", next_block.as_usize());
 
             if is_branch_hit {
-                let args = self.mk_trace_branch_hit(self.global_id, target_block.as_usize());
+                let args = self.mk_trace_branch_hit(target_block.as_usize());
                 let trace_fn = find_trace_branch_hit_fn(&self.tcx);
                 let terminator = self.mk_call_terminator(args, next_block, trace_fn);
                 let trace_block = self.mk_basic_block(Vec::new(), terminator);
@@ -948,6 +986,35 @@ impl<'tcx> MirVisitor<'tcx> {
 
 impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
     fn visit_body(&mut self, body: &mut Body<'tcx>) {
+        /*let basic_blocks = body.basic_blocks();
+        for block in basic_blocks {
+            for stmt in &block.statements {
+                match &stmt.kind {
+                    StatementKind::Assign(a) => {
+                        let (_, rvalue) = a.as_ref();
+                        match rvalue {
+                            Rvalue::Use(operand) => {
+                                match operand {
+                                    Operand::Constant(con) => {
+                                        match &con.literal {
+                                            ConstantKind::Ty(const_ty) => {
+                                                debug!("{:?}", const_ty.val);
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            },
+                            _ => {}
+                        }
+
+                    }
+                    _ => {}
+                }
+            }
+        }*/
+
         self.instrument_first_block(body);
 
         self.super_body(body);

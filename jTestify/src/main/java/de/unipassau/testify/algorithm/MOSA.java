@@ -5,10 +5,14 @@ import de.unipassau.testify.metaheuristics.algorithm.GeneticAlgorithm;
 import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome;
 import de.unipassau.testify.metaheuristics.chromosome.FixedSizePopulationGenerator;
 import de.unipassau.testify.source.ChromosomeContainer;
+import de.unipassau.testify.test_case.TestCase;
 import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MOSA<C extends AbstractTestCaseChromosome<C>> implements GeneticAlgorithm<C> {
+  private static final Logger logger = LoggerFactory.getLogger(MOSA.class);
 
   private final int maxGenerations;
   private final int populationSize;
@@ -48,9 +52,10 @@ public class MOSA<C extends AbstractTestCaseChromosome<C>> implements GeneticAlg
     archive.update(population);
 
     for (int gen = 0; gen < maxGenerations; gen++) {
+      System.out.printf("Generation %d started%n", gen);
       var offspring = offspringGenerator.get(population);
 
-      container.addAll(population);
+      container.addAll(offspring);
       container.executeWithInstrumentation();
       // TODO: 10.02.22 run tests
 

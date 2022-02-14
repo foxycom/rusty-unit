@@ -21,7 +21,7 @@ public class CDG {
   }
 
   // {"nodes":[18446744073709551615,0,1,2],"node_holes":[],"edge_property":"directed","edges":[[0,1,1],[0,2,1],[0,3,1],[0,0,1]]}
-  public static CDG parse(int globalId, String input) {
+  public static CDG parse(String globalId, String input) {
     Graph<BasicBlock, DefaultEdge> graph = new DefaultDirectedGraph<>(DefaultEdge.class);
     var root = new JSONObject(input);
 
@@ -63,7 +63,7 @@ public class CDG {
   }
 
   public static void main(String[] args) {
-    var cdg = parse(205, "{\"nodes\":[42069,1,3,4,5,6,7,8,9,10,11,12,13,14,15,2,0,16],\"node_holes\":[],\"edge_property\":\"directed\",\"edges\":[[1,2,1],[1,3,1],[1,4,1],[1,5,1],[1,6,1],[1,7,1],[1,8,1],[1,9,1],[1,10,1],[1,11,1],[1,12,1],[1,13,1],[1,14,1],[1,15,1],[0,16,1],[0,1,1],[0,17,1],[0,0,1]]}");
+    var cdg = parse("hello", "{\"nodes\":[42069,1,3,4,5,6,7,8,9,10,11,12,13,14,15,2,0,16],\"node_holes\":[],\"edge_property\":\"directed\",\"edges\":[[1,2,1],[1,3,1],[1,4,1],[1,5,1],[1,6,1],[1,7,1],[1,8,1],[1,9,1],[1,10,1],[1,11,1],[1,12,1],[1,13,1],[1,14,1],[1,15,1],[0,16,1],[0,1,1],[0,17,1],[0,0,1]]}");
     System.out.println(cdg.toDot());
   }
 }

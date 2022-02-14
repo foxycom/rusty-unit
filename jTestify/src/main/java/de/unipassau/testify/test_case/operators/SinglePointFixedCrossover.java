@@ -19,7 +19,7 @@ public class SinglePointFixedCrossover implements Crossover<TestCase> {
   @Override
   public Pair<TestCase, TestCase> apply(TestCase parent1, TestCase parent2) {
     if (parent1.size() < 2 || parent2.size() < 2) {
-      return Pair.with(parent1, parent2);
+      return Pair.with(parent1.copy(), parent2.copy());
     }
 
     int point = Rnd.get().nextInt(Math.min(parent1.size(), parent2.size()) - 1) + 1;

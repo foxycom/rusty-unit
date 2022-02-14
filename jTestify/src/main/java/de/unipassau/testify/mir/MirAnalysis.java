@@ -7,20 +7,21 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public class MirAnalysis {
-  private static final Map<Integer, CDG> CDGs = parseCDGs();
+  private static final Map<String, CDG> CDGs = parseCDGs();
 
-  private static Map<Integer, CDG> parseCDGs() {
-    Map<Integer, CDG> cdgs = new HashMap<>();
+  private static Map<String, CDG> parseCDGs() {
+    Map<String, CDG> cdgs = new HashMap<>();
     try (var in = new BufferedReader(new FileReader(MIR_LOG_PATH))) {
-      int globalId = -1;
+      String globalId = null;
       var readingCdg = false;
       for (String line; (line = in.readLine()) != null; ) {
         if (line.startsWith(">>")) {
-          globalId = Integer.parseInt(line.substring(2));
+          globalId = line.substring(2);
         } else if (line.startsWith("#cdg")) {
           readingCdg = true;
         } else if (readingCdg && !line.startsWith("<data>")) {
@@ -45,8 +46,8 @@ public class MirAnalysis {
         .collect(Collectors.toSet());
   }
 
-  public static Set<BasicBlock> targets(int globalId) {
-    return CDGs.entrySet().stream().filter(e -> e.getKey() == globalId)
+  public static Set<BasicBlock> targets(String globalId) {
+    return CDGs.entrySet().stream().filter(e -> Objects.equals(e.getKey(), globalId))
         .map(e -> e.getValue().targets())
         .findFirst().get();
   }

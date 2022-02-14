@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 
 public class BasicMutation implements Mutation<TestCase> {
 
-  private static Logger logger = LoggerFactory.getLogger(BasicMutation.class);
+  private static final Logger logger = LoggerFactory.getLogger(BasicMutation.class);
 
   @Override
   public TestCase apply(TestCase testCase) {

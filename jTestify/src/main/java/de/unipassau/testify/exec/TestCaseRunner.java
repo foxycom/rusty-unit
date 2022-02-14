@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
 
 public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
 
-  public static final String INSTRUMENTER_PATH = "/Users/tim/Documents/master-thesis/testify/target/debug/instrumentation";
+  public static final String INSTRUMENTER_PATH = "/Users/tim/Documents/master-thesis/testify/target/release/instrumentation";
 
   private static final Logger logger = LoggerFactory.getLogger(TestCaseRunner.class);
 
@@ -159,9 +159,7 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
     }
 
     var coverage = RedisStorage.requestTraces();
-    if (coverage.isEmpty()) {
-      throw new RuntimeException("Coverage is empty");
-    }
+
     for (TestCase testCase : container.chromosomes()) {
       var testCoverage = coverage.get(testCase.getId());
       testCase.setCoverage(testCoverage);

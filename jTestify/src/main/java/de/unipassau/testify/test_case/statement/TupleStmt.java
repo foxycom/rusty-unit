@@ -1,28 +1,33 @@
 package de.unipassau.testify.test_case.statement;
 
+import com.google.common.base.Preconditions;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
-import de.unipassau.testify.test_case.callable.RefItem;
+import de.unipassau.testify.test_case.callable.TupleInit;
 import de.unipassau.testify.test_case.type.Type;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
-public class RefStmt implements Statement {
-  private VarReference arg;
-  private RefItem refItem;
+public class TupleStmt implements Statement {
+
+  private UUID id;
+  private TupleInit tupleInit;
   private TestCase testCase;
   private VarReference returnValue;
-  private UUID id;
+  private List<VarReference> args;
 
-  public RefStmt(TestCase testCase, VarReference arg, VarReference returnValue, RefItem refItem) {
-    this.testCase = testCase;
-    this.arg = arg;
-    this.refItem = refItem;
-    this.returnValue = returnValue;
+  public TupleStmt(TestCase testCase, List<VarReference> args, VarReference returnValue,
+      TupleInit tupleInit) {
     this.id = UUID.randomUUID();
+    this.tupleInit = tupleInit;
+    this.testCase = testCase;
+    this.returnValue = returnValue;
+    this.args = args;
   }
 
   @Override
@@ -32,7 +37,7 @@ public class RefStmt implements Statement {
 
   @Override
   public Optional<Type> returnType() {
-    return Optional.of(refItem.getReturnType());
+    return Optional.of(returnValue.type());
   }
 
   @Override
@@ -47,34 +52,29 @@ public class RefStmt implements Statement {
 
   @Override
   public List<VarReference> args() {
-    return Collections.singletonList(arg);
+    return args;
   }
 
   @Override
   public void setArgs(List<VarReference> args) {
-    if (args.size() != 1) {
-      throw new RuntimeException("There should be exactly one arg");
-    }
+    Preconditions.checkArgument(args.size() == params().size());
 
-    this.arg = args.get(0);
+    this.args = args;
   }
 
   @Override
   public void setArg(int pos, VarReference var) {
-    if (pos != 0) {
-      throw new RuntimeException("Something is wrong");
-    }
-    this.arg = var;
+    this.args.set(pos, var);
   }
 
   @Override
   public List<Param> params() {
-    return refItem.getParams();
+    return tupleInit.getParams();
   }
 
   @Override
   public List<Type> actualParamTypes() {
-    return Collections.singletonList(arg.type());
+    return args.stream().peek(Objects::requireNonNull).map(VarReference::type).toList();
   }
 
   @Override
@@ -89,52 +89,40 @@ public class RefStmt implements Statement {
 
   @Override
   public boolean isPublic() {
-    return true;
-  }
-
-  @Override
-  public boolean isRefStmt() {
-    return true;
-  }
-
-  @Override
-  public RefStmt asRefStmt() {
-    return this;
-  }
-
-  public VarReference arg() {
-    return arg;
-  }
-
-  @Override
-  public boolean uses(VarReference var) {
-    return arg.equals(var);
-  }
-
-  @Override
-  public boolean borrows(VarReference var) {
-    return arg.equals(var);
+    return tupleInit.isPublic();
   }
 
   @Override
   public void replace(VarReference oldVar, VarReference newVar) {
-    if (!arg.equals(oldVar)) {
+    if (args.stream().noneMatch(v -> v.equals(oldVar))) {
       throw new RuntimeException("Statement does not use this var");
     }
 
-    this.arg = newVar;
+    var idx = args.indexOf(oldVar);
+    args.set(idx, newVar);
+  }
+
+  @Override
+  public boolean isTupleStmt() {
+    return true;
+  }
+
+  @Override
+  public TupleStmt asTupleStmt() {
+    return this;
   }
 
   @Override
   public Statement copy(TestCase testCase) {
     var returnValueCopy = returnValue.copy(testCase);
-    var argCopy = arg.copy(testCase);
-    return new RefStmt(testCase, argCopy, returnValueCopy, refItem);
+    var argsCopy = args.stream().map(a -> a.copy(testCase))
+        .collect(Collectors.toCollection(ArrayList::new));
+
+    return new TupleStmt(testCase, argsCopy, returnValueCopy, tupleInit);
   }
 
   @Override
   public int position() {
     return testCase.stmtPosition(this).orElseThrow();
   }
-
 }

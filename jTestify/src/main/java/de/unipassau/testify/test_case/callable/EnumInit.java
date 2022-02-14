@@ -110,6 +110,12 @@ public class EnumInit implements Callable {
   }
 
   @Override
+  public boolean generates(Type type) {
+    return getReturnType().canBeSameAs(type) || variant.getParams().stream()
+        .anyMatch(p -> p.getType().canBeSameAs(type));
+  }
+
+  @Override
   public String toString() {
     var sb = new StringBuilder(type.getName());
     sb.append("::").append(variant.getName());

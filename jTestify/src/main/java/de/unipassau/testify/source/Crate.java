@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
 
 public class Crate implements ChromosomeContainer<TestCase> {
@@ -129,16 +130,21 @@ public class Crate implements ChromosomeContainer<TestCase> {
 
     Preconditions.checkState(!sourceFiles.isEmpty());
     Map<String, List<TestCase>> sorted = new HashMap<>();
+
     testCases.forEach(testCase -> {
       var filePathBinding = testCase.getFilePathBinding().orElse("UNBOUND");
       sorted.putIfAbsent(filePathBinding, new ArrayList<>());
       sorted.get(filePathBinding).add(testCase);
     });
 
+
+    var allowedFiles = sourceFiles.stream()
+        .filter(f -> !f.getExecutionPath().endsWith("lib.rs")).toList();
     sorted.forEach((path, tests) -> {
       if (path.equals("UNBOUND")) {
         // Take a random path
-        var file = Rnd.choice(sourceFiles);
+
+        var file = Rnd.choice(allowedFiles);
         try {
           file.addTests(tests);
         } catch (IOException | InterruptedException e) {

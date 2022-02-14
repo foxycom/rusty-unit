@@ -28,26 +28,6 @@ import java.util.List;
 public interface Prim extends Type {
 
   List<Type> generics = Collections.emptyList();
-  /*pub static ref STR_TRAITS: HashSet<Trait> = {
-
-
-  pub static ref TYPES: HashMap<Arc<T>, HashSet<Trait>> = {
-    let types = load_types().unwrap();
-
-    let mut vec_traits = HashSet::new();
-    vec_traits.insert(Trait::new("std::iter::IntoIterator"));
-    vec_traits.insert(Trait::new("std::default::Default"));
-    vec_traits.insert(Trait::new("std::cmp::Eq"));
-    vec_traits.insert(Trait::new("std::cmp::PartialEq"));
-    vec_traits.insert(Trait::new("std::cmp::PartialOrd"));
-    vec_traits.insert(Trait::new("std::cmp::Ord"));
-
-    let mut m = HashMap::new();
-    for (ty, implementations) in types {
-      m.insert(ty, implementations);
-    }
-    m
-  };*/
 
   @Override
   default boolean canBeSameAs(Type other) {

@@ -47,6 +47,10 @@ public interface Statement {
     return false;
   }
 
+  default boolean isTupleStmt() {
+    return false;
+  }
+
   default boolean isEnumStmt() {
     return false;
   }
@@ -92,6 +96,10 @@ public interface Statement {
   }
 
   default EnumStmt asEnumStmt() {
+    throw new RuntimeException("Not with me");
+  }
+
+  default TupleStmt asTupleStmt() {
     throw new RuntimeException("Not with me");
   }
 

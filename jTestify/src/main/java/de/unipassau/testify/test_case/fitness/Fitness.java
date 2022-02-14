@@ -20,8 +20,8 @@ public class Fitness implements MinimizingFitnessFunction<TestCase> {
   @Override
   public double getFitness(TestCase testCase) throws NullPointerException {
     var coverage = testCase.getCoverage();
-    throw new RuntimeException("Not implemented yet");
-    //return coverage.getOrDefault(branchId, Double.MAX_VALUE);
+
+    return coverage.getOrDefault(basicBlock, Double.MAX_VALUE);
   }
 }
 

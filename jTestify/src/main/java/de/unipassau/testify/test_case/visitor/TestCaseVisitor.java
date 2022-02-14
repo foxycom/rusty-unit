@@ -163,6 +163,18 @@ public class TestCaseVisitor implements Visitor {
           .append(" = &mut ")
           .append(getVariableName(refStmt.arg()))
           .append(";");
+    } else if (stmt.isTupleStmt()) {
+      var tupleStmt = stmt.asTupleStmt();
+      var returnValue = tupleStmt.returnValue().get();
+      var returnType = returnValue.type();
+      var args = tupleStmt.args().stream().map(this::getVariableName)
+          .collect(Collectors.joining(", "));
+      sb.append("let mut ").append(getVariableName(returnValue))
+          .append(": ")
+          .append(getTypeString(returnType))
+          .append(" = (")
+          .append(args)
+          .append(");");
     } else {
       throw new RuntimeException("Huh?");
     }
