@@ -277,6 +277,20 @@ TSWLatexianTemp*
 
 *.pdf
 .DS_Store
+**/.gradle/**
+**/.idea/**
+
+**/gradlew**
+
+**/gradle/wrapper**
+*.dot
+
+*.profraw
+*.profdata 
+
+tmp/**
+
+
 
 evaluation/*
 */build/*
