@@ -1,0 +1,466 @@
+%%
+%% Copyright (C) 2015-2017 by Stephan Lukasczyk <tex@lukasczyk.me>
+%%
+%% This work may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License, either version 1.3c
+%% of this license or (at your option) any later version.
+%% The latest version of this license is in
+%%   http://www.latex-project.org/lppl.txt
+%% and version 1.3c or later is part of all distributions of LaTeX
+%% version 2005/12/01 or later.
+%%
+%% This work has the LPPL maintenance status `maintained'.
+%%
+%% Current maintainer of this work is Stephan Lukasczyk.
+%%
+%%
+%% The class follows the style and ideas of André Miede's `classicthesis'
+%% package but provides a complete re-implementation and dismisses a lot
+%% of packages that—in my opinion—should not be loaded by the template
+%% class but should be a choice of the user.
+%%
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{template}[%
+  2017/10/07 v2.0 Typographic style for a classic-looking thesis]
+\RequirePackage{ifthen}
+\newboolean{@eulerchapternumbers}
+\newboolean{@drafting}
+\newboolean{@pdfspacing}
+\newboolean{@blackandwhite}
+
+%% -----------------------------------------------------------------------------
+%% Package Options
+%% -----------------------------------------------------------------------------
+
+% Use the AMS Euler as font for chapter numbers (otherwise Palatino)
+\DeclareOption{eulerchapternumbers}{\setboolean{@eulerchapternumbers}{true}}
+
+% Add further draft informatino, e.g., version information, on pages
+\DeclareOption{drafting}{\setboolean{@drafting}{true}}
+
+% use pdfTeX for letterspacing (via microtype package)
+\DeclareOption{pdfspacing}{\setboolean{@pdfspacing}{true}}
+
+% Use only the Black-and-White mode
+\DeclareOption{blackandwhite}{\setboolean{@blackandwhite}{true}}
+\ProcessOptions\relax
+
+
+%% -----------------------------------------------------------------------------
+%% Define Colors needed for Layout
+%% -----------------------------------------------------------------------------
+\PassOptionsToPackage{dvipsnames}{xcolor}
+\RequirePackage{xcolor} % [dvipsnames] 
+\ifthenelse{\boolean{@blackandwhite}}{%
+  \definecolor{halfgray}{gray}{0.55}
+  \definecolor{webgreen}{gray}{0.25}
+  \definecolor{webbrown}{gray}{0.15}
+  \definecolor{thesisblue}{gray}{0.55}
+  \definecolor{thesisgray}{gray}{0.55}
+  \definecolor{thesisorange}{gray}{0.55}
+}{%
+  \definecolor{halfgray}{gray}{0.55}
+  \definecolor{webgreen}{rgb}{0,.5,0}
+  \definecolor{webbrown}{rgb}{.6,0,0}
+  \definecolor{thesisblue}{cmyk}{1.00,0.50,0.10,0.01}
+  \definecolor{thesisgray}{cmyk}{0.08,0.02,0.00,0.48}
+  \definecolor{thesisorange}{cmyk}{0.00,0.40,1.00,0.10}
+}
+
+
+%% -----------------------------------------------------------------------------
+%% Set the Fonts.
+%% We use the TeX Gyre fonts as they are free and supported by various TeX user
+%% groups.  Only for calligraphic math symbols and math black bold font we use
+%% Latin Modern.  The monospaced font will be Fira Code.
+%% -----------------------------------------------------------------------------
+\RequirePackage{mathtools}
+\RequirePackage{amssymb}
+\RequirePackage{fontspec}
+\RequirePackage{unicode-math}
+\setmainfont[%
+  Ligatures=TeX,%
+  Numbers=OldStyle,%
+  SmallCapsFont={TeX Gyre Pagella},%
+  SmallCapsFeatures={Letters=SmallCaps}]{TeX Gyre Pagella}
+\newfontfamily\scfont[Letters=SmallCaps]{TeX Gyre Pagella}
+\setsansfont[%
+  Ligatures=TeX,%
+  Numbers=OldStyle,%
+  Scale=0.90,%
+  SmallCapsFont={TeX Gyre Heros},%
+  SmallCapsFeatures={Letters=SmallCaps}]{TeX Gyre Heros}
+\setmonofont[Scale=0.85]{Fira Code}
+\setmathfont[%
+  Ligatures=TeX,%
+  math-style=ISO,%
+  bold-style=ISO]{TeX Gyre Pagella Math}
+\setmathfont[range={\mathcal,\mathbb}]{Latin Modern Math}
+
+\ifthenelse{\boolean{@eulerchapternumbers}}% font for the chapter numbers
+  {\newfont{\chapterNumber}{eurb10 scaled 7000}}%
+  {\newfont{\chapterNumber}{pplr9d scaled 7000}}
+
+
+%% -----------------------------------------------------------------------------
+%% Settings for the size of the text block
+%% -----------------------------------------------------------------------------
+\@ifpackageloaded{typearea}%
+  {\relax}{%
+    \RequirePackage{typearea}%
+  }
+\PackageInfo{template}{A4 paper}
+\areaset[current]{336pt}{630pt}
+\setlength{\marginparsep}{8.5cm}
+\setlength{\marginparsep}{1em}
+
+
+%% -----------------------------------------------------------------------------
+%% Layout specific settings
+%% -----------------------------------------------------------------------------
+% Disable single lines at the start of a paragraph (Schusterjungen)
+\clubpenalty = 10000
+% Disable single lines at the end of a paragraph (Hurenkinder)
+\widowpenalty = 10000
+\displaywidowpenalty = 10000 % formulas
+
+% Graffiti as in GKP's book "Concrete Mathematics"
+% thanks to Lorenzo Pantieri and Enrico Gregorio
+\def\graffito@setup{%
+   \itshape\footnotesize\leavevmode\color{Black}%
+   \parindent=0pt \lineskip=0pt \lineskiplimit=0pt %
+   \tolerance=2000 \hyphenpenalty=300 \exhyphenpenalty=300%
+   \doublehyphendemerits=100000%
+   \finalhyphendemerits=\doublehyphendemerits}
+\let\oldmarginpar\marginpar
+\renewcommand{\marginpar}[1]{\oldmarginpar%
+ [\graffito@setup\raggedleft\hspace{0pt}{#1}]%
+ {\graffito@setup\raggedright\hspace{0pt}{#1}}}
+
+
+%% -----------------------------------------------------------------------------
+%% Load Booktabs for better formatting of Tables
+%% -----------------------------------------------------------------------------
+\RequirePackage{booktabs}
+
+\DeclareRobustCommand{\spacedSmallCaps}[1]{%
+  \normalfont\scshape #1%
+}
+
+
+%% -----------------------------------------------------------------------------
+%% Set the page style using KOMAScript methods
+%% -----------------------------------------------------------------------------
+\RequirePackage{scrlayer-scrpage}
+\clearscrheadfoot
+\renewcommand*{\sectionmarkformat}{}
+\renewcommand*{\chaptermarkformat}{}
+\setkomafont{pagefoot}{\normalfont\sffamily}
+
+\rofoot[{% style for pagestyle empty, i.e. pages where new chapters start
+  {\ }%
+  \footnotesize%
+  \hspace*{0.75cm}%
+  {\color{thesisblue}\rule[-100pt]{1.25pt}{110pt}}%
+  \hspace*{10pt}%
+  \begin{minipage}[b]{1.5cm}%
+    \normalsize\textbf{\pagemark}%
+  \end{minipage}%
+  \hspace{-1.85cm}%
+}]{% style of normal pages
+  {\ }%
+  \footnotesize%
+  \textbf{\thesection}%
+  \hspace*{10pt}%
+  {\color{thesisblue}\spacedSmallCaps{\rightmark}}%
+  \hspace*{0.75cm}%
+  {\color{thesisblue}\rule[-100pt]{1.25pt}{110pt}}%
+  \hspace*{10pt}%
+  \begin{minipage}[b]{1.5cm}%
+    \normalsize\textbf{\pagemark}%
+  \end{minipage}%
+  \hspace{-1.85cm}%
+}
+
+\lefoot[{%
+  \null\hspace{-1.85cm}%
+  \footnotesize%
+  \begin{minipage}[b]{1.5cm}%
+    \raggedleft\normalsize\textbf{\pagemark}%
+  \end{minipage}%
+  \footnotesize%
+  \hspace*{10pt}%
+  {\color{thesisblue}\rule[-100pt]{1.25pt}{110pt}}%
+}]{%
+  \null\hspace{-1.85cm}%
+  \footnotesize%
+  \begin{minipage}[b]{1.5cm}%
+    \raggedleft\normalsize\textbf{\pagemark}%
+  \end{minipage}%
+  \footnotesize%
+  \hspace*{10pt}%
+  {\color{thesisblue}\rule[-100pt]{1.25pt}{110pt}}%
+  \hspace*{0.75cm}%
+  \textbf{Chapter~\thechapter}%
+  \hspace*{10pt}%
+  {\color{thesisblue}\spacedSmallCaps{\leftmark}}%
+}
+
+\pagestyle{scrheadings}
+
+% ********************************************************************
+% Provide the commands \frontmatter, \mainmatter, and \backmatter if
+% they are not provided by the used documentclass.
+% ********************************************************************
+\providecommand{\frontmatter}{%
+  \cleardoublepage%
+  \pagenumbering{roman}%
+  %
+  \rofoot[{%
+    {\ }%
+    \footnotesize%
+    \hspace*{0.75cm}%
+    {\color{thesisblue}\rule[-100pt]{1.25pt}{110pt}}%
+    \hspace*{10pt}%
+    \begin{minipage}[b]{1.5cm}%
+      \normalsize\textbf{\pagemark}%
+    \end{minipage}%
+    \hspace{-1.85cm}%
+  }]{%
+    {\ }%
+    \footnotesize%
+    \textbf{~}%
+    \hspace*{10pt}%
+    {\color{thesisblue}}%
+    \hspace*{0.75cm}%
+    {\color{thesisblue}\rule[-100pt]{1.25pt}{110pt}}%
+    \hspace*{10pt}%
+    \begin{minipage}[b]{1.5cm}%
+      \normalsize\textbf{\pagemark}%
+    \end{minipage}%
+    \hspace{-1.85cm}%
+  }%
+  %
+  \lefoot[{%
+    \null\hspace{-1.85cm}%
+    \footnotesize%
+    \begin{minipage}[b]{1.5cm}%
+      \raggedleft\normalsize\textbf{\pagemark}%
+    \end{minipage}%
+    \footnotesize%
+    \hspace*{10pt}%
+    {\color{thesisblue}\rule[-100pt]{1.25pt}{110pt}}%
+  }]{%
+    \null\hspace{-1.85cm}%
+    \footnotesize%
+    \begin{minipage}[b]{1.5cm}%
+      \raggedleft\normalsize\textbf{\pagemark}%
+    \end{minipage}%
+    \footnotesize%
+    \hspace*{10pt}%
+    {\color{thesisblue}\rule[-100pt]{1.25pt}{110pt}}%
+    \hspace*{0.75cm}%
+    \textbf{~}%
+    \hspace*{10pt}%
+    {\color{thesisblue}}%
+  }%
+}
+\providecommand{\mainmatter}{%
+  \cleardoublepage%
+  \pagenumbering{arabic}%
+  \rofoot[{% style for pagestyle empty, i.e. pages where new chapters start
+    {\ }%
+    \footnotesize%
+    \hspace*{0.75cm}%
+    {\color{thesisblue}\rule[-100pt]{1.25pt}{110pt}}%
+    \hspace*{10pt}%
+    \begin{minipage}[b]{1.5cm}%
+      \normalsize\textbf{\pagemark}%
+    \end{minipage}%
+    \hspace{-1.85cm}%
+  }]{% style of normal pages
+    {\ }%
+    \footnotesize%
+    \textbf{\thesection}%
+    \hspace*{10pt}%
+    {\color{thesisblue}\spacedSmallCaps{\rightmark}}%
+    \hspace*{0.75cm}%
+    {\color{thesisblue}\rule[-100pt]{1.25pt}{110pt}}%
+    \hspace*{10pt}%
+    \begin{minipage}[b]{1.5cm}%
+      \normalsize\textbf{\pagemark}%
+    \end{minipage}%
+    \hspace{-1.85cm}%
+  }
+  
+  \lefoot[{%
+    \null\hspace{-1.85cm}%
+    \footnotesize%
+    \begin{minipage}[b]{1.5cm}%
+      \raggedleft\normalsize\textbf{\pagemark}%
+    \end{minipage}%
+    \footnotesize%
+    \hspace*{10pt}%
+    {\color{thesisblue}\rule[-100pt]{1.25pt}{110pt}}%
+  }]{%
+    \null\hspace{-1.85cm}%
+    \footnotesize%
+    \begin{minipage}[b]{1.5cm}%
+      \raggedleft\normalsize\textbf{\pagemark}%
+    \end{minipage}%
+    \footnotesize%
+    \hspace*{10pt}%
+    {\color{thesisblue}\rule[-100pt]{1.25pt}{110pt}}%
+    \hspace*{0.75cm}%
+    \textbf{Chapter~\thechapter}%
+    \hspace*{10pt}%
+    {\color{thesisblue}\spacedSmallCaps{\leftmark}}%
+  }
+}
+\providecommand{\backmatter}{%
+  \if@openright%
+    \cleardoublepage%
+  \else%
+    \clearpage%
+  \fi%
+  %
+  \rofoot[{%
+    {\ }%
+    \footnotesize%
+    \hspace*{0.75cm}%
+    {\color{thesisblue}\rule[-100pt]{1.25pt}{110pt}}%
+    \hspace*{10pt}%
+    \begin{minipage}[b]{1.5cm}%
+      \normalsize\textbf{\pagemark}%
+    \end{minipage}%
+    \hspace{-1.85cm}%
+  }]{%
+    {\ }%
+    \footnotesize%
+    \textbf{Appendix~\thechapter}%
+    \hspace*{10pt}%
+    {\color{thesisblue}\spacedSmallCaps{\leftmark}}%
+    \hspace*{0.75cm}%
+    {\color{thesisblue}\rule[-100pt]{1.25pt}{110pt}}%
+    \hspace*{10pt}%
+    \begin{minipage}[b]{1.5cm}%
+      \normalsize\textbf{\pagemark}%
+    \end{minipage}%
+    \hspace{-1.85cm}%
+  }%
+  %
+  \lefoot[{%
+    \null\hspace{-1.85cm}%
+    \footnotesize%
+    \begin{minipage}[b]{1.5cm}%
+      \raggedleft\normalsize\textbf{\pagemark}%
+    \end{minipage}%
+    \footnotesize%
+    \hspace*{10pt}%
+    {\color{thesisblue}\rule[-100pt]{1.25pt}{110pt}}%
+  }]{%
+    \null\hspace{-1.85cm}%
+    \footnotesize%
+    \begin{minipage}[b]{1.5cm}%
+      \raggedleft\normalsize\textbf{\pagemark}%
+    \end{minipage}%
+    \footnotesize%
+    \hspace*{10pt}%
+    {\color{thesisblue}\rule[-100pt]{1.25pt}{110pt}}%
+    \hspace*{0.75cm}%
+    \textbf{Appendix~\thechapter}%
+    \hspace*{10pt}%
+    {\color{thesisblue}\spacedSmallCaps{\leftmark}}%
+  }%
+}
+
+% ********************************************************************
+% layout of the chapter-, section-, subsection-, subsubsection-,
+% paragraph and description-headings
+% ********************************************************************
+\addtokomafont{chapterprefix}{\raggedleft}
+\addtokomafont{chapter}{\spacedSmallCaps}
+\renewcommand*{\chapterformat}{%
+  \mbox{}\oldmarginpar{\vspace*{-3\baselineskip}\color{thesisgray}%
+    \chapterNumber\thechapter}}
+\addtokomafont{section}{\normalsize\spacedSmallCaps}
+\addtokomafont{subsection}{\normalsize\normalfont\itshape}
+\addtokomafont{subsubsection}{\normalsize\normalfont\itshape}
+\addtokomafont{paragraph}{\normalsize\normalfont\spacedSmallCaps}
+
+
+%% -----------------------------------------------------------------------------
+%% Position footnotes not below the text block but in the margin paragraph
+%% -----------------------------------------------------------------------------
+%\PassOptionsToPackage{side,ragged,flushmargin}{footmisc}%
+%\RequirePackage{footmisc}%
+%\setlength{\footnotemargin}{-.25em}
+
+
+%% -----------------------------------------------------------------------------
+%% Settings for draft mode
+%% -----------------------------------------------------------------------------
+\RequirePackage{scrtime} % time access
+\newcommand{\finalVersionString}{\relax}
+\providecommand{\myVersion}{$\!\!$} % w/o classicthesis-config.tex
+\ifthenelse{\boolean{@drafting}}%
+  {%      
+    \PassOptionsToPackage{draft}{prelim2e}
+    \RequirePackage{prelim2e}
+    \renewcommand{\PrelimWords}{\relax}
+    \renewcommand{\PrelimText}{\footnotesize[\,\today\ at \thistime\,]}
+  }{%
+    \renewcommand{\finalVersionString}{\emph{Final Version} as of \today\ %
+      (\myVersion).}%
+  }
+
+
+%%------------------------------------------------------------------------------
+%% Define a new environment for figures with the caption in the margin
+%%------------------------------------------------------------------------------
+\RequirePackage{marginnote}
+\renewcommand*{\marginfont}{%
+  \small\sffamily%
+}
+\RequirePackage{caption}
+\RequirePackage[top]{mcaption}
+\RequirePackage{float}
+\RequirePackage{ragged2e}
+\captionsetup{%
+  format=plain,%
+  font={small,sf},%
+  labelfont={color=thesisblue,bf,sf},%
+  labelsep=space,%
+  indention=0pt,%
+  justification=RaggedRight%
+}
+%\captionsetup[figure]{name=Fig.}
+%\captionsetup[table]{name=Tab.}
+%\captionsetup[lstlisting]{name=Lst.}
+%\captionsetup[listing]{name=Lst.}
+%\renewcommand{\thefigure}{\arabic{chapter}.\arabic{figure}}
+
+\newenvironment{margincapfigure}[1]{%
+  \begin{figure}[#1]%
+    \begin{margincap}%
+}{%
+    \end{margincap}%
+  \end{figure}%
+}
+\newenvironment{margincaptable}[1]{%
+  \begin{table}[#1]%
+    \begin{margincap}%
+}{%
+    \end{margincap}%
+  \end{table}%
+}
+\newenvironment{margincaplisting}[1]{%
+  \begin{listing}[#1]%
+    \begin{margincap}%
+}{%
+    \end{margincap}%
+  \end{listing}%
+}
+
+\endinput% end of file template.sty
