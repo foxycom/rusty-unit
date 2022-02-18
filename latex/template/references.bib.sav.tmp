@@ -131,7 +131,7 @@ Das Paper zitiert auch mehrere andere Artikel, die auf die Sicherheiten von Rust
   title     = {No Panic! Verification of Rust Programs by Symbolic Execution},
   doi       = {10.1109/INDIN.2018.8471992},
   pages     = {108-114},
-  comment   = {TODO symbolic execution 
+  comment   = {TODO symbolic execution
 symbolische ausführung},
   file      = {:papers/No_Panic_Verification_of_Rust_Programs_by_Symbolic_Execution.pdf:PDF},
   year      = {2018},
@@ -196,7 +196,7 @@ symbolic execution},
   file     = {:papers/Khari-Kumar2019_Article_AnExtensiveEvaluationOfSearch-.pdf:PDF},
   groups   = {a72186:1},
   journal  = {Soft Computing},
-  month    = {Mar},
+  month    = {3},
   year     = {2019},
 }
 
@@ -398,12 +398,12 @@ test oracle},
   doi       = {10.1109/ICST.2011.54},
   pages     = {150-159},
   abstract  = {The length of test cases is a little investigated topic in search-based test generation for object oriented software, where test cases are sequences of method calls. While intuitively longer tests can achieve higher overall code coverage, there is always the threat of bloat - a complex phenomenon in evolutionary computation, where the length abnormally grows over time. In this paper, we show that bloat indeed also occurs in the context of test generation for object oriented software. We present different techniques to overcome the problem of length bloat, and evaluate all possible combinations of these techniques using different search lengths. Experiments on a set of difficult search targets selected from several open source and industrial projects show that the important choice in search-based testing is not the length of test cases, but how to make sure that this length does not become bloated.},
-  comment   = {Es werden Techniken vorgestellt, um generierte Tests so klein wie möglich zu halten und Bloating zu vermeiden. Außerdem wird die Berechnung und Normalisierung der Branch und Approach Distance erklärt. Zudem werden die Crossover, Selection und Mutation Operatoren anhand von Beispielen erklärt. 
+  comment   = {Es werden Techniken vorgestellt, um generierte Tests so klein wie möglich zu halten und Bloating zu vermeiden. Außerdem wird die Berechnung und Normalisierung der Branch und Approach Distance erklärt. Zudem werden die Crossover, Selection und Mutation Operatoren anhand von Beispielen erklärt.
 Insgesamt wird im Paper jeder Schritt der Generierung und Evolution relativ genau erklärt.},
   file      = {:papers/05770604.pdf:PDF},
   groups    = {a72186:1},
   issn      = {2159-4848},
-  month     = {March},
+  month     = {3},
   ranking   = {rank5},
   year      = {2011},
 }
@@ -632,7 +632,7 @@ Insgesamt wird im Paper jeder Schritt der Generierung und Evolution relativ gena
   comment   = {Der MOSA Algorithmus.},
   file      = {:papers/07102604.pdf:PDF},
   groups    = {a72186:1},
-  month     = {apr},
+  month     = {4},
   publisher = {{IEEE}},
   year      = {2015},
 }
@@ -647,7 +647,7 @@ Insgesamt wird im Paper jeder Schritt der Generierung und Evolution relativ gena
   file      = {:papers/06152257.pdf:PDF;:Fraser_2013 - Whole Test Suite Generation.pdf:PDF},
   groups    = {a72186:1},
   journal   = {{IEEE} Transactions on Software Engineering},
-  month     = {feb},
+  month     = {2},
   publisher = {Institute of Electrical and Electronics Engineers ({IEEE})},
   year      = {2013},
 }
@@ -682,6 +682,16 @@ of how computer system builders can better support floating point.},
   year       = {1991},
 }
 
+@book{Holland1992,
+  author = {Holland, John H.},
+  title = {Adaptation in Natural and Artificial Systems: An Introductory Analysis with Applications to Biology, Control and Artificial Intelligence},
+  year = {1992},
+  isbn = {0262082136},
+  publisher = {MIT Press},
+  address = {Cambridge, MA, USA},
+  abstract = {From the Publisher:Genetic algorithms are playing an increasingly important role in studies of complex adaptive systems, ranging from adaptive agents in economic theory to the use of machine learning techniques in the design of complex devices such as aircraft turbines and integrated circuits.  Adaptation in Natural and Artificial Systems  is the book that initiated this field of study, presenting the theoretical foundations and exploring applications.  In its most familiar form, adaptation is a biological process, whereby organisms evolve by rearranging genetic material to survive in environments confronting them. In this now classic work, Holland presents a mathematical model that allows for the nonlinearity of such complex interactions. He demonstrates the model's universality by applying it to economics, physiological psychology, game theory, and artificial intelligence and then outlines the way in which this approach modifies the traditional views of mathematical genetics. Initially applying his concepts to simply defined artificial systems with limited numbers of parameters, Holland goes on to explore their use in the study of a wide range of complex, naturally occuring processes, concentrating on systems having multiple factors that interact in nonlinear ways. Along the way he accounts for major effects of coadaptation and coevolution: the emergence of building blocks, or schemata, that are recombined and passed on to succeeding generations to provide, innovations and improvements. John H. Holland is Professor of Psychology and Professor of Electrical Engineering and Computer Science at the University of Michigan. He is also Maxwell Professor at the Santa Fe Institute and isDirector of the University of Michigan/Santa Fe Institute Advanced Research Program.}
+}
+
 @Article{Fraser2013,
   author    = {Gordon Fraser and Andrea Arcuri},
   title     = {1600 faults in 100 projects: automatically finding faults while achieving high coverage with {EvoSuite}},
@@ -712,7 +722,7 @@ of how computer system builders can better support floating point.},
   doi       = {10.1109/QSIC.2011.19},
   booktitle = {2011 11th International Conference on Quality Software},
   file      = {:papers/06004309.pdf:PDF},
-  month     = {jul},
+  month     = {7},
   publisher = {{IEEE}},
   year      = {2011},
 }
@@ -758,7 +768,7 @@ of how computer system builders can better support floating point.},
   comment   = {Es wird auch die rekursive Berechnung der Branch Distance erklärt.},
   file      = {:papers/stvr.294.pdf:PDF},
   journal   = {Software Testing, Verification and Reliability},
-  month     = {may},
+  month     = {5},
   publisher = {Wiley},
   year      = {2004},
 }
@@ -773,7 +783,7 @@ of how computer system builders can better support floating point.},
   comment   = {TODO branch distance},
   file      = {:papers/stvr.457.pdf:PDF},
   journal   = {Software Testing, Verification and Reliability},
-  month     = {mar},
+  month     = {3},
   publisher = {Wiley},
   year      = {2011},
 }
@@ -798,7 +808,7 @@ of how computer system builders can better support floating point.},
   comment   = {TODO seeding parameters tuning},
   file      = {:papers/Arcuri-Fraser2013_Article_ParameterTuningOrDefaultValues.pdf:PDF},
   journal   = {Empirical Software Engineering},
-  month     = {feb},
+  month     = {2},
   publisher = {Springer Science and Business Media {LLC}},
   year      = {2013},
 }
@@ -843,7 +853,7 @@ of how computer system builders can better support floating point.},
   doi       = {10.1002/9781119202486},
   editor    = {Glenford J. Myers and Tom Badgett and Corey Sandler},
   file      = {:papers/9781119202486.pdf:PDF},
-  month     = {jan},
+  month     = {1},
   publisher = {Wiley},
   year      = {2012},
 }
@@ -895,7 +905,7 @@ proposed algorithm mutates them with the aim of maximizing a given coverage meas
 The implementation of the algorithm and its application to classes from the Java standard
 library are described.},
   address    = {New York, NY, USA},
-  comment    = {TODO, Single Objectiva at a time approach. 
+  comment    = {TODO, Single Objectiva at a time approach.
 Objekt-orientierte Programmierung und Klassen werden bei der genetischen Suche berücksichtigt.},
   file       = {:papers/1013886.1007528.pdf:PDF},
   issue_date = {July 2004},
@@ -1134,7 +1144,7 @@ Object-oriented},
   comment      = {TODO μ + λ Evolutionary Algorithm},
   file         = {:papers/8037-Article Text-11565-1-2-20201228.pdf:PDF},
   journal      = {Proceedings of the AAAI Conference on Artificial Intelligence},
-  month        = {Aug.},
+  month        = {8},
   year         = {2011},
 }
 
@@ -1374,7 +1384,7 @@ and program proving is also included.},
   pages     = {203--213},
   volume    = {2},
   journal   = {Software Testing, Verification and Reliability},
-  month     = {dec},
+  month     = {12},
   publisher = {Wiley},
   year      = {1992},
 }
@@ -1790,7 +1800,7 @@ only to affected dependences.},
   issue_date = {January 2013},
   journal    = {SIGPLAN Not.},
   keywords   = {symbolic execution, floating-point exceptions},
-  month      = {jan},
+  month      = {1},
   numpages   = {12},
   publisher  = {Association for Computing Machinery},
   year       = {2013},
@@ -1804,4 +1814,77 @@ only to affected dependences.},
   isbn      = {978-3-319-03602-1},
   pages     = {185--198},
   publisher = {Springer International Publishing},
-  abstract  = {Software testing research has resulted in effective white-box test generation techniques that can produce unit test suites achieving high code coverage. However, research prototypes usually only cover subsets of the basic programming language features, thus inhibit
+  abstract  = {Software testing research has resulted in effective white-box test generation techniques that can produce unit test suites achieving high code coverage. However, research prototypes usually only cover subsets of the basic programming language features, thus inhibiting practical use and evaluation. One feature commonly omitted are Java's generics, which have been present in the language since 2004. In Java, a generic class has type parameters and can be instantiated for different types; for example, a collection can be parameterized with the type of values it contains. To enable test generation tools to cover generics, two simple changes are required to existing approaches: First, the test generator needs to use Java's extended reflection API to retrieve the little information that remains after type erasure. Second, a simple static analysis can identify candidate classes for type parameters of generic classes. The presented techniques are implemented in the EvoSuite test data generation tool and their feasibility is demonstrated with an example.},
+  address   = {Cham},
+  year      = {2014},
+}
+
+@Article{Ardito2020,
+  author   = {Luca Ardito and Luca Barbato and Marco Castelluccio and Riccardo Coppola and Calixte Denizet and Sylvestre Ledru and Michele Valsesia},
+  title    = {rust-code-analysis: A Rust library to analyze and extract maintainability information from source codes},
+  doi      = {https://doi.org/10.1016/j.softx.2020.100635},
+  issn     = {2352-7110},
+  pages    = {100635},
+  url      = {https://www.sciencedirect.com/science/article/pii/S2352711020303484},
+  volume   = {12},
+  abstract = {The literature proposes many software metrics for evaluating the source code non-functional properties, such as its complexity and maintainability. The literature also proposes several tools to compute those properties on source codes developed with many different software languages. However, the Rust language emergence has not been paired by the community’s effort in developing parsers and tools able to compute metrics for the Rust source code. Also, metrics tools often fall short in providing immediate means of comparing maintainability metrics between different algorithms or coding languages. We hence introduce rust-code-analysis, a Rust library that allows the extraction of a set of eleven maintainability metrics for ten different languages, including Rust. rust-code-analysis, through the Abstract Syntax Tree (AST) of a source file, allows the inspection of the code structure, analyzing source code metrics at different levels of granularity, and finding code syntax errors before compiling time. The tool also offers a command-line interface that allows exporting the results in different formats. The possibility of analyzing source codes written in different programming languages enables simple and systematic comparisons between the metrics produced from different empirical and large-scale analysis sources.},
+  journal  = {SoftwareX},
+  keywords = {Algorithm, Software metrics, Software maintainability, Software quality},
+  year     = {2020},
+}
+
+@InProceedings{Lukasczyk2020,
+  author    = {Lukasczyk, Stephan and Kroi{\ss}, Florian and Fraser, Gordon},
+  booktitle = {Search-Based Software Engineering},
+  title     = {Automated Unit Test Generation for Python},
+  editor    = {Aleti, Aldeida and Panichella, Annibale},
+  isbn      = {978-3-030-59762-7},
+  pages     = {9--24},
+  publisher = {Springer International Publishing},
+  abstract  = {Automated unit test generation is an established research field, and mature test generation tools exist for statically typed programming languages such as Java. It is, however, substantially more difficult to automatically generate supportive tests for dynamically typed programming languages such as Python, due to the lack of type information and the dynamic nature of the language. In this paper, we describe a foray into the problem of unit test generation for dynamically typed languages. We introduce Pynguin, an automated unit test generation framework for Python. Using Pynguin, we aim to empirically shed light on two central questions: (1) Do well-established search-based test generation methods, previously evaluated only on statically typed languages, generalise to dynamically typed languages? (2) What is the influence of incomplete type information and dynamic typing on the problem of automated test generation? Our experiments confirm that evolutionary algorithms can outperform random test generation also in the context of Python, and can even alleviate the problem of absent type information to some degree. However, our results demonstrate that dynamic typing nevertheless poses a fundamental issue for test generation, suggesting future work on integrating type inference.},
+  address   = {Cham},
+  year      = {2020},
+}
+
+@InProceedings{Arcuri2011,
+  author    = {Arcuri, Andrea and Briand, Lionel},
+  booktitle = {2011 33rd International Conference on Software Engineering (ICSE)},
+  title     = {A practical guide for using statistical tests to assess randomized algorithms in software engineering},
+  doi       = {10.1145/1985793.1985795},
+  pages     = {1-10},
+  year      = {2011},
+}
+
+@Article{Ali2010,
+  author  = {Ali, Shaukat and Briand, Lionel C. and Hemmati, Hadi and Panesar-Walawege, Rajwinder Kaur},
+  title   = {A Systematic Review of the Application and Empirical Investigation of Search-Based Test Case Generation},
+  doi     = {10.1109/TSE.2009.52},
+  number  = {6},
+  pages   = {742-762},
+  volume  = {36},
+  journal = {IEEE Transactions on Software Engineering},
+  year    = {2010},
+}
+
+@Article{Leech2002,
+  author    = {Leech, Nancy L and Onwuegbuzie, Anthony J},
+  title     = {A Call for Greater Use of Nonparametric Statistics.},
+  publisher = {ERIC},
+  year      = {2002},
+}
+
+@Article{Poulding2010,
+  author  = {Poulding, Simon and Clark, John A.},
+  title   = {Efficient Software Verification: Statistical Testing Using Automated Search},
+  doi     = {10.1109/TSE.2010.24},
+  number  = {6},
+  pages   = {763-777},
+  volume  = {36},
+  journal = {IEEE Transactions on Software Engineering},
+  year    = {2010},
+}
+
+@InProceedings{Arcuri2017,
+  author    = {A. Arcuri and G. Fraser and R. Just},
+  booktitle = {ICST'11: Proceedings of the 10th International Conference on Software Testing, Verification and Validation},
+  title
