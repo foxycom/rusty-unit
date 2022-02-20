@@ -1,34 +1,116 @@
 use log::{debug, error, info, warn};
 use rustc_data_structures::snapshot_vec::VecLike;
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
-use rustc_hir::{AssocItemKind, BodyId, EnumDef, FnSig, Generics, HirId, Impl, ImplItemKind, Item, ItemKind, Variant, VariantData, Visibility, VisibilityKind};
-use rustc_middle::ty::{DefIdTree, TyCtxt};
+use rustc_hir::{AssocItemKind, BodyId, EnumDef, FnDecl, FnRetTy, FnSig, ForeignItem, Generics, HirId, Impl, ImplItem, ImplItemKind, Item, ItemId, ItemKind, TraitItem, Ty, TyKind, Variant, VariantData, Visibility, VisibilityKind};
+use rustc_middle::ty::{DefIdTree, TyCtxt, TypeckResults};
 use rustc_span::Span;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use rustc_ast::CrateSugar;
+use rustc_ast::visit::walk_crate;
+use rustc_hir::def::Res;
+use rustc_hir::intravisit::nested_filter::NestedFilter;
+use rustc_hir::intravisit::Visitor;
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_middle::hir::nested_filter::{All, OnlyBodies};
 use rustc_middle::mir::{Body, HasLocalDecls};
 
-use crate::util::{get_cut_name, get_testify_flags};
 use crate::writer::HirWriter;
 use generation::analysis::HirAnalysis;
-use generation::types::{Callable, EnumInitItem, EnumVariant, FieldAccessItem, FunctionItem, MethodItem, Param, StaticFnItem, StructInitItem, T};
+use generation::types::{Callable, EnumInitItem, EnumVariant, FieldAccessItem, FunctionItem, MethodItem, Param, rustc_middle_ty_to_t, StaticFnItem, StructInitItem, T};
 use generation::util::{def_id_to_complex, def_id_to_enum, fn_ret_ty_to_t, generics_to_ts, impl_to_struct_id, item_to_name, node_to_name, span_to_path, ty_to_param, ty_to_t};
 use generation::{HIR_LOG_PATH, LOG_DIR};
-lazy_static! {
-    pub static ref SOURCE_FILE_MAP: Arc<Mutex<HashMap<PathBuf, usize>>> =
-        Arc::new(Mutex::new(HashMap::new()));
+use generation::types::Callable::Method;
+use instrumentation::extractor::{hir_ty_to_mir_ty, parent_of_method};
+use instrumentation::options::RuConfig;
+
+struct HirVisitor<'tcx> {
+    types: Vec<String>,
+    tcx: TyCtxt<'tcx>
+}
+
+impl<'tcx> HirVisitor<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
+        Self {
+            types: vec![],
+            tcx
+        }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for HirVisitor<'tcx> {
+    type NestedFilter = All;
+
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
+    }
+
+    fn visit_impl_item(&mut self, ii: &'tcx ImplItem<'tcx>) {
+        let typeck_results = TypeckResults::new(ii.def_id);
+
+        match &ii.kind {
+            ImplItemKind::Fn(fn_sig, _) => {
+                error!("--> Fn {}", ii.ident.name.to_ident_string());
+
+                let params: Vec<Param> = vec![];
+                let parent_ty = parent_of_method(ii.def_id.to_def_id(), &self.tcx);
+                let parent_t: Arc<T> = Arc::new(rustc_middle_ty_to_t(parent_ty, &self.tcx));
+                //MethodItem::new("path", params, return_ty, parent_t, vec![], true, );
+
+
+
+                error!("--> Parent: {:?}", parent_t);
+                //error!("--> Parent: {:?}", self.tcx.type_of(ii.def_id));
+                match &fn_sig.decl.output {
+                    FnRetTy::Return(ret_ty) => {
+                        self.handle_hir_ty(ret_ty, &typeck_results);
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+impl<'tcx> HirVisitor<'tcx> {
+    fn handle_hir_ty(&self, ty: &rustc_hir::Ty, typeck_results: &TypeckResults) {
+        let r = hir_ty_to_mir_ty(ty, typeck_results, &self.tcx);
+        error!("--> MIR type: {:?}", r);
+        if let Some(adt_def) = r.ty_adt_def() {
+            error!("--> ADT Def: {:?}", adt_def);
+            error!("--> Predicates: {:?}", adt_def.predicates(self.tcx.clone()));
+        }
+    }
+}
+
+impl<'hir> ItemLikeVisitor<'hir> for HirVisitor<'_> {
+    fn visit_item(&mut self, item: &'hir Item<'hir>) {
+        Visitor::visit_nested_item(self, item.item_id());
+    }
+
+    fn visit_trait_item(&mut self, trait_item: &'hir TraitItem<'hir>) {
+    }
+
+    fn visit_impl_item(&mut self, impl_item: &'hir ImplItem<'hir>) {
+    }
+
+    fn visit_foreign_item(&mut self, foreign_item: &'hir ForeignItem<'hir>) {
+    }
 }
 
 fn analyze_tcx(tcx: &TyCtxt<'_>) {
-    for key in tcx.mir_keys(()) {
+    let mut visitor = HirVisitor::new(tcx.clone());
+    tcx.hir().visit_all_item_likes(&mut visitor);
+
+    /*for key in tcx.mir_keys(()) {
         let def_id = key.to_def_id();
         if tcx.def_path_str(def_id).contains("rusty_monitor") {
             continue;
         }
 
-        /* info!("ANALYSIS: Mir key is {:?}",  def_id);
+         info!("ANALYSIS: Mir key is {:?}",  def_id);
          let impl_of_method = tcx.impl_of_method(def_id);
          if let Some(impl_of_method) = impl_of_method {
              info!("Is method of impl {:?}", impl_of_method);
@@ -45,8 +127,8 @@ fn analyze_tcx(tcx: &TyCtxt<'_>) {
              }
              let mut i = 1;
              info!("Return type is: {:?}", mir.return_ty().kind());
-         }*/
-    }
+         }
+    }*/
 }
 
 fn get_params(body: &Body<'_>) -> Vec<Param> {
@@ -60,11 +142,10 @@ fn get_params(body: &Body<'_>) -> Vec<Param> {
 }
 
 pub fn hir_analysis(tcx: TyCtxt<'_>) {
+    analyze_tcx(&tcx);
 
-    let testify_flags = get_testify_flags();
-    let cut_name = get_cut_name(testify_flags.as_ref());
     let current_crate_name = tcx.crate_name(LOCAL_CRATE);
-    if current_crate_name.as_str() != cut_name {
+    if current_crate_name.as_str() != RuConfig::env_crate_name() {
         return;
     }
 
@@ -349,9 +430,10 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
     debug!("HIR: Impl generics:\n{:?}", impl_generics);
     for item in items {
         let def_id = item.id.def_id;
+        let typeck_results = TypeckResults::new(def_id);
 
         match &item.kind {
-            AssocItemKind::Fn { .. } => {
+            AssocItemKind::Fn { has_self } => {
                 let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
                 let impl_item = tcx.hir().impl_item(item.id);
                 match &impl_item.kind {
@@ -362,6 +444,7 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                         );
 
                         let return_type = fn_ret_ty_to_t(&sig.decl.output, parent_hir_id, tcx);
+
                         if let Some(return_type) = return_type.as_ref() {
                             debug!("HIR: Return type is {:?}", &return_type);
                         }
@@ -393,15 +476,30 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                             }
                         }
 
-                        if !sig.decl.implicit_self.has_implicit_self() {
-                            // Static method
+                        if *has_self {
+                            // Method
+                            debug!("HIR: Method is associative");
+                            let method_item = MethodItem::new(
+                                file_path.to_str().unwrap(),
+                                params,
+                                return_type,
+                                parent.clone(),
+                                overall_generics.clone(),
+                                is_public,
+                                hir_id,
+                                tcx,
+                            );
+                            let method_callable = Callable::Method(method_item);
+                            callables.push(method_callable);
+                        } else {
+                            // Associative function
                             debug!("HIR: Method is static");
                             let static_method_item = StaticFnItem::new(
                                 file_path.to_str().unwrap(),
                                 params,
                                 return_type,
                                 parent.clone(),
-                                impl_generics.clone(),
+                                overall_generics.clone(),
                                 is_public,
                                 hir_id,
                                 tcx,
@@ -409,21 +507,6 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                             let static_method_callable =
                                 Callable::StaticFunction(static_method_item);
                             callables.push(static_method_callable);
-                        } else {
-                            // Dynamic method
-                            debug!("HIR: Method is associative");
-                            let method_item = MethodItem::new(
-                                file_path.to_str().unwrap(),
-                                params,
-                                return_type,
-                                parent.clone(),
-                                impl_generics.clone(),
-                                is_public,
-                                hir_id,
-                                tcx,
-                            );
-                            let method_callable = Callable::Method(method_item);
-                            callables.push(method_callable);
                         }
                     }
                     _ => {}

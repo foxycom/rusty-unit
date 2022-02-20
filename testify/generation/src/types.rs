@@ -2,7 +2,7 @@ use proc_macro2::{Ident, Span};
 use rustc_ast::{FloatTy, IntTy, UintTy};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BodyId, FnSig, HirId, PrimTy};
-use rustc_middle::ty::{TyCtxt, TypeFoldable};
+use rustc_middle::ty::{AdtDef, AdtKind, GenericParamDefKind, PredicateKind, Ty, TyCtxt, TyKind, TypeFoldable};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -11,6 +11,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
+use log::error;
+use rustc_target::abi::VariantIdx;
 use syn::{Expr, Type};
 use uuid::Uuid;
 
@@ -350,16 +352,125 @@ impl FieldAccessItem {
 }
 
 
-
 #[derive(Clone, Hash, Eq, Serialize, Deserialize)]
 pub enum T {
     Ref(Arc<T>, bool),
     Prim(PrimT),
-    Complex(ComplexT),
+    Struct(StructT),
     Generic(Generic),
     Enum(EnumT),
     Array(Box<ArrayT>),
     Tuple(TupleT),
+}
+
+fn trait_def_to_trait(def_id: DefId, tcx: &TyCtxt<'_>) -> Trait {
+    assert!(tcx.is_trait(def_id));
+
+    let bounding_trait_def = tcx.trait_def(def_id);
+    let trait_name = def_id_name(bounding_trait_def.def_id, tcx);
+    Trait::new(&trait_name)
+}
+
+pub fn rustc_middle_ty_to_t(ty: rustc_middle::ty::Ty<'_>, tcx: &TyCtxt<'_>) -> T {
+    match ty.kind() {
+        TyKind::Adt(adt_def, subst_ref) => {
+            adt_def_to_t(adt_def, tcx)
+        }
+        _ => todo!()
+    }
+}
+
+fn def_id_name(def_id: DefId, tcx: &TyCtxt<'_>) -> String {
+    tcx.def_path_str(def_id)
+}
+
+fn ty_name<'tcx>(ty: rustc_middle::ty::Ty<'tcx>) -> &'tcx str {
+    match ty.kind() {
+        TyKind::Param(param) => param.name.as_str(),
+        _ => todo!("{:?}", ty.kind())
+    }
+}
+
+/// Converts an AdtDef to a T
+fn adt_def_to_t(adt_def: &AdtDef, tcx: &TyCtxt<'_>) -> T {
+    match adt_def.adt_kind() {
+        AdtKind::Struct => {
+            // Has only one variant
+            assert_eq!(adt_def.variants.len(), 1);
+            let variant = adt_def.variants.get(VariantIdx::from_usize(0)).unwrap();
+            let name = variant.name.as_str();
+            let generics = generics_of_adt(adt_def.did, tcx)
+                .iter()
+                .map(|gen| Arc::new(gen.clone()))
+                .collect::<Vec<_>>();
+            T::Struct(StructT::new(name, generics))
+        }
+        AdtKind::Union => {
+            todo!("Adt def is union")
+        }
+        AdtKind::Enum => {
+            todo!("Adt def is enum")
+        }
+    }
+}
+
+/// Converts the generics of an abstract data type to Ts
+fn generics_of_adt(def_id: DefId, tcx: &TyCtxt<'_>) -> Vec<T> {
+    let adt_predicates = tcx.predicates_defined_on(def_id);
+
+    let mut generics: Vec<Generic> = Vec::new();
+    adt_predicates.predicates.iter().filter_map(|(predicate, _)| {
+        let binder = predicate.kind();
+        match binder.skip_binder() {
+            PredicateKind::Trait(trait_predicate) => {
+                let self_ty = trait_predicate.self_ty();
+                let name = ty_name(self_ty);
+                let trait_ = trait_def_to_trait(trait_predicate.def_id(), tcx);
+                let g = Generic::new(name, vec![trait_]);
+                Some(g)
+            }
+            _ => None
+        }
+    }).for_each(|mut g| {
+        // The compiler splits things like T: Copy + Debug into
+        // two separate predicates with same name, i.e., T, so we merge them back again
+        let existing_generic = generics.iter_mut().find(|e| e.name == g.name);
+        if let Some(generics) = existing_generic {
+            generics.bounds.append(&mut g.bounds);
+        } else {
+            generics.push(g);
+        }
+    });
+
+    generics.iter().map(|g| T::Generic(g.clone())).collect()
+
+    /*let adt_generics = tcx.generics_of(def_id);
+
+    adt_generics.params.iter().for_each(|param| {
+        println!("Generic type: {:?}", tcx.type_of(param.def_id));
+    });*/
+
+    /*let generics: Vec<T> = adt_generics.params.iter().filter_map(|param| {
+        match &param.kind {
+            GenericParamDefKind::Type {..} => {
+                let name = param.name.to_string();
+                let bounds = item_bounds(param.def_id, tcx);
+                let generic = Generic::new(&name, bounds);
+                todo!()
+            },
+            _ => None
+        }
+    }).collect::<Vec<_>>();*/
+
+    //T::Generic(Generic::new())
+
+    //todo!("Generics are: {:?}", generics)
+}
+
+/// Returns the bounds of a generic item
+fn item_bounds(def_id: DefId, tcx: &TyCtxt<'_>) -> Vec<Trait> {
+    let item_bounds = tcx.item_bounds(def_id);
+    todo!("Item bounds are: {:?}", item_bounds)
 }
 
 impl Debug for T {
@@ -370,7 +481,7 @@ impl Debug for T {
                 Debug::fmt(ty, f)
             }
             T::Prim(prim_ty) => Debug::fmt(prim_ty, f),
-            T::Complex(complex_ty) => Debug::fmt(complex_ty, f),
+            T::Struct(complex_ty) => Debug::fmt(complex_ty, f),
             T::Generic(generic_ty) => Debug::fmt(generic_ty, f),
             T::Enum(enum_ty) => Debug::fmt(enum_ty, f),
             T::Array(array_ty) => Debug::fmt(array_ty, f),
@@ -386,8 +497,8 @@ impl PartialEq for T {
                 T::Prim(other_prim) => prim == other_prim,
                 _ => false,
             },
-            T::Complex(comp) => match other {
-                T::Complex(other_comp) => comp == other_comp,
+            T::Struct(comp) => match other {
+                T::Struct(other_comp) => comp == other_comp,
                 _ => false,
             },
             T::Generic(generic) => match other {
@@ -462,7 +573,7 @@ impl T {
     pub fn name(&self) -> String {
         match self {
             T::Prim(prim) => prim.name_str().to_string(),
-            T::Complex(complex) => complex.name().to_string(),
+            T::Struct(complex) => complex.name().to_string(),
             T::Generic(generic) => generic.name().to_string(),
             T::Ref(r, _) => r.name(),
             T::Enum(enum_ty) => enum_ty.name().to_owned(),
@@ -500,7 +611,7 @@ impl Display for T {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             T::Prim(prim) => write!(f, "{}", prim.name_str()),
-            T::Complex(complex) => Display::fmt(complex, f),
+            T::Struct(complex) => Display::fmt(complex, f),
             T::Generic(generic) => Display::fmt(generic, f),
             T::Ref(r, _) => {
                 write!(f, "&");
@@ -589,21 +700,19 @@ impl TupleT {
 }
 
 #[derive(Clone, Hash, Eq, Serialize, Deserialize)]
-pub struct ComplexT {
-    #[serde(skip)]
-    def_id: Option<DefId>,
+pub struct StructT {
     name: String,
     generics: Vec<Arc<T>>,
     is_local: bool,
 }
 
-impl Debug for ComplexT {
+impl Debug for StructT {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl Display for ComplexT {
+impl Display for StructT {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)?;
         if !self.generics.is_empty() {
@@ -622,34 +731,23 @@ impl Display for ComplexT {
     }
 }
 
-impl PartialEq for ComplexT {
+impl PartialEq for StructT {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name && self.generics == other.generics
     }
 }
 
-impl ComplexT {
-    pub fn new(def_id: Option<DefId>, name: &str, generics: Vec<Arc<T>>) -> Self {
-        let is_local = if let Some(def_id) = def_id {
-            def_id.is_local()
-        } else {
-            false
-        };
-
-        ComplexT {
+impl StructT {
+    pub fn new(name: &str, generics: Vec<Arc<T>>) -> Self {
+        StructT {
             name: name.to_string(),
-            is_local,
-            def_id,
+            is_local: true,
             generics,
         }
     }
 
     pub fn name(&self) -> &str {
         &self.name
-    }
-
-    pub fn def_id(&self) -> Option<DefId> {
-        self.def_id
     }
 
     pub fn generics(&self) -> &Vec<Arc<T>> {
@@ -671,8 +769,6 @@ impl ComplexT {
 
 #[derive(Debug, Clone, Hash, Eq, Serialize, Deserialize)]
 pub struct EnumT {
-    #[serde(skip)]
-    def_id: Option<DefId>,
     name: String,
     generics: Vec<Arc<T>>,
     variants: Vec<EnumVariant>,
@@ -710,23 +806,15 @@ impl Display for EnumT {
 
 impl EnumT {
     pub fn new(
-        def_id: Option<DefId>,
         name: &str,
         generics: Vec<Arc<T>>,
         variants: Vec<EnumVariant>,
     ) -> Self {
-        let is_local = if let Some(def_id) = def_id {
-            def_id.is_local()
-        } else {
-            false
-        };
-
         Self {
-            def_id,
             name: name.to_string(),
             variants,
             generics,
-            is_local,
+            is_local: true,
         }
     }
 
@@ -740,10 +828,6 @@ impl EnumT {
         } else {
             self.name.to_string()
         }
-    }
-
-    pub fn def_id(&self) -> Option<DefId> {
-        self.def_id
     }
 }
 
@@ -828,13 +912,8 @@ impl Display for Generic {
         write!(f, "{}", &self.name)?;
         if !self.bounds.is_empty() {
             write!(f, ": ")?;
-            for (idx, bound) in self.bounds.iter().enumerate() {
-                if idx == self.bounds.len() - 1 {
-                    write!(f, "{} + ", bound)?;
-                } else {
-                    write!(f, "{}", bound)?;
-                }
-            }
+            let bounds = self.bounds.iter().map(|b| format!("{}", b)).collect::<Vec<_>>().join(" + ");
+            write!(f, "{}", bounds)?;
         }
         Ok(())
     }

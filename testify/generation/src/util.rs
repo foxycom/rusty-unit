@@ -1,4 +1,4 @@
-use crate::types::{ComplexT, Generic, Param, Trait, T, EnumT, EnumVariant, TupleT};
+use crate::types::{StructT, Generic, Param, Trait, T, EnumT, EnumVariant, TupleT};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::rc::Rc;
 use std::sync::Arc;
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use syn::{FnArg, ImplItemMethod, Path, ReturnType, Type};
 
 pub fn cargo_path() -> io::Result<PathBuf> {
@@ -104,6 +104,7 @@ pub fn ty_to_t(
                         Res::SelfTy(trait_def_id, impl_) => {
                             // Self type, so replace it with the parent id
                             //let name = node_to_name(&tcx.hir().get(self_), tcx).unwrap();
+
                             let def_id = tcx.hir().local_def_id(self_.unwrap()).to_def_id();
                             //Some(T::Complex(ComplexT::new(def_id, name)))
                             def_id_to_complex(def_id, tcx)
@@ -157,21 +158,20 @@ pub fn path_to_t(
     self_: Option<HirId>,
     path: &rustc_hir::Path<'_>,
     defined_generics: &Vec<Arc<T>>,
-    tcx: &TyCtxt<'_>
+    tcx: &TyCtxt<'_>,
 ) -> Option<Arc<T>> {
     let name = tcx.def_path_str(def_id);
     let generics = path_to_generics(path, self_, defined_generics, tcx);
 
     match def_kind {
         DefKind::Enum => {
-            Some(Arc::new(T::Enum(EnumT::new(Some(def_id), &name, generics, vec![]))))
+            Some(Arc::new(T::Enum(EnumT::new(&name, generics, vec![]))))
         }
         DefKind::Struct => {
-            Some(Arc::new(T::Complex(ComplexT::new(Some(def_id), &name, generics))))
+            Some(Arc::new(T::Struct(StructT::new(&name, generics))))
         }
         _ => unimplemented!()
     }
-
 }
 
 pub fn generic_arg_to_t(generic_arg: &GenericArg, self_: Option<HirId>, defined_generics: &Vec<Arc<T>>, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
@@ -197,7 +197,7 @@ pub fn def_id_to_complex(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
             let name = tcx.def_path_str(def_id);
             match adt_def.adt_kind() {
                 AdtKind::Struct => {
-                    let t = T::Complex(ComplexT::new(Some(def_id), &name, generics));
+                    let t = T::Struct(StructT::new(&name, generics));
 
                     Some(Arc::new(t))
                 }
@@ -206,12 +206,10 @@ pub fn def_id_to_complex(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
                     None
                 }
                 AdtKind::Enum => {
-                    let t = T::Enum(EnumT::new(Some(def_id), &name, generics, vec![]));
+                    let t = T::Enum(EnumT::new(&name, generics, vec![]));
                     Some(Arc::new(t))
                 }
             }
-
-
         }
         _ => todo!(),
     }
@@ -232,7 +230,7 @@ pub fn def_id_to_enum(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<Arc<T>> {
 
             let name = tcx.def_path_str(def_id);
             let variants = vec![];
-            let t = T::Enum(EnumT::new(Some(def_id), &name, generics, variants));
+            let t = T::Enum(EnumT::new(&name, generics, variants));
 
             Some(Arc::new(t))
         }

@@ -1,7 +1,5 @@
 use crate::data_structures::{cdg, log_graph_to};
-use crate::get_testify_flags;
 use crate::mir::ValueDef::Var;
-use crate::util::get_cut_name;
 use crate::writer::MirWriter;
 use generation::branch::Branch;
 use generation::{INSTRUMENTED_MIR_LOG_PATH, LOG_DIR, MIR_LOG_PATH};
@@ -29,8 +27,7 @@ use std::fs::File;
 use std::ops::Add;
 use std::path::Path;
 use rustc_ast::Mutability;
-
-type CutPoint<'tcx> = (BasicBlock, usize, BasicBlockData<'tcx>);
+use crate::RuConfig;
 
 pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<'tcx> =
     |tcx, def| {
@@ -41,10 +38,7 @@ pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'
         let crate_name = tcx.crate_name(def.krate);
         let hir_id = tcx.hir().local_def_id_to_hir_id(def.expect_local());
 
-        let testify_flags = get_testify_flags();
-        let cut_name = get_cut_name(&testify_flags);
-
-        if crate_name.as_str() != cut_name || is_rusty_monitor(hir_id, &tcx) || !allowed_item(def) {
+        if crate_name.as_str() != RuConfig::env_crate_name() || is_rusty_monitor(hir_id, &tcx) || !allowed_item(def) {
             // Don't instrument extern crates
             return tcx.arena.alloc(body);
         }
@@ -118,10 +112,8 @@ pub const CUSTOM_OPT_MIR_INSTRUMENTATION: for<'tcx> fn(
     let mut body = opt_mir(tcx, def).clone();
     let crate_name = tcx.crate_name(def.krate);
     let hir_id = tcx.hir().local_def_id_to_hir_id(def.expect_local());
-    let testify_flags = get_testify_flags();
-    let cut_name = get_cut_name(&testify_flags);
 
-    if crate_name.as_str() != cut_name || is_rusty_monitor(hir_id, &tcx) || !allowed_item(def) {
+    if crate_name.as_str() != &RuConfig::env_crate_name() || is_rusty_monitor(hir_id, &tcx) || !allowed_item(def) {
         // Don't instrument extern crates
         return tcx.arena.alloc(body);
     }

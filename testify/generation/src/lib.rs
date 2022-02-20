@@ -8,6 +8,8 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_ast;
 extern crate rustc_serialize;
+extern crate rustc_target;
+
 #[macro_use]
 extern crate lazy_static;
 

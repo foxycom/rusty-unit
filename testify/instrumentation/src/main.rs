@@ -1,12 +1,12 @@
 #![feature(rustc_private)]
+
 mod data_structures;
 mod hir;
 mod mir;
 mod util;
 mod writer;
 
-#[macro_use]
-extern crate lazy_static;
+extern crate clap;
 
 extern crate rustc_ast;
 extern crate rustc_data_structures;
@@ -21,42 +21,46 @@ extern crate rustc_target;
 
 use crate::hir::hir_analysis;
 use crate::mir::{CUSTOM_OPT_MIR_ANALYSIS, CUSTOM_OPT_MIR_INSTRUMENTATION};
-use crate::util::{get_crate_root, get_cut_name, get_stage, get_testify_flags, rustc_get_crate_name, Stage};
+use crate::util::{rustc_get_crate_name};
 use generation::source::{Project, ProjectScanner};
 use generation::LOG_DIR;
 use log::{debug, info, warn};
-use rustc_driver::Compilation;
-use rustc_interface::interface::Compiler;
-use rustc_interface::{Config, Queries};
-use rustc_middle::ty::TyCtxt;
 use std::path::Path;
 use std::process::exit;
 use std::{fs, process};
+use std::str::FromStr;
+use clap::Parser;
+use rustc_driver::Compilation;
+use rustc_interface::{Config, Queries};
+use rustc_interface::interface::Compiler;
+use rustc_middle::ty::TyCtxt;
+use instrumentation::options::{RuConfig, Stage};
 
 pub struct EmptyCallbacks {}
 
 impl rustc_driver::Callbacks for EmptyCallbacks {}
 
 pub struct CompilerCallbacks {
-    stage: Stage,
+
 }
 
 impl CompilerCallbacks {
-    pub fn new(stage: Stage) -> Self {
-        CompilerCallbacks { stage }
+    pub fn new() -> Self {
+        CompilerCallbacks {
+        }
     }
 }
 
 fn enter_with_fn<'tcx, TyCtxtFn>(queries: &'tcx rustc_interface::Queries<'tcx>, enter_fn: TyCtxtFn)
-where
-    TyCtxtFn: Fn(TyCtxt),
+    where
+        TyCtxtFn: Fn(TyCtxt),
 {
     queries.global_ctxt().unwrap().peek_mut().enter(enter_fn);
 }
 
 impl rustc_driver::Callbacks for CompilerCallbacks {
     fn config(&mut self, _config: &mut Config) {
-        match &self.stage {
+        match RuConfig::env_stage() {
             Stage::Analyze => {
                 _config.override_queries = Some(|session, local, external| {
                     local.optimized_mir = CUSTOM_OPT_MIR_ANALYSIS;
@@ -75,27 +79,15 @@ impl rustc_driver::Callbacks for CompilerCallbacks {
         _compiler: &Compiler,
         _queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
-        if self.stage == Stage::Analyze {
+        if RuConfig::env_stage() == Stage::Analyze {
             enter_with_fn(_queries, hir_analysis);
         }
         Compilation::Continue
     }
 }
 
-impl From<&str> for Stage {
-    fn from(stage_str: &str) -> Self {
-        if stage_str == "analyze" {
-            Stage::Analyze
-        } else if stage_str == "instrument" {
-            Stage::Instrument
-        } else {
-            panic!("Unknown stage: {}", stage_str);
-        }
-    }
-}
-
 pub fn arg_value<'a>(
-    args: impl IntoIterator<Item = &'a String>,
+    args: impl IntoIterator<Item=&'a String>,
     find_arg: &str,
     pred: impl Fn(&str) -> bool,
 ) -> Option<&'a str> {
@@ -169,11 +161,7 @@ pub fn get_compiler_args(args: &[String]) -> Vec<String> {
 }
 
 fn run_rustc() -> Result<(), i32> {
-    let std_env_args: Vec<String> = std::env::args().collect();
-
-    let testify_env_flags = get_testify_flags();
-    let stage = get_stage(&testify_env_flags);
-    if let Stage::Analyze = stage {
+    if let Stage::Analyze = RuConfig::env_stage() {
         if let Ok(_) = fs::remove_dir_all(LOG_DIR) {
             debug!("MAIN: Cleared the log directory");
         } else {
@@ -182,21 +170,20 @@ fn run_rustc() -> Result<(), i32> {
         fs::create_dir_all(LOG_DIR).expect("Could not create the log directory");
     }
 
-    let rusty_flags = get_testify_flags();
-    let cut = get_cut_name(&rusty_flags);
+    let std_env_args: Vec<String> = std::env::args().collect();
     let rustc_args = get_compiler_args(&std_env_args);
 
-    let do_instrument = rustc_get_crate_name(&rustc_args) == cut;
+    let do_instrument = rustc_get_crate_name(&rustc_args) == RuConfig::env_crate_name();
 
-    pass_to_rustc(&rustc_args, stage, do_instrument);
+    pass_to_rustc(&rustc_args, do_instrument);
     return Ok(());
 }
 
-pub fn pass_to_rustc(rustc_args: &[String], stage: Stage, instrumentation: bool) {
+pub fn pass_to_rustc(rustc_args: &[String], instrumentation: bool) {
     let err = if instrumentation {
         // The crate we want to analyze, so throw up the instrumentation
         info!("MAIN: Instrumenting crate {}", rustc_get_crate_name(&rustc_args));
-        let mut callbacks = CompilerCallbacks::new(stage);
+        let mut callbacks = CompilerCallbacks::new();
         rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
     } else {
         // A dependency, don't do anything, otherwise we might break incremental compilation
@@ -213,12 +200,6 @@ pub fn pass_to_rustc(rustc_args: &[String], stage: Stage, instrumentation: bool)
 fn main() {
     // Initialize the logger
     env_logger::init();
-
-    let mut a = 32;
-    let mut b = 42;
-    let c = &mut a;
-    let d = &mut b;
-    let tuple = (c, d);
 
     exit(run_rustc().err().unwrap_or(0))
 }
