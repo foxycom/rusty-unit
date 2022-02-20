@@ -10,6 +10,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use log::{error, info};
+use rustc_hir::def::CtorKind;
 use rustc_target::abi::VariantIdx;
 use uuid::Uuid;
 
@@ -330,6 +331,9 @@ pub fn mir_ty_to_t(ty: rustc_middle::ty::Ty<'_>, tcx: &TyCtxt<'_>) -> T {
         TyKind::Adt(adt_def, subst_ref) => {
             adt_def_to_t(adt_def, tcx)
         }
+        TyKind::Param(param) => {
+            T::Generic(Generic::new(param.name.as_str(), vec![]))
+        }
 
         _ => todo!("{:?}", ty.kind())
     }
@@ -353,15 +357,38 @@ fn adt_def_to_t(adt_def: &AdtDef, tcx: &TyCtxt<'_>) -> T {
             // Has only one variant
             assert_eq!(adt_def.variants.len(), 1);
             let variant = adt_def.variants.get(VariantIdx::from_usize(0)).unwrap();
-            let name = variant.name.as_str();
+            let name = def_id_name(adt_def.did, tcx);
             let generics = generics_of_item(adt_def.did, tcx);
-            T::Struct(StructT::new(name, generics))
+            T::Struct(StructT::new(&name, generics))
         }
         AdtKind::Union => {
             todo!("Adt def is union")
         }
         AdtKind::Enum => {
-            todo!("Adt def is enum")
+            let enum_name = def_id_name(adt_def.did, tcx);
+            let mut variants = Vec::with_capacity(adt_def.variants.len());
+            for variant in &adt_def.variants {
+                let variant_name = variant.name.to_string();
+
+                let params = variant.fields.iter().map(|f| {
+                    let field_name = f.name.to_string();
+                    let field_t = mir_ty_to_t(tcx.type_of(f.did), tcx);
+                    Param::new(Some(&field_name), field_t, false)
+                }).collect::<Vec<_>>();
+
+                match variant.ctor_kind {
+                    CtorKind::Fn => {
+                        variants.push(EnumVariant::Tuple(variant_name, params));
+                    }
+                    _ => todo!("{:?}", variant.ctor_kind)
+                }
+            }
+
+            let generics = generics_of_item(adt_def.did, tcx);
+
+            let t = T::Enum(EnumT::new(&enum_name, generics, variants));
+            info!("Extracted enum: {:?}", t);
+            t
         }
     }
 }
@@ -384,6 +411,8 @@ pub fn generics_of_item(def_id: DefId, tcx: &TyCtxt<'_>) -> Vec<T> {
 
                 Some(g)
             }
+            PredicateKind::RegionOutlives(_) => None,
+            PredicateKind::TypeOutlives(_) => None,
             _ => todo!("{:?}", binder.skip_binder())
         }
     }).for_each(|mut g| {

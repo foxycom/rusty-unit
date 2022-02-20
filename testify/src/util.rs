@@ -37,7 +37,7 @@ pub fn fmt_path() -> io::Result<PathBuf> {
 
 pub fn ty_to_param(
     name: Option<&str>,
-    ty: &Ty,
+    ty: &rustc_hir::Ty,
     tcx: &TyCtxt<'_>,
 ) -> Param {
     let mutability = match &ty.kind {
@@ -50,7 +50,7 @@ pub fn ty_to_param(
 }
 
 pub fn hir_ty_to_t_unprecise(
-    ty: &Ty,
+    ty: &rustc_hir::Ty,
     tcx: &TyCtxt<'_>,
 ) -> T {
     match &ty.kind {
@@ -65,6 +65,10 @@ pub fn hir_ty_to_t_unprecise(
         TyKind::Path(q_path) => {
             match q_path {
                 QPath::Resolved(_, path) => {
+                    let owner_local_def_id = ty.hir_id.owner.to_owned();
+                    let typeck_results = TypeckResults::new(owner_local_def_id);
+                    let typeck_res = typeck_results.qpath_res(q_path, ty.hir_id);
+
                     match &path.res {
                         Res::Def(def_kind, def_id) => {
                             match def_kind {
@@ -89,7 +93,12 @@ pub fn hir_ty_to_t_unprecise(
                                     warn!("HIR: impl is being returned");
                                     todo!()
                                 }
-                                _ => todo!()
+                                DefKind::TyAlias => {
+                                    let ty = tcx.type_of(def_id);
+                                    mir_ty_to_t(ty, tcx)
+
+                                }
+                                _ => todo!("{:?}", def_kind)
                             }
                         }
                         Res::PrimTy(prim_ty) => T::from(*prim_ty),
@@ -166,7 +175,11 @@ pub fn path_to_t(
         DefKind::Struct => {
             T::Struct(StructT::new(&name, generics))
         }
-        _ => todo!()
+        DefKind::TyAlias => {
+
+            todo!()
+        }
+        _ => todo!("{:?}", def_kind)
     }
 }
 
@@ -254,7 +267,7 @@ pub fn generic_to_t(generic_kind: GenericArgKind, tcx: &TyCtxt<'_>) -> Option<T>
 pub fn tys_to_t(ty: rustc_middle::ty::Ty, tcx: &TyCtxt<'_>) -> Option<T> {
     match ty.kind() {
         rustc_middle::ty::TyKind::Param(param) => {
-            let name = param.name.to_string();
+            let name = param.name.to_ident_string();
             let generic_param = T::Generic(Generic::new(&name, vec![]));
             Some(generic_param)
         }
