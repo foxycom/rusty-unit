@@ -6,18 +6,11 @@ import static org.mockito.Mockito.when;
 import de.unipassau.testify.hir.HirAnalysis;
 import de.unipassau.testify.metaheuristics.operators.Crossover;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
-import de.unipassau.testify.test_case.callable.EnumInit;
-import de.unipassau.testify.test_case.callable.RefItem;
 import de.unipassau.testify.test_case.callable.StaticMethod;
-import de.unipassau.testify.test_case.callable.StructInit;
-import de.unipassau.testify.test_case.type.Complex;
-import de.unipassau.testify.test_case.type.Enum;
-import de.unipassau.testify.test_case.type.Enum.EnumVariant;
+import de.unipassau.testify.test_case.type.Struct;
 import de.unipassau.testify.test_case.type.Generic;
-import de.unipassau.testify.test_case.type.Ref;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.prim.Int.ISize;
-import de.unipassau.testify.test_case.type.prim.UInt.USize;
 import de.unipassau.testify.test_case.visitor.TestCaseVisitor;
 import java.util.Collections;
 import java.util.List;
@@ -49,8 +42,8 @@ class TestCaseTest {
   @Test
   void testInsertCallableWithSameGeneric() {
     Type generic_A = new Generic("A", Collections.emptyList());
-    Type parent = new Complex("MyType", List.of(generic_A), true);
-    Type vecType = new Complex("std::vec::Vec", List.of(generic_A), false);
+    Type parent = new Struct("MyType", List.of(generic_A), true);
+    Type vecType = new Struct("std::vec::Vec", List.of(generic_A), false);
 
     var params = List.of(
         new Param(generic_A, false, "x"),
@@ -163,7 +156,7 @@ class TestCaseTest {
   @Test
   void testInsertVecConstructor() {
     var genericT = new Generic("T", Collections.emptyList());
-    var vecType = new Complex("std::vec::Vec", Collections.singletonList(genericT), false);
+    var vecType = new Struct("std::vec::Vec", Collections.singletonList(genericT), false);
     var vecConstructor = new StaticMethod("new", Collections.emptyList(), vecType, vecType, "");
     testCase.insertCallable(vecConstructor);
 

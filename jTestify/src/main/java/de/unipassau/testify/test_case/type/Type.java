@@ -3,7 +3,6 @@ package de.unipassau.testify.test_case.type;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.json.TypeDeserializer;
 import de.unipassau.testify.test_case.type.prim.Prim;
-import java.util.Collections;
 import java.util.List;
 
 @JsonDeserialize(using = TypeDeserializer.class)
@@ -49,7 +48,7 @@ public interface Type {
     return false;
   }
 
-  default Complex asComplex() {
+  default Struct asComplex() {
     throw new RuntimeException("Not with me");
   }
 

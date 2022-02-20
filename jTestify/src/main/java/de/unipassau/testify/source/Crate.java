@@ -23,7 +23,7 @@ import org.apache.commons.io.FileUtils;
 
 public class Crate implements ChromosomeContainer<TestCase> {
 
-  private static final String MONITOR_PATH = "/Users/tim/Documents/master-thesis/testify/instrumentation/src/monitor.rs";
+  private static final String MONITOR_PATH = "/Users/tim/Documents/master-thesis/testify/src/monitor.rs";
   private final Path originalRoot;
   private final Path executionRoot;
   private final List<SourceFile> sourceFiles;

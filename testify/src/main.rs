@@ -1,17 +1,4 @@
 #![feature(rustc_private)]
-
-mod data_structures;
-mod hir;
-mod mir;
-mod util;
-mod writer;
-mod types;
-mod extractor;
-mod options;
-mod monitor;
-
-extern crate clap;
-
 extern crate rustc_ast;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
@@ -22,6 +9,20 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
+
+extern crate clap;
+
+mod data_structures;
+mod hir;
+mod mir;
+mod util;
+mod writer;
+mod types;
+mod extractor;
+mod options;
+mod monitor;
+mod analysis;
+
 
 use crate::hir::hir_analysis;
 use crate::mir::{CUSTOM_OPT_MIR_ANALYSIS, CUSTOM_OPT_MIR_INSTRUMENTATION};

@@ -444,7 +444,7 @@ impl Debug for T {
                 Debug::fmt(ty, f)
             }
             T::Prim(prim_ty) => Debug::fmt(prim_ty, f),
-            T::Struct(complex_ty) => Debug::fmt(complex_ty, f),
+            T::Struct(struct_t) => Debug::fmt(struct_t, f),
             T::Generic(generic_ty) => Debug::fmt(generic_ty, f),
             T::Enum(enum_ty) => Debug::fmt(enum_ty, f),
             T::Array(array_ty) => Debug::fmt(array_ty, f),
@@ -532,7 +532,7 @@ impl T {
     pub fn name(&self) -> String {
         match self {
             T::Prim(prim) => prim.name_str().to_string(),
-            T::Struct(complex) => complex.name().to_string(),
+            T::Struct(struct_t) => struct_t.name().to_string(),
             T::Generic(generic) => generic.name().to_string(),
             T::Ref(r, _) => r.name(),
             T::Enum(enum_ty) => enum_ty.name().to_owned(),
@@ -579,7 +579,7 @@ impl Display for T {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             T::Prim(prim) => write!(f, "{}", prim.name_str()),
-            T::Struct(complex) => Display::fmt(complex, f),
+            T::Struct(struct_t) => Display::fmt(struct_t, f),
             T::Generic(generic) => Display::fmt(generic, f),
             T::Ref(r, _) => {
                 write!(f, "&");

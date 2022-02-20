@@ -1,23 +1,11 @@
 package de.unipassau.testify.hir;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
 
-import com.google.common.collect.Lists;
-import com.google.common.truth.Truth;
-import de.unipassau.testify.test_case.Param;
-import de.unipassau.testify.test_case.type.Complex;
-import de.unipassau.testify.test_case.type.Enum;
-import de.unipassau.testify.test_case.type.Enum.EnumVariant;
-import de.unipassau.testify.test_case.type.Generic;
-import de.unipassau.testify.test_case.type.Ref;
 import de.unipassau.testify.test_case.type.Trait;
-import de.unipassau.testify.test_case.type.Type;
-import de.unipassau.testify.test_case.type.prim.Int.ISize;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

@@ -8,25 +8,25 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-@JsonDeserialize(as = Complex.class)
-public class Complex implements Type {
+@JsonDeserialize(as = Struct.class)
+public class Struct implements Type {
 
-  private String name;
-  private List<Type> generics;
+  protected String name;
+  protected List<Type> generics;
   @JsonProperty("is_local")
-  private boolean isLocal;
+  protected boolean isLocal;
 
-  public Complex() {
+  public Struct() {
 
   }
 
-  public Complex(Complex other) {
+  public Struct(Struct other) {
     this.name = other.name;
     this.isLocal = other.isLocal;
     this.generics = other.generics.stream().map(Type::copy).peek(Objects::requireNonNull).toList();
   }
 
-  public Complex(String name, List<Type> generics, boolean isLocal) {
+  public Struct(String name, List<Type> generics, boolean isLocal) {
     Objects.requireNonNull(generics).forEach(Objects::requireNonNull);
 
     this.name = name;
@@ -59,7 +59,7 @@ public class Complex implements Type {
   }
 
   @Override
-  public Complex asComplex() {
+  public Struct asComplex() {
     return this;
   }
 
@@ -86,7 +86,7 @@ public class Complex implements Type {
     return canBeSameAs(other);
   }
 
-  public boolean isSameType(Complex other) {
+  public boolean isSameType(Struct other) {
     return name.equals(other.name) && isLocal == other.isLocal;
   }
 
@@ -103,7 +103,7 @@ public class Complex implements Type {
 
   @Override
   public Type replaceGenerics(List<Type> generics) {
-    var copy = new Complex(this);
+    var copy = new Struct(this);
     generics.forEach(Objects::requireNonNull);
     copy.generics = generics;
     return copy;
@@ -111,7 +111,7 @@ public class Complex implements Type {
 
   @Override
   public Type bindGenerics(TypeBinding binding) {
-    var copy = new Complex(this);
+    var copy = new Struct(this);
     if (binding.hasUnboundedGeneric()) {
       throw new RuntimeException("Unbounded generics");
     }
@@ -123,7 +123,7 @@ public class Complex implements Type {
 
   @Override
   public Type copy() {
-    return new Complex(this);
+    return new Struct(this);
   }
 
   public boolean isLocal() {
@@ -142,10 +142,10 @@ public class Complex implements Type {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    Complex complex = (Complex) o;
-    return isLocal == complex.isLocal
-        && name.equals(complex.name)
-        && generics.equals(complex.generics);
+    Struct struct = (Struct) o;
+    return isLocal == struct.isLocal
+        && name.equals(struct.name)
+        && generics.equals(struct.generics);
   }
 
   @Override

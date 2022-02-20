@@ -22,6 +22,7 @@ public class Method implements Callable {
   @JsonProperty("src_file_path")
   private String srcFilePath;
   private String name;
+  private List<Type> generics;
 
   @JsonProperty("is_public")
   private boolean isPublic;
@@ -29,12 +30,21 @@ public class Method implements Callable {
   public Method() {
   }
 
-  public Method(String name, List<Param> params, Type returnType,
+  public Method(String name, List<Type> generics, List<Param> params, Type returnType,
       Type parent) {
     this.params = params;
     this.returnType = returnType;
     this.parent = parent;
     this.name = name;
+    this.generics = generics;
+  }
+
+  public List<Type> generics() {
+    return generics;
+  }
+
+  public void setGenerics(List<Type> generics) {
+    this.generics = generics;
   }
 
   public Param getSelfParam() {

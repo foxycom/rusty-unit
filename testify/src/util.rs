@@ -109,12 +109,7 @@ pub fn hir_ty_to_t_unprecise(
                             } else {
                                 todo!()
                             };
-                            // Self type, so replace it with the parent id
-                            //let name = node_to_name(&tcx.hir().get(self_), tcx).unwrap();
-
-                            /*let def_id = tcx.hir().local_def_id(self_.unwrap()).to_def_id();
-                            def_id_to_complex(def_id, tcx)*/
-                            todo!()
+                          
                         }
                         _ => {
                             todo!("{:?}", &path.res)
@@ -151,7 +146,7 @@ pub fn hir_ty_to_t_unprecise(
 
 pub fn path_to_generics(path: &rustc_hir::Path<'_>, tcx: &TyCtxt<'_>) -> Vec<T> {
     let generics = path.segments.iter().filter_map(|s| if let Some(args) = s.args {
-        Some(args.args.iter().map(|a| generic_arg_to_t(a, tcx)).collect::<Vec<_>>())
+        Some(args.args.iter().filter_map(|a| generic_arg_to_t(a, tcx)).collect::<Vec<_>>())
     } else {
         None
     }).flatten().collect::<Vec<_>>();
@@ -183,10 +178,11 @@ pub fn path_to_t(
     }
 }
 
-pub fn generic_arg_to_t(generic_arg: &GenericArg, tcx: &TyCtxt<'_>) -> T {
+pub fn generic_arg_to_t(generic_arg: &GenericArg, tcx: &TyCtxt<'_>) -> Option<T> {
     match generic_arg {
-        GenericArg::Type(ty) => hir_ty_to_t_unprecise(ty, tcx),
-        _ => todo!()
+        GenericArg::Type(ty) => Some(hir_ty_to_t_unprecise(ty, tcx)),
+        GenericArg::Lifetime(_) => None,
+        _ => todo!("{:?}", generic_arg)
     }
 }
 

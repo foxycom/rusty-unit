@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
-import de.unipassau.testify.test_case.type.Complex;
+import de.unipassau.testify.test_case.type.Struct;
 import de.unipassau.testify.test_case.type.Enum;
 import de.unipassau.testify.test_case.type.Generic;
 import de.unipassau.testify.test_case.type.Ref;
@@ -40,7 +40,7 @@ public class TypeDeserializer extends StdDeserializer<Type> {
   private Type createType(String typeName, JsonNode node) throws JsonProcessingException {
     var mapper = new ObjectMapper();
     return switch (typeName) {
-      case "Complex" -> mapper.readValue(node.toString(), Complex.class);
+      case "Struct" -> mapper.readValue(node.toString(), Struct.class);
       case "Generic" -> mapper.readValue(node.toString(), Generic.class);
       case "Ref" -> {
         var mutable = node.get(1).asBoolean();
