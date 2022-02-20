@@ -5,6 +5,10 @@ mod hir;
 mod mir;
 mod util;
 mod writer;
+mod types;
+mod extractor;
+mod options;
+mod monitor;
 
 extern crate clap;
 
@@ -22,8 +26,6 @@ extern crate rustc_target;
 use crate::hir::hir_analysis;
 use crate::mir::{CUSTOM_OPT_MIR_ANALYSIS, CUSTOM_OPT_MIR_INSTRUMENTATION};
 use crate::util::{rustc_get_crate_name};
-use generation::source::{Project, ProjectScanner};
-use generation::LOG_DIR;
 use log::{debug, info, warn};
 use std::path::Path;
 use std::process::exit;
@@ -34,7 +36,12 @@ use rustc_driver::Compilation;
 use rustc_interface::{Config, Queries};
 use rustc_interface::interface::Compiler;
 use rustc_middle::ty::TyCtxt;
-use instrumentation::options::{RuConfig, Stage};
+use crate::options::{RuConfig, Stage};
+
+pub const LOG_DIR: &'static str = "/Users/tim/Documents/master-thesis/tmp/testify";
+pub const MIR_LOG_PATH: &'static str = "mir.log";
+pub const HIR_LOG_PATH: &'static str = "hir.json";
+pub const INSTRUMENTED_MIR_LOG_PATH: &'static str = "instrumented-mir.log";
 
 pub struct EmptyCallbacks {}
 
@@ -110,7 +117,7 @@ pub fn arg_value<'a>(
 pub fn sysroot() -> String {
     let out = process::Command::new("rustc")
         .arg("--print=sysroot")
-        .current_dir(".")
+        .current_dir("..")
         .output()
         .unwrap();
 

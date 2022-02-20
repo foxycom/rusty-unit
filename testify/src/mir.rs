@@ -1,9 +1,6 @@
 use crate::data_structures::{cdg, log_graph_to};
 use crate::mir::ValueDef::Var;
 use crate::writer::MirWriter;
-use generation::branch::Branch;
-use generation::{INSTRUMENTED_MIR_LOG_PATH, LOG_DIR, MIR_LOG_PATH};
-use instrumentation::monitor::{BinaryOp, UnaryOp};
 use log::{debug, error, info, warn};
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_hir::def_id::DefId;
@@ -27,7 +24,8 @@ use std::fs::File;
 use std::ops::Add;
 use std::path::Path;
 use rustc_ast::Mutability;
-use crate::RuConfig;
+use crate::{INSTRUMENTED_MIR_LOG_PATH, LOG_DIR, MIR_LOG_PATH, RuConfig};
+use crate::monitor::{BinaryOp, UnaryOp};
 
 pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<'tcx> =
     |tcx, def| {
@@ -96,8 +94,8 @@ pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'
         instrumented_writer.write_basic_blocks(&blocks);
 
 
-        let branches = serde_json::to_string(&mir_visitor.branches).unwrap();
-        writer.write_branches(&branches);
+       /* let branches = serde_json::to_string(&mir_visitor.branches).unwrap();
+        writer.write_branches(&branches);*/
 
         return tcx.arena.alloc(instrumented_body);
     };
@@ -150,7 +148,6 @@ pub struct MirVisitor<'tcx> {
     global_id: String,
     locals_num: usize,
     branch_counter: u64,
-    branches: Vec<Branch>,
     cut_points: Vec<(BasicBlock, usize, Vec<(BasicBlock, BasicBlockData<'tcx>)>)>,
     basic_blocks_num: usize,
     instrumentation: Vec<(BasicBlock, Vec<BasicBlockData<'tcx>>)>,
@@ -165,7 +162,6 @@ impl<'tcx> MirVisitor<'tcx> {
             basic_blocks_num: body.num_nodes(),
             body,
             branch_counter: 0,
-            branches: vec![],
             cut_points: vec![],
             instrumentation: vec![],
         }

@@ -1,40 +1,38 @@
 use log::{debug, error, info, warn};
 use rustc_data_structures::snapshot_vec::VecLike;
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
-use rustc_hir::{AssocItemKind, BodyId, EnumDef, FnDecl, FnRetTy, FnSig, ForeignItem, Generics, HirId, Impl, ImplItem, ImplItemKind, Item, ItemId, ItemKind, TraitItem, Ty, TyKind, Variant, VariantData, Visibility, VisibilityKind};
+use rustc_hir::{AssocItemKind, BodyId, EnumDef, FnDecl, FnRetTy, FnSig, ForeignItem, Generics, HirId, Impl, ImplItem, ImplItemKind, Item, ItemId, ItemKind, QPath, TraitItem, Ty, TyKind, Variant, VariantData, Visibility, VisibilityKind};
 use rustc_middle::ty::{DefIdTree, TyCtxt, TypeckResults};
 use rustc_span::Span;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
 use rustc_ast::CrateSugar;
 use rustc_ast::visit::walk_crate;
+use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::nested_filter::NestedFilter;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::hir::nested_filter::{All, OnlyBodies};
 use rustc_middle::mir::{Body, HasLocalDecls};
+use crate::extractor::{hir_ty_to_t, parent_of_method};
+use crate::{HIR_LOG_PATH, LOG_DIR};
+use crate::options::RuConfig;
+use crate::types::{Callable, EnumInitItem, EnumVariant, FieldAccessItem, FunctionItem, generics_of_item, MethodItem, mir_ty_to_t, Param, StaticFnItem, StructInitItem, T};
 
 use crate::writer::HirWriter;
-use generation::analysis::HirAnalysis;
-use generation::types::{Callable, EnumInitItem, EnumVariant, FieldAccessItem, FunctionItem, MethodItem, Param, rustc_middle_ty_to_t, StaticFnItem, StructInitItem, T};
-use generation::util::{def_id_to_complex, def_id_to_enum, fn_ret_ty_to_t, generics_to_ts, impl_to_struct_id, item_to_name, node_to_name, span_to_path, ty_to_param, ty_to_t};
-use generation::{HIR_LOG_PATH, LOG_DIR};
-use generation::types::Callable::Method;
-use instrumentation::extractor::{hir_ty_to_mir_ty, parent_of_method};
-use instrumentation::options::RuConfig;
+use crate::util::{def_id_to_enum, def_id_to_struct, fn_ret_ty_to_t, generics_to_ts, hir_ty_to_t_unprecise, impl_to_struct_id, item_to_name, node_to_name, span_to_path, ty_to_param};
 
 struct HirVisitor<'tcx> {
     types: Vec<String>,
-    tcx: TyCtxt<'tcx>
+    tcx: TyCtxt<'tcx>,
 }
 
 impl<'tcx> HirVisitor<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>) -> Self {
         Self {
             types: vec![],
-            tcx
+            tcx,
         }
     }
 }
@@ -49,38 +47,44 @@ impl<'tcx> Visitor<'tcx> for HirVisitor<'tcx> {
     fn visit_impl_item(&mut self, ii: &'tcx ImplItem<'tcx>) {
         let typeck_results = TypeckResults::new(ii.def_id);
 
+        let is_public = ii.vis.node.is_pub();
+
         match &ii.kind {
             ImplItemKind::Fn(fn_sig, _) => {
                 error!("--> Fn {}", ii.ident.name.to_ident_string());
 
+                let name = ii.ident.name.to_string();
                 let params: Vec<Param> = vec![];
+
+                info!("Parsing parent");
                 let parent_ty = parent_of_method(ii.def_id.to_def_id(), &self.tcx);
-                let parent_t: Arc<T> = Arc::new(rustc_middle_ty_to_t(parent_ty, &self.tcx));
-                //MethodItem::new("path", params, return_ty, parent_t, vec![], true, );
+                let parent_t = mir_ty_to_t(parent_ty, &self.tcx);
 
+                info!("Parsing method generics");
+                let method_generics = generics_of_item(ii.def_id.to_def_id(), &self.tcx);
 
-
-                error!("--> Parent: {:?}", parent_t);
-                //error!("--> Parent: {:?}", self.tcx.type_of(ii.def_id));
-                match &fn_sig.decl.output {
+                let return_t = match &fn_sig.decl.output {
                     FnRetTy::Return(ret_ty) => {
-                        self.handle_hir_ty(ret_ty, &typeck_results);
+                        info!("Parsing return type");
+                        //let ret_t = hir_ty_to_t_(ret_ty, &typeck_results, &self.tcx);
+                        let ret_t = hir_ty_to_t_unprecise(ret_ty, &self.tcx);
+                        Some(ret_t)
                     }
-                    _ => {}
-                }
+                    _ => None
+                };
+
+                let params = fn_sig.decl.inputs.iter().map(|i| {
+                    info!("Parsing param");
+                    let param_t = hir_ty_to_t(i, &typeck_results, &self.tcx);
+                    Param::new(None, param_t, false)
+                }).collect::<Vec<_>>();
+
+                let file_path = span_to_path(&ii.span, &self.tcx).expect("File path unknown");
+
+                let method = MethodItem::new(&name, file_path.to_str().unwrap(), params, return_t, parent_t, method_generics, is_public);
+                info!("Extracted method: {:?}", method);
             }
             _ => {}
-        }
-    }
-}
-
-impl<'tcx> HirVisitor<'tcx> {
-    fn handle_hir_ty(&self, ty: &rustc_hir::Ty, typeck_results: &TypeckResults) {
-        let r = hir_ty_to_mir_ty(ty, typeck_results, &self.tcx);
-        error!("--> MIR type: {:?}", r);
-        if let Some(adt_def) = r.ty_adt_def() {
-            error!("--> ADT Def: {:?}", adt_def);
-            error!("--> Predicates: {:?}", adt_def.predicates(self.tcx.clone()));
         }
     }
 }
@@ -90,14 +94,11 @@ impl<'hir> ItemLikeVisitor<'hir> for HirVisitor<'_> {
         Visitor::visit_nested_item(self, item.item_id());
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'hir TraitItem<'hir>) {
-    }
+    fn visit_trait_item(&mut self, trait_item: &'hir TraitItem<'hir>) {}
 
-    fn visit_impl_item(&mut self, impl_item: &'hir ImplItem<'hir>) {
-    }
+    fn visit_impl_item(&mut self, impl_item: &'hir ImplItem<'hir>) {}
 
-    fn visit_foreign_item(&mut self, foreign_item: &'hir ForeignItem<'hir>) {
-    }
+    fn visit_foreign_item(&mut self, foreign_item: &'hir ForeignItem<'hir>) {}
 }
 
 fn analyze_tcx(tcx: &TyCtxt<'_>) {
@@ -135,7 +136,6 @@ fn get_params(body: &Body<'_>) -> Vec<Param> {
     //let params = Vec::with_capacity(body.arg_count);
     for local in body.args_iter() {
         let arg = body.local_decls().get(local).unwrap();
-
     }
 
     todo!()
@@ -217,12 +217,12 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
         }
     }
 
-    let mut analysis = HirAnalysis::new();
-    analysis.set_callables(callables);
+    //let mut analysis = HirAnalysis::new();
+    //analysis.set_callables(callables);
 
     let hir_output_path = Path::new(LOG_DIR).join(HIR_LOG_PATH);
     let mut writer = HirWriter::new(hir_output_path);
-    writer.write_analysis(&analysis);
+    //writer.write_analysis(&analysis);
 }
 
 fn allowed_item(item: &Item<'_>, tcx: &TyCtxt<'_>) -> bool {
@@ -250,26 +250,24 @@ fn analyze_fn(
     // self_hir_id must never be used, so just pass a dummy value
     let mut params = Vec::with_capacity(fn_decl.inputs.len());
     for input in fn_decl.inputs.iter() {
-        if let Some(param) = ty_to_param(None, input, hir_id, &generics, tcx) {
-            params.push(param);
-        } else {
-            return;
-        }
+        params.push(ty_to_param(None, input, tcx));
     }
 
-    let return_type = fn_ret_ty_to_t(&fn_decl.output, hir_id, tcx);
+    let return_type = fn_ret_ty_to_t(&fn_decl.output, tcx);
 
     if let Some(return_type) = &return_type {
         debug!("HIR: Output type is {:?}", return_type);
     }
 
+    let name = tcx.hir().name(hir_id).to_ident_string();
+
     let function_item = FunctionItem::new(
-        file_path.to_str().unwrap(),
+        is_public,
+        &name,
+        generics,
         params,
         return_type,
-        is_public,
-        hir_id,
-        tcx,
+        file_path.to_str().unwrap(),
     );
     let fn_callable = Callable::Function(function_item);
     callables.push(fn_callable);
@@ -299,7 +297,7 @@ fn analyze_enum(
     for variant in enum_def.variants {
         let variant_name = variant.ident.name.to_ident_string();
 
-        let variant = extract_enum_variant(variant, enum_hir_id, &enum_generics, tcx);
+        let variant = extract_enum_variant(variant, &enum_generics, tcx);
         if let Some(variant) = variant {
             debug!("HIR: Extracted enum variant {}::{}", &parent_name, &variant_name);
             let enum_init = Callable::EnumInit(EnumInitItem::new(
@@ -315,12 +313,12 @@ fn analyze_enum(
     }
 }
 
-fn extract_enum_variant(variant: &Variant, hir_id: HirId, generics: &Vec<Arc<T>>, tcx: &TyCtxt<'_>) -> Option<EnumVariant> {
+fn extract_enum_variant(variant: &Variant, generics: &Vec<T>, tcx: &TyCtxt<'_>) -> Option<EnumVariant> {
     match &variant.data {
         VariantData::Struct(fields, _) => {
             let ctor_hir_id = variant.data.ctor_hir_id().unwrap();
             let def_id = tcx.hir().local_def_id(ctor_hir_id).to_def_id();
-            let struct_type = def_id_to_complex(def_id, tcx).unwrap();
+            let struct_type = def_id_to_struct(def_id, tcx).unwrap();
             let struct_name = node_to_name(&tcx.hir().get(ctor_hir_id), tcx).unwrap();
             let v = EnumVariant::Struct(variant.ident.name.to_ident_string(), Param::new(Some(&struct_name), struct_type, false));
             Some(v)
@@ -328,7 +326,7 @@ fn extract_enum_variant(variant: &Variant, hir_id: HirId, generics: &Vec<Arc<T>>
         VariantData::Tuple(fields, variant_hir_id) => {
             debug!("--> ENUM variant extracting {:?}", variant_hir_id);
             let params = fields.iter()
-                .filter_map(|f| ty_to_t(&f.ty, None, generics, tcx))
+                .map(|f| hir_ty_to_t_unprecise(&f.ty, tcx))
                 .map(|ty| Param::new(None, ty, false))
                 .collect::<Vec<_>>();
             if params.len() < fields.len() {
@@ -351,7 +349,6 @@ fn analyze_struct(
     callables: &mut Vec<Callable>,
     tcx: &TyCtxt<'_>,
 ) {
-    //let adt_def = tcx.adt_def(struct_local_def_id.to_def_id());
     let is_public = is_public(vis);
 
     let struct_generics = generics_to_ts(g, tcx);
@@ -359,7 +356,7 @@ fn analyze_struct(
     match vd {
         VariantData::Struct(fields, _) => {
             let def_id = tcx.hir().local_def_id(struct_hir_id).to_def_id();
-            let parent = def_id_to_complex(def_id, tcx).unwrap();
+            let parent = def_id_to_struct(def_id, tcx).unwrap();
             let parent_name = node_to_name(&tcx.hir().get(struct_hir_id), tcx).unwrap();
             if parent_name.contains("serde") {
                 // Skip too hard stuff
@@ -367,35 +364,26 @@ fn analyze_struct(
             }
 
             for field in fields.iter() {
-                let ty = ty_to_t(field.ty, Some(struct_hir_id), &struct_generics, tcx);
-                if let Some(ty) = ty {
-                    let def_id = tcx.hir().local_def_id(struct_hir_id).to_def_id();
+                let ty = hir_ty_to_t_unprecise(field.ty, tcx);
+                let def_id = tcx.hir().local_def_id(struct_hir_id).to_def_id();
 
-                    debug!("HIR: Extracted field access item with def id {:?}", def_id);
+                debug!("HIR: Extracted field access item with def id {:?}", def_id);
 
-                    let parent = def_id_to_complex(def_id, tcx).unwrap();
-                    let field_item = FieldAccessItem::new(
-                        file_path.to_str().unwrap(),
-                        ty,
-                        parent,
-                        is_public,
-                        field.hir_id,
-                        tcx,
-                    );
-                }
+                let name = tcx.hir().name(field.hir_id).to_ident_string();
+                let parent = def_id_to_struct(def_id, tcx).unwrap();
+                let field_item = FieldAccessItem::new(
+                    &name,
+                    file_path.to_str().unwrap(),
+                    ty,
+                    parent,
+                    is_public,
+                );
             }
 
             let mut params = Vec::with_capacity(fields.len());
             for field in fields.iter() {
                 let name = field.ident.name.to_ident_string();
-                let param =
-                    ty_to_param(Some(&name), field.ty, struct_hir_id, &struct_generics, tcx);
-                if let Some(param) = param {
-                    params.push(param);
-                } else {
-                    // An unknown type, ignore function
-                    return;
-                }
+                params.push(ty_to_param(Some(&name), field.ty, tcx));
             }
 
             debug!("HIR: Extracted struct init {}: {:?}", parent, params);
@@ -423,7 +411,7 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
         .hir()
         .local_def_id_to_hir_id(parent_def_id.expect_local());
     let def_id = tcx.hir().local_def_id(parent_hir_id).to_def_id();
-    let parent = def_id_to_complex(def_id, tcx).unwrap();
+    let parent = def_id_to_struct(def_id, tcx).unwrap();
 
     let items = im.items;
 
@@ -443,7 +431,7 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                             &impl_item.ident, parent_hir_id
                         );
 
-                        let return_type = fn_ret_ty_to_t(&sig.decl.output, parent_hir_id, tcx);
+                        let return_type = fn_ret_ty_to_t(&sig.decl.output, tcx);
 
                         if let Some(return_type) = return_type.as_ref() {
                             debug!("HIR: Return type is {:?}", &return_type);
@@ -463,31 +451,21 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
 
                         let mut params = Vec::with_capacity(sig.decl.inputs.len());
                         for input in sig.decl.inputs.iter() {
-                            let param =
-                                ty_to_param(None, input, parent_hir_id, &overall_generics, tcx);
-                            if let Some(param) = param {
-                                debug!("HIR: Extracting parameter {:?}", param);
-                                params.push(param);
-                            } else {
-                                // An unknown type, ignore function
-                                warn!("HIR: Unknown parameter, skipping method.");
-                                // {:?}, decl: {:?}", input, &sig.decl
-                                return;
-                            }
+                            params.push(ty_to_param(None, input, tcx));
                         }
 
+                        let name = tcx.hir().name(hir_id).to_ident_string();
                         if *has_self {
                             // Method
                             debug!("HIR: Method is associative");
                             let method_item = MethodItem::new(
+                                &name,
                                 file_path.to_str().unwrap(),
                                 params,
                                 return_type,
                                 parent.clone(),
                                 overall_generics.clone(),
                                 is_public,
-                                hir_id,
-                                tcx,
                             );
                             let method_callable = Callable::Method(method_item);
                             callables.push(method_callable);
@@ -495,14 +473,13 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                             // Associative function
                             debug!("HIR: Method is static");
                             let static_method_item = StaticFnItem::new(
+                                &name,
                                 file_path.to_str().unwrap(),
                                 params,
                                 return_type,
                                 parent.clone(),
                                 overall_generics.clone(),
                                 is_public,
-                                hir_id,
-                                tcx,
                             );
                             let static_method_callable =
                                 Callable::StaticFunction(static_method_item);

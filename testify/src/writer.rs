@@ -1,4 +1,3 @@
-use generation::analysis::{HirAnalysis};
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::PathBuf;
@@ -73,11 +72,5 @@ impl HirWriter {
             .open(path.into().as_path())
             .unwrap();
         HirWriter { file: Some(file) }
-    }
-
-    pub fn write_analysis(&mut self, analysis: &HirAnalysis) {
-        let file = self.file.as_mut().unwrap();
-        let analysis_serialized = serde_json::to_string(analysis).unwrap();
-        file.write_all(analysis_serialized.as_bytes()).unwrap();
     }
 }

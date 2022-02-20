@@ -1,43 +1,24 @@
 [package]
-name = "testify"
-version = "0.1.0"
+name = "instrumentation"
+version = "0.2.0"
 edition = "2021"
 
-[lib]
-name = "testify"
-path = "src/lib.rs"
-
-[[bin]]
-name = "testify"
-path = "src/bin/main.rs"
-
-[workspace]
-members = [
-    "writer",
-    "examples",
-    "instrumentation",
-    "generation",
-]
-
-exclude = [
-    "benchmarks"
-]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = "3.0.0-beta.2"
-fastrand = "1.4.1"
-syn = { version = "1.0.73", features = ["parsing", "printing", "full", "extra-traits", "visit-mut", "visit"] }
-quote = "1.0.9"
-proc-macro2 = { version = "1.0.27", features = ["span-locations"] }
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
-derive_builder = "0.10.2"
-pbr = "1.0.4"
-petgraph = "0.6.0"
+petgraph = {version = "0.6.0", features = ["serde-1"] }
 uuid = { version = "0.8", features = ["v4", "serde"] }
-instrumentation = {path = "./instrumentation"}
-generation = {path = "./generation"}
-rustfmt-wrapper = "0.1.0"
+env_logger = "0.9.0"
+log = "0.4.14"
+clap = {version = "3.1.0", features = ["derive", "clap_derive"]}
+toml = "0.5.8"
+which = "4.2.4"
+dircpy-stable = "0.3.5"
+
+[dependencies.redis]
+version = "*"
 
 [target.'cfg(NOT_A_PLATFORM)'.dependencies]
 rustc_driver = {path = "/Users/tim/rust/compiler/rustc_driver"}
@@ -47,7 +28,8 @@ rustc_session = {path = "/Users/tim/rust/compiler/rustc_session"}
 rustc_data_structures = {path = "/Users/tim/rust/compiler/rustc_data_structures"}
 rustc_span = {path = "/Users/tim/rust/compiler/rustc_span"}
 rustc_hir = {path = "/Users/tim/rust/compiler/rustc_hir"}
+rustc_target = {path = "/Users/tim/rust/compiler/rustc_target"}
+rustc_index = {path = "/Users/tim/rust/compiler/rustc_index"}
+rustc_ast = {path = "/Users/tim/rust/compiler/rustc_ast"}
 
-[dev-dependencies]
-mockall = "0.10.2"
 
