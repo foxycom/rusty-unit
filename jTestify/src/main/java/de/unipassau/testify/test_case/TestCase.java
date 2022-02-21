@@ -4,10 +4,8 @@ import static de.unipassau.testify.Constants.P_LOCAL_VARIABLES;
 import static java.util.stream.Collectors.toCollection;
 
 import com.google.common.base.Preconditions;
-import de.unipassau.testify.ddg.Dependency;
-import de.unipassau.testify.ddg.Node;
 import de.unipassau.testify.generators.TestIdGenerator;
-import de.unipassau.testify.hir.HirAnalysis;
+import de.unipassau.testify.hir.TyCtxt;
 import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome;
 import de.unipassau.testify.metaheuristics.operators.Crossover;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
@@ -42,27 +40,25 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.javatuples.Pair;
 import org.javatuples.Quartet;
-import org.jgrapht.Graph;
-import org.jgrapht.graph.DirectedMultigraph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
   private static final Logger logger = LoggerFactory.getLogger(TestCase.class);
-  private final HirAnalysis hirAnalysis;
+  private final TyCtxt tyCtxt;
 
   private int id;
   private List<Statement> statements;
   private Map<BasicBlock, Double> coverage;
   private boolean fails;
 
-  public TestCase(int id, HirAnalysis hirAnalysis, Mutation<TestCase> mutation,
+  public TestCase(int id, TyCtxt tyCtxt, Mutation<TestCase> mutation,
       Crossover<TestCase> crossover) {
     super(mutation, crossover);
 
     this.id = id;
-    this.hirAnalysis = hirAnalysis;
+    this.tyCtxt = tyCtxt;
     this.statements = new ArrayList<>();
     this.coverage = new HashMap<>();
 
@@ -72,15 +68,15 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   public TestCase(TestCase other) {
     super(other.getMutation(), other.getCrossover());
     this.id = TestIdGenerator.get();
-    this.hirAnalysis = other.hirAnalysis;
+    this.tyCtxt = other.tyCtxt;
     this.statements = other.statements.stream().map(s -> s.copy(this))
         .collect(toCollection(ArrayList::new));
     this.coverage = new HashMap<>();
     this.fails = false;
   }
 
-  public HirAnalysis getHirAnalysis() {
-    return hirAnalysis;
+  public TyCtxt getHirAnalysis() {
+    return tyCtxt;
   }
 
   public int getId() {
@@ -374,15 +370,15 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     var filePathBinding = getFilePathBinding();
     Callable callable;
 
-    var possiblemMethods = hirAnalysis.methodsOf(variables());
+    var possiblemMethods = tyCtxt.methodsOf(variables());
     if (Rnd.get().nextDouble() < P_LOCAL_VARIABLES && !possiblemMethods.isEmpty()) {
       var variableAndMethod = Rnd.choice(possiblemMethods);
       return insertMethodOnExistingVariable(variableAndMethod.getValue0(),
           variableAndMethod.getValue1());
     } else if (filePathBinding.isPresent()) {
-      callable = Rnd.choice(hirAnalysis.getCallables(filePathBinding.get()));
+      callable = Rnd.choice(tyCtxt.getCallables(filePathBinding.get()));
     } else {
-      callable = Rnd.choice(hirAnalysis.getCallables());
+      callable = Rnd.choice(tyCtxt.getCallables());
     }
 
     logger.info("({}) Inserting random stmt. Selected callable: {}", id, callable);
@@ -550,7 +546,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     } else if (param.isGeneric()) {
       throw new RuntimeException("Not allowed");
     } else {
-      var generators = hirAnalysis.generatorsOf(param.getType(), getFilePathBinding().orElse(null));
+      var generators = tyCtxt.generatorsOf(param.getType(), getFilePathBinding().orElse(null));
       /*if (generators.isEmpty()) {
         generators = hirAnalysis.wrappingGeneratorsOf(param.getType(), getFilePathBinding().orElse(null));
       }*/
@@ -572,15 +568,15 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     // TODO reuse existing variables if possible, e.g., introduce a boolean flag or so
     if (type.isPrim()) {
       return Optional.of(generatePrimitive(type.asPrimitive()));
-    } else if (type.isComplex() || type.isEnum()) {
-      var generators = hirAnalysis.generatorsOf(type, getFilePathBinding().orElse(null));
+    } else if (type.isStruct() || type.isEnum()) {
+      var generators = tyCtxt.generatorsOf(type, getFilePathBinding().orElse(null));
       /*if (generators.isEmpty()) {
         generators = hirAnalysis.wrappingGeneratorsOf(type, getFilePathBinding().orElse(null));
       }*/
       logger.debug("({}) Found " + generators.size() + " generators", id);
       return generateArgFromGenerators(type, generators, typesToGenerate);
     } else if (type.isRef()) {
-      var generators = hirAnalysis.generatorsOf(type, getFilePathBinding().orElse(null));
+      var generators = tyCtxt.generatorsOf(type, getFilePathBinding().orElse(null));
       /*if (generators.isEmpty()) {
         generators = hirAnalysis.wrappingGeneratorsOf(type, getFilePathBinding().orElse(null));
       }*/
@@ -640,7 +636,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   private Optional<Type> getComplexTypeFor(Generic generic) {
     var bounds = generic.getBounds();
 
-    var possibleTypes = hirAnalysis.typesImplementing(bounds);
+    var possibleTypes = tyCtxt.typesImplementing(bounds);
     if (possibleTypes.isEmpty()) {
       return Optional.empty();
     }

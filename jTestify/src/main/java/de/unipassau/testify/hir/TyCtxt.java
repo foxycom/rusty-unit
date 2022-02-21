@@ -2,53 +2,74 @@ package de.unipassau.testify.hir;
 
 import static java.util.stream.Collectors.toCollection;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.VarReference;
 import de.unipassau.testify.test_case.callable.Callable;
-import de.unipassau.testify.test_case.callable.EnumInit;
 import de.unipassau.testify.test_case.callable.Method;
-import de.unipassau.testify.test_case.callable.RefItem;
-import de.unipassau.testify.test_case.callable.TupleInit;
 import de.unipassau.testify.test_case.type.Trait;
 import de.unipassau.testify.test_case.type.Type;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.javatuples.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class HirAnalysis {
+public class TyCtxt {
 
-  private static final Logger logger = LoggerFactory.getLogger(HirAnalysis.class);
-  private static final String PROVIDERS_PATH = "/Users/tim/Documents/master-thesis/jTestify/providers";
+  private static final Logger logger = LoggerFactory.getLogger(TyCtxt.class);
 
-  //private final List<Callable> callables = loadCallableProviders();
   private final List<Callable> callables = new ArrayList<>();
 
-  private final Map<Type, Set<Trait>> types = new HashMap<>();
+  private final Set<Type> types = new HashSet<>();
 
-  public HirAnalysis(List<Callable> callables) throws IOException {
+  public TyCtxt(List<Callable> callables) throws IOException {
     this.callables.addAll(callables);
+    analysis();
+  }
+
+  private void analysis() {
+    for (Callable callable : callables) {
+      if (callable.getParent() != null) {
+        var parent = callable.getParent();
+        addType(parent);
+      }
+
+      for (Param param : callable.getParams()) {
+        addType(param.getType());
+      }
+
+      if (callable.getReturnType() != null) {
+        addType(callable.getReturnType());
+      }
+    }
+  }
+
+  private void addType(Type type) {
+    if (type.isGeneric() || type.isPrim()) {
+      // Skip for now
+    } else if (type.isRef()) {
+      addType(type.asRef().getInnerType());
+    } else if (type.isTuple()) {
+      type.asTuple().getTypes().forEach(this::addType);
+    } else if (type.isStruct()) {
+      types.add(type);
+    } else if (type.isEnum()) {
+      types.add(type);
+    } else {
+      throw new RuntimeException("Not implemented");
+    }
   }
 
   public Set<Type> getTypes() {
-    return types.keySet();
+    return types;
   }
 
   public List<Type> typesImplementing(List<Trait> bounds) {
-    return types.entrySet().stream().filter(entry -> entry.getValue().containsAll(bounds))
-        .map(Entry::getKey).toList();
+    throw new RuntimeException("Not implemented");
   }
 
   public List<Callable> getCallablesOf(Type type) {
@@ -159,89 +180,4 @@ public class HirAnalysis {
 
     return stream.collect(toCollection(ArrayList::new));
   }
-
-  private static List<Callable> loadCallableProviders() throws IOException {
-    var callablesPath = Paths.get(PROVIDERS_PATH, "callables");
-    var mapper = new ObjectMapper();
-    var javaType = mapper.getTypeFactory().constructCollectionType(List.class, Callable.class);
-
-    List<Callable> callables;
-    try (Stream<Path> walk = Files.walk(callablesPath, 1)) {
-      callables = walk.filter(Files::isRegularFile).map(path -> {
-            try {
-              var content = Files.readString(path);
-              return mapper.<List<Callable>>readValue(content, javaType);
-            } catch (IOException e) {
-              e.printStackTrace();
-            }
-
-            return null;
-          }).flatMap(Collection::stream)
-          .collect(toCollection(ArrayList::new));
-    }
-
-    var types = loadStdTypeProviders();
-    var enumInits = types.keySet()
-        .stream()
-        .filter(Type::isEnum)
-        .map(traits -> {
-          var enumType = traits.asEnum();
-          return enumType.getVariants().stream()
-              .map(variant -> new EnumInit(enumType, variant, true))
-              .toList();
-        })
-        .flatMap(Collection::stream)
-        .toList();
-
-    callables.addAll(enumInits);
-    callables.addAll(loadArtificialCallables());
-    callables.addAll(loadFunctions());
-
-    return callables;
-  }
-
-  private static List<Callable> loadFunctions() throws IOException {
-    var mapper = new ObjectMapper();
-    var javaType = mapper.getTypeFactory().constructCollectionType(List.class, Callable.class);
-
-    var functionsPath = Paths.get(PROVIDERS_PATH, "functions.json");
-    var content = Files.readString(functionsPath);
-
-    return mapper.readValue(content, javaType);
-  }
-
-  private static List<Callable> loadArtificialCallables() {
-
-    return List.of(RefItem.MUTABLE, RefItem.IMMUTABLE, TupleInit.DEFAULT, TupleInit.SINGLE, TupleInit.PAIR,
-        TupleInit.TRIPLETT);
-  }
-
-  private static Map<Type, Set<Trait>> loadStdTypeProviders() throws IOException {
-    var typesPath = Paths.get(PROVIDERS_PATH, "types");
-
-    var mapper = new ObjectMapper();
-    var setType = mapper.getTypeFactory().constructCollectionType(Set.class, Trait.class);
-    Map<Type, Set<Trait>> typeProviders = new HashMap<>();
-
-    try (Stream<Path> walk = Files.walk(typesPath, 1)) {
-      walk.filter(Files::isRegularFile).forEach(path -> {
-        try {
-          var typeContent = Files.readString(path);
-          var type = mapper.readValue(typeContent, Type.class);
-          var implementationPath = Paths.get(PROVIDERS_PATH, "implementations",
-              type.getName() + ".json");
-
-          var implementationsContent = Files.readString(implementationPath);
-          Set<Trait> traits = mapper.readValue(implementationsContent, setType);
-          typeProviders.put(type, traits);
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
-
-      });
-    }
-
-    return typeProviders;
-  }
-
 }

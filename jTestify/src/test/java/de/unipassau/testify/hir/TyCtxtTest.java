@@ -9,13 +9,13 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class HirAnalysisTest {
+class TyCtxtTest {
 
-  private HirAnalysis analysis;
+  private TyCtxt analysis;
 
   @BeforeEach
   void setUp() throws IOException {
-    analysis = new HirAnalysis(Collections.emptyList());
+    analysis = new TyCtxt(Collections.emptyList());
   }
 
   @Test

@@ -116,12 +116,12 @@ public class Generic implements Type {
       return false;
     }
     Generic generic = (Generic) o;
-    return name.equals(generic.name) && bounds.equals(generic.bounds);
+    return bounds.equals(generic.bounds);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, bounds);
+    return Objects.hash(bounds);
   }
 
   @Override

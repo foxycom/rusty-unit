@@ -11,9 +11,7 @@ import java.util.stream.IntStream;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Builder
 @AllArgsConstructor
@@ -54,12 +52,12 @@ public class Struct implements Type {
   }
 
   @Override
-  public boolean isComplex() {
+  public boolean isStruct() {
     return true;
   }
 
   @Override
-  public Struct asComplex() {
+  public Struct asStruct() {
     return this;
   }
 
@@ -76,8 +74,8 @@ public class Struct implements Type {
 
   @Override
   public boolean canBeSameAs(Type other) {
-    if (other.isComplex()) {
-      return isSameType(other.asComplex()) &&
+    if (other.isStruct()) {
+      return isSameType(other.asStruct()) &&
           generics.size() == other.generics().size() &&
           IntStream.range(0, generics.size())
               .allMatch(i -> generics.get(i).canBeSameAs(other.generics().get(i)));

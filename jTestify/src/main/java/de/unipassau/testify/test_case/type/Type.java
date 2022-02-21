@@ -29,7 +29,7 @@ public interface Type {
     return false;
   }
 
-  default boolean isComplex() {
+  default boolean isStruct() {
     return false;
   }
 
@@ -49,7 +49,7 @@ public interface Type {
     return false;
   }
 
-  default Struct asComplex() {
+  default Struct asStruct() {
     throw new RuntimeException("Not with me");
   }
 

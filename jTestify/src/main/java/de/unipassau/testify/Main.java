@@ -13,7 +13,7 @@ import de.unipassau.testify.algorithm.Pareto;
 import de.unipassau.testify.algorithm.PreferenceSorterImpl;
 import de.unipassau.testify.algorithm.SVDImpl;
 import de.unipassau.testify.generator.OffspringGeneratorImpl;
-import de.unipassau.testify.hir.HirAnalysis;
+import de.unipassau.testify.hir.TyCtxt;
 import de.unipassau.testify.json.JSONParser;
 import de.unipassau.testify.metaheuristics.chromosome.FixedSizePopulationGenerator;
 import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
@@ -23,7 +23,6 @@ import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.TestCaseGenerator;
 import de.unipassau.testify.test_case.UncoveredObjectives;
 import de.unipassau.testify.test_case.fitness.Fitness;
-import de.unipassau.testify.test_case.fitness.RandomFitness;
 import de.unipassau.testify.test_case.operators.BasicMutation;
 import de.unipassau.testify.test_case.operators.RankSelection;
 import de.unipassau.testify.test_case.operators.SinglePointFixedCrossover;
@@ -62,7 +61,7 @@ public class Main {
 
     var hirLog = new File(HIR_LOG_PATH);
     var json = Files.readString(hirLog.toPath());
-    var hirAnalysis = new HirAnalysis(JSONParser.parse(json));
+    var hirAnalysis = new TyCtxt(JSONParser.parse(json));
 
     List<MinimizingFitnessFunction<TestCase>> objectives = MirAnalysis.targets().stream()
         .map(Fitness::new).collect(Collectors.toList());

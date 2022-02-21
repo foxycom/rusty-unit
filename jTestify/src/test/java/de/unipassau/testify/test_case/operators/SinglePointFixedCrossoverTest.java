@@ -4,7 +4,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.Lists;
-import de.unipassau.testify.hir.HirAnalysis;
+import de.unipassau.testify.hir.TyCtxt;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
@@ -40,7 +40,7 @@ class SinglePointFixedCrossoverTest {
   private SinglePointFixedCrossover crossover;
 
   @Mock
-  private HirAnalysis analysis;
+  private TyCtxt analysis;
 
   @BeforeEach
   void setUp() {

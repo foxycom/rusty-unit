@@ -3,7 +3,7 @@ package de.unipassau.testify.test_case;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import de.unipassau.testify.hir.HirAnalysis;
+import de.unipassau.testify.hir.TyCtxt;
 import de.unipassau.testify.metaheuristics.operators.Crossover;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
 import de.unipassau.testify.test_case.callable.StaticMethod;
@@ -26,7 +26,7 @@ class TestCaseTest {
   private TestCase testCase;
 
   @Mock
-  private HirAnalysis analysis;
+  private TyCtxt analysis;
 
   @Mock
   private Mutation<TestCase> mutation;
