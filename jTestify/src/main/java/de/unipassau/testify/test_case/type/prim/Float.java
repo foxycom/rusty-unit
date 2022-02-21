@@ -31,6 +31,11 @@ public interface Float extends Prim {
   double minValue();
 
   @Override
+  default Set<Trait> implementedTraits() {
+    return implementedTraits;
+  }
+
+  @Override
   default PrimitiveValue<?> random() {
     // TODO take value from constant pool
     var newValue = Rnd.get().nextGaussian() * Constants.MAX_INT;

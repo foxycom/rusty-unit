@@ -5,9 +5,20 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode(exclude = "implementedTraits")
 @JsonDeserialize(as = Struct.class)
 public class Struct implements Type {
 
@@ -15,23 +26,12 @@ public class Struct implements Type {
   protected List<Type> generics;
   @JsonProperty("is_local")
   protected boolean isLocal;
-
-  public Struct() {
-
-  }
+  protected Set<Trait> implementedTraits;
 
   public Struct(Struct other) {
     this.name = other.name;
     this.isLocal = other.isLocal;
     this.generics = other.generics.stream().map(Type::copy).peek(Objects::requireNonNull).toList();
-  }
-
-  public Struct(String name, List<Type> generics, boolean isLocal) {
-    Objects.requireNonNull(generics).forEach(Objects::requireNonNull);
-
-    this.name = name;
-    this.generics = generics;
-    this.isLocal = isLocal;
   }
 
   @Override
@@ -64,6 +64,11 @@ public class Struct implements Type {
   }
 
   @Override
+  public List<Type> generics() {
+    return generics;
+  }
+
+  @Override
   public String varString() {
     var segments = name.split("::");
     return segments[segments.length - 1].toLowerCase(Locale.ROOT);
@@ -91,13 +96,12 @@ public class Struct implements Type {
   }
 
   @Override
-  public List<Type> generics() {
-    return generics;
+  public Set<Trait> implementedTraits() {
+    return implementedTraits;
   }
 
   @Override
   public void setGenerics(List<Type> generics) {
-    generics.forEach(Objects::requireNonNull);
     this.generics = generics;
   }
 
@@ -124,33 +128,6 @@ public class Struct implements Type {
   @Override
   public Type copy() {
     return new Struct(this);
-  }
-
-  public boolean isLocal() {
-    return isLocal;
-  }
-
-  public void setLocal(boolean local) {
-    isLocal = local;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    Struct struct = (Struct) o;
-    return isLocal == struct.isLocal
-        && name.equals(struct.name)
-        && generics.equals(struct.generics);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(name, generics, isLocal);
   }
 
   @Override

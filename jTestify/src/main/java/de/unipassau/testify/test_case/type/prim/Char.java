@@ -12,7 +12,8 @@ import java.util.Set;
 public enum Char implements Prim {
   INSTANCE;
 
-  Set<Trait> implementedTraits() {
+  @Override
+  public Set<Trait> implementedTraits() {
     return Collections.emptySet();
   }
 

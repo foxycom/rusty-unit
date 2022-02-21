@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id "io.freefair.lombok" version "6.4.1"
 }
 
 group 'de.unipassau'
@@ -10,16 +11,16 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.0'
-    implementation 'org.json:json:20210307'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.1'
+    implementation 'org.json:json:20211205'
     implementation 'org.jgrapht:jgrapht-core:1.5.1'
     implementation 'org.jgrapht:jgrapht-io:1.5.1'
     implementation 'org.javatuples:javatuples:1.2'
     implementation 'com.google.guava:guava:31.0.1-jre'
-    implementation 'org.apache.logging.log4j:log4j-api:2.16.0'
+    implementation 'org.apache.logging.log4j:log4j-api:2.17.0'
     implementation 'org.apache.logging.log4j:log4j-core:2.17.0'
-    implementation 'org.apache.logging.log4j:log4j-slf4j-impl:2.16.0'
-    implementation 'com.jayway.jsonpath:json-path:2.6.0'
+    implementation 'org.apache.logging.log4j:log4j-slf4j-impl:2.17.0'
+    implementation 'com.jayway.jsonpath:json-path:2.7.0'
     implementation 'com.lexicalscope.jewelcli:jewelcli:0.8.9'
     implementation 'commons-io:commons-io:2.11.0'
     implementation 'redis.clients:jedis:4.1.1'

@@ -33,9 +33,10 @@ public class HirAnalysis {
   private static final Logger logger = LoggerFactory.getLogger(HirAnalysis.class);
   private static final String PROVIDERS_PATH = "/Users/tim/Documents/master-thesis/jTestify/providers";
 
-  private final List<Callable> callables = loadCallableProviders();
+  //private final List<Callable> callables = loadCallableProviders();
+  private final List<Callable> callables = new ArrayList<>();
 
-  private final Map<Type, Set<Trait>> types = loadStdTypeProviders();
+  private final Map<Type, Set<Trait>> types = new HashMap<>();
 
   public HirAnalysis(List<Callable> callables) throws IOException {
     this.callables.addAll(callables);
@@ -84,8 +85,6 @@ public class HirAnalysis {
             .toList())
         .flatMap(List::stream)
         .collect(Collectors.toList());
-
-
   }
 
   public List<Callable> generatorsOf(Type type, String filePath) {

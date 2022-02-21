@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @JsonDeserialize(as = Generic.class)
@@ -58,6 +59,11 @@ public class Generic implements Type {
   @Override
   public List<Type> generics() {
     return Collections.singletonList(this);
+  }
+
+  @Override
+  public Set<Trait> implementedTraits() {
+    throw new RuntimeException("implementedTraits is not implemented");
   }
 
   @Override

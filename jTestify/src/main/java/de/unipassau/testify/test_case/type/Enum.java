@@ -8,9 +8,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 
+@Builder
 @JsonDeserialize(as = Enum.class)
 public class Enum implements Type {
 
@@ -19,6 +23,7 @@ public class Enum implements Type {
   private List<EnumVariant> variants;
   @JsonProperty("is_local")
   private boolean isLocal;
+  private Set<Trait> implementedTraits;
 
   public Enum() {
   }
@@ -32,11 +37,12 @@ public class Enum implements Type {
   }
 
   public Enum(String name, List<Type> generics,
-      List<EnumVariant> variants, boolean isLocal) {
+      List<EnumVariant> variants, boolean isLocal, Set<Trait> implementedTraits) {
     this.name = name;
     this.generics = generics;
     this.variants = variants;
     this.isLocal = isLocal;
+    this.implementedTraits = implementedTraits;
   }
 
   @Override
@@ -99,6 +105,11 @@ public class Enum implements Type {
   @Override
   public List<Type> generics() {
     return generics;
+  }
+
+  @Override
+  public Set<Trait> implementedTraits() {
+    throw new RuntimeException("implementedTraits is not implemented");
   }
 
   @Override

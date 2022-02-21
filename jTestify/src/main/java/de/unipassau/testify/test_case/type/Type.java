@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.json.TypeDeserializer;
 import de.unipassau.testify.test_case.type.prim.Prim;
 import java.util.List;
+import java.util.Set;
 
 @JsonDeserialize(using = TypeDeserializer.class)
 public interface Type {
@@ -81,6 +82,8 @@ public interface Type {
   }
 
   List<Type> generics();
+
+  Set<Trait> implementedTraits();
 
   /**
    * Only intended for Jackson unmarshalling.

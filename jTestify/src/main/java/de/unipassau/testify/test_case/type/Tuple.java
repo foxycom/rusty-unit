@@ -4,9 +4,12 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.collect.Streams;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.EqualsAndHashCode;
 import org.javatuples.Pair;
 
+@EqualsAndHashCode
 @JsonDeserialize(as = Tuple.class)
 public class Tuple implements Type {
 
@@ -90,6 +93,11 @@ public class Tuple implements Type {
   }
 
   @Override
+  public Set<Trait> implementedTraits() {
+    throw new RuntimeException("implementedTraits is not implemented");
+  }
+
+  @Override
   public void setGenerics(List<Type> generics) {
     throw new RuntimeException("setGenerics is not implemented");
   }
@@ -110,23 +118,6 @@ public class Tuple implements Type {
 
     copy.types = types.stream().map(ty -> ty.bindGenerics(binding)).toList();
     return copy;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    Tuple tuple = (Tuple) o;
-    return types.equals(tuple.types);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(types);
   }
 
   @Override

@@ -1,9 +1,0 @@
-{
-  "Enum": {
-    "name": "std::convert::Infallible",
-    "generics": [
-    ],
-    "variants": [],
-    "is_local": false
-  }
-}

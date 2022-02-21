@@ -3,6 +3,7 @@ package de.unipassau.testify.test_case.type;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 @JsonDeserialize(as = Ref.class)
 public class Ref implements Type {
@@ -94,6 +95,11 @@ public class Ref implements Type {
   @Override
   public List<Type> generics() {
     return innerType.generics();
+  }
+
+  @Override
+  public Set<Trait> implementedTraits() {
+    throw new RuntimeException("implementedTraits is not implemented");
   }
 
   @Override

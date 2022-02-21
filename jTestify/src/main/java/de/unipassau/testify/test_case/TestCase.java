@@ -55,17 +55,18 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   private int id;
   private List<Statement> statements;
   private Map<BasicBlock, Double> coverage;
-  private final Graph<Node, Dependency> ddg;
   private boolean fails;
 
   public TestCase(int id, HirAnalysis hirAnalysis, Mutation<TestCase> mutation,
       Crossover<TestCase> crossover) {
     super(mutation, crossover);
+
     this.id = id;
     this.hirAnalysis = hirAnalysis;
     this.statements = new ArrayList<>();
-    this.ddg = new DirectedMultigraph<>(Dependency.class);
     this.coverage = new HashMap<>();
+
+    System.out.printf("Generated test %d%n", id);
   }
 
   public TestCase(TestCase other) {
@@ -74,9 +75,8 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     this.hirAnalysis = other.hirAnalysis;
     this.statements = other.statements.stream().map(s -> s.copy(this))
         .collect(toCollection(ArrayList::new));
-    // TODO not really copying it
-    this.ddg = new DirectedMultigraph<>(Dependency.class);
     this.coverage = new HashMap<>();
+    this.fails = false;
   }
 
   public HirAnalysis getHirAnalysis() {
@@ -150,10 +150,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       return;
     }
     this.coverage = coverage;
-  }
-
-  public Graph<Node, Dependency> getDdg() {
-    return ddg;
   }
 
   public boolean isCutable() {

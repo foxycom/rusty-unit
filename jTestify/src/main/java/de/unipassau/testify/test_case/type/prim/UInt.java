@@ -34,6 +34,11 @@ public interface UInt extends Prim {
   }
 
   @Override
+  default Set<Trait> implementedTraits() {
+    return implementedTraits;
+  }
+
+  @Override
   default PrimitiveValue<Long> random() {
     // TODO get contsant pool
     var value = (long) (Rnd.get().nextDouble() * Constants.MAX_INT);

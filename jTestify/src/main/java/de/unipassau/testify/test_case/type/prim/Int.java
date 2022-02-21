@@ -31,6 +31,11 @@ public interface Int extends Prim {
   long minValue();
 
   @Override
+  default Set<Trait> implementedTraits() {
+    return implementedTraits;
+  }
+
+  @Override
   default PrimitiveValue<?> random() {
     var newValue = (long) (Rnd.get().nextGaussian() * Constants.MAX_INT);
     return new IntValue(newValue, this);
