@@ -73,6 +73,7 @@ pub fn ty_to_t(
               match def_kind {
                 DefKind::Struct | DefKind::Enum => {
                   let generics = path_to_generics(path, self_, defined_generics, tcx);
+                  debug!("Generics are: {:?}", generics);
                   path_to_t(def_kind, *def_id, self_, path, &generics, tcx)
                 }
                 DefKind::TyParam => {
@@ -83,15 +84,11 @@ pub fn ty_to_t(
                       .collect::<Vec<_>>()
                       .join("::");
 
-                  let bounds = if let Some(bounds) = defined_generics
+                  let bounds = defined_generics
                       .iter()
                       .find(|g| g.name() == name)
                       .map(|g| g.expect_generic().bounds())
-                  {
-                    bounds.clone()
-                  } else {
-                    vec![]
-                  };
+                      .map_or(vec![], |bounds| bounds.clone());
 
                   return Some(T::Generic(Generic::new(&name, bounds)));
                 }
@@ -106,10 +103,8 @@ pub fn ty_to_t(
             Res::PrimTy(prim_ty) => Some(T::from(*prim_ty)),
             Res::SelfTy(trait_def_id, impl_) => {
               // Self type, so replace it with the parent id
-              //let name = node_to_name(&tcx.hir().get(self_), tcx).unwrap();
               let def_id = tcx.hir().local_def_id(self_.unwrap()).to_def_id();
-              //Some(T::Complex(ComplexT::new(def_id, name)))
-              def_id_to_complex(def_id, tcx)
+              def_id_to_t(def_id, tcx)
             }
             _ => {
               unimplemented!("{:?}", &path.res)
@@ -156,12 +151,12 @@ pub fn path_to_generics(path: &rustc_hir::Path<'_>, self_: Option<HirId>, define
 }
 
 pub fn path_to_t(
-    def_kind: &DefKind,
-    def_id: DefId,
-    self_: Option<HirId>,
-    path: &rustc_hir::Path<'_>,
-    defined_generics: &Vec<T>,
-    tcx: &TyCtxt<'_>,
+  def_kind: &DefKind,
+  def_id: DefId,
+  self_: Option<HirId>,
+  path: &rustc_hir::Path<'_>,
+  defined_generics: &Vec<T>,
+  tcx: &TyCtxt<'_>,
 ) -> Option<T> {
   let name = tcx.def_path_str(def_id);
   let generics = path_to_generics(path, self_, defined_generics, tcx);
@@ -184,7 +179,7 @@ pub fn generic_arg_to_t(generic_arg: &GenericArg, self_: Option<HirId>, defined_
   }
 }
 
-pub fn def_id_to_complex(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<T> {
+pub fn def_id_to_t(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<T> {
   let ty = tcx.type_of(def_id);
   match ty.kind() {
     rustc_middle::ty::TyKind::Adt(adt_def, substs) => {

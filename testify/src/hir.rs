@@ -7,7 +7,7 @@ use rustc_span::def_id::{LOCAL_CRATE, LocalDefId};
 use rustc_span::Span;
 use crate::{HIR_LOG_PATH, LOG_DIR, RuConfig};
 use crate::types::{Callable, EnumInitItem, EnumVariant, FieldAccessItem, FunctionItem, MethodItem, Param, StaticFnItem, StructInitItem, T};
-use crate::util::{def_id_to_complex, def_id_to_enum, fn_ret_ty_to_t, generics_to_ts, impl_to_def_id, item_to_name, node_to_name, span_to_path, ty_to_param, ty_to_t};
+use crate::util::{def_id_to_t, def_id_to_enum, fn_ret_ty_to_t, generics_to_ts, impl_to_def_id, item_to_name, node_to_name, span_to_path, ty_to_param, ty_to_t};
 use crate::writer::HirWriter;
 use crate::analysis::Analysis;
 
@@ -187,7 +187,7 @@ fn extract_enum_variant(variant: &Variant, hir_id: HirId, generics: &Vec<T>, tcx
     VariantData::Struct(fields, _) => {
       let ctor_hir_id = variant.data.ctor_hir_id().unwrap();
       let def_id = tcx.hir().local_def_id(ctor_hir_id).to_def_id();
-      let struct_type = def_id_to_complex(def_id, tcx).unwrap();
+      let struct_type = def_id_to_t(def_id, tcx).unwrap();
       let struct_name = node_to_name(&tcx.hir().get(ctor_hir_id), tcx).unwrap();
       let v = EnumVariant::Struct(variant.ident.name.to_ident_string(), crate::types::Param::new(Some(&struct_name), struct_type, false));
       Some(v)
@@ -226,7 +226,7 @@ fn analyze_struct(
   match vd {
     VariantData::Struct(fields, _) => {
       let def_id = tcx.hir().local_def_id(struct_hir_id).to_def_id();
-      let parent = def_id_to_complex(def_id, tcx).unwrap();
+      let parent = def_id_to_t(def_id, tcx).unwrap();
       let parent_name = node_to_name(&tcx.hir().get(struct_hir_id), tcx).unwrap();
       if parent_name.contains("serde") {
         // Skip too hard stuff
@@ -241,7 +241,7 @@ fn analyze_struct(
           let field_name = tcx.hir().get(field.hir_id).ident().unwrap().to_string();
           debug!("HIR: Extracted field {}::{}", &parent_name, &field_name);
 
-          let parent = def_id_to_complex(def_id, tcx).unwrap();
+          let parent = def_id_to_t(def_id, tcx).unwrap();
           let field_item = FieldAccessItem::new(
             &field_name,
             file_path.to_str().unwrap(),
@@ -283,33 +283,27 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
   }
 
   let parent_def_id = impl_to_def_id(im);
-
-  let impl_generics = generics_to_ts(&im.generics, tcx);
-
   let parent_hir_id = tcx
       .hir()
       .local_def_id_to_hir_id(parent_def_id.expect_local());
-  let def_id = tcx.hir().local_def_id(parent_hir_id).to_def_id();
-  let parent = def_id_to_complex(def_id, tcx).unwrap();
+  //let parent = def_id_to_t(parent_def_id, tcx).unwrap();
+
+  let impl_generics = generics_to_ts(&im.generics, tcx);
+  let parent = ty_to_t(im.self_ty, None, &impl_generics, tcx).unwrap();
 
   let items = im.items;
-
   for item in items {
-    let def_id = item.id.def_id;
+    let item_def_id = item.id.def_id;
 
     match &item.kind {
       AssocItemKind::Fn { .. } => {
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        let hir_id = tcx.hir().local_def_id_to_hir_id(item_def_id);
         let impl_item = tcx.hir().impl_item(item.id);
         match &impl_item.kind {
           ImplItemKind::Fn(sig, body_id) => {
-            debug!(
-                            "HIR: Found method {}, parent: {}",
-                            &impl_item.ident, parent_hir_id
-                        );
+            debug!("HIR: Found method {}, parent: {}", &impl_item.ident, parent_hir_id);
 
             let fn_name = tcx.hir().get(item.id.hir_id()).ident().unwrap().to_string();
-
             let return_type = fn_ret_ty_to_t(&sig.decl.output, parent_hir_id, tcx);
             if let Some(return_type) = return_type.as_ref() {
               debug!("HIR: Return type is {:?}", &return_type);
@@ -324,13 +318,13 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
             }
 
             let mut fn_generics = generics_to_ts(&impl_item.generics, tcx);
-            let mut overall_generics = impl_generics.clone();
-            overall_generics.append(&mut fn_generics);
+            //let mut overall_generics = impl_generics.clone();
+            //overall_generics.append(&mut fn_generics);
 
             let mut params = Vec::with_capacity(sig.decl.inputs.len());
             for input in sig.decl.inputs.iter() {
               let param =
-                  ty_to_param(None, input, parent_hir_id, &overall_generics, tcx);
+                  ty_to_param(None, input, parent_hir_id, &fn_generics, tcx);
               if let Some(param) = param {
                 debug!("HIR: Extracting parameter {:?}", param);
                 params.push(param);
@@ -350,7 +344,7 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                 params,
                 return_type,
                 parent.clone(),
-                impl_generics.clone(),
+                fn_generics,
                 is_public,
               );
               let static_method_callable =
@@ -365,7 +359,7 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                 params,
                 return_type,
                 parent.clone(),
-                impl_generics.clone(),
+                fn_generics,
                 is_public,
               );
               let method_callable = Callable::Method(method_item);

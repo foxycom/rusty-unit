@@ -439,7 +439,7 @@ impl Debug for T {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
     match self {
       T::Ref(ty, _) => {
-        write!(f, "&");
+        write!(f, "&")?;
         Debug::fmt(ty, f)
       }
       T::Prim(prim_ty) => Debug::fmt(prim_ty, f),
@@ -556,11 +556,39 @@ impl T {
     }
   }
 
+  pub fn is_enum(&self) -> bool {
+    match self {
+      T::Enum(_) => true,
+      _ => false
+    }
+  }
+
+  pub fn is_struct(&self) -> bool {
+    match self {
+      T::Struct(_) => true,
+      _ => false
+    }
+  }
+
   pub fn expect_generic(&self) -> &Generic {
     match self {
       T::Generic(generic) => generic,
       T::Ref(r, _) => r.expect_generic(),
       _ => panic!("Is not generic"),
+    }
+  }
+
+  pub fn expect_enum(&self) -> &EnumT {
+    match self {
+      T::Enum(enum_t) => enum_t,
+      _ => panic!("Is not an enum")
+    }
+  }
+
+  pub fn expect_struct(&self) -> &StructT {
+    match self {
+      T::Struct(struct_t) => struct_t,
+      _ => panic!("Is not a struct")
     }
   }
 
@@ -581,7 +609,7 @@ impl Display for T {
       T::Struct(struct_t) => Display::fmt(struct_t, f),
       T::Generic(generic) => Display::fmt(generic, f),
       T::Ref(r, _) => {
-        write!(f, "&");
+        write!(f, "&")?;
         Display::fmt(r.as_ref(), f)
       }
       T::Enum(enum_ty) => Display::fmt(enum_ty, f),
@@ -933,11 +961,11 @@ impl PartialEq for Param {
 impl Debug for Param {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
     if let Some(name) = &self.name {
-      write!(f, "{}: ", name);
+      write!(f, "{}: ", name)?;
     }
 
     if self.mutable {
-      write!(f, "mut ");
+      write!(f, "mut ")?;
     }
     write!(f, "{:?}", &self.ty)
   }
