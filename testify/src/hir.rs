@@ -6,7 +6,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{LOCAL_CRATE, LocalDefId};
 use rustc_span::Span;
 use crate::{HIR_LOG_PATH, LOG_DIR, RuConfig};
-use crate::types::{Callable, EnumInitItem, EnumVariant, FieldAccessItem, FunctionItem, MethodItem, Param, StaticFnItem, StructInitItem, T};
+use crate::types::{Callable, EnumInitItem, EnumT, EnumVariant, FieldAccessItem, FunctionItem, MethodItem, Param, StaticFnItem, StructInitItem, StructT, T};
 use crate::util::{def_id_to_t, def_id_to_enum, fn_ret_ty_to_t, generics_to_ts, impl_to_def_id, item_to_name, node_to_name, span_to_path, ty_to_param, ty_to_t};
 use crate::writer::HirWriter;
 use crate::analysis::Analysis;
@@ -106,25 +106,22 @@ fn analyze_fn(
 ) {
   let hir_id = tcx.hir().local_def_id_to_hir_id(local_def_id);
   let is_public = is_public(vis);
-
   let fn_decl = &sig.decl;
-
   let fn_name = tcx.hir().get(hir_id).ident().unwrap().to_string();
 
-  // TODO a fn can also have explicit generics defined
   let generics = vec![];
 
   // self_hir_id must never be used, so just pass a dummy value
   let mut params = Vec::with_capacity(fn_decl.inputs.len());
   for input in fn_decl.inputs.iter() {
-    if let Some(param) = ty_to_param(None, input, hir_id, &generics, tcx) {
+    if let Some(param) = ty_to_param(None, input, None, &generics, tcx) {
       params.push(param);
     } else {
       return;
     }
   }
 
-  let return_type = fn_ret_ty_to_t(&fn_decl.output, hir_id, tcx);
+  let return_type = fn_ret_ty_to_t(&fn_decl.output, None, &generics, tcx);
 
   if let Some(return_type) = &return_type {
     debug!("HIR: Output type is {:?}", return_type);
@@ -145,20 +142,21 @@ fn analyze_fn(
 fn analyze_enum(
   enum_local_def_id: LocalDefId,
   enum_def: &EnumDef,
-  generics: &Generics,
+  g: &Generics,
   visibility: &Visibility,
   file_path: PathBuf,
   callables: &mut Vec<Callable>,
   tcx: &TyCtxt<'_>,
 ) {
   let is_public = is_public(visibility);
-  let enum_generics = generics_to_ts(generics, tcx);
+  let generics = generics_to_ts(g, tcx);
   let enum_hir_id = tcx.hir().local_def_id_to_hir_id(enum_local_def_id);
   let enum_def_id = tcx.hir().local_def_id(enum_hir_id).to_def_id();
+  let self_name = node_to_name(&tcx.hir().get(enum_hir_id), tcx).unwrap();
 
-  let parent = def_id_to_enum(enum_def_id, tcx).unwrap();
-  let parent_name = node_to_name(&tcx.hir().get(enum_hir_id), tcx).unwrap();
-  if parent_name.contains("serde") {
+  //let self_ty = def_id_to_enum(enum_def_id, tcx).unwrap();
+  let self_ty = T::Enum(EnumT::new(&self_name, generics, vec![]));
+  if self_name.contains("serde") {
     // Skip too hard stuff
     return;
   }
@@ -166,18 +164,18 @@ fn analyze_enum(
   for variant in enum_def.variants {
     let variant_name = variant.ident.name.to_ident_string();
 
-    let variant = extract_enum_variant(variant, enum_hir_id, &enum_generics, tcx);
+    let variant = extract_enum_variant(variant, enum_hir_id, &generics, tcx);
     if let Some(variant) = variant {
-      debug!("HIR: Extracted enum variant {}::{}", &parent_name, &variant_name);
+      debug!("HIR: Extracted enum variant {}::{}", &self_name, &variant_name);
       let enum_init = Callable::EnumInit(EnumInitItem::new(
         file_path.to_str().unwrap(),
         variant,
-        parent.clone(),
+        self_ty.clone(),
         is_public,
       ));
       callables.push(enum_init);
     } else {
-      warn!("HIR: Could not extract enum variant {}::{}", &parent_name, &variant_name);
+      warn!("HIR: Could not extract enum variant {}::{}", &self_name, &variant_name);
     }
   }
 }
@@ -218,7 +216,6 @@ fn analyze_struct(
   callables: &mut Vec<Callable>,
   tcx: &TyCtxt<'_>,
 ) {
-  //let adt_def = tcx.adt_def(struct_local_def_id.to_def_id());
   let is_public = is_public(vis);
 
   let struct_generics = generics_to_ts(g, tcx);
@@ -226,20 +223,22 @@ fn analyze_struct(
   match vd {
     VariantData::Struct(fields, _) => {
       let def_id = tcx.hir().local_def_id(struct_hir_id).to_def_id();
-      let parent = def_id_to_t(def_id, tcx).unwrap();
-      let parent_name = node_to_name(&tcx.hir().get(struct_hir_id), tcx).unwrap();
-      if parent_name.contains("serde") {
+      //let self_ty = def_id_to_t(def_id, tcx).unwrap();
+      let self_name = node_to_name(&tcx.hir().get(struct_hir_id), tcx).unwrap();
+      let generics = generics_to_ts(g, tcx);
+      let self_ty = T::Struct(StructT::new(&self_name, generics));
+      if self_name.contains("serde") {
         // Skip too hard stuff
         return;
       }
 
       for field in fields.iter() {
-        let ty = ty_to_t(field.ty, Some(struct_hir_id), &struct_generics, tcx);
+        let ty = ty_to_t(field.ty, Some(&self_ty), &struct_generics, tcx);
         if let Some(ty) = ty {
           let def_id = tcx.hir().local_def_id(struct_hir_id).to_def_id();
 
           let field_name = tcx.hir().get(field.hir_id).ident().unwrap().to_string();
-          debug!("HIR: Extracted field {}::{}", &parent_name, &field_name);
+          debug!("HIR: Extracted field {}::{}", &self_name, &field_name);
 
           let parent = def_id_to_t(def_id, tcx).unwrap();
           let field_item = FieldAccessItem::new(
@@ -256,7 +255,7 @@ fn analyze_struct(
       for field in fields.iter() {
         let name = field.ident.name.to_ident_string();
         let param =
-            ty_to_param(Some(&name), field.ty, struct_hir_id, &struct_generics, tcx);
+            ty_to_param(Some(&name), field.ty, Some(&self_ty), &struct_generics, tcx);
         if let Some(param) = param {
           params.push(param);
         } else {
@@ -265,11 +264,11 @@ fn analyze_struct(
         }
       }
 
-      debug!("HIR: Extracted struct init {}: {:?}", parent, params);
+      debug!("HIR: Extracted struct init {}: {:?}", self_ty, params);
       callables.push(Callable::StructInit(StructInitItem::new(
         file_path.to_str().unwrap(),
         params,
-        parent,
+        self_ty,
       )));
     }
     _ => {}
@@ -289,7 +288,7 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
   //let parent = def_id_to_t(parent_def_id, tcx).unwrap();
 
   let impl_generics = generics_to_ts(&im.generics, tcx);
-  let parent = ty_to_t(im.self_ty, None, &impl_generics, tcx).unwrap();
+  let self_ty = ty_to_t(im.self_ty, None, &impl_generics, tcx).unwrap();
 
   let items = im.items;
   for item in items {
@@ -302,9 +301,13 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
         match &impl_item.kind {
           ImplItemKind::Fn(sig, body_id) => {
             debug!("HIR: Found method {}, parent: {}", &impl_item.ident, parent_hir_id);
-
             let fn_name = tcx.hir().get(item.id.hir_id()).ident().unwrap().to_string();
-            let return_type = fn_ret_ty_to_t(&sig.decl.output, parent_hir_id, tcx);
+            let mut fn_generics = generics_to_ts(&impl_item.generics, tcx);
+
+            let mut overall_generics = impl_generics.clone();
+            overall_generics.append(&mut fn_generics.clone());
+
+            let return_type = fn_ret_ty_to_t(&sig.decl.output, Some(&self_ty), &overall_generics, tcx);
             if let Some(return_type) = return_type.as_ref() {
               debug!("HIR: Return type is {:?}", &return_type);
             }
@@ -317,14 +320,10 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
               continue;
             }
 
-            let mut fn_generics = generics_to_ts(&impl_item.generics, tcx);
-            //let mut overall_generics = impl_generics.clone();
-            //overall_generics.append(&mut fn_generics);
-
             let mut params = Vec::with_capacity(sig.decl.inputs.len());
             for input in sig.decl.inputs.iter() {
               let param =
-                  ty_to_param(None, input, parent_hir_id, &fn_generics, tcx);
+                  ty_to_param(None, input, Some(&self_ty), &overall_generics, tcx);
               if let Some(param) = param {
                 debug!("HIR: Extracting parameter {:?}", param);
                 params.push(param);
@@ -343,7 +342,7 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                 file_path.to_str().unwrap(),
                 params,
                 return_type,
-                parent.clone(),
+                self_ty.clone(),
                 fn_generics,
                 is_public,
               );
@@ -358,7 +357,7 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                 file_path.to_str().unwrap(),
                 params,
                 return_type,
-                parent.clone(),
+                self_ty.clone(),
                 fn_generics,
                 is_public,
               );
