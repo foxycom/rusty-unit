@@ -5,10 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b12c22c4-b5f7-4f70-8970-848dd736b280" name="Changes" comment="Update">
+      <change afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/AssociatedType.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../testify/src/analysis.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/src/analysis.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../testify/src/hir.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/src/hir.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../testify/src/util.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/src/util.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/json/JSONParser.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/json/JSONParser.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/callable/StaticMethod.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/callable/StaticMethod.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/Trait.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/Trait.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/config.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/config.properties" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -156,6 +158,7 @@
       <workItem from="1644875976947" duration="4739000" />
       <workItem from="1644944894082" duration="11000" />
       <workItem from="1645395861542" duration="10643000" />
+      <workItem from="1645642073936" duration="1431000" />
     </task>
     <task id="LOCAL-00001" summary="Update">
       <created>1644703983025</created>

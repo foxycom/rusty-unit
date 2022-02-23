@@ -6,15 +6,15 @@ import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.StaticMethod;
 import java.util.ArrayList;
 import java.util.List;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class JSONParser {
   public static List<Callable> parse(String json) throws JsonProcessingException {
-    var root = new JSONObject(json);
+    var callablesArray = new JSONArray(json);
 
     var mapper = new ObjectMapper();
     var callables = new ArrayList<Callable>();
-    var callablesArray = root.getJSONArray("callables");
     for (int i = 0; i < callablesArray.length(); i++) {
       var obj = callablesArray.getJSONObject(i);
       var callable = mapper.readValue(obj.toString(), Callable.class);

@@ -22,6 +22,7 @@ public class StaticMethod implements Callable {
   private Type parent;
   @JsonProperty("src_file_path")
   private String srcFilePath;
+  private List<Type> generics;
 
   @JsonProperty("is_public")
   private boolean isPublic;
@@ -71,6 +72,14 @@ public class StaticMethod implements Callable {
   @Override
   public Type getParent() {
     return parent;
+  }
+
+  public List<Type> getGenerics() {
+    return generics;
+  }
+
+  public void setGenerics(List<Type> generics) {
+    this.generics = generics;
   }
 
   @Override

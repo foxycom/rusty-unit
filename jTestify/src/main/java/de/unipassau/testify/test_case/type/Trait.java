@@ -1,11 +1,17 @@
 package de.unipassau.testify.test_case.type;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import java.util.List;
 import java.util.Objects;
 
 @JsonDeserialize(as = Trait.class)
 public class Trait {
   private String name;
+  private List<Type> generics;
+
+  @JsonProperty("associated_types")
+  private List<AssociatedType> associatedTypes;
 
   public Trait() {
   }
@@ -20,6 +26,23 @@ public class Trait {
 
   public void setName(String name) {
     this.name = name;
+  }
+
+  public List<Type> getGenerics() {
+    return generics;
+  }
+
+  public void setGenerics(List<Type> generics) {
+    this.generics = generics;
+  }
+
+  public List<AssociatedType> getAssociatedTypes() {
+    return associatedTypes;
+  }
+
+  public void setAssociatedTypes(
+      List<AssociatedType> associatedTypes) {
+    this.associatedTypes = associatedTypes;
   }
 
   @Override

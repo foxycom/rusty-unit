@@ -7,13 +7,15 @@ use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{AdtKind, TyCtxt, TypeckResults};
 use rustc_span::def_id::{CrateNum, LocalDefId};
-use rustc_span::{FileName, RealFileName, Span};
+use rustc_span::{DUMMY_SP, FileName, RealFileName, Span};
 use std::io;
 use std::io::Write;
 use std::option::Option::Some;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use log::{debug, error, info, warn};
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_middle::ty::fast_reject::SimplifiedType;
 use crate::extractor::hir_ty_to_t;
 use crate::types::{EnumT, Generic, mir_ty_to_t, Param, StructT, T, Trait, TupleT};
 
@@ -258,10 +260,6 @@ pub fn tys_to_t(ty: rustc_middle::ty::Ty, tcx: &TyCtxt<'_>) -> Option<T> {
       let name = param.name.to_string();
       let generic_param = T::Generic(Generic::new(&name, vec![]));
       Some(generic_param)
-      /*if ty.is_region_ptr() {
-          Some(Arc::new(T::Ref(generic_param)))
-      } else {
-      }*/
     }
     _ => todo!("Ty is {:?}", ty),
   }
@@ -333,8 +331,12 @@ pub fn generic_bound_to_trait(bound: &GenericBound<'_>, tcx: &TyCtxt<'_>) -> Opt
   match bound {
     GenericBound::Trait(trait_ref, _) => {
       let def_id = trait_ref.trait_ref.trait_def_id()?;
-      info!("TRAIT: {:?}", trait_ref);
       let name = tcx.def_path_str(def_id);
+
+      let implemented_by = trait_implementations(def_id, tcx);
+      //let std_impls = implemented_by.iter().filter(|im| im).collect::<Vec<_>>();
+      //info!("Trait {}: implemented by {:?}", name, implemented_by);
+      info!("Trait {} implemented by: {:?}", name, &implemented_by.non_blanket_impls);
       Some(Trait::new(&name, vec![], vec![]))
     }
     GenericBound::LangItemTrait(_, _, _, _) => todo!(),
@@ -489,4 +491,20 @@ fn fmt_string(source: &str) -> io::Result<String> {
     },
     Err(_) => Ok(source),
   }
+}
+
+/// Fetch all implementations of a trait with given def_id
+fn trait_implementations<'tcx>(def_id: DefId, tcx: &TyCtxt<'tcx>) -> &'tcx PublicTraitImpls {
+  let trait_impls = tcx.trait_impls_of(def_id);
+  // Make the private fields of trait impls instance public
+  let public_trait_impls: &PublicTraitImpls = unsafe {
+    std::mem::transmute(trait_impls)
+  };
+
+  public_trait_impls
+}
+
+pub struct PublicTraitImpls {
+  pub blanket_impls: Vec<DefId>,
+  pub non_blanket_impls: FxIndexMap<SimplifiedType, Vec<DefId>>,
 }

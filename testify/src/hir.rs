@@ -183,6 +183,8 @@ fn analyze_enum(
 fn extract_enum_variant(variant: &Variant, hir_id: HirId, generics: &Vec<T>, tcx: &TyCtxt<'_>) -> Option<EnumVariant> {
   match &variant.data {
     VariantData::Struct(fields, _) => {
+
+
       let ctor_hir_id = variant.data.ctor_hir_id().unwrap();
       let def_id = tcx.hir().local_def_id(ctor_hir_id).to_def_id();
       let struct_type = def_id_to_t(def_id, tcx).unwrap();
@@ -240,14 +242,14 @@ fn analyze_struct(
           let field_name = tcx.hir().get(field.hir_id).ident().unwrap().to_string();
           debug!("HIR: Extracted field {}::{}", &self_name, &field_name);
 
-          let parent = def_id_to_t(def_id, tcx).unwrap();
+          /*let parent = def_id_to_t(def_id, tcx).unwrap();
           let field_item = FieldAccessItem::new(
             &field_name,
             file_path.to_str().unwrap(),
             ty,
             parent,
             is_public,
-          );
+          );*/
         }
       }
 
