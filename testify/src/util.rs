@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
@@ -267,40 +268,48 @@ pub fn tys_to_t(ty: rustc_middle::ty::Ty, tcx: &TyCtxt<'_>) -> Option<T> {
 }
 
 pub fn generics_to_ts(generics: &Generics, tcx: &TyCtxt<'_>) -> Vec<T> {
-  if !generics.where_clause.predicates.is_empty() {
+  let mut where_generics = if !generics.where_clause.predicates.is_empty() {
     let predicates = generics.where_clause.predicates;
-    let bounds_generic_param = predicates.iter().filter_map(|p| match p {
-      WherePredicate::BoundPredicate(p) => Some(p.bound_generic_params.is_empty()),
-      _ => None,
-    }).any(|bounds| bounds);
-    // We do not handle bound generic params in where clause at the moment
-    if bounds_generic_param {
-      warn!("TODO bound generic params not handled in where clause");
-      return vec![];
-    }
-
     let where_generics = predicates.iter().filter_map(|p| match p {
       WherePredicate::BoundPredicate(p) => {
-        let defined_generics = vec![];
-        debug!("Parsing where bounds: {:?}", &p.bounds);
-        let ty = ty_to_t(p.bounded_ty, None, &defined_generics, tcx);
+        let ty = ty_to_t(p.bounded_ty, None, &vec![], tcx);
         let bounds = p.bounds.iter().filter_map(|b| generic_bound_to_trait(b, tcx)).collect::<Vec<_>>();
-        if let Some(ty) = ty {
-          Some((ty, bounds))
-        } else {
-          None
-        }
+        ty.map(|mut ty| {
+          ty.expect_generic_mut().set_bounds(bounds);
+          (ty.name(), ty)
+        })
       }
-      _ => None
-    }).collect::<Vec<_>>();
-    todo!("Where generics: {:?}", &where_generics);
-  }
+      _ => None,
+    }).collect::<HashMap<_, _>>();
+    where_generics
+  } else {
+    HashMap::new()
+  };
+
 
   generics
       .params
       .iter()
       .filter_map(|g| generic_param_to_t(g, tcx))
-      .collect::<Vec<_>>()
+      .for_each(|g| {
+        let _ = where_generics.entry(g.name()).and_modify(|e| *e = merge_bounds(&g, e)).or_insert(g);
+      });
+
+  let overall_generics = where_generics.values().cloned().collect::<Vec<_>>();
+  info!("Overall generics: {:?}", overall_generics);
+  overall_generics
+}
+
+fn merge_bounds(a: &T, b: &T) -> T {
+  assert_eq!(a.name(), b.name());
+  assert!(a.is_generic() && b.is_generic());
+
+  let mut a_bounds = a.expect_generic().bounds().clone();
+  let mut b_bounds = b.expect_generic().bounds().clone();
+
+  a_bounds.append(&mut b_bounds);
+  let generic = Generic::new(&a.name(), a_bounds);
+  T::Generic(generic)
 }
 
 pub fn generic_param_to_t(param: &GenericParam<'_>, tcx: &TyCtxt<'_>) -> Option<T> {
@@ -324,9 +333,9 @@ pub fn generic_bound_to_trait(bound: &GenericBound<'_>, tcx: &TyCtxt<'_>) -> Opt
   match bound {
     GenericBound::Trait(trait_ref, _) => {
       let def_id = trait_ref.trait_ref.trait_def_id()?;
-
+      info!("TRAIT: {:?}", trait_ref);
       let name = tcx.def_path_str(def_id);
-      Some(Trait::new(&name))
+      Some(Trait::new(&name, vec![], vec![]))
     }
     GenericBound::LangItemTrait(_, _, _, _) => todo!(),
     GenericBound::Outlives(_) => None,

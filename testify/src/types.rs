@@ -322,8 +322,10 @@ fn trait_def_to_trait(def_id: DefId, tcx: &TyCtxt<'_>) -> Trait {
   assert!(tcx.is_trait(def_id));
 
   let bounding_trait_def = tcx.trait_def(def_id);
+  let generics = tcx.generics_of(bounding_trait_def.def_id);
+  info!("Trait generics are: {:?}", generics);
   let trait_name = def_id_name(bounding_trait_def.def_id, tcx);
-  Trait::new(&trait_name)
+  Trait::new(&trait_name, vec![], vec![])
 }
 
 pub fn mir_ty_to_t(ty: rustc_middle::ty::Ty<'_>, tcx: &TyCtxt<'_>) -> T {
@@ -578,6 +580,14 @@ impl T {
     }
   }
 
+  pub fn expect_generic_mut(&mut self) -> &mut Generic {
+    match self {
+      T::Generic(generic) => generic,
+      T::Ref(r, _) => r.expect_generic_mut(),
+      _ => panic!("Is not a generic")
+    }
+  }
+
   pub fn expect_enum(&self) -> &EnumT {
     match self {
       T::Enum(enum_t) => enum_t,
@@ -585,7 +595,21 @@ impl T {
     }
   }
 
+  pub fn expect_enum_mut(&mut self) -> &mut EnumT {
+    match self {
+      T::Enum(enum_t) => enum_t,
+      _ => panic!("Is not an enum")
+    }
+  }
+
   pub fn expect_struct(&self) -> &StructT {
+    match self {
+      T::Struct(struct_t) => struct_t,
+      _ => panic!("Is not a struct")
+    }
+  }
+
+  pub fn expect_struct_mut(&mut self) -> &mut StructT {
     match self {
       T::Struct(struct_t) => struct_t,
       _ => panic!("Is not a struct")
@@ -908,6 +932,10 @@ impl Generic {
   pub fn bounds(&self) -> &Vec<Trait> {
     &self.bounds
   }
+
+  pub fn set_bounds(&mut self, bounds: Vec<Trait>) {
+    self.bounds = bounds;
+  }
 }
 
 impl Display for Generic {
@@ -925,17 +953,29 @@ impl Display for Generic {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Trait {
   name: String,
+  generics: Vec<T>,
+  associated_types: Vec<AssociatedType>
 }
 
 impl Trait {
-  pub fn new(name: &str) -> Self {
+  pub fn new(name: &str, generics: Vec<T>, associated_types: Vec<AssociatedType>) -> Self {
     Trait {
       name: name.to_string(),
+      generics,
+      associated_types
     }
   }
 
   pub fn name(&self) -> &str {
     &self.name
+  }
+
+  pub fn generics(&self) -> &Vec<T> {
+    &self.generics
+  }
+
+  pub fn associated_types(&self) -> &Vec<AssociatedType> {
+    &self.associated_types
   }
 }
 
@@ -943,6 +983,12 @@ impl Display for Trait {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
     write!(f, "{}", &self.name)
   }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct AssociatedType {
+  name: String,
+  ty: T
 }
 
 #[derive(Clone, Eq, Hash, Serialize, Deserialize)]

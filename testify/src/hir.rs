@@ -155,7 +155,7 @@ fn analyze_enum(
   let self_name = node_to_name(&tcx.hir().get(enum_hir_id), tcx).unwrap();
 
   //let self_ty = def_id_to_enum(enum_def_id, tcx).unwrap();
-  let self_ty = T::Enum(EnumT::new(&self_name, generics, vec![]));
+  let self_ty = T::Enum(EnumT::new(&self_name, generics.clone(), vec![]));
   if self_name.contains("serde") {
     // Skip too hard stuff
     return;
