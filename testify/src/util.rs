@@ -194,6 +194,9 @@ pub fn def_id_to_t(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<T> {
         return None;
       }
       let name = tcx.def_path_str(def_id);
+
+      info!("Type of is {:?}", adt_def.adt_kind());
+
       match adt_def.adt_kind() {
         AdtKind::Struct => {
           let t = T::Struct(StructT::new(&name, generics));

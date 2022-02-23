@@ -183,13 +183,22 @@ fn analyze_enum(
 fn extract_enum_variant(variant: &Variant, hir_id: HirId, generics: &Vec<T>, tcx: &TyCtxt<'_>) -> Option<EnumVariant> {
   match &variant.data {
     VariantData::Struct(fields, _) => {
+      let def_id = tcx.hir().local_def_id(variant.id).to_def_id();
+      let struct_name = node_to_name(&tcx.hir().get(variant.id), tcx).unwrap();
+      let params = fields.iter().filter_map(|f|
+          ty_to_param(Some(f.ident.as_str()),
+                      f.ty,
+                      None,
+                      &vec![],
+                      tcx,
+          )).collect::<Vec<_>>();
 
+      if params.len() != fields.len() {
+        warn!("Could not extract enum variant: {}", struct_name);
+        return None;
+      }
 
-      let ctor_hir_id = variant.data.ctor_hir_id().unwrap();
-      let def_id = tcx.hir().local_def_id(ctor_hir_id).to_def_id();
-      let struct_type = def_id_to_t(def_id, tcx).unwrap();
-      let struct_name = node_to_name(&tcx.hir().get(ctor_hir_id), tcx).unwrap();
-      let v = EnumVariant::Struct(variant.ident.name.to_ident_string(), crate::types::Param::new(Some(&struct_name), struct_type, false));
+      let v = EnumVariant::Struct(variant.ident.name.to_ident_string(), params);
       Some(v)
     }
     VariantData::Tuple(fields, variant_hir_id) => {

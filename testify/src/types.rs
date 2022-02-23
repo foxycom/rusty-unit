@@ -860,7 +860,7 @@ impl EnumT {
 
 #[derive(Debug, Clone, Hash, Eq, Serialize, Deserialize)]
 pub enum EnumVariant {
-  Struct(String, Param),
+  Struct(String, Vec<Param>),
   Tuple(String, Vec<Param>),
   Unit(String),
 }
@@ -876,7 +876,7 @@ impl EnumVariant {
 
   pub fn params(&self) -> Vec<Param> {
     match self {
-      EnumVariant::Struct(_, p) => vec![p.clone()],
+      EnumVariant::Struct(_, p) => p.clone(),
       EnumVariant::Tuple(_, p) => p.clone(),
       EnumVariant::Unit(_) => vec![]
     }
