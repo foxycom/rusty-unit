@@ -49,11 +49,19 @@ public interface Type {
     return false;
   }
 
+  default boolean isArray() {
+    return false;
+  }
+
   default Struct asStruct() {
     throw new RuntimeException("Not with me");
   }
 
   default Tuple asTuple() {
+    throw new RuntimeException("Not with me");
+  }
+
+  default Array asArray() {
     throw new RuntimeException("Not with me");
   }
 

@@ -2,6 +2,7 @@ package de.unipassau.testify.test_case.type;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -30,6 +31,13 @@ public class Struct implements Type {
     this.name = other.name;
     this.isLocal = other.isLocal;
     this.generics = other.generics.stream().map(Type::copy).peek(Objects::requireNonNull).toList();
+  }
+
+  public Struct(String name, List<Type> generics, boolean isLocal) {
+    this.name = name;
+    this.generics = generics;
+    this.isLocal = isLocal;
+    this.implementedTraits = Collections.emptySet();
   }
 
   @Override

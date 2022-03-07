@@ -176,6 +176,7 @@ fn run_rustc() -> Result<(), i32> {
   }
 
   let std_env_args: Vec<String> = std::env::args().collect();
+
   let rustc_args = get_compiler_args(&std_env_args);
 
   let do_instrument = rustc_get_crate_name(&rustc_args) == RuConfig::env_crate_name();

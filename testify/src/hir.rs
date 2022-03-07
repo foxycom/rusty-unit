@@ -7,9 +7,11 @@ use rustc_span::def_id::{LOCAL_CRATE, LocalDefId};
 use rustc_span::Span;
 use crate::{HIR_LOG_PATH, LOG_DIR, RuConfig};
 use crate::types::{Callable, EnumInitItem, EnumT, EnumVariant, FieldAccessItem, FunctionItem, MethodItem, Param, StaticFnItem, StructInitItem, StructT, T};
-use crate::util::{def_id_to_t, def_id_to_enum, fn_ret_ty_to_t, generics_to_ts, impl_to_def_id, item_to_name, node_to_name, span_to_path, ty_to_param, ty_to_t};
-use crate::writer::HirWriter;
+use crate::util::{def_id_to_t, def_id_to_enum, fn_ret_ty_to_t, generics_to_ts, impl_to_def_id, item_to_name, node_to_name, span_to_path, ty_to_param, ty_to_t, is_local};
 use crate::analysis::Analysis;
+
+#[cfg(file_writer)]
+use crate::writer::FileWriter;
 
 pub fn hir_analysis(tcx: TyCtxt<'_>) {
   let current_crate_name = tcx.crate_name(LOCAL_CRATE);
@@ -86,8 +88,13 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
   }
 
   let hir_output_path = Path::new(LOG_DIR).join(HIR_LOG_PATH);
-  let mut analysis = Analysis::new(callables);
-  analysis.to_file(hir_output_path);
+  let content = serde_json::to_string(&callables).unwrap();
+
+  #[cfg(file_writer)]
+  FileWriter::new(hir_output_path).write(&content).unwrap();
+
+  #[cfg(redis_writer)]
+  todo!()
 }
 
 fn allowed_item(item: &Item<'_>, tcx: &TyCtxt<'_>) -> bool {
@@ -155,7 +162,7 @@ fn analyze_enum(
   let self_name = node_to_name(&tcx.hir().get(enum_hir_id), tcx).unwrap();
 
   //let self_ty = def_id_to_enum(enum_def_id, tcx).unwrap();
-  let self_ty = T::Enum(EnumT::new(&self_name, generics.clone(), vec![]));
+  let self_ty = T::Enum(EnumT::new(&self_name, generics.clone(), vec![], is_local(enum_def_id)));
   if self_name.contains("serde") {
     // Skip too hard stuff
     return;
@@ -237,7 +244,7 @@ fn analyze_struct(
       //let self_ty = def_id_to_t(def_id, tcx).unwrap();
       let self_name = node_to_name(&tcx.hir().get(struct_hir_id), tcx).unwrap();
       let generics = generics_to_ts(g, tcx);
-      let self_ty = T::Struct(StructT::new(&self_name, generics));
+      let self_ty = T::Struct(StructT::new(&self_name, generics, is_local(def_id)));
       if self_name.contains("serde") {
         // Skip too hard stuff
         return;
@@ -313,7 +320,7 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
           ImplItemKind::Fn(sig, body_id) => {
             debug!("HIR: Found method {}, parent: {}", &impl_item.ident, parent_hir_id);
             let fn_name = tcx.hir().get(item.id.hir_id()).ident().unwrap().to_string();
-            let mut fn_generics = generics_to_ts(&impl_item.generics, tcx);
+            let fn_generics = generics_to_ts(&impl_item.generics, tcx);
 
             let mut overall_generics = impl_generics.clone();
             overall_generics.append(&mut fn_generics.clone());

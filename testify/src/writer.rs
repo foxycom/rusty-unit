@@ -57,20 +57,26 @@ impl MirWriter {
   }
 }
 
-pub struct HirWriter {
-  file: Option<File>,
+#[cfg(file_writer)]
+pub struct FileWriter {
+  file: File
 }
 
-impl HirWriter {
+#[cfg(file_writer)]
+impl FileWriter {
   pub fn new<P>(path: P) -> Self
-    where
-        P: Into<PathBuf>,
-  {
+  where P: Into<PathBuf> {
     let file = OpenOptions::new()
         .create(true)
         .append(true)
         .open(path.into().as_path())
         .unwrap();
-    HirWriter { file: Some(file) }
+    FileWriter {
+      file
+    }
+  }
+
+  pub fn write(&mut self, content: &str) -> std::io::Result<()> {
+    self.file.write_all(content.as_bytes())
   }
 }

@@ -13,6 +13,7 @@ use log::{error, info};
 use rustc_hir::def::CtorKind;
 use rustc_target::abi::VariantIdx;
 use uuid::Uuid;
+use crate::util::is_local;
 
 static TYPE_PROVIDERS_DIR: &'static str =
   "/Users/tim/Documents/master-thesis/testify/providers/types";
@@ -361,7 +362,7 @@ fn adt_def_to_t(adt_def: &AdtDef, tcx: &TyCtxt<'_>) -> T {
       let variant = adt_def.variants.get(VariantIdx::from_usize(0)).unwrap();
       let name = def_id_name(adt_def.did, tcx);
       let generics = generics_of_item(adt_def.did, tcx);
-      T::Struct(StructT::new(&name, generics))
+      T::Struct(StructT::new(&name, generics, is_local(adt_def.did)))
     }
     AdtKind::Union => {
       todo!("Adt def is union")
@@ -388,7 +389,7 @@ fn adt_def_to_t(adt_def: &AdtDef, tcx: &TyCtxt<'_>) -> T {
 
       let generics = generics_of_item(adt_def.did, tcx);
 
-      let t = T::Enum(EnumT::new(&enum_name, generics, variants));
+      let t = T::Enum(EnumT::new(&enum_name, generics, variants, is_local(adt_def.did)));
       info!("Extracted enum: {:?}", t);
       t
     }
@@ -652,8 +653,6 @@ impl Display for T {
 
 #[derive(Clone, Hash, Eq, Serialize, Deserialize)]
 pub struct ArrayT {
-  #[serde(skip)]
-  def_id: Option<DefId>,
   length: usize,
   ty: T,
 }
@@ -671,12 +670,8 @@ impl Display for ArrayT {
 }
 
 impl ArrayT {
-  pub fn new(def_id: Option<DefId>, ty: T, length: usize) -> Self {
-    Self { def_id, ty, length }
-  }
-
-  pub fn def_id(&self) -> Option<DefId> {
-    self.def_id
+  pub fn new(ty: T, length: usize) -> Self {
+    Self { ty, length }
   }
 }
 
@@ -757,10 +752,10 @@ impl PartialEq for StructT {
 }
 
 impl StructT {
-  pub fn new(name: &str, generics: Vec<T>) -> Self {
+  pub fn new(name: &str, generics: Vec<T>, is_local: bool) -> Self {
     StructT {
       name: name.to_string(),
-      is_local: true,
+      is_local,
       generics,
     }
   }
@@ -832,12 +827,13 @@ impl EnumT {
     name: &str,
     generics: Vec<T>,
     variants: Vec<EnumVariant>,
+    is_local: bool
   ) -> Self {
     Self {
       name: name.to_string(),
       variants,
       generics,
-      is_local: true,
+      is_local
     }
   }
 

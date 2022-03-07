@@ -2,9 +2,12 @@ package de.unipassau.testify.test_case.type.prim;
 
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import de.unipassau.testify.Constants;
 import de.unipassau.testify.test_case.primitive.PrimitiveValue;
+import de.unipassau.testify.test_case.primitive.StringValue;
 import de.unipassau.testify.test_case.type.Trait;
 import java.util.Set;
+import org.apache.commons.lang3.RandomStringUtils;
 
 @JsonDeserialize(as = Str.class)
 public enum Str implements Prim {
@@ -42,13 +45,21 @@ public enum Str implements Prim {
   }
 
   @Override
+  public boolean isRef() {
+    // Primitive string (&str) is always ref
+    return true;
+  }
+
+
+  @Override
   public PrimitiveValue<String> random() {
-    throw new RuntimeException("Not implemented");
+    var string = RandomStringUtils.randomAlphanumeric(0, Constants.MAX_STRING_LENGTH);
+    return new StringValue(string);
   }
 
 
   @Override
   public String toString() {
-    return getName();
+    return "&" + getName();
   }
 }

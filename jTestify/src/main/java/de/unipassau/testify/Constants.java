@@ -21,6 +21,7 @@ public class Constants {
   public static final int GENERATIONS = getInt("generations");
   public static final int MAX_DELTA = getInt("max-delta");
   public static final int MAX_INT = getInt("max-int");
+  public static final int MAX_STRING_LENGTH = getInt("max-string-length");
   public static final String MIR_LOG_PATH = properties.getProperty("mir-log-path");
   public static final String HIR_LOG_PATH = properties.getProperty("hir-log-path");
 

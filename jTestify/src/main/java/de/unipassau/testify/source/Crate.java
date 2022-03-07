@@ -4,6 +4,7 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.io.FileWriteMode;
 import de.unipassau.testify.exec.ChromosomeExecutor;
+import de.unipassau.testify.exec.LLVMCoverage;
 import de.unipassau.testify.exec.TestCaseRunner;
 import de.unipassau.testify.source.SourceFile.FileType;
 import de.unipassau.testify.test_case.TestCase;
@@ -174,6 +175,11 @@ public class Crate implements ChromosomeContainer<TestCase> {
     } catch (IOException | InterruptedException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  @Override
+  public LLVMCoverage executeWithLlvmCoverage() throws IOException, InterruptedException {
+    return executor.run(this);
   }
 
   @Override

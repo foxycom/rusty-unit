@@ -123,6 +123,11 @@ public class StructInitStmt implements Statement {
   }
 
   @Override
+  public boolean mutates(VarReference var) {
+    throw new RuntimeException("mutates is not implemented");
+  }
+
+  @Override
   public boolean uses(VarReference var) {
     return args.stream().anyMatch(a -> a.equals(var));
   }

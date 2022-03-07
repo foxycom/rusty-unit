@@ -3,6 +3,7 @@ package de.unipassau.testify.test_case.statement;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.statement.array.DirectArrayInitStmt;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.util.Rnd;
 import java.util.List;
@@ -71,6 +72,10 @@ public interface Statement {
     return false;
   }
 
+  default boolean isArrayStmt() {
+    return false;
+  }
+
   default RefStmt asRefStmt() {
     throw new RuntimeException("Not with me");
   }
@@ -103,17 +108,15 @@ public interface Statement {
     throw new RuntimeException("Not with me");
   }
 
-  default boolean consumes(VarReference var) {
-    return false;
+  default DirectArrayInitStmt asArrayStmt() {
+    throw new RuntimeException("Not with me");
   }
 
-  default boolean borrows(VarReference var) {
-    return false;
-  }
+  boolean consumes(VarReference var);
 
-  default boolean mutates(VarReference var) {
-    return false;
-  }
+  boolean borrows(VarReference var);
+
+  boolean mutates(VarReference var);
 
   default boolean uses(VarReference var) {
     return false;

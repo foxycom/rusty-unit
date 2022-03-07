@@ -4,13 +4,14 @@ import de.unipassau.testify.test_case.type.Generic;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.TypeBinding;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.stream.IntStream;
 
 public class TypeUtil {
 
   public static Set<Generic> getDeepGenerics(Type type) {
-    return getDeepGenerics(type, new HashSet<>());
+    return getDeepGenerics(type, new LinkedHashSet<>());
   }
 
   private static Set<Generic> getDeepGenerics(Type type, Set<Generic> generics) {

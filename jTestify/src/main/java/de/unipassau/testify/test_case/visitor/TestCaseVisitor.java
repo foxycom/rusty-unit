@@ -176,6 +176,18 @@ public class TestCaseVisitor implements Visitor {
           .append(" = (")
           .append(args)
           .append(");");
+    } else if (stmt.isArrayStmt()) {
+      var arrayStmt = stmt.asArrayStmt();
+      var returnValue = arrayStmt.returnValue().get();
+      var returnType = returnValue.type();
+      var args = arrayStmt.args().stream().map(this::getVariableName)
+          .collect(Collectors.joining(", "));
+      sb.append("let mut ").append(getVariableName(returnValue))
+          .append(": ")
+          .append(getTypeString(returnType))
+          .append(" = [")
+          .append(args)
+          .append("];");
     } else {
       throw new RuntimeException("Huh?");
     }

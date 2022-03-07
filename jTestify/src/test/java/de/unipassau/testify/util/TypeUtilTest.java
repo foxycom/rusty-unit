@@ -18,12 +18,13 @@ class TypeUtilTest {
 
     var vecType = new Struct("Vec", List.of(
         genericB
-    ), false);
+    ), false, Collections.emptySet());
 
     var hashMapType = new Struct(
         "HashMap",
         List.of(genericA, vecType),
-        false);
+        false,
+        Collections.emptySet());
 
     assertThat(getDeepGenerics(hashMapType)).containsExactly(genericA, genericB);
   }

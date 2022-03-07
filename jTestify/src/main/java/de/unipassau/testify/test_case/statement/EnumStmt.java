@@ -156,6 +156,11 @@ public class EnumStmt implements Statement {
   }
 
   @Override
+  public boolean mutates(VarReference var) {
+    throw new RuntimeException("mutates is not implemented");
+  }
+
+  @Override
   public boolean uses(VarReference var) {
     return args.stream().anyMatch(a -> a.equals(var));
   }
@@ -211,16 +216,7 @@ public class EnumStmt implements Statement {
       throw new RuntimeException("There's something wrong");
     }
 
-    /*var typeBinding = testCase.popTypeBindingsFor(oldVar);
-    testCase.setTypeBindingsFor(newVar, typeBinding);*/
-
-    args = args.stream().map(a -> {
-      if (a.equals(oldVar)) {
-        return newVar;
-      } else {
-        return a;
-      }
-    }).toList();
+    args.replaceAll(a -> a.equals(oldVar) ? newVar : a);
   }
 
   @Override

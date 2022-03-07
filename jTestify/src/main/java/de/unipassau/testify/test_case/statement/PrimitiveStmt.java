@@ -103,6 +103,21 @@ public class PrimitiveStmt implements Statement {
   }
 
   @Override
+  public boolean consumes(VarReference var) {
+    return false;
+  }
+
+  @Override
+  public boolean borrows(VarReference var) {
+    return false;
+  }
+
+  @Override
+  public boolean mutates(VarReference var) {
+    throw new RuntimeException("mutates is not implemented");
+  }
+
+  @Override
   public boolean mutate(TestCase testCase) {
     var oldValue = value;
     while (value == oldValue && value != null) {

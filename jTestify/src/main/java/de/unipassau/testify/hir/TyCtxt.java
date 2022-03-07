@@ -6,6 +6,10 @@ import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.VarReference;
 import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.Method;
+import de.unipassau.testify.test_case.callable.base.OptionInit;
+import de.unipassau.testify.test_case.callable.base.OptionInit.OptionNoneInit;
+import de.unipassau.testify.test_case.callable.base.OptionInit.OptionSomeInit;
+import de.unipassau.testify.test_case.callable.base.StringInit;
 import de.unipassau.testify.test_case.type.Trait;
 import de.unipassau.testify.test_case.type.Type;
 import java.io.IOException;
@@ -22,13 +26,22 @@ public class TyCtxt {
 
   private static final Logger logger = LoggerFactory.getLogger(TyCtxt.class);
 
-  private final List<Callable> callables = new ArrayList<>();
+  private final List<Callable> callables = loadBaseCallables();
 
   private final Set<Type> types = new HashSet<>();
 
   public TyCtxt(List<Callable> callables) throws IOException {
     this.callables.addAll(callables);
     analysis();
+  }
+
+  private static List<Callable> loadBaseCallables() {
+    var baseCallables = new ArrayList<Callable>();
+    baseCallables.add(new OptionNoneInit());
+    baseCallables.add(new OptionSomeInit());
+    baseCallables.add(new StringInit());
+
+    return baseCallables;
   }
 
   private void analysis() {
@@ -59,6 +72,8 @@ public class TyCtxt {
       types.add(type);
     } else if (type.isEnum()) {
       types.add(type);
+    } else if (type.isArray()) {
+      addType(type.asArray().type());
     } else {
       throw new RuntimeException("Not implemented");
     }
@@ -126,11 +141,11 @@ public class TyCtxt {
     var stream = callables.stream()
         .filter(subClass::isInstance)
         .filter(callable -> callable.returnsValue()
-            && callable.getReturnType().canBeSameAs(type))
+            && callable.getReturnType().canBeSameAs(type));
         // Unless we want the type explicitly, exclude completely generic callables like
         // Option::unwrap(Option) -> T, which would generate a wrapper just to unwrap it later
-        .filter(callable -> (callable.getReturnType().getName().equals(type.getName()))
-            || !callable.getReturnType().isGeneric());
+//        .filter(callable -> (callable.getReturnType().getName().equals(type.getName()))
+//            || !callable.getReturnType().isGeneric());
 
     if (filePath != null) {
       logger.debug("File path is not null, applying filtering");

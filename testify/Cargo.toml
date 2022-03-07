@@ -20,6 +20,11 @@ dircpy-stable = "0.3.5"
 [dependencies.redis]
 version = "*"
 
+[workspace]
+members = [
+    "wrapper"
+]
+
 [target.'cfg(NOT_A_PLATFORM)'.dependencies]
 rustc_driver = {path = "/Users/tim/rust/compiler/rustc_driver"}
 rustc_interface = {path = "/Users/tim/rust/compiler/rustc_interface"}

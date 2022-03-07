@@ -102,6 +102,11 @@ public class RefStmt implements Statement {
     return this;
   }
 
+  @Override
+  public boolean consumes(VarReference var) {
+    return false;
+  }
+
   public VarReference arg() {
     return arg;
   }
@@ -114,6 +119,11 @@ public class RefStmt implements Statement {
   @Override
   public boolean borrows(VarReference var) {
     return arg.equals(var);
+  }
+
+  @Override
+  public boolean mutates(VarReference var) {
+    throw new RuntimeException("mutates is not implemented");
   }
 
   @Override

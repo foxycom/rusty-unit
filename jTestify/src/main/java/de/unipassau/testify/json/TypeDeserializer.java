@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import de.unipassau.testify.test_case.type.Array;
 import de.unipassau.testify.test_case.type.Struct;
 import de.unipassau.testify.test_case.type.Enum;
 import de.unipassau.testify.test_case.type.Generic;
@@ -53,6 +54,7 @@ public class TypeDeserializer extends StdDeserializer<Type> {
       case "Prim" -> mapper.readValue(node.toString(), Prim.class);
       case "Enum" -> mapper.readValue(node.toString(), Enum.class);
       case "Tuple" -> mapper.readValue(node.toString(), Tuple.class);
+      case "Array" -> mapper.readValue(node.toString(), Array.class);
       default -> throw new RuntimeException("Not implemented: "+ typeName);
     };
   }

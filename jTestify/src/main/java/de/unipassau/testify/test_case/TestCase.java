@@ -10,17 +10,21 @@ import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome
 import de.unipassau.testify.metaheuristics.operators.Crossover;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
 import de.unipassau.testify.mir.BasicBlock;
+import de.unipassau.testify.test_case.callable.ArrayInit;
 import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.Method;
 import de.unipassau.testify.test_case.callable.RefItem;
 import de.unipassau.testify.test_case.statement.PrimitiveStmt;
 import de.unipassau.testify.test_case.statement.Statement;
+import de.unipassau.testify.test_case.type.Array;
 import de.unipassau.testify.test_case.type.Generic;
 import de.unipassau.testify.test_case.type.Trait;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.TypeBinding;
 import de.unipassau.testify.test_case.type.prim.Int.ISize;
 import de.unipassau.testify.test_case.type.prim.Prim;
+import de.unipassau.testify.test_case.type.std.traits.Copy;
+import de.unipassau.testify.test_case.type.std.traits.Default;
 import de.unipassau.testify.test_case.visitor.LineNumberDebugVisitor;
 import de.unipassau.testify.test_case.visitor.TypeBindingStringVisitor;
 import de.unipassau.testify.test_case.visitor.Visitor;
@@ -204,36 +208,10 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     if (stmt.args().isEmpty()) {
       // Insert position is 0
       insertStmt(0, stmt);
-    } else if (stmt.isPrimitiveStmt()) {
-      statements.add(insertPosition, stmt);
-    } else if (stmt.isCallableStmt()) {
-      var callableStmt = stmt.asCallableStmt();
-      insertPosition = callableStmt.args().stream().map(VarReference::position)
-          .reduce(0, Integer::max);
-      var size = size();
-      insertStmt(Integer.min(size, insertPosition + 1), stmt);
-    } else if (stmt.isStructInitStmt()) {
-      var structInitStmt = stmt.asStructInitStmt();
-      insertPosition = structInitStmt.args().stream().map(VarReference::position)
-          .reduce(0, Integer::max);
-      var size = size();
-      insertStmt(Integer.min(size, insertPosition + 1), stmt);
-    } else if (stmt.isEnumStmt()) {
-      var enumStmt = stmt.asEnumStmt();
-      insertPosition = enumStmt.getArgs().stream().map(VarReference::position)
-          .reduce(0, Integer::max);
-      insertStmt(Integer.min(size(), insertPosition + 1), stmt);
-    } else if (stmt.isRefStmt()) {
-      var refStmt = stmt.asRefStmt();
-      insertPosition = refStmt.arg().position();
-      insertStmt(Integer.min(size(), insertPosition + 1), refStmt);
-    } else if (stmt.isTupleStmt()) {
-      var tupleStmt = stmt.asTupleStmt();
-      insertPosition = tupleStmt.args().stream().map(VarReference::position)
-          .reduce(0, Integer::max);
-      insertStmt(Integer.min(size(), insertPosition + 1), stmt);
     } else {
-      throw new RuntimeException("Not implemented");
+      insertPosition = stmt.args().stream().map(VarReference::position)
+          .reduce(0, Integer::max);
+      insertStmt(Integer.min(size(), insertPosition + 1), stmt);
     }
   }
 
@@ -565,25 +543,79 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   private Optional<VarReference> generateArg(Type type,
       Set<Type> typesToGenerate) {
     logger.debug("({}) Starting to generate an argument for type {}", id, type);
-    // TODO reuse existing variables if possible, e.g., introduce a boolean flag or so
     if (type.isPrim()) {
       return Optional.of(generatePrimitive(type.asPrimitive()));
     } else if (type.isStruct() || type.isEnum()) {
       var generators = tyCtxt.generatorsOf(type, getFilePathBinding().orElse(null));
-      /*if (generators.isEmpty()) {
-        generators = hirAnalysis.wrappingGeneratorsOf(type, getFilePathBinding().orElse(null));
-      }*/
       logger.debug("({}) Found " + generators.size() + " generators", id);
       return generateArgFromGenerators(type, generators, typesToGenerate);
     } else if (type.isRef()) {
       var generators = tyCtxt.generatorsOf(type, getFilePathBinding().orElse(null));
-      /*if (generators.isEmpty()) {
-        generators = hirAnalysis.wrappingGeneratorsOf(type, getFilePathBinding().orElse(null));
-      }*/
       logger.debug("({}) Found " + generators.size() + " generators", id);
       return generateArgFromGenerators(type, generators, typesToGenerate);
+    } else if (type.isArray()) {
+      return generateArray(type.asArray(), typesToGenerate);
     } else {
       throw new RuntimeException("Not implemented: " + type);
+    }
+  }
+
+  private Optional<VarReference> generateArray(Array array, Set<Type> typesToGenerate) {
+    // TODO: 27.02.22 1) [T; N] where T: Default (and N <= 32)
+    // TODO: 27.02.22  [T; N] where T: Copy
+    // TODO: 27.02.22 literal array init
+    if (array.implementedTraits().contains(new Default())) {
+      throw new RuntimeException("Not implemented");
+    } else if (array.implementedTraits().contains(new Copy())) {
+      throw new RuntimeException("Not implemented");
+    } else {
+      var arrayInit = new ArrayInit(array);
+
+      Set<Generic> generics = TypeUtil.getDeepGenerics(array);
+      var typeBinding = new TypeBinding((LinkedHashSet<Generic>) generics);
+
+      // Set for all generics some appropriate random type that complies with all constraints
+      // and type bounds
+      generics.stream().map(g -> Pair.with(g, getTypeFor(g))).filter(p -> p.getValue1().isPresent())
+          .forEach(p -> typeBinding.bindGeneric(p.getValue0(), p.getValue1().get()));
+      if (typeBinding.hasUnboundedGeneric()) {
+        logger.warn("({}) Could not bind all generics: {}", id, typeBinding.getUnboundGenerics());
+        return Optional.empty();
+      }
+
+      var actualElementsType = array.type().bindGenerics(typeBinding);
+
+      var elements = IntStream.range(0, array.length())
+          .mapToObj(i -> generateArg(actualElementsType, typesToGenerate))
+          .filter(Optional::isPresent)
+          .map(Optional::get)
+          .collect(toCollection(ArrayList::new));
+
+      if (elements.size() != array.length()) {
+        logger.warn("Could not generate all elements for {}", array);
+        return Optional.empty();
+      }
+
+//      if (generator.returnsValue()) {
+//        if (type.isRef() && !generator.getReturnType().isRef()) {
+//          // Unwrap the type
+//          var innerType = type.asRef().getInnerType();
+//          returnValue = createVariable(innerType);
+//        } else if (!type.isRef() && generator.getReturnType().isRef()) {
+//          throw new RuntimeException("Not implemented");
+//        } else {
+//          returnValue = createVariable(type);
+//        }
+//
+//        returnValue.setBinding(typeBinding);
+//      }
+
+      var returnValue = createVariable(array.bindGenerics(typeBinding));
+      returnValue.setBinding(typeBinding);
+
+      var stmt = arrayInit.toStmt(this, elements, returnValue);
+      addStmt(stmt);
+      return Optional.of(returnValue);
     }
   }
 

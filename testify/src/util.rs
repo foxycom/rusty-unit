@@ -15,9 +15,10 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use log::{debug, error, info, warn};
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use crate::extractor::hir_ty_to_t;
-use crate::types::{EnumT, Generic, mir_ty_to_t, Param, StructT, T, Trait, TupleT};
+use crate::types::{ArrayT, EnumT, Generic, mir_ty_to_t, Param, StructT, T, Trait, TupleT};
 
 pub fn rustc_get_crate_name(rustc_args: &[String]) -> String {
   let pos = rustc_args.iter().position(|a| a == "--crate-name").unwrap();
@@ -133,8 +134,13 @@ pub fn ty_to_t(
       }
       Some(T::Tuple(TupleT::new(ts)))
     }
-    TyKind::Array(ty, array_length) => {
-      warn!("HIR: Skipping array type");
+    TyKind::Array(ty, array_len) => {
+      let array_len = eval_array_len(array_len, tcx);
+      if let Some(array_len) = array_len {
+        return ty_to_t(ty, self_ty, defined_generics, tcx)
+            .map(|ty| T::Array(Box::new(ArrayT::new(ty, array_len))));
+      }
+
       None
     }
     _ => todo!("Ty kind is: {:?}", &ty.kind),
@@ -164,10 +170,10 @@ pub fn path_to_t(
 
   match def_kind {
     DefKind::Enum => {
-      Some(T::Enum(EnumT::new(&name, generics, vec![])))
+      Some(T::Enum(EnumT::new(&name, generics, vec![], is_local(def_id))))
     }
     DefKind::Struct => {
-      Some(T::Struct(StructT::new(&name, generics)))
+      Some(T::Struct(StructT::new(&name, generics, is_local(def_id))))
     }
     _ => unimplemented!()
   }
@@ -199,7 +205,7 @@ pub fn def_id_to_t(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<T> {
 
       match adt_def.adt_kind() {
         AdtKind::Struct => {
-          let t = T::Struct(StructT::new(&name, generics));
+          let t = T::Struct(StructT::new(&name, generics, is_local(def_id)));
 
           Some(t)
         }
@@ -208,7 +214,7 @@ pub fn def_id_to_t(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<T> {
           None
         }
         AdtKind::Enum => {
-          let t = T::Enum(EnumT::new(&name, generics, vec![]));
+          let t = T::Enum(EnumT::new(&name, generics, vec![], is_local(def_id)));
           Some(t)
         }
       }
@@ -232,7 +238,7 @@ pub fn def_id_to_enum(def_id: DefId, tcx: &TyCtxt<'_>) -> Option<T> {
 
       let name = tcx.def_path_str(def_id);
       let variants = vec![];
-      let t = T::Enum(EnumT::new(&name, generics, variants));
+      let t = T::Enum(EnumT::new(&name, generics, variants, is_local(def_id)));
 
       Some(t)
     }
@@ -431,6 +437,24 @@ pub fn ty_kind_to_def_id(kind: &TyKind<'_>) -> DefId {
   }
 }
 
+fn eval_array_len(array_len: &ArrayLen, tcx: &TyCtxt<'_>) -> Option<usize> {
+  let array_len_def_id = tcx.hir().local_def_id(array_len.hir_id()).to_def_id();
+  let len = tcx.const_eval_poly(array_len_def_id);
+
+  if let Some(len) = len.ok() {
+    match len {
+      ConstValue::Scalar(scalar) => match scalar {
+        Scalar::Int(i) => i.try_to_machine_usize(tcx.clone()).ok().map(|v| v as usize),
+        Scalar::Ptr(_, _) => None,
+      },
+      ConstValue::Slice { .. } => None,
+      ConstValue::ByRef { .. } => None
+    }
+  } else {
+    None
+  }
+}
+
 fn def_path_data(data: &DefPathData) -> Option<String> {
   match data {
     DefPathData::CrateRoot => Some("crate".to_string()),
@@ -494,6 +518,10 @@ fn fmt_string(source: &str) -> io::Result<String> {
     },
     Err(_) => Ok(source),
   }
+}
+
+pub fn is_local(def_id: DefId) -> bool {
+  def_id.krate == CrateNum::from_u32(0)
 }
 
 /// Fetch all implementations of a trait with given def_id

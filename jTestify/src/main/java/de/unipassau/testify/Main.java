@@ -99,6 +99,9 @@ public class Main {
 
     var solutions = mosa.findSolution();
 
+    crate.addAll(solutions);
+    var llvmCoverage = crate.executeWithLlvmCoverage();
+    System.out.printf("Coverage: %.2f%n", llvmCoverage.lineCoverage);
 
   }
 

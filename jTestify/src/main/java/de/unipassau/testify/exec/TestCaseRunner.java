@@ -95,6 +95,12 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
     return Pair.with(process.waitFor(), output);
   }
 
+  @Override
+  public LLVMCoverage run(ChromosomeContainer<TestCase> container)
+      throws IOException, InterruptedException {
+    return run(container.getPath());
+  }
+
   public LLVMCoverage run(String path) throws IOException, InterruptedException {
     clear();
 
@@ -136,9 +142,9 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
     var env = processBuilder.environment();
     env.put("RUSTC_WRAPPER", INSTRUMENTER_PATH);
     env.put("RUST_LOG", "info");
-    env.put("RUSTY_UNIT",
-        String.format("--stage=instrument --crate=%s --crate-name=%s", directory.toString(),
-            crateName));
+    env.put("RU_STAGE", "instrumentation");
+    env.put("RU_CRATE_NAME", crateName);
+    env.put("RU_CRATE_ROOT", directory.toString());
     var process = processBuilder.start();
     var output = IOUtils.toString(process.getInputStream(), Charset.defaultCharset());
     var statusCode = process.waitFor();
@@ -175,10 +181,6 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
 
   }
 
-  @Override
-  public LLVMCoverage run(ChromosomeContainer<TestCase> container) {
-    throw new RuntimeException("Not implemented yet");
-  }
 
   @Override
   public int runWithInstrumentation(ChromosomeContainer<TestCase> container)
