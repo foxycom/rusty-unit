@@ -26,6 +26,8 @@ public class Function implements Callable {
   @JsonProperty("src_file_path")
   private String srcFilePath;
 
+  private List<Type> generics;
+
   @Override
   public String getName() {
     return name;
@@ -34,6 +36,14 @@ public class Function implements Callable {
   @Override
   public void setName(String name) {
     this.name = name;
+  }
+
+  public List<Type> getGenerics() {
+    return generics;
+  }
+
+  public void setGenerics(List<Type> generics) {
+    this.generics = generics;
   }
 
   @Override
@@ -58,7 +68,7 @@ public class Function implements Callable {
 
   @Override
   public Type getParent() {
-    throw new RuntimeException("Not with me");
+    return null;
   }
 
   @Override

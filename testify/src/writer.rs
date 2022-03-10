@@ -1,82 +1,49 @@
 use std::fs::{File, OpenOptions};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
+use crate::{INSTRUMENTED_MIR_LOG_NAME, LOG_DIR, LOG_EXT, MIR_LOG_NAME};
+use serde::Serialize;
 
-pub struct MirWriter {
-  file: Option<File>,
+#[derive(Builder, Serialize)]
+pub struct MirObject {
+  global_id: String,
+  cdg: String,
+  locals: Vec<String>,
+  basic_blocks: Vec<String>,
 }
+
+pub struct MirWriter {}
 
 impl MirWriter {
-  pub fn new<P>(path: P) -> Self
-    where
-        P: Into<PathBuf>,
-  {
-    let file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path.into().as_path())
-        .unwrap();
-    MirWriter { file: Some(file) }
+  pub fn write(mir_object: &MirObject) {
+    let file_name = format!("{}_{}.{}", MIR_LOG_NAME, &mir_object.global_id, LOG_EXT);
+    let path = Path::new(LOG_DIR).join(file_name);
+
+    Writer::write(path.as_path(), serde_json::to_string(mir_object).as_ref().unwrap());
   }
 
-  pub fn new_body(&mut self, id: &str) {
-    self.file
-        .as_mut()
-        .unwrap()
-        .write_all(format!(">>{}\n", id).as_bytes())
-        .unwrap();
-  }
-
-  pub fn write_cdg(&mut self, cdg: &str) {
-    let file = self.file.as_mut().unwrap();
-    file.write_all(format!("#cdg\n<data>{}\n", cdg).as_bytes())
-        .unwrap();
-  }
-
-  pub fn write_locals(&mut self, locals: &Vec<String>) {
-    let file = self.file.as_mut().unwrap();
-    file.write_all(b"#locals\n").unwrap();
-    for local in locals {
-      file.write_all(format!("<data>{}\n", local).as_bytes()).unwrap();
-    }
-  }
-
-  pub fn write_branches(&mut self, branches: &str) {
-    let file = self.file.as_mut().unwrap();
-    file.write_all(format!("#branches\n<data>{}\n", branches).as_bytes())
-        .unwrap();
-  }
-
-  pub fn write_basic_blocks(&mut self, basic_blocks: &Vec<String>) {
-    let file = self.file.as_mut().unwrap();
-    file.write_all(b"#basic_blocks\n").unwrap();
-    for block in basic_blocks {
-      file.write_all(format!("<data>{}\n", block).as_bytes())
-          .unwrap();
-    }
+  pub fn write_instrumented(mir_object: &MirObject) {
+    let file_name = format!("{}_{}.{}", INSTRUMENTED_MIR_LOG_NAME, &mir_object.global_id, LOG_EXT);
+    let path = Path::new(LOG_DIR).join(file_name);
+    Writer::write(path.as_path(), serde_json::to_string(mir_object).as_ref().unwrap());
   }
 }
 
-#[cfg(file_writer)]
-pub struct FileWriter {
-  file: File
-}
+struct Writer {}
 
-#[cfg(file_writer)]
-impl FileWriter {
-  pub fn new<P>(path: P) -> Self
-  where P: Into<PathBuf> {
-    let file = OpenOptions::new()
+impl Writer {
+  #[cfg(file_writer)]
+  fn write(path: impl AsRef<Path>, content: &str) {
+    let mut file = OpenOptions::new()
         .create(true)
         .append(true)
-        .open(path.into().as_path())
+        .open(path.as_ref())
         .unwrap();
-    FileWriter {
-      file
-    }
+    file.write_all(content.as_bytes()).unwrap();
   }
 
-  pub fn write(&mut self, content: &str) -> std::io::Result<()> {
-    self.file.write_all(content.as_bytes())
+  #[cfg(redis_writer)]
+  pub fn write(content: &str) {
+    todo!()
   }
 }

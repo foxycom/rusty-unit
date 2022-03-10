@@ -1,6 +1,6 @@
-use crate::data_structures::{cdg, log_graph_to};
+use crate::data_structures::{cdg, log_graph_to, visualize_graph};
 use crate::mir::ValueDef::Var;
-use crate::writer::MirWriter;
+use crate::writer::{MirObjectBuilder, MirObject, MirWriter};
 use log::{debug, error, info, warn};
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_hir::def_id::DefId;
@@ -24,7 +24,7 @@ use std::fs::File;
 use std::ops::Add;
 use std::path::Path;
 use rustc_ast::Mutability;
-use crate::{INSTRUMENTED_MIR_LOG_PATH, LOG_DIR, MIR_LOG_PATH, RuConfig};
+use crate::{DOT_DIR, INSTRUMENTED_MIR_LOG_NAME, LOG_DIR, RuConfig};
 use crate::monitor::{BinaryOp, UnaryOp};
 
 pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<'tcx> =
@@ -41,8 +41,6 @@ pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'
       return tcx.arena.alloc(body);
     }
 
-    let mir_output_path = Path::new(LOG_DIR).join(MIR_LOG_PATH);
-    let mut writer = MirWriter::new(mir_output_path);
     let item_name = tcx.hir().opt_name(hir_id);
     if let None = item_name {
       return tcx.arena.alloc(body);
@@ -50,25 +48,33 @@ pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'
 
     info!("MIR: Analyzing {:?}", def);
 
-    let global_id = def_id_to_str(def, &tcx);
-    writer.new_body(&format!("{}", global_id));
+    let global_id = def_id_to_str(def, &tcx).replace("::", "__");
     let basic_blocks = body.basic_blocks();
-    let blocks = basic_blocks
+    let basic_blocks_str = basic_blocks
         .iter_enumerated()
         .map(|(block, data)| format!("{} -> {:?}", block.as_usize(), data))
         .collect::<Vec<_>>();
 
-    /*for block in &blocks {
-        println!("{}", block);
-    }*/
-    writer.write_basic_blocks(&blocks);
-
     let cdg = cdg(&body);
-    log_graph_to(
-      &cdg,
-      "/Users/tim/Documents/master-thesis/testify/cdg.dot",
-    );
-    writer.write_cdg(serde_json::to_string(&cdg).as_ref().unwrap());
+
+    if cfg!(file_writer) {
+      let path = Path::new(DOT_DIR).join(format!("{}.dot", &global_id));
+      visualize_graph(&cdg, &global_id);
+    }
+
+    let locals_decls: &LocalDecls = &body.local_decls;
+    let locals_str = locals_decls.iter_enumerated()
+        .map(|(local, decl)| format!("{:?} -> {:?}", local, decl))
+        .collect::<Vec<_>>();
+    let mut mir_object = MirObjectBuilder::default()
+        .global_id(global_id.to_owned())
+        .basic_blocks(basic_blocks_str)
+        .cdg(serde_json::to_string(&cdg).unwrap())
+        .locals(locals_str)
+        .build()
+        .unwrap();
+
+    MirWriter::write(&mir_object);
 
     // INSTRUMENT
     let mut mir_visitor = MirVisitor::new(&global_id, body.clone(), tcx);
@@ -80,22 +86,20 @@ pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'
         .iter_enumerated()
         .map(|(local, decl)| format!("{:?} -> {:?}", local, decl))
         .collect::<Vec<_>>();
-    writer.write_locals(&locals);
 
-    let instrumented_mir_output_path = Path::new(LOG_DIR).join(INSTRUMENTED_MIR_LOG_PATH);
-    // Log instrumented version of the mir
-    let mut instrumented_writer = MirWriter::new(instrumented_mir_output_path);
-    instrumented_writer.new_body(&format!("{}", global_id));
-    instrumented_writer.write_locals(&locals);
     let blocks = basic_blocks
         .iter_enumerated()
         .map(|(block, data)| format!("{} -> {:?}", block.as_usize(), data))
         .collect::<Vec<_>>();
-    instrumented_writer.write_basic_blocks(&blocks);
 
-
-    /* let branches = serde_json::to_string(&mir_visitor.branches).unwrap();
-     writer.write_branches(&branches);*/
+    let instrumented_mir_object = MirObjectBuilder::default()
+        .global_id(global_id)
+        .locals(locals)
+        .basic_blocks(blocks)
+        .cdg(serde_json::to_string(&cdg).unwrap())
+        .build()
+        .unwrap();
+    MirWriter::write_instrumented(&instrumented_mir_object);
 
     return tcx.arena.alloc(instrumented_body);
   };

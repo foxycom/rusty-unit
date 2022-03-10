@@ -61,7 +61,7 @@ public class Main {
 
     var hirLog = new File(HIR_LOG_PATH);
     var json = Files.readString(hirLog.toPath());
-    var hirAnalysis = new TyCtxt(JSONParser.parse(json));
+    var tyCtxt = new TyCtxt(JSONParser.parse(json));
 
     List<MinimizingFitnessFunction<TestCase>> objectives = MirAnalysis.targets().stream()
         .map(Fitness::new).collect(Collectors.toList());
@@ -75,7 +75,7 @@ public class Main {
     var crossover = new SinglePointFixedCrossover();
     var selection = new RankSelection<>(objectives, svd, preferenceSorter);
     var populationGenerator = new FixedSizePopulationGenerator<>(
-        new TestCaseGenerator(hirAnalysis, mutation, crossover), POPULATION_SIZE);
+        new TestCaseGenerator(tyCtxt, mutation, crossover), POPULATION_SIZE);
 
     //var population = populationGenerator.get();
 

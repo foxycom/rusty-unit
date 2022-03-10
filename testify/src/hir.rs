@@ -10,9 +10,6 @@ use crate::types::{Callable, EnumInitItem, EnumT, EnumVariant, FieldAccessItem, 
 use crate::util::{def_id_to_t, def_id_to_enum, fn_ret_ty_to_t, generics_to_ts, impl_to_def_id, item_to_name, node_to_name, span_to_path, ty_to_param, ty_to_t, is_local};
 use crate::analysis::Analysis;
 
-#[cfg(file_writer)]
-use crate::writer::FileWriter;
-
 pub fn hir_analysis(tcx: TyCtxt<'_>) {
   let current_crate_name = tcx.crate_name(LOCAL_CRATE);
   if current_crate_name.as_str() != RuConfig::env_crate_name() {
@@ -29,7 +26,7 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
       continue;
     }
 
-    info!("HIR: Scanning file {:?}", file_path.as_ref());
+    //info!("HIR: Scanning file {:?}", file_path.as_ref());
     if file_path.as_ref().unwrap().ends_with("rusty_monitor.rs") {
       continue;
     }
@@ -87,14 +84,14 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
     }
   }
 
-  let hir_output_path = Path::new(LOG_DIR).join(HIR_LOG_PATH);
-  let content = serde_json::to_string(&callables).unwrap();
-
-  #[cfg(file_writer)]
-  FileWriter::new(hir_output_path).write(&content).unwrap();
-
-  #[cfg(redis_writer)]
-  todo!()
+  // let hir_output_path = Path::new(LOG_DIR).join(HIR_LOG_PATH);
+  // let content = serde_json::to_string(&callables).unwrap();
+  //
+  // #[cfg(file_writer)]
+  // FileWriter::new(hir_output_path).write(&content).unwrap();
+  //
+  // #[cfg(redis_writer)]
+  // todo!()
 }
 
 fn allowed_item(item: &Item<'_>, tcx: &TyCtxt<'_>) -> bool {

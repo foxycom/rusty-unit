@@ -5,11 +5,16 @@ use petgraph::{Direction, Graph};
 use rustc_data_structures::graph::WithSuccessors;
 use rustc_middle::mir::{BasicBlock, Body, TerminatorKind};
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::fmt::Display;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::iter::{FromIterator};
-use log::debug;
+use std::path::Path;
+use std::process::Command;
+use log::{debug, error};
+use rustc_ast::ptr::P;
 use rustc_middle::ty::layout::MaybeResult;
+use crate::DOT_DIR;
 
 pub const ENTRY: usize = 42069;
 
@@ -360,9 +365,25 @@ fn map_to_graph(m: HashMap<usize, HashSet<usize>>) -> Graph<usize, usize> {
   graph
 }
 
-pub fn log_graph_to<P>(graph: &Graph<usize, usize>, path: P)
+pub fn visualize_graph<A: Display, B: Display>(graph: &Graph<A, B>, global_id: &str) {
+  let dot_path = Path::new(DOT_DIR).join(format!("{}.dot", global_id));
+  let png_path = Path::new(DOT_DIR).join(format!("{}.png", global_id));
+  if let Ok(_) = log_graph_to(graph, dot_path.as_path()) {
+    Command::new("dot")
+        .arg("-Tpng")
+        .arg(dot_path.to_str().unwrap())
+        .arg("-o")
+        .arg(png_path.to_str().unwrap())
+        .output()
+        .expect(&format!("Could not store {}", png_path.to_str().unwrap()));
+  } else {
+    error!("Could not write graph DOT file {}", dot_path.to_str().unwrap());
+  }
+}
+
+pub fn log_graph_to<A: Display, B: Display, P>(graph: &Graph<A, B>, path: P) -> std::io::Result<()>
   where
-      P: AsRef<std::path::Path>,
+      P: AsRef<std::path::Path>
 {
   let dot = Dot::new(graph);
   let mut file = OpenOptions::new()
@@ -372,7 +393,7 @@ pub fn log_graph_to<P>(graph: &Graph<usize, usize>, path: P)
       .open(path)
       .unwrap();
   let output = format!("{}", dot);
-  file.write_all(output.as_bytes()).unwrap();
+  file.write_all(output.as_bytes())
 }
 
 /// A graph with nodes that are identified by basic block ids
