@@ -101,6 +101,8 @@ impl Monitor {
 
   pub fn trace_fn(&mut self, global_id: &str) {
     let msg = format!("{} ${}$ root", self.test_id, global_id);
+    println!("Visited root {}", global_id);
+
     let _: () = redis::cmd("SADD")
         .arg("traces")
         .arg(&msg)
@@ -109,12 +111,12 @@ impl Monitor {
   }
   pub fn trace_branch(&mut self, global_id: &str, block: u64, dist: f64) {
     let msg = format!("{} ${}$ branch[{} {}]", self.test_id, global_id, block, dist);
+    println!("Visited branch {}::{}", global_id, block);
     let _: () = redis::cmd("SADD")
         .arg("traces")
         .arg(&msg)
         .query(&mut self.connection)
         .expect("Could not store trace to redis");
-    println!("SADD to redis");
   }
 
   fn clear(connection: &mut Connection) {

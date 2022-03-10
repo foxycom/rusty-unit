@@ -880,6 +880,7 @@ impl<'tcx> MirVisitor<'tcx> {
         let branch_ids = targets
             .all_targets()
             .iter()
+            // Shift ids back because they are off by one due to root instrumentation
             .map(|t| t.as_u32() as u64)
             .collect::<Vec<u64>>();
 
@@ -978,36 +979,6 @@ impl<'tcx> MirVisitor<'tcx> {
 
 impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
   fn visit_body(&mut self, body: &mut Body<'tcx>) {
-    /*let basic_blocks = body.basic_blocks();
-    for block in basic_blocks {
-        for stmt in &block.statements {
-            match &stmt.kind {
-                StatementKind::Assign(a) => {
-                    let (_, rvalue) = a.as_ref();
-                    match rvalue {
-                        Rvalue::Use(operand) => {
-                            match operand {
-                                Operand::Constant(con) => {
-                                    match &con.literal {
-                                        ConstantKind::Ty(const_ty) => {
-                                            debug!("{:?}", const_ty.val);
-                                        }
-                                        _ => {}
-                                    }
-                                }
-                                _ => {}
-                            }
-                        },
-                        _ => {}
-                    }
-
-                }
-                _ => {}
-            }
-        }
-    }*/
-
-    self.instrument_first_block(body);
 
     self.super_body(body);
 
@@ -1019,8 +990,10 @@ impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
       });
     }
 
-    // Also apply local definitions
+    self.instrument_first_block(body);
 
+
+    // Also apply local definitions
     body.local_decls = self.body.local_decls.clone();
   }
 

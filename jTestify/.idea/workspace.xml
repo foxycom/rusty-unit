@@ -5,11 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b12c22c4-b5f7-4f70-8970-848dd736b280" name="Changes" comment="Update">
-      <change afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/AssociatedType.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/json/JSONParser.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/json/JSONParser.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/callable/StaticMethod.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/callable/StaticMethod.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/Trait.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/Trait.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/Constants.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/Constants.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/MirAnalysis.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/MirAnalysis.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/resources/config.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/config.properties" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -50,6 +48,7 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
+        <option value="JUnit5 Test Class" />
         <option value="Class" />
       </list>
     </option>
@@ -83,13 +82,36 @@
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="com.intellij.testIntegration.createTest.CreateTestDialog.defaultLibrary" value="JUnit5" />
+    <property name="com.intellij.testIntegration.createTest.CreateTestDialog.defaultLibrarySuperClass.JUnit5" value="" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="project.structure.last.edited" value="Project" />
     <property name="project.structure.proportion" value="0.0" />
     <property name="project.structure.side.proportion" value="0.0" />
-    <property name="settings.editor.selected.configurable" value="preferences.general" />
+    <property name="settings.editor.selected.configurable" value="preferences.keymap" />
   </component>
-  <component name="RunManager" selected="Application.Run">
+  <component name="RecentsManager">
+    <key name="CreateTestDialog.Recents.Supers">
+      <recent name="" />
+    </key>
+    <key name="CreateTestDialog.RecentsKey">
+      <recent name="de.unipassau.testify.test_case.type.std" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Application.MirAnalysis">
+    <configuration name="MirAnalysis" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="de.unipassau.testify.mir.MirAnalysis" />
+      <module name="jTestify.main" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="de.unipassau.testify.mir.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="RedisStorage" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="de.unipassau.testify.server.RedisStorage" />
       <module name="jTestify.main" />
@@ -130,13 +152,40 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
+    <configuration name="OptionTest.testGenericOptionCanBeOptionOfSomeType" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" value="" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value=":test" />
+            <option value="--tests" />
+            <option value="&quot;de.unipassau.testify.test_case.type.std.OptionTest.testGenericOptionCanBeOptionOfSomeType&quot;" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>false</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <method v="2" />
+    </configuration>
     <list>
       <item itemvalue="Application.Run" />
       <item itemvalue="Application.TestCaseRunner" />
       <item itemvalue="Application.RedisStorage" />
+      <item itemvalue="Gradle.OptionTest.testGenericOptionCanBeOptionOfSomeType" />
+      <item itemvalue="Application.MirAnalysis" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Application.MirAnalysis" />
+        <item itemvalue="Gradle.OptionTest.testGenericOptionCanBeOptionOfSomeType" />
         <item itemvalue="Application.RedisStorage" />
         <item itemvalue="Application.TestCaseRunner" />
       </list>
@@ -159,6 +208,9 @@
       <workItem from="1644944894082" duration="11000" />
       <workItem from="1645395861542" duration="10643000" />
       <workItem from="1645642073936" duration="1431000" />
+      <workItem from="1645978973211" duration="11999000" />
+      <workItem from="1646684295953" duration="5509000" />
+      <workItem from="1646778611727" duration="6174000" />
     </task>
     <task id="LOCAL-00001" summary="Update">
       <created>1644703983025</created>
@@ -209,7 +261,14 @@
       <option name="project" value="LOCAL" />
       <updated>1645475146645</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="Update">
+      <created>1646691597367</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1646691597367</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -249,34 +308,34 @@
           <option name="timeStamp" value="69" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/operators/BasicMutation.java</url>
-          <line>23</line>
-          <option name="timeStamp" value="73" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java</url>
-          <line>546</line>
+          <line>524</line>
           <option name="timeStamp" value="74" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/util/TypeUtil.java</url>
-          <line>43</line>
+          <line>44</line>
           <option name="timeStamp" value="76" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java</url>
-          <line>235</line>
-          <option name="timeStamp" value="77" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/json/CallableDeserializer.java</url>
-          <line>42</line>
-          <option name="timeStamp" value="80" />
+          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/operators/BasicMutation.java</url>
+          <line>24</line>
+          <option name="timeStamp" value="91" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/Main.java</url>
-          <line>65</line>
-          <option name="timeStamp" value="82" />
+          <line>88</line>
+          <option name="timeStamp" value="92" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/MirAnalysis.java</url>
+          <line>59</line>
+          <option name="timeStamp" value="93" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/MirAnalysis.java</url>
+          <line>29</line>
+          <option name="timeStamp" value="94" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

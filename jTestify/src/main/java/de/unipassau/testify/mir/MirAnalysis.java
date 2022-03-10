@@ -5,35 +5,39 @@ import static de.unipassau.testify.Constants.MIR_LOG_PATH;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.FileVisitOption;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.json.JSONObject;
 
 public class MirAnalysis {
   private static final Map<String, CDG> CDGs = parseCDGs();
 
   private static Map<String, CDG> parseCDGs() {
     Map<String, CDG> cdgs = new HashMap<>();
-    try (var in = new BufferedReader(new FileReader(MIR_LOG_PATH))) {
-      String globalId = null;
-      var readingCdg = false;
-      for (String line; (line = in.readLine()) != null; ) {
-        if (line.startsWith(">>")) {
-          globalId = line.substring(2);
-        } else if (line.startsWith("#cdg")) {
-          readingCdg = true;
-        } else if (readingCdg && !line.startsWith("<data>")) {
-          readingCdg = false;
-        } else if (readingCdg && line.startsWith("<data>")) {
-          var cdgStr = line.substring(6);
-          var cdg = CDG.parse(globalId, cdgStr);
-          cdgs.put(globalId, cdg);
-        }
-      }
+    var path = Paths.get(MIR_LOG_PATH);
+    try (var stream = Files.walk(path, Integer.MAX_VALUE)) {
+      stream
+          .filter(Files::isRegularFile)
+          .filter(file -> file.getFileName().toString().startsWith("mir"))
+          .forEach(file -> {
+            try {
+              var content = Files.readString(file);
+              var jsonRoot = new JSONObject(content);
+              var globalId = jsonRoot.getString("global_id");
+              var cdg = CDG.parse(globalId, jsonRoot.getString("cdg"));
+              cdgs.put(globalId, cdg);
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
+          });
     } catch (IOException e) {
-      throw new RuntimeException("Could not parse CDGs from mir.log", e);
+      throw new RuntimeException("Could not parse CDGs from mir logs", e);
     }
 
     return cdgs;

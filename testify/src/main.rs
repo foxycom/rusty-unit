@@ -45,7 +45,7 @@ use crate::options::{RuConfig, Stage};
 pub const LOG_DIR: &'static str = "/Users/tim/Documents/master-thesis/tmp/testify";
 pub const LOG_EXT: &'static str = "json";
 pub const MIR_LOG_NAME: &'static str = "mir";
-pub const HIR_LOG_PATH: &'static str = "hir.json";
+pub const HIR_LOG_PATH: &'static str = "hir";
 
 // Mainly for debugging
 pub const INSTRUMENTED_MIR_LOG_NAME: &'static str = "instrumented-mir";
