@@ -1,6 +1,7 @@
 package de.unipassau.testify.exec;
 
 import com.jayway.jsonpath.JsonPath;
+import de.unipassau.testify.Constants;
 import de.unipassau.testify.exception.TestCaseDoesNotCompileException;
 import de.unipassau.testify.server.RedisStorage;
 import de.unipassau.testify.source.ChromosomeContainer;
@@ -25,8 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
-
-  public static final String INSTRUMENTER_PATH = "/Users/tim/Documents/master-thesis/testify/target/release/instrumentation";
 
   private static final Logger logger = LoggerFactory.getLogger(TestCaseRunner.class);
 
@@ -151,7 +150,7 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
         .redirectError(ERROR_PATH.toFile());
 
     var env = processBuilder.environment();
-    env.put("RUSTC_WRAPPER", INSTRUMENTER_PATH);
+    env.put("RUSTC_WRAPPER", Constants.INSTRUMENTATION_BIN);
     env.put("RUST_LOG", "info");
     env.put("RU_STAGE", "instrumentation");
     env.put("RU_CRATE_NAME", crateName);
@@ -186,10 +185,6 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
     var runner = new TestCaseRunner();
     var coverage = runner.run("/Users/tim/Documents/master-thesis/evaluation/current");
     System.out.println(coverage.lineCoverage);
-    /*var llvmCoverage = runner.run("/Users/tim/Documents/master-thesis/evaluation/current");
-    System.out.printf("Line coverage: %.2f", llvmCoverage.lineCoverage);*/
-    //runner.runWithInstrumentation("/Users/tim/Documents/master-thesis/evaluation/current", "trying");
-
   }
 
 

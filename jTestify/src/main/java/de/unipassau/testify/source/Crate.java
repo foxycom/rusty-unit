@@ -1,11 +1,16 @@
 package de.unipassau.testify.source;
 
+import static de.unipassau.testify.Constants.HIR_LOG_PATH;
+
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.io.FileWriteMode;
+import de.unipassau.testify.Constants;
 import de.unipassau.testify.exec.ChromosomeExecutor;
 import de.unipassau.testify.exec.LLVMCoverage;
 import de.unipassau.testify.exec.TestCaseRunner;
+import de.unipassau.testify.hir.TyCtxt;
+import de.unipassau.testify.json.JSONParser;
 import de.unipassau.testify.source.SourceFile.FileType;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.util.Rnd;
@@ -21,9 +26,15 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Crate implements ChromosomeContainer<TestCase> {
+  private static final Logger logger = LoggerFactory.getLogger(ChromosomeContainer.class);
 
+  private static final Path ERROR_PATH = Paths.get(System.getProperty("user.dir"), "..", "tmp",
+      "jTestify",
+      "tests.error");
   private static final String MONITOR_PATH = "/Users/tim/Documents/master-thesis/testify/src/monitor.rs";
   private final Path originalRoot;
   private final Path executionRoot;
@@ -32,7 +43,8 @@ public class Crate implements ChromosomeContainer<TestCase> {
   private final String crateName;
   private final List<TestCase> testCases;
 
-  public static Crate parse(Path root, List<Path> mainFiles, String crateName) throws IOException {
+  public static Crate parse(Path root, List<Path> mainFiles, String crateName)
+      throws IOException, InterruptedException {
     var executionRoot = getExecutionRoot(root);
 
     var sourceFiles = Files.walk(root)
@@ -57,13 +69,15 @@ public class Crate implements ChromosomeContainer<TestCase> {
   }
 
   private Crate(String crateName, Path originalRoot, Path executionRoot,
-      List<SourceFile> sourceFiles, ChromosomeExecutor<TestCase> executor) throws IOException {
+      List<SourceFile> sourceFiles, ChromosomeExecutor<TestCase> executor)
+      throws IOException, InterruptedException {
     this.originalRoot = originalRoot;
     this.executionRoot = executionRoot;
     this.sourceFiles = sourceFiles;
     this.executor = executor;
     this.crateName = crateName;
     this.testCases = new ArrayList<>();
+//    this.hir = analyze(originalRoot, crateName);
     copyToExecutionDir();
   }
 
@@ -180,6 +194,29 @@ public class Crate implements ChromosomeContainer<TestCase> {
   @Override
   public LLVMCoverage executeWithLlvmCoverage() throws IOException, InterruptedException {
     return executor.run(this);
+  }
+
+  private TyCtxt analyze(Path root, String crateName) throws IOException, InterruptedException {
+
+    var processBuilder = new ProcessBuilder().directory(root.toFile())
+        .command("cargo", "+nightly-aarch64-apple-darwin", "build", "--all-features")
+        .redirectError(ERROR_PATH.toFile());
+
+    var env = processBuilder.environment();
+    env.put("RUSTC_WRAPPER", Constants.ANALYSIS_BIN);
+    env.put("RU_CRATE_NAME", crateName);
+    env.put("RU_CRATE_ROOT", root.toFile().getCanonicalPath());
+    var process = processBuilder.start();
+    var result = process.waitFor();
+
+    if (result != 0) {
+      logger.error("HIR analysis failed");
+      throw new RuntimeException("HIR analysis failed");
+    }
+
+    var hirLog = new File(HIR_LOG_PATH);
+    var hirJson = Files.readString(hirLog.toPath());
+    return new TyCtxt(JSONParser.parse(hirJson));
   }
 
   @Override

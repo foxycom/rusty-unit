@@ -98,8 +98,5 @@ public class Main {
     crate.addAll(solutions);
     var llvmCoverage = crate.executeWithLlvmCoverage();
     System.out.printf("Coverage: %.2f%n", llvmCoverage.lineCoverage);
-
   }
-
-
 }

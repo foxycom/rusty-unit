@@ -25,6 +25,8 @@ public class Constants {
   public static final int MAX_STRING_LENGTH = getInt("max-string-length");
   public static final String MIR_LOG_PATH = properties.getProperty("mir-log-dir");
   public static final String HIR_LOG_PATH = properties.getProperty("hir-log-path");
+  public static final String ANALYSIS_BIN = properties.getProperty("analysis-bin");
+  public static final String INSTRUMENTATION_BIN = properties.getProperty("instrumentation-bin");
 
   private static Properties loadProperties() {
     var properties = new Properties();
