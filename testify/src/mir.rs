@@ -1,6 +1,4 @@
-use crate::data_structures::{cdg, log_graph_to, visualize_graph};
-use crate::mir::ValueDef::Var;
-use crate::writer::{MirObjectBuilder, MirObject, MirWriter};
+
 use log::{debug, error, info, warn};
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_hir::def_id::DefId;
@@ -24,10 +22,15 @@ use std::fs::File;
 use std::ops::Add;
 use std::path::Path;
 use rustc_ast::Mutability;
+use crate::mir::ValueDef::Var;
+#[cfg(feature = "analysis")]
+use crate::data_structures::{cdg, log_graph_to, visualize_graph};
+#[cfg(feature = "analysis")]
+use crate::writer::{MirObjectBuilder, MirObject, MirWriter};
 use crate::{DOT_DIR, INSTRUMENTED_MIR_LOG_NAME, LOG_DIR, RuConfig};
 use crate::monitor::{BinaryOp, UnaryOp};
 
-pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<'tcx> =
+pub const CUSTOM_OPT_MIR: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<'tcx> =
   |tcx, def| {
     let opt_mir = rustc_interface::DEFAULT_QUERY_PROVIDERS
         .borrow()
@@ -46,94 +49,77 @@ pub const CUSTOM_OPT_MIR_ANALYSIS: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'
       return tcx.arena.alloc(body);
     };
 
-    info!("MIR: Analyzing {:?}", def);
-
     let global_id = def_id_to_str(def, &tcx).replace("::", "__");
-    let basic_blocks = body.basic_blocks();
-    let basic_blocks_str = basic_blocks
-        .iter_enumerated()
-        .map(|(block, data)| format!("{} -> {:?}", block.as_usize(), data))
-        .collect::<Vec<_>>();
 
+    #[cfg(feature = "analysis")]
     let cdg = cdg(&body);
 
-    if cfg!(file_writer) {
-      let path = Path::new(DOT_DIR).join(format!("{}.dot", &global_id));
-      visualize_graph(&cdg, &global_id);
+    #[cfg(feature = "analysis")]
+    {
+      info!("MIR: Analyzing {:?}", def);
+
+      let basic_blocks = body.basic_blocks();
+      let basic_blocks_str = basic_blocks
+          .iter_enumerated()
+          .map(|(block, data)| format!("{} -> {:?}", block.as_usize(), data))
+          .collect::<Vec<_>>();
+
+
+      if cfg!(file_writer) {
+        let path = Path::new(DOT_DIR).join(format!("{}.dot", &global_id));
+        visualize_graph(&cdg, &global_id);
+      }
+
+      let locals_decls: &LocalDecls = &body.local_decls;
+      let locals_str = locals_decls.iter_enumerated()
+          .map(|(local, decl)| format!("{:?} -> {:?}", local, decl))
+          .collect::<Vec<_>>();
+      let mut mir_object = MirObjectBuilder::default()
+          .global_id(global_id.to_owned())
+          .basic_blocks(basic_blocks_str)
+          .cdg(serde_json::to_string(&cdg).unwrap())
+          .locals(locals_str)
+          .build()
+          .unwrap();
+
+      MirWriter::write(&mir_object);
     }
 
-    let locals_decls: &LocalDecls = &body.local_decls;
-    let locals_str = locals_decls.iter_enumerated()
-        .map(|(local, decl)| format!("{:?} -> {:?}", local, decl))
-        .collect::<Vec<_>>();
-    let mut mir_object = MirObjectBuilder::default()
-        .global_id(global_id.to_owned())
-        .basic_blocks(basic_blocks_str)
-        .cdg(serde_json::to_string(&cdg).unwrap())
-        .locals(locals_str)
-        .build()
-        .unwrap();
+    #[cfg(instrumentation)]
+    {
+      info!("MIR: Instrumenting {:?}", def);
+    }
 
-    MirWriter::write(&mir_object);
-
-    // INSTRUMENT
+    // INSTRUMENT OR ANALYZE
     let mut mir_visitor = MirVisitor::new(&global_id, body.clone(), tcx);
-
     let mut instrumented_body = mir_visitor.visit();
-    let (basic_blocks, local_decls) = instrumented_body.basic_blocks_and_local_decls_mut();
 
-    let locals = local_decls
-        .iter_enumerated()
-        .map(|(local, decl)| format!("{:?} -> {:?}", local, decl))
-        .collect::<Vec<_>>();
+    #[cfg(feature = "analysis")]
+    {
+      let (basic_blocks, local_decls) = instrumented_body.basic_blocks_and_local_decls_mut();
 
-    let blocks = basic_blocks
-        .iter_enumerated()
-        .map(|(block, data)| format!("{} -> {:?}", block.as_usize(), data))
-        .collect::<Vec<_>>();
+      let locals = local_decls
+          .iter_enumerated()
+          .map(|(local, decl)| format!("{:?} -> {:?}", local, decl))
+          .collect::<Vec<_>>();
 
-    let instrumented_mir_object = MirObjectBuilder::default()
-        .global_id(global_id)
-        .locals(locals)
-        .basic_blocks(blocks)
-        .cdg(serde_json::to_string(&cdg).unwrap())
-        .build()
-        .unwrap();
-    MirWriter::write_instrumented(&instrumented_mir_object);
+      let blocks = basic_blocks
+          .iter_enumerated()
+          .map(|(block, data)| format!("{} -> {:?}", block.as_usize(), data))
+          .collect::<Vec<_>>();
+
+      let instrumented_mir_object = MirObjectBuilder::default()
+          .global_id(global_id)
+          .locals(locals)
+          .basic_blocks(blocks)
+          .cdg(serde_json::to_string(&cdg).unwrap())
+          .build()
+          .unwrap();
+      MirWriter::write_instrumented(&instrumented_mir_object);
+    }
 
     return tcx.arena.alloc(instrumented_body);
   };
-
-pub const CUSTOM_OPT_MIR_INSTRUMENTATION: for<'tcx> fn(
-  _: TyCtxt<'tcx>,
-  _: DefId,
-) -> &'tcx Body<'tcx> = |tcx, def| {
-  let opt_mir = rustc_interface::DEFAULT_QUERY_PROVIDERS
-      .borrow()
-      .optimized_mir;
-  let mut body = opt_mir(tcx, def).clone();
-  let crate_name = tcx.crate_name(def.krate);
-  let hir_id = tcx.hir().local_def_id_to_hir_id(def.expect_local());
-
-  if crate_name.as_str() != &RuConfig::env_crate_name() || is_rusty_monitor(hir_id, &tcx) || !allowed_item(def) {
-    // Don't instrument extern crates
-    return tcx.arena.alloc(body);
-  }
-
-  info!("MIR: Instrumenting {:?}", def);
-
-  let global_id = def_id_to_str(def, &tcx);
-
-  let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
-
-  // INSTRUMENT
-  let mut mir_visitor = MirVisitor::new(&global_id, body.clone(), tcx);
-  let mut instrumented_body = mir_visitor.visit();
-
-  let (basic_blocks, local_decls) = instrumented_body.basic_blocks_and_local_decls_mut();
-
-  return tcx.arena.alloc(instrumented_body);
-};
 
 fn def_id_to_str(def_id: DefId, tcx: &TyCtxt<'_>) -> String {
   tcx.def_path_str(def_id)
@@ -979,24 +965,28 @@ impl<'tcx> MirVisitor<'tcx> {
 
 impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
   fn visit_body(&mut self, body: &mut Body<'tcx>) {
-
     self.super_body(body);
 
-    // Now push the tracing chains after they have created
-    for (_, tracing_chain) in &self.instrumentation {
-      let basic_blocks = body.basic_blocks_mut();
-      tracing_chain.iter().for_each(|tb| {
-        let _ = basic_blocks.push(tb.clone());
-      });
+    #[cfg(instrumentation)]
+    {
+      // Now push the tracing chains after they have created
+      for (_, tracing_chain) in &self.instrumentation {
+        let basic_blocks = body.basic_blocks_mut();
+        tracing_chain.iter().for_each(|tb| {
+          let _ = basic_blocks.push(tb.clone());
+        });
+      }
+
+      self.instrument_first_block(body);
+
+
+      // Also apply local definitions
+      body.local_decls = self.body.local_decls.clone();
     }
 
-    self.instrument_first_block(body);
-
-
-    // Also apply local definitions
-    body.local_decls = self.body.local_decls.clone();
   }
 
+  #[cfg(instrumentation)]
   fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
     if let Some(terminator) = &mut data.terminator {
       match &mut terminator.kind {

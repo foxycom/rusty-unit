@@ -26,9 +26,9 @@ mod options;
 mod monitor;
 mod analysis;
 
-
+#[cfg(feature = "analysis")]
 use crate::hir::hir_analysis;
-use crate::mir::{CUSTOM_OPT_MIR_ANALYSIS, CUSTOM_OPT_MIR_INSTRUMENTATION};
+use crate::mir::{CUSTOM_OPT_MIR};
 use crate::util::{rustc_get_crate_name};
 use log::{debug, info, warn};
 use std::path::Path;
@@ -40,7 +40,7 @@ use rustc_driver::Compilation;
 use rustc_interface::{Config, Queries};
 use rustc_interface::interface::Compiler;
 use rustc_middle::ty::TyCtxt;
-use crate::options::{RuConfig, Stage};
+use crate::options::{RuConfig};
 
 pub const LOG_DIR: &'static str = "/Users/tim/Documents/master-thesis/tmp/testify";
 pub const LOG_EXT: &'static str = "json";
@@ -72,28 +72,18 @@ fn enter_with_fn<'tcx, TyCtxtFn>(queries: &'tcx rustc_interface::Queries<'tcx>, 
 
 impl rustc_driver::Callbacks for CompilerCallbacks {
   fn config(&mut self, _config: &mut Config) {
-    match RuConfig::env_stage() {
-      Stage::Analyze => {
-        _config.override_queries = Some(|session, local, external| {
-          local.optimized_mir = CUSTOM_OPT_MIR_ANALYSIS;
-        });
-      }
-      Stage::Instrument => {
-        _config.override_queries = Some(|session, local, external| {
-          local.optimized_mir = CUSTOM_OPT_MIR_INSTRUMENTATION;
-        });
-      }
-    }
+    _config.override_queries = Some(|session, local, external| {
+      local.optimized_mir = CUSTOM_OPT_MIR;
+    });
   }
 
+  #[cfg(feature = "analysis")]
   fn after_analysis<'tcx>(
     &mut self,
     _compiler: &Compiler,
     _queries: &'tcx Queries<'tcx>,
   ) -> Compilation {
-    if RuConfig::env_stage() == Stage::Analyze {
-      enter_with_fn(_queries, hir_analysis);
-    }
+    enter_with_fn(_queries, hir_analysis);
     Compilation::Continue
   }
 }
@@ -173,7 +163,8 @@ pub fn get_compiler_args(args: &[String]) -> Vec<String> {
 }
 
 fn run_rustc() -> Result<(), i32> {
-  if let Stage::Analyze = RuConfig::env_stage() {
+  #[cfg(feature = "analysis")]
+  {
     if let Ok(_) = fs::remove_dir_all(LOG_DIR) {
       debug!("MAIN: Cleared the log directory");
     } else {

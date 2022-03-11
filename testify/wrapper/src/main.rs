@@ -17,7 +17,6 @@ fn main() {
     let args = CLI::parse();
     let output = Command::new("cargo")
         .env("RUSTC_WRAPPER", RUSTC_WRAPPER)
-        .env("RU_STAGE", "analysis")
         .env("RU_CRATE_ROOT", &args.root)
         .env("RU_CRATE_NAME", &args.name)
         .arg("+nightly-aarch64-apple-darwin")

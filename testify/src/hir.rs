@@ -9,8 +9,10 @@ use crate::{HIR_LOG_PATH, LOG_DIR, RuConfig};
 use crate::types::{Callable, EnumInitItem, EnumT, EnumVariant, FieldAccessItem, FunctionItem, MethodItem, Param, StaticFnItem, StructInitItem, StructT, T};
 use crate::util::{def_id_to_t, def_id_to_enum, fn_ret_ty_to_t, generics_to_ts, impl_to_def_id, item_to_name, node_to_name, span_to_path, ty_to_param, ty_to_t, is_local};
 use crate::analysis::Analysis;
+#[cfg(feature = "analysis")]
 use crate::writer::{HirObject, HirWriter, HirObjectBuilder};
 
+#[cfg(feature = "analysis")]
 pub fn hir_analysis(tcx: TyCtxt<'_>) {
   let current_crate_name = tcx.crate_name(LOCAL_CRATE);
   if current_crate_name.as_str() != RuConfig::env_crate_name() {

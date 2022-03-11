@@ -3,7 +3,22 @@ name = "instrumentation"
 version = "0.2.0"
 edition = "2021"
 
+[[bin]]
+name = "instrumentation"
+required-features = ["instrumentation"]
+
+[[bin]]
+name = "analysis"
+required-features = ["analysis", "file_writer"]
+path = "src/main.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+analysis = []
+instrumentation = []
+file_writer = ["analysis"]
+redis_writer = ["analysis"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive", "rc"] }

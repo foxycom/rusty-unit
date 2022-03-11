@@ -18,47 +18,71 @@ pub struct HirObject {
   callables: Vec<Callable>
 }
 
+#[cfg(feature = "analysis")]
 pub struct MirWriter {}
 
+#[cfg(feature = "analysis")]
 impl MirWriter {
   pub fn write(mir_object: &MirObject) {
     let file_name = format!("{}_{}.{}", MIR_LOG_NAME, &mir_object.global_id, LOG_EXT);
     let path = Path::new(LOG_DIR).join(file_name);
 
-    Writer::write(path.as_path(), serde_json::to_string(mir_object).as_ref().unwrap());
+    #[cfg(feature = "file_writer")]
+    file_writer::Writer::write(path.as_path(), serde_json::to_string(mir_object).as_ref().unwrap());
+    #[cfg(feature = "redis_writer")]
+    redis_writer::Writer::write(path.as_path(), serde_json::to_string(mir_object).as_ref().unwrap());
   }
 
   pub fn write_instrumented(mir_object: &MirObject) {
     let file_name = format!("{}_{}.{}", INSTRUMENTED_MIR_LOG_NAME, &mir_object.global_id, LOG_EXT);
     let path = Path::new(LOG_DIR).join(file_name);
-    Writer::write(path.as_path(), serde_json::to_string(mir_object).as_ref().unwrap());
+    #[cfg(feature = "file_writer")]
+    file_writer::Writer::write(path.as_path(), serde_json::to_string(mir_object).as_ref().unwrap());
+    #[cfg(feature = "redis_writer")]
+    redis_writer::Writer::write(path.as_path(), serde_json::to_string(mir_object).as_ref().unwrap());
+
   }
 }
 
+#[cfg(feature = "analysis")]
 pub struct HirWriter {}
 
+#[cfg(feature = "analysis")]
 impl HirWriter {
   pub fn write(hir_object: &HirObject) {
     let path = Path::new(LOG_DIR).join(format!("{}.{}", HIR_LOG_PATH, LOG_EXT));
-    Writer::write(path.as_path(), serde_json::to_string(hir_object).as_ref().unwrap());
+
+    #[cfg(feature = "file_writer")]
+    file_writer::Writer::write(path.as_path(), serde_json::to_string(hir_object).as_ref().unwrap());
+    #[cfg(feature = "redis_writer")]
+    redis_writer::Writer::write(path.as_path(), serde_json::to_string(hir_object).as_ref().unwrap());
   }
 }
 
-struct Writer {}
+#[cfg(feature = "file_writer")]
+mod file_writer {
+  use super::*;
+  pub(super) struct Writer {}
 
-impl Writer {
-  #[cfg(file_writer)]
-  fn write(path: impl AsRef<Path>, content: &str) {
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path.as_ref())
-        .unwrap();
-    file.write_all(content.as_bytes()).unwrap();
+  impl Writer {
+    pub(super) fn write(path: impl AsRef<Path>, content: &str) {
+      let mut file = OpenOptions::new()
+          .create(true)
+          .append(true)
+          .open(path.as_ref())
+          .unwrap();
+      file.write_all(content.as_bytes()).unwrap();
+    }
   }
+}
 
-  #[cfg(redis_writer)]
-  pub fn write(content: &str) {
-    todo!()
+#[cfg(feature = "redis_writer")]
+mod redis_writer {
+  pub(super) struct Writer {}
+
+  impl Writer {
+    pub(super) fn write(path: impl AsRef<Path>, content: &str) {
+      todo!()
+    }
   }
 }
