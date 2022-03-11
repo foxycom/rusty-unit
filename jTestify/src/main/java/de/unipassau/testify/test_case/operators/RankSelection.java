@@ -1,5 +1,6 @@
 package de.unipassau.testify.test_case.operators;
 
+import de.unipassau.testify.Constants;
 import de.unipassau.testify.algorithm.PreferenceSorter;
 import de.unipassau.testify.algorithm.SVD;
 import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome;
@@ -12,7 +13,6 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 public class RankSelection<C extends AbstractTestCaseChromosome<C>> implements Selection<C> {
-  private static final double BIAS = 1.7;
   private final List<MinimizingFitnessFunction<C>> objectives;
   private final SVD<C> svd;
   private final PreferenceSorter<C> preferenceSorter;
@@ -43,8 +43,9 @@ public class RankSelection<C extends AbstractTestCaseChromosome<C>> implements S
     final var N = population.size();
 
     final var probabilities = new ArrayList<Double>(N);
+    final var bias = Constants.SELECTION_BIAS;
     IntStream.range(0, N).forEach(i -> {
-      var f2 = BIAS - (2 * i * (BIAS - 1)) / (double) (N - 1);
+      var f2 = bias - (2 * i * (bias - 1)) / (double) (N - 1);
       probabilities.add(f2);
     });
 

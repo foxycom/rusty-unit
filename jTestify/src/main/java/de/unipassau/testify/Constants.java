@@ -19,6 +19,7 @@ public class Constants {
   public static final double P_LOCAL_VARIABLES = getDouble("p-local-variables");
   public static final int POPULATION_SIZE = getInt("population-size");
   public static final int GENERATIONS = getInt("generations");
+  public static final double SELECTION_BIAS = getDouble("selection-bias");
   public static final int MAX_DELTA = getInt("max-delta");
   public static final int MAX_INT = getInt("max-int");
   public static final int MAX_STRING_LENGTH = getInt("max-string-length");

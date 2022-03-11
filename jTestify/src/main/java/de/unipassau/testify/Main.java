@@ -60,8 +60,8 @@ public class Main {
     // TODO: 12.02.22 run instrumentation of the crate
 
     var hirLog = new File(HIR_LOG_PATH);
-    var json = Files.readString(hirLog.toPath());
-    var tyCtxt = new TyCtxt(JSONParser.parse(json));
+    var hirJson = Files.readString(hirLog.toPath());
+    var hir = new TyCtxt(JSONParser.parse(hirJson));
 
     List<MinimizingFitnessFunction<TestCase>> objectives = MirAnalysis.targets().stream()
         .map(Fitness::new).collect(Collectors.toList());
@@ -75,11 +75,7 @@ public class Main {
     var crossover = new SinglePointFixedCrossover();
     var selection = new RankSelection<>(objectives, svd, preferenceSorter);
     var populationGenerator = new FixedSizePopulationGenerator<>(
-        new TestCaseGenerator(tyCtxt, mutation, crossover), POPULATION_SIZE);
-
-    //var population = populationGenerator.get();
-
-    //crate.addTests(population);
+        new TestCaseGenerator(hir, mutation, crossover), POPULATION_SIZE);
 
     var uncoveredObjectives = new UncoveredObjectives<>(objectives);
     var offspringGenerator = new OffspringGeneratorImpl(selection, uncoveredObjectives);

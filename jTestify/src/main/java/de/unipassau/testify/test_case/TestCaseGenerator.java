@@ -11,20 +11,20 @@ import org.slf4j.LoggerFactory;
 public class TestCaseGenerator implements ChromosomeGenerator<TestCase> {
   private static final Logger logger = LoggerFactory.getLogger(TestCaseGenerator.class);
 
-  private TyCtxt tyCtxt;
+  private TyCtxt hir;
   private Mutation<TestCase> mutation;
   private Crossover<TestCase> crossover;
 
 
-  public TestCaseGenerator(TyCtxt tyCtxt, Mutation<TestCase> mutation, Crossover<TestCase> crossover) {
-    this.tyCtxt = tyCtxt;
+  public TestCaseGenerator(TyCtxt hir, Mutation<TestCase> mutation, Crossover<TestCase> crossover) {
+    this.hir = hir;
     this.mutation = mutation;
     this.crossover = crossover;
   }
 
   @Override
   public TestCase get() {
-    var testCase = new TestCase(TestIdGenerator.get(), tyCtxt, mutation, crossover);
+    var testCase = new TestCase(TestIdGenerator.get(), hir, mutation, crossover);
 
     while (testCase.size() < 5) {
       testCase.insertRandomStmt();

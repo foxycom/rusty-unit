@@ -21,9 +21,6 @@ public class BasicMutation implements Mutation<TestCase> {
         testCase.getTypeBindingsString());
     var copy = testCase.copy();
 
-    if (copy.getId() == 56) {
-      System.out.println();
-    }
     if (Rnd.get().nextDouble() <= Constants.P_TEST_DELETE) {
       // delete some statemsnts
       mutationDelete(copy);

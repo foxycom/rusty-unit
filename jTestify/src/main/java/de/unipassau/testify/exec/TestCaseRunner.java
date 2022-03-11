@@ -62,12 +62,23 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
   }
 
   private int mergeCoverageFiles(File directory) throws IOException, InterruptedException {
-    var profRawFiles = Arrays.stream(Objects.requireNonNull(COVERAGE_DIR.toFile().listFiles()))
-        .filter(f -> f.getName().endsWith("profraw")).map(File::getAbsolutePath)
-        .collect(Collectors.joining(","));
-    var processBuilder = new ProcessBuilder("cargo", "+nightly-aarch64-apple-darwin", "profdata",
-        "--", "merge", "-sparse", profRawFiles, "-o",
-        Paths.get(COVERAGE_DIR.toString(), "rusty-tests.profdata").toString()).directory(directory)
+//    var profRawFiles = Arrays.stream(Objects.requireNonNull(COVERAGE_DIR.toFile().listFiles()))
+//        .filter(f -> f.getName().endsWith("profraw"))
+//        .map(f -> {
+//          try {
+//            return f.getCanonicalPath();
+//          } catch (IOException e) {
+//            throw new RuntimeException(e);
+//          }
+//        })
+//        .collect(Collectors.joining(" "));
+    var profRawFiles = Paths.get(COVERAGE_DIR.toFile().getCanonicalPath(), "rusty-test*.profraw");
+    var command = String.format(
+        "cargo +nightly-aarch64-apple-darwin profdata -- merge -sparse %s -o %s",
+        profRawFiles,
+        Paths.get(COVERAGE_DIR.toFile().getCanonicalPath(), "rusty-tests.profdata"));
+
+    var processBuilder = new ProcessBuilder("bash", "-c", command).directory(directory)
         .redirectOutput(LOG_PATH.toFile()).redirectError(ERROR_PATH.toFile());
     var process = processBuilder.start();
     return process.waitFor();

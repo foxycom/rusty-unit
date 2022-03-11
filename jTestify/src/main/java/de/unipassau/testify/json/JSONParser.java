@@ -11,7 +11,7 @@ import org.json.JSONObject;
 
 public class JSONParser {
   public static List<Callable> parse(String json) throws JsonProcessingException {
-    var callablesArray = new JSONArray(json);
+    var callablesArray = new JSONObject(json).getJSONArray("callables");
 
     var mapper = new ObjectMapper();
     var callables = new ArrayList<Callable>();
