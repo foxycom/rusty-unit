@@ -27,6 +27,10 @@ public interface FitnessFunction<C> extends ToDoubleFunction<C>, Function<C, Dou
    */
   double getFitness(final C c) throws NullPointerException;
 
+  default String id() {
+    throw new RuntimeException("Not implemented");
+  }
+
   /**
    * Alias for {@link #getFitness(C)}.
    */

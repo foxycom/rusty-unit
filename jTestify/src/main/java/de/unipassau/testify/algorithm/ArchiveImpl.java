@@ -4,15 +4,17 @@ import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome
 import de.unipassau.testify.metaheuristics.fitness_functions.FitnessFunction;
 import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class ArchiveImpl<C extends AbstractTestCaseChromosome<C>> implements Archive<C> {
 
-  private final List<C> archive;
-  private final List<MinimizingFitnessFunction<C>> objectives;
+  private final Set<C> archive;
+  private final Set<MinimizingFitnessFunction<C>> objectives;
 
-  public ArchiveImpl(List<MinimizingFitnessFunction<C>> objectives) {
-    this.archive = new ArrayList<>();
+  public ArchiveImpl(Set<MinimizingFitnessFunction<C>> objectives) {
+    this.archive = new HashSet<>();
     this.objectives = objectives;
   }
 
@@ -46,16 +48,15 @@ public class ArchiveImpl<C extends AbstractTestCaseChromosome<C>> implements Arc
 
   @Override
   public void replaceBy(C origin, C by) {
-    if (origin == null) {
-      archive.add(by);
-    } else {
-      var idx = archive.indexOf(origin);
-      archive.set(idx, by);
+    if (origin != null) {
+      archive.remove(origin);
     }
+    archive.add(by);
+
   }
 
   @Override
   public List<C> get() {
-    return archive;
+    return new ArrayList<>(archive);
   }
 }

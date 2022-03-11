@@ -10,15 +10,16 @@ import de.unipassau.testify.util.Rnd;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.IntStream;
 
 public class RankSelection<C extends AbstractTestCaseChromosome<C>> implements Selection<C> {
-  private final List<MinimizingFitnessFunction<C>> objectives;
+  private final Set<MinimizingFitnessFunction<C>> objectives;
   private final SVD<C> svd;
   private final PreferenceSorter<C> preferenceSorter;
 
   public RankSelection(
-      List<MinimizingFitnessFunction<C>> objectives, SVD<C> svd,
+      Set<MinimizingFitnessFunction<C>> objectives, SVD<C> svd,
       PreferenceSorter<C> preferenceSorter) {
     this.objectives = objectives;
     this.svd = svd;

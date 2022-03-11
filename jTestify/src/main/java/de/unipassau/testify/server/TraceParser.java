@@ -17,7 +17,7 @@ public class TraceParser {
       return null;
     }
 
-    String globalId = line.substring(line.indexOf("$"), line.lastIndexOf("$") + 1);
+    String globalId = line.substring(line.indexOf("$") + 1, line.lastIndexOf("$"));
 
     line = line.substring(line.lastIndexOf("$") + 2);
     if (line.startsWith("branch")) {

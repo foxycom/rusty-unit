@@ -1,5 +1,8 @@
-package de.unipassau.testify.algorithm;
+package de.unipassau.testify.algorithm.mosa;
 
+import de.unipassau.testify.algorithm.Archive;
+import de.unipassau.testify.algorithm.PreferenceSorter;
+import de.unipassau.testify.algorithm.SVD;
 import de.unipassau.testify.generator.OffspringGenerator;
 import de.unipassau.testify.metaheuristics.algorithm.GeneticAlgorithm;
 import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome;
@@ -10,9 +13,8 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DynaMOSA<C extends AbstractTestCaseChromosome<C>> implements GeneticAlgorithm<C> {
-
-  private static final Logger logger = LoggerFactory.getLogger(DynaMOSA.class);
+public class MOSA<C extends AbstractTestCaseChromosome<C>> implements GeneticAlgorithm<C> {
+  private static final Logger logger = LoggerFactory.getLogger(MOSA.class);
 
   private final int maxGenerations;
   private final int populationSize;
@@ -23,7 +25,7 @@ public class DynaMOSA<C extends AbstractTestCaseChromosome<C>> implements Geneti
   private final SVD<C> svd;
   private final ChromosomeContainer<C> container;
 
-  public DynaMOSA(int maxGenerations, int populationSize,
+  public MOSA(int maxGenerations, int populationSize,
       FixedSizePopulationGenerator<C> populationGenerator,
       OffspringGenerator<C> offspringGenerator,
       PreferenceSorter<C> preferenceSorter,

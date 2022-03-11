@@ -85,7 +85,7 @@ pub const CUSTOM_OPT_MIR: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<
       MirWriter::write(&mir_object);
     }
 
-    #[cfg(instrumentation)]
+    #[cfg(feature = "instrumentation")]
     {
       info!("MIR: Instrumenting {:?}", def);
     }
@@ -967,7 +967,7 @@ impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
   fn visit_body(&mut self, body: &mut Body<'tcx>) {
     self.super_body(body);
 
-    #[cfg(instrumentation)]
+    #[cfg(feature = "instrumentation")]
     {
       // Now push the tracing chains after they have created
       for (_, tracing_chain) in &self.instrumentation {
@@ -986,7 +986,7 @@ impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
 
   }
 
-  #[cfg(instrumentation)]
+  #[cfg(feature = "instrumentation")]
   fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
     if let Some(terminator) = &mut data.terminator {
       match &mut terminator.kind {

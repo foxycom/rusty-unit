@@ -8,14 +8,15 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class PreferenceSorterImpl<C extends AbstractTestCaseChromosome<C>> implements PreferenceSorter<C> {
 
-  private final List<MinimizingFitnessFunction<C>> objectives;
+  private final Set<MinimizingFitnessFunction<C>> objectives;
   private final FNDS<C> fnds;
 
   public PreferenceSorterImpl(
-      List<MinimizingFitnessFunction<C>> objectives, FNDS<C> fnds) {
+      Set<MinimizingFitnessFunction<C>> objectives, FNDS<C> fnds) {
     this.objectives = objectives;
     this.fnds = fnds;
   }
@@ -23,12 +24,17 @@ public class PreferenceSorterImpl<C extends AbstractTestCaseChromosome<C>> imple
 
   @Override
   public Map<Integer, List<C>> sort(List<C> pPopulation) {
+    return sort(pPopulation, objectives);
+  }
+
+  @Override
+  public Map<Integer, List<C>> sort(List<C> pPopulation, Set<MinimizingFitnessFunction<C>> targets) {
     var population = new LinkedList<>(pPopulation);
     var fronts = new HashMap<Integer, List<C>>();
     var f0 = new LinkedHashSet<C>();
     var uncoveredBranches = new ArrayList<MinimizingFitnessFunction<C>>();
 
-    for (var objective : objectives) {
+    for (var objective : targets) {
       double minDist = Double.MAX_VALUE;
       C bestIndividual = null;
       for (var individual : population) {

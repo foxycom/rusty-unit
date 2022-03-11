@@ -3,14 +3,16 @@ package de.unipassau.testify.test_case;
 import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome;
 import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class UncoveredObjectives<C extends AbstractTestCaseChromosome<C>> {
 
-  private final List<MinimizingFitnessFunction<C>> objectives;
-  private List<MinimizingFitnessFunction<C>> uncoveredObjectives = new ArrayList<>();
+  private final Set<MinimizingFitnessFunction<C>> objectives;
+  private Set<MinimizingFitnessFunction<C>> uncoveredObjectives = new HashSet<>();
 
-  public UncoveredObjectives(List<MinimizingFitnessFunction<C>> objectives) {
+  public UncoveredObjectives(Set<MinimizingFitnessFunction<C>> objectives) {
     this.objectives = objectives;
   }
 
@@ -18,12 +20,12 @@ public class UncoveredObjectives<C extends AbstractTestCaseChromosome<C>> {
     uncoveredObjectives = uncoveredObjectives(population);
   }
 
-  public List<MinimizingFitnessFunction<C>> getUncoveredObjectives() {
+  public Set<MinimizingFitnessFunction<C>> getUncoveredObjectives() {
     return uncoveredObjectives;
   }
 
-  private List<MinimizingFitnessFunction<C>> uncoveredObjectives(List<C> population) {
-    List<MinimizingFitnessFunction<C>> uncoveredObjectives = new ArrayList<>();
+  private Set<MinimizingFitnessFunction<C>> uncoveredObjectives(List<C> population) {
+    Set<MinimizingFitnessFunction<C>> uncoveredObjectives = new HashSet<>();
     for (var objective : objectives) {
       boolean covered = false;
       for (var individual : population) {

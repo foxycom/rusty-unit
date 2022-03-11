@@ -2,24 +2,31 @@ package de.unipassau.testify.mir;
 
 import static de.unipassau.testify.Constants.MIR_LOG_PATH;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
+import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome;
+import de.unipassau.testify.metaheuristics.fitness_functions.FitnessFunction;
+import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
 import java.io.IOException;
-import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.json.JSONObject;
 
-public class MirAnalysis {
-  private static final Map<String, CDG> CDGs = parseCDGs();
+public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
 
-  private static Map<String, CDG> parseCDGs() {
-    Map<String, CDG> cdgs = new HashMap<>();
+  private final Map<String, CDG<C>> cdgs;
+  private final Set<MinimizingFitnessFunction<C>> visitedBlocks = new HashSet<>();
+
+  public MirAnalysis() {
+    cdgs = parseCDGs();
+  }
+
+  private Map<String, CDG<C>> parseCDGs() {
+    Map<String, CDG<C>> cdgs = new HashMap<>();
     var path = Paths.get(MIR_LOG_PATH);
     try (var stream = Files.walk(path, Integer.MAX_VALUE)) {
       stream
@@ -30,7 +37,7 @@ public class MirAnalysis {
               var content = Files.readString(file);
               var jsonRoot = new JSONObject(content);
               var globalId = jsonRoot.getString("global_id");
-              var cdg = CDG.parse(globalId, jsonRoot.getString("cdg"));
+              CDG<C> cdg = CDG.parse(globalId, jsonRoot.getString("cdg"));
               cdgs.put(globalId, cdg);
             } catch (IOException e) {
               throw new RuntimeException(e);
@@ -43,20 +50,58 @@ public class MirAnalysis {
     return cdgs;
   }
 
-  public static Set<BasicBlock> targets() {
-    return CDGs.values().stream()
+  public Set<MinimizingFitnessFunction<C>> targets() {
+    return cdgs.values().stream()
         .map(CDG::targets)
         .flatMap(Set::stream)
         .collect(Collectors.toSet());
   }
 
-  public static Set<BasicBlock> targets(String globalId) {
-    return CDGs.entrySet().stream().filter(e -> Objects.equals(e.getKey(), globalId))
-        .map(e -> e.getValue().targets())
-        .findFirst().get();
+  public Set<MinimizingFitnessFunction<C>> independentTargets() {
+    return cdgs.values().stream()
+        .map(CDG::independentTargets)
+        .flatMap(Set::stream)
+
+        .collect(Collectors.toSet());
   }
 
-  public static void main(String[] args) {
-    System.out.println();
+  public Set<MinimizingFitnessFunction<C>> targets(String globalId) {
+    return cdgs.get(globalId).targets();
+  }
+
+  public Set<MinimizingFitnessFunction<C>> updateTargets(
+      Set<MinimizingFitnessFunction<C>> targets, List<C> population) {
+    Set<MinimizingFitnessFunction<C>> updatedTargets = new HashSet<>(targets);
+    for (var target : targets) {
+      if (covered(target, population)) {
+        updatedTargets.remove(target);
+        visit(target, updatedTargets, population);
+      }
+    }
+
+    return updatedTargets;
+  }
+
+  public void visit(MinimizingFitnessFunction<C> target,
+      Set<MinimizingFitnessFunction<C>> targets, List<C> population) {
+    var cdg = cdgs.get(target.id());
+    var dependentTargets = cdg.dependentTargets(target);
+    for (MinimizingFitnessFunction<C> dependentTarget : dependentTargets) {
+      if (visitedBlocks.contains(dependentTarget)) {
+        continue;
+      }
+
+      if (!covered(dependentTarget, population)) {
+        targets.add(dependentTarget);
+        visitedBlocks.add(dependentTarget);
+      } else {
+        visit(dependentTarget, targets, population);
+      }
+    }
+  }
+
+  public boolean covered(MinimizingFitnessFunction<C> target, List<C> population) {
+    return population.stream()
+        .anyMatch(chromosome -> chromosome.getFitness(target) == 0.0);
   }
 }

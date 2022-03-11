@@ -1,18 +1,22 @@
-package de.unipassau.testify.algorithm;
+package de.unipassau.testify.algorithm.dynamosa;
 
+import de.unipassau.testify.algorithm.Archive;
+import de.unipassau.testify.algorithm.PreferenceSorter;
+import de.unipassau.testify.algorithm.SVD;
 import de.unipassau.testify.generator.OffspringGenerator;
 import de.unipassau.testify.metaheuristics.algorithm.GeneticAlgorithm;
 import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome;
 import de.unipassau.testify.metaheuristics.chromosome.FixedSizePopulationGenerator;
+import de.unipassau.testify.mir.MirAnalysis;
 import de.unipassau.testify.source.ChromosomeContainer;
-import de.unipassau.testify.test_case.TestCase;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MOSA<C extends AbstractTestCaseChromosome<C>> implements GeneticAlgorithm<C> {
-  private static final Logger logger = LoggerFactory.getLogger(MOSA.class);
+public class DynaMOSA<C extends AbstractTestCaseChromosome<C>> implements GeneticAlgorithm<C> {
+
+  private static final Logger logger = LoggerFactory.getLogger(DynaMOSA.class);
 
   private final int maxGenerations;
   private final int populationSize;
@@ -22,14 +26,16 @@ public class MOSA<C extends AbstractTestCaseChromosome<C>> implements GeneticAlg
   private final PreferenceSorter<C> preferenceSorter;
   private final SVD<C> svd;
   private final ChromosomeContainer<C> container;
+  private final MirAnalysis<C> mir;
 
-  public MOSA(int maxGenerations, int populationSize,
+  public DynaMOSA(int maxGenerations, int populationSize,
       FixedSizePopulationGenerator<C> populationGenerator,
       OffspringGenerator<C> offspringGenerator,
       PreferenceSorter<C> preferenceSorter,
       Archive<C> archive,
       SVD<C> svd,
-      ChromosomeContainer<C> container) {
+      ChromosomeContainer<C> container,
+      MirAnalysis<C> mir) {
     this.maxGenerations = maxGenerations;
     this.populationSize = populationSize;
     this.populationGenerator = populationGenerator;
@@ -38,6 +44,7 @@ public class MOSA<C extends AbstractTestCaseChromosome<C>> implements GeneticAlg
     this.preferenceSorter = preferenceSorter;
     this.svd = svd;
     this.container = container;
+    this.mir = mir;
   }
 
 
@@ -45,11 +52,13 @@ public class MOSA<C extends AbstractTestCaseChromosome<C>> implements GeneticAlg
   public List<C> findSolution() {
     var population = populationGenerator.get();
 
-    // TODO: 10.02.22 run tests
+    var allTargets = mir.targets();
+    var targets = mir.independentTargets();
     container.addAll(population);
     container.executeWithInstrumentation();
 
     archive.update(population);
+    targets = mir.updateTargets(targets, population);
 
     for (int gen = 0; gen < maxGenerations; gen++) {
       System.out.printf("Generation %d started%n", gen);
@@ -57,19 +66,20 @@ public class MOSA<C extends AbstractTestCaseChromosome<C>> implements GeneticAlg
 
       container.addAll(offspring);
       container.executeWithInstrumentation();
-      // TODO: 10.02.22 run tests
 
       archive.update(offspring);
+      targets = mir.updateTargets(targets, population);
+
       var combined = new ArrayList<C>(population.size() + offspring.size());
       combined.addAll(population);
       combined.addAll(offspring);
 
-      var fronts = preferenceSorter.sort(combined);
+      var fronts = preferenceSorter.sort(combined, targets);
       population.clear();
 
       for (int i = 0; i < fronts.size(); i++) {
         var front = fronts.get(i);
-        svd.compute(front);
+        svd.compute(front, targets);
         for (var t : front) {
           population.add(t);
           if (population.size() == populationSize) {

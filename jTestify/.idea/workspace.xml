@@ -4,13 +4,31 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b12c22c4-b5f7-4f70-8970-848dd736b280" name="Changes" comment="Compute correct LLVM coverage">
+    <list default="true" id="b12c22c4-b5f7-4f70-8970-848dd736b280" name="Changes" comment="Separate analysis and instrumentation">
+      <change afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/TestsGenerator.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/Constants.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/Constants.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/Main.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/exec/TestCaseRunner.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/exec/TestCaseRunner.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/Crate.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/Crate.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/ArchiveImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/ArchiveImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/DynaMOSA.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/dynamosa/DynaMOSA.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/MOSA.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/mosa/MOSA.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/PreferenceSorter.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/PreferenceSorter.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/PreferenceSorterImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/PreferenceSorterImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/SVD.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/SVD.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/SVDImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/SVDImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/metaheuristics/fitness_functions/FitnessFunction.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/metaheuristics/fitness_functions/FitnessFunction.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/metaheuristics/fitness_functions/MinimizingFitnessFunction.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/metaheuristics/fitness_functions/MinimizingFitnessFunction.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/BasicBlock.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/BasicBlock.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/CDG.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/CDG.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/MirAnalysis.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/MirAnalysis.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/server/TraceParser.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/server/TraceParser.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/UncoveredObjectives.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/UncoveredObjectives.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/fitness/Fitness.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/fitness/Fitness.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/operators/BasicMutation.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/operators/BasicMutation.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/operators/RankSelection.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/operators/RankSelection.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/resources/config.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/config.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../latex/template/document.tex" beforeDir="false" afterPath="$PROJECT_DIR$/../latex/template/document.tex" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../testify/instrument.sh" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/instrument.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../testify/src/mir.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/src/mir.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -101,6 +119,19 @@
     </key>
   </component>
   <component name="RunManager" selected="Application.Run">
+    <configuration name="CDG" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="de.unipassau.testify.mir.CDG" />
+      <module name="jTestify.main" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="de.unipassau.testify.mir.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="MirAnalysis" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="de.unipassau.testify.mir.MirAnalysis" />
       <module name="jTestify.main" />
@@ -183,9 +214,11 @@
       <item itemvalue="Application.RedisStorage" />
       <item itemvalue="Gradle.OptionTest.testGenericOptionCanBeOptionOfSomeType" />
       <item itemvalue="Application.MirAnalysis" />
+      <item itemvalue="Application.CDG" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Application.CDG" />
         <item itemvalue="Application.MirAnalysis" />
         <item itemvalue="Gradle.OptionTest.testGenericOptionCanBeOptionOfSomeType" />
         <item itemvalue="Application.RedisStorage" />
@@ -212,7 +245,7 @@
       <workItem from="1645642073936" duration="1431000" />
       <workItem from="1645978973211" duration="11999000" />
       <workItem from="1646684295953" duration="5509000" />
-      <workItem from="1646778611727" duration="13178000" />
+      <workItem from="1646778611727" duration="23442000" />
     </task>
     <task id="LOCAL-00001" summary="Update">
       <created>1644703983025</created>
@@ -277,7 +310,14 @@
       <option name="project" value="LOCAL" />
       <updated>1646960071386</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="Separate analysis and instrumentation">
+      <created>1646965259695</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1646965259695</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -297,7 +337,8 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Update" />
     <MESSAGE value="Compute correct LLVM coverage" />
-    <option name="LAST_COMMIT_MESSAGE" value="Compute correct LLVM coverage" />
+    <MESSAGE value="Separate analysis and instrumentation" />
+    <option name="LAST_COMMIT_MESSAGE" value="Separate analysis and instrumentation" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -337,8 +378,23 @@
           <line>200</line>
           <option name="timeStamp" value="103" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/dynamosa/DynaMOSA.java</url>
+          <line>95</line>
+          <option name="timeStamp" value="109" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/operators/BasicMutation.java</url>
+          <line>40</line>
+          <option name="timeStamp" value="110" />
+        </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
+    <watches-manager>
+      <configuration name="GradleRunConfiguration">
+        <watch expression="this" />
+      </configuration>
+    </watches-manager>
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

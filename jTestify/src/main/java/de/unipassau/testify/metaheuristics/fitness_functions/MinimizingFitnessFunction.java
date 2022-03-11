@@ -4,6 +4,9 @@ import java.util.function.DoubleUnaryOperator;
 
 public interface MinimizingFitnessFunction<C> extends FitnessFunction<C> {
 
+  default boolean isDummy() {
+    return false;
+  }
   /**
    * Always returns {@code true} as this is a minimizing fitness function.
    *
