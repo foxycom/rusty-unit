@@ -1,12 +1,13 @@
 use std::path::{Path, PathBuf};
 use log::{debug, info, warn};
+use petgraph::visit::Walker;
 use rustc_ast::CrateSugar;
 use rustc_hir::{AssocItemKind, BodyId, EnumDef, FnSig, Generics, HirId, Impl, ImplItemKind, Item, ItemKind, Variant, VariantData, Visibility, VisibilityKind};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::def_id::{LOCAL_CRATE, LocalDefId};
 use rustc_span::Span;
 use crate::{HIR_LOG_PATH, LOG_DIR, RuConfig};
-use crate::types::{Callable, EnumInitItem, EnumT, EnumVariant, FieldAccessItem, FunctionItem, MethodItem, Param, StaticFnItem, StructInitItem, StructT, T};
+use crate::types::{Callable, EnumInitItem, EnumT, EnumVariant, FieldAccessItem, FunctionItem, MethodItem, Param, StaticFnItem, StructInitItem, StructT, T, Trait};
 use crate::util::{def_id_to_t, def_id_to_enum, fn_ret_ty_to_t, generics_to_ts, impl_to_def_id, item_to_name, node_to_name, span_to_path, ty_to_param, ty_to_t, is_local};
 use crate::analysis::Analysis;
 #[cfg(feature = "analysis")]
@@ -18,6 +19,9 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
   if current_crate_name.as_str() != RuConfig::env_crate_name() {
     return;
   }
+
+  let mut traits = vec![];
+  analyze_traits(&tcx, &mut traits);
 
   let mut callables = vec![];
   for item in tcx.hir().items() {
@@ -98,6 +102,7 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
 
   let hir_object: HirObject = HirObjectBuilder::default()
       .callables(callables)
+      .traits(traits)
       .build()
       .unwrap();
   HirWriter::write(&hir_object);
@@ -406,4 +411,29 @@ fn is_public(vis: &Visibility<'_>) -> bool {
     },
     _ => false,
   }
+}
+
+fn analyze_traits(tcx: &TyCtxt<'_>, traits: &mut Vec<Trait>) {
+  let crates = tcx.crates(());
+  tcx.all_traits().for_each(|def_id| {
+    info!("Trait: {:?}", def_id);
+    //let t = trait_ty_to_trait(tcx.type_of(def_id), tcx);
+    //traits.push(t);
+    for crate_num in crates {
+      let impls = tcx.implementations_of_trait((*crate_num, def_id));
+      if impls.is_empty() {
+        continue;
+      }
+
+      for (impl_def_id, _) in impls {
+        info!("{:?}", impl_def_id);
+      }
+    }
+  });
+}
+
+
+fn trait_ty_to_trait(ty: Ty<'_>, tcx: &TyCtxt<'_>) -> Trait {
+  todo!("{:?}", ty)
+
 }

@@ -73,7 +73,7 @@ public enum RefItem implements Callable {
 
   @Override
   public Type getParent() {
-    throw new RuntimeException("Not with me");
+    return null;
   }
 
   @Override

@@ -56,17 +56,17 @@ public class DynaMOSA<C extends AbstractTestCaseChromosome<C>> implements Geneti
     var targets = mir.independentTargets();
     container.addAll(population);
     container.executeWithInstrumentation();
-
+    System.out.println();
     archive.update(population);
     targets = mir.updateTargets(targets, population);
 
-    for (int gen = 0; gen < maxGenerations; gen++) {
+    for (int gen = 1; gen < maxGenerations; gen++) {
       System.out.printf("Generation %d started%n", gen);
       var offspring = offspringGenerator.get(population);
 
       container.addAll(offspring);
       container.executeWithInstrumentation();
-
+      System.out.println();
       archive.update(offspring);
       targets = mir.updateTargets(targets, population);
 

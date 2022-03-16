@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::{PathBuf, Path};
 use crate::{HIR_LOG_PATH, INSTRUMENTED_MIR_LOG_NAME, LOG_DIR, LOG_EXT, MIR_LOG_NAME};
 use serde::Serialize;
-use crate::types::Callable;
+use crate::types::{Callable, Trait};
 
 #[derive(Builder, Serialize)]
 pub struct MirObject {
@@ -15,7 +15,8 @@ pub struct MirObject {
 
 #[derive(Builder, Serialize)]
 pub struct HirObject {
-  callables: Vec<Callable>
+  callables: Vec<Callable>,
+  traits: Vec<Trait>
 }
 
 #[cfg(feature = "analysis")]

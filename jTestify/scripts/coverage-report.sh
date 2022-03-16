@@ -7,7 +7,7 @@ cargo +nightly-aarch64-apple-darwin cov -- export \
       for file in \
         $( \
           RUSTFLAGS="-Z instrument-coverage" \
-            cargo +nightly-aarch64-apple-darwin test testify --no-run --message-format=json \
+            cargo +nightly-aarch64-apple-darwin test rusty_tests --no-run --message-format=json \
               | jq -r "select(.profile.test == true) | .filenames[]" \
               | grep -v dSYM - \
         ); \
@@ -17,4 +17,5 @@ cargo +nightly-aarch64-apple-darwin cov -- export \
     ) \
   --instr-profile="$PROFDATA_FILE" --summary-only \
   --ignore-filename-regex='/.cargo/registry' \
+  --ignore-filename-regex='rusty_monitor.rs' \
   --ignore-filename-regex='/rustc'

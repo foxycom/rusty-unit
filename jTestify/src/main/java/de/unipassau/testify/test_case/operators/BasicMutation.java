@@ -37,9 +37,6 @@ public class BasicMutation implements Mutation<TestCase> {
     }
 
     logger.info("Mutated test:\n{}", copy);
-    if (copy.getId() == 52) {
-      System.out.println();
-    }
     return copy;
   }
 

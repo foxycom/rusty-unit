@@ -13,30 +13,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public enum TupleInit implements Callable {
-  DEFAULT(Collections.emptyList()),
-  SINGLE(
-      List.of(new Param(new Generic("T", Collections.emptyList()), false, null))
-  ),
-  PAIR(
-      List.of(
-          new Param(new Generic("A", Collections.emptyList()), false, null),
-          new Param(new Generic("B", Collections.emptyList()), false, null)
-      )
-  ),
-  TRIPLETT(
-      List.of(
-          new Param(new Generic("A", Collections.emptyList()), false, null),
-          new Param(new Generic("B", Collections.emptyList()), false, null),
-          new Param(new Generic("C", Collections.emptyList()), false, null)
-      )
-  );
-
+public class TupleInit implements Callable {
 
   private List<Param> params;
   private Type returnType;
 
-  TupleInit(List<Param> params) {
+  public TupleInit(List<Param> params) {
     this.params = params;
 
     var types = params.stream().map(Param::getType).toList();
@@ -117,8 +99,6 @@ public enum TupleInit implements Callable {
   public String getSrcFilePath() {
     return null;
   }
-
-
 
   @Override
   public String toString() {

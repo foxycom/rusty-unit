@@ -14,11 +14,13 @@ import de.unipassau.testify.test_case.callable.ArrayInit;
 import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.Method;
 import de.unipassau.testify.test_case.callable.RefItem;
+import de.unipassau.testify.test_case.callable.TupleInit;
 import de.unipassau.testify.test_case.statement.PrimitiveStmt;
 import de.unipassau.testify.test_case.statement.Statement;
 import de.unipassau.testify.test_case.type.Array;
 import de.unipassau.testify.test_case.type.Generic;
 import de.unipassau.testify.test_case.type.Trait;
+import de.unipassau.testify.test_case.type.Tuple;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.TypeBinding;
 import de.unipassau.testify.test_case.type.prim.Int.ISize;
@@ -555,8 +557,43 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       return generateArgFromGenerators(type, generators, typesToGenerate);
     } else if (type.isArray()) {
       return generateArray(type.asArray(), typesToGenerate);
+    } else if (type.isTuple()) {
+      var tuple = type.asTuple();
+      return generateTuple(tuple, typesToGenerate);
     } else {
       throw new RuntimeException("Not implemented: " + type);
+    }
+  }
+
+  private Optional<VarReference> generateTuple(Tuple tuple, Set<Type> typesToGenerate) {
+    var params = tuple.getTypes().stream().map(t -> new Param(t, false, null)).toList();
+    var tupleInit = new TupleInit(params);
+    Set<Generic> generics = TypeUtil.getDeepGenerics(tuple);
+    var typeBinding = new TypeBinding((LinkedHashSet<Generic>) generics);
+    // Set for all generics some appropriate random type that complies with all constraints
+    // and type bounds
+    generics.stream().map(g -> Pair.with(g, getTypeFor(g))).filter(p -> p.getValue1().isPresent())
+        .forEach(p -> typeBinding.bindGeneric(p.getValue0(), p.getValue1().get()));
+    if (typeBinding.hasUnboundedGeneric()) {
+      logger.warn("({}) Could not bind all generics: {}", id, typeBinding.getUnboundGenerics());
+      return Optional.empty();
+    }
+
+    var tupleTypes = tuple.getTypes().stream().map(t -> t.bindGenerics(typeBinding)).toList();
+    var args = tupleTypes.stream()
+        .map(innerType -> generateArg(innerType, typesToGenerate))
+        .filter(Optional::isPresent)
+        .map(Optional::get)
+        .toList();
+
+    if (args.size() != tuple.getTypes().size()) {
+      var returnValue = createVariable(tuple.bindGenerics(typeBinding));
+      returnValue.setBinding(typeBinding);
+      var stmt = tupleInit.toStmt(this, args, returnValue);
+      addStmt(stmt);
+      return Optional.of(returnValue);
+    } else {
+      return Optional.empty();
     }
   }
 

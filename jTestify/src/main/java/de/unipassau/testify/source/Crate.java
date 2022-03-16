@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Crate implements ChromosomeContainer<TestCase> {
+
   private static final Logger logger = LoggerFactory.getLogger(ChromosomeContainer.class);
 
   private static final Path ERROR_PATH = Paths.get(System.getProperty("user.dir"), "..", "tmp",
@@ -146,32 +147,24 @@ public class Crate implements ChromosomeContainer<TestCase> {
     Preconditions.checkState(!sourceFiles.isEmpty());
     Map<String, List<TestCase>> sorted = new HashMap<>();
 
+    var allowedFiles = sourceFiles.stream()
+        .filter(f -> !f.getExecutionPath().endsWith("lib.rs")
+            && !f.getExecutionPath().endsWith("monitor.rs")).toList();
+
     testCases.forEach(testCase -> {
-      var filePathBinding = testCase.getFilePathBinding().orElse("UNBOUND");
+      var filePathBinding = testCase.getFilePathBinding()
+          .orElseGet(() -> executionRoot.relativize(Rnd.choice(allowedFiles).getExecutionPath())
+              .toString());
       sorted.putIfAbsent(filePathBinding, new ArrayList<>());
       sorted.get(filePathBinding).add(testCase);
     });
 
-
-    var allowedFiles = sourceFiles.stream()
-        .filter(f -> !f.getExecutionPath().endsWith("lib.rs")).toList();
     sorted.forEach((path, tests) -> {
-      if (path.equals("UNBOUND")) {
-        // Take a random path
-
-        var file = Rnd.choice(allowedFiles);
-        try {
-          file.addTests(tests);
-        } catch (IOException | InterruptedException e) {
-          throw new RuntimeException(e);
-        }
-      } else {
-        var file = getFileByPath(path);
-        try {
-          file.addTests(tests);
-        } catch (IOException | InterruptedException e) {
-          throw new RuntimeException(e);
-        }
+      var file = getFileByPath(path);
+      try {
+        file.addTests(tests);
+      } catch (IOException | InterruptedException e) {
+        throw new RuntimeException(e);
       }
     });
   }

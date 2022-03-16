@@ -6,6 +6,7 @@ import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.VarReference;
 import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.Method;
+import de.unipassau.testify.test_case.callable.RefItem;
 import de.unipassau.testify.test_case.callable.base.OptionInit;
 import de.unipassau.testify.test_case.callable.base.OptionInit.OptionNoneInit;
 import de.unipassau.testify.test_case.callable.base.OptionInit.OptionSomeInit;
@@ -40,6 +41,8 @@ public class TyCtxt {
     baseCallables.add(new OptionNoneInit());
     baseCallables.add(new OptionSomeInit());
     baseCallables.add(new StringInit());
+    baseCallables.add(RefItem.IMMUTABLE);
+    baseCallables.add(RefItem.MUTABLE);
 
     return baseCallables;
   }
