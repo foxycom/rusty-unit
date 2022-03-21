@@ -1,11 +1,11 @@
 package de.unipassau.testify.test_case.type.std;
 
-import de.unipassau.testify.test_case.type.Struct;
+import de.unipassau.testify.test_case.type.AbstractStruct;
 import de.unipassau.testify.test_case.type.Trait;
 import java.util.Collections;
 import java.util.Set;
 
-public class String extends Struct {
+public class String extends AbstractStruct {
 
   public String() {
     super(

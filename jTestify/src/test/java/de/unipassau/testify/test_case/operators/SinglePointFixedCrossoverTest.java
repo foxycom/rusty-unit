@@ -18,7 +18,7 @@ import de.unipassau.testify.test_case.statement.PrimitiveStmt;
 import de.unipassau.testify.test_case.statement.RefStmt;
 import de.unipassau.testify.test_case.statement.Statement;
 import de.unipassau.testify.test_case.statement.StaticMethodStmt;
-import de.unipassau.testify.test_case.type.Struct;
+import de.unipassau.testify.test_case.type.AbstractStruct;
 import de.unipassau.testify.test_case.type.Ref;
 import de.unipassau.testify.test_case.type.prim.UInt.USize;
 import de.unipassau.testify.test_case.visitor.CrossoverDebugVisitor;
@@ -57,7 +57,7 @@ class SinglePointFixedCrossoverTest {
     var age = new VarReference(testCase, USize.INSTANCE);
     var ageStmt = new PrimitiveStmt(testCase, age, new UIntValue(34, USize.INSTANCE));
 
-    var addressType = new Struct("Address", Collections.emptyList(), true);
+    var addressType = new AbstractStruct("Address", Collections.emptyList(), true);
     var addressVar = new VarReference(testCase, addressType);
     var addressConstructor = new StaticMethod("new", Collections.emptyList(), addressType,
         addressType, "");
@@ -67,7 +67,7 @@ class SinglePointFixedCrossoverTest {
     var phone = new VarReference(testCase, USize.INSTANCE);
     var phoneStmt = new PrimitiveStmt(testCase, phone, new UIntValue(1234566, USize.INSTANCE));
 
-    var personType = new Struct("Person",
+    var personType = new AbstractStruct("Person",
         Collections.emptyList(),
         true
     );
@@ -94,7 +94,7 @@ class SinglePointFixedCrossoverTest {
    * let mut grades_0: Grades = Grades::new(vec_0);
    */
   List<Statement> getStatementsB(TestCase testCase) {
-    var vecType = new Struct("Vec", List.of(USize.INSTANCE), false);
+    var vecType = new AbstractStruct("Vec", List.of(USize.INSTANCE), false);
     var vec = new VarReference(testCase, vecType);
     var vecConstructor = new StaticMethod("new", Collections.emptyList(), vecType, vecType, "");
     var vecStmt = new StaticMethodStmt(testCase, Collections.emptyList(), vec, vecConstructor);
@@ -114,7 +114,7 @@ class SinglePointFixedCrossoverTest {
         grade
     ), null, pushMethod);
 
-    var gradesType = new Struct("Grades", Collections.emptyList(), true);
+    var gradesType = new AbstractStruct("Grades", Collections.emptyList(), true);
     var grades = new VarReference(testCase, gradesType);
     var gradesConstructor = new StaticMethod("new", List.of(
         new Param(vecType, false, null)
@@ -134,7 +134,7 @@ class SinglePointFixedCrossoverTest {
 
     System.out.println(parentA.visit(debugVisitor));
 
-    var vecType = new Struct("Vec", List.of(USize.INSTANCE), false);
+    var vecType = new AbstractStruct("Vec", List.of(USize.INSTANCE), false);
     var vecConstructor = new StaticMethod("new", Collections.emptyList(), vecType, vecType, "");
     var vecRefType = new Ref(vecType, true);
 

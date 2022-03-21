@@ -8,7 +8,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class StructTest {
+class AbstractStructTest {
 
   @BeforeEach
   void setUp() {
@@ -16,9 +16,9 @@ class StructTest {
 
   @Test
   void testGenericCanBeSameAsConcreteInstance() {
-    var concreteNodeType = new Struct("trie::Node", List.of(ISize.INSTANCE,   ISize.INSTANCE), true);
+    var concreteNodeType = new AbstractStruct("trie::Node", List.of(ISize.INSTANCE,   ISize.INSTANCE), true);
 
-    var genericNodeType = new Struct("trie::Node", List.of(
+    var genericNodeType = new AbstractStruct("trie::Node", List.of(
         new Generic("A", Collections.emptyList()),
         new Generic("V", Collections.emptyList())
         ), true);

@@ -7,7 +7,7 @@ import de.unipassau.testify.hir.TyCtxt;
 import de.unipassau.testify.metaheuristics.operators.Crossover;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
 import de.unipassau.testify.test_case.callable.StaticMethod;
-import de.unipassau.testify.test_case.type.Struct;
+import de.unipassau.testify.test_case.type.AbstractStruct;
 import de.unipassau.testify.test_case.type.Generic;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.prim.Int.ISize;
@@ -42,8 +42,8 @@ class TestCaseTest {
   @Test
   void testInsertCallableWithSameGeneric() {
     Type generic_A = new Generic("A", Collections.emptyList());
-    Type parent = new Struct("MyType", List.of(generic_A), true);
-    Type vecType = new Struct("std::vec::Vec", List.of(generic_A), false);
+    Type parent = new AbstractStruct("MyType", List.of(generic_A), true);
+    Type vecType = new AbstractStruct("std::vec::Vec", List.of(generic_A), false);
 
     var params = List.of(
         new Param(generic_A, false, "x"),
@@ -156,7 +156,7 @@ class TestCaseTest {
   @Test
   void testInsertVecConstructor() {
     var genericT = new Generic("T", Collections.emptyList());
-    var vecType = new Struct("std::vec::Vec", Collections.singletonList(genericT), false);
+    var vecType = new AbstractStruct("std::vec::Vec", Collections.singletonList(genericT), false);
     var vecConstructor = new StaticMethod("new", Collections.emptyList(), vecType, vecType, "");
     testCase.insertCallable(vecConstructor);
 

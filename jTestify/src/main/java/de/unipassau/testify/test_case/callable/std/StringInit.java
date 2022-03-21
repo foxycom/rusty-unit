@@ -1,4 +1,4 @@
-package de.unipassau.testify.test_case.callable.base;
+package de.unipassau.testify.test_case.callable.std;
 
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.callable.StaticMethod;

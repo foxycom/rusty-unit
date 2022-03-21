@@ -23,7 +23,7 @@ public class Enum implements Type {
   private List<EnumVariant> variants;
   @JsonProperty("is_local")
   private boolean isLocal;
-  private Set<Trait> implementedTraits;
+  private Set<Trait> implementedTraits = Collections.emptySet();
 
   public Enum() {
   }
@@ -109,7 +109,7 @@ public class Enum implements Type {
 
   @Override
   public Set<Trait> implementedTraits() {
-    throw new RuntimeException("implementedTraits is not implemented");
+    return implementedTraits;
   }
 
   @Override

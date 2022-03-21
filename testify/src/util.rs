@@ -15,9 +15,11 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use log::{debug, error, info, warn};
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_hir::lang_items::LangItemGroup;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use crate::extractor::hir_ty_to_t;
+use crate::traits::analyze_trait;
 use crate::types::{ArrayT, EnumT, Generic, mir_ty_to_t, Param, StructT, T, Trait, TupleT};
 
 pub fn rustc_get_crate_name(rustc_args: &[String]) -> String {
@@ -340,6 +342,9 @@ pub fn generic_bound_to_trait(bound: &GenericBound<'_>, tcx: &TyCtxt<'_>) -> Opt
   match bound {
     GenericBound::Trait(trait_ref, _) => {
       let def_id = trait_ref.trait_ref.trait_def_id()?;
+
+      analyze_trait(def_id, tcx);
+
       let name = tcx.def_path_str(def_id);
 
       let implemented_by = trait_implementations(def_id, tcx);
@@ -539,3 +544,6 @@ pub struct PublicTraitImpls {
   pub blanket_impls: Vec<DefId>,
   pub non_blanket_impls: FxIndexMap<SimplifiedType, Vec<DefId>>,
 }
+
+
+

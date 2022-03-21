@@ -2,12 +2,16 @@ package de.unipassau.testify.test_case.type;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import de.unipassau.testify.test_case.type.traits.rand.Rng;
+import de.unipassau.testify.test_case.type.traits.rand.RngCore;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 @JsonDeserialize(as = Trait.class)
 public class Trait {
+
   private String name;
   private List<Type> generics;
 
@@ -27,6 +31,12 @@ public class Trait {
     this.name = name;
     this.generics = generics;
     this.associatedTypes = associatedTypes;
+  }
+
+  public Trait(Trait other) {
+    this.name = other.name;
+    this.generics = new ArrayList<>(other.generics);
+    this.associatedTypes = new ArrayList<>(other.associatedTypes);
   }
 
   public String getName() {
@@ -59,7 +69,7 @@ public class Trait {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (!(o instanceof Trait)) {
       return false;
     }
     Trait trait = (Trait) o;
@@ -74,5 +84,9 @@ public class Trait {
   @Override
   public String toString() {
     return name;
+  }
+
+  public Trait copy() {
+    return new Trait(this);
   }
 }

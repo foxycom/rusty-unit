@@ -7,12 +7,12 @@ import de.unipassau.testify.test_case.VarReference;
 import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.Method;
 import de.unipassau.testify.test_case.callable.RefItem;
-import de.unipassau.testify.test_case.callable.base.OptionInit;
-import de.unipassau.testify.test_case.callable.base.OptionInit.OptionNoneInit;
-import de.unipassau.testify.test_case.callable.base.OptionInit.OptionSomeInit;
-import de.unipassau.testify.test_case.callable.base.StringInit;
+import de.unipassau.testify.test_case.callable.std.option.OptionInit.OptionNoneInit;
+import de.unipassau.testify.test_case.callable.std.option.OptionInit.OptionSomeInit;
+import de.unipassau.testify.test_case.callable.std.StringInit;
 import de.unipassau.testify.test_case.type.Trait;
 import de.unipassau.testify.test_case.type.Type;
+import de.unipassau.testify.test_case.type.rand.rngs.mock.StepRng;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -24,12 +24,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TyCtxt {
-
   private static final Logger logger = LoggerFactory.getLogger(TyCtxt.class);
+  private static final Set<Type> types = new HashSet<>();
+
+  static {
+    types.add(new StepRng());
+  }
 
   private final List<Callable> callables = loadBaseCallables();
-
-  private final Set<Type> types = new HashSet<>();
 
   public TyCtxt(List<Callable> callables) throws IOException {
     this.callables.addAll(callables);
@@ -87,7 +89,17 @@ public class TyCtxt {
   }
 
   public List<Type> typesImplementing(List<Trait> bounds) {
-    throw new RuntimeException("Not implemented");
+    // Ignore Sized for now, all our types are sized by default
+    var filteredBounds = bounds.stream()
+        .filter(bound -> !bound.getName().equals("std::marker::Sized")).toList();
+
+    return typesImplementingFiltered(filteredBounds);
+  }
+
+  private List<Type> typesImplementingFiltered(List<Trait> bounds) {
+    var result = types.stream().filter(type -> type.implementedTraits().containsAll(bounds))
+        .toList();
+    return result;
   }
 
   public List<Callable> getCallablesOf(Type type) {
@@ -145,8 +157,8 @@ public class TyCtxt {
         .filter(subClass::isInstance)
         .filter(callable -> callable.returnsValue()
             && callable.getReturnType().canBeSameAs(type));
-        // Unless we want the type explicitly, exclude completely generic callables like
-        // Option::unwrap(Option) -> T, which would generate a wrapper just to unwrap it later
+    // Unless we want the type explicitly, exclude completely generic callables like
+    // Option::unwrap(Option) -> T, which would generate a wrapper just to unwrap it later
 //        .filter(callable -> (callable.getReturnType().getName().equals(type.getName()))
 //            || !callable.getReturnType().isGeneric());
 

@@ -3,6 +3,7 @@ package de.unipassau.testify.test_case.type;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -18,26 +19,26 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = "implementedTraits")
-@JsonDeserialize(as = Struct.class)
-public class Struct implements Type {
+@JsonDeserialize(as = AbstractStruct.class)
+public class AbstractStruct implements Type {
 
   protected String name;
-  protected List<Type> generics;
+  protected List<Type> generics = Collections.emptyList();
   @JsonProperty("is_local")
   protected boolean isLocal;
-  protected Set<Trait> implementedTraits;
+  protected Set<Trait> implementedTraits = Collections.emptySet();
 
-  public Struct(Struct other) {
+  public AbstractStruct(AbstractStruct other) {
     this.name = other.name;
     this.isLocal = other.isLocal;
     this.generics = other.generics.stream().map(Type::copy).peek(Objects::requireNonNull).toList();
+    this.implementedTraits = new HashSet<>(other.implementedTraits);
   }
 
-  public Struct(String name, List<Type> generics, boolean isLocal) {
+  public AbstractStruct(String name, List<Type> generics, boolean isLocal) {
     this.name = name;
     this.generics = generics;
     this.isLocal = isLocal;
-    this.implementedTraits = Collections.emptySet();
   }
 
   @Override
@@ -65,7 +66,7 @@ public class Struct implements Type {
   }
 
   @Override
-  public Struct asStruct() {
+  public AbstractStruct asStruct() {
     return this;
   }
 
@@ -97,7 +98,7 @@ public class Struct implements Type {
     return canBeSameAs(other);
   }
 
-  public boolean isSameType(Struct other) {
+  public boolean isSameType(AbstractStruct other) {
     return name.equals(other.name) && isLocal == other.isLocal;
   }
 
@@ -113,7 +114,7 @@ public class Struct implements Type {
 
   @Override
   public Type replaceGenerics(List<Type> generics) {
-    var copy = new Struct(this);
+    var copy = new AbstractStruct(this);
     generics.forEach(Objects::requireNonNull);
     copy.generics = generics;
     return copy;
@@ -121,7 +122,7 @@ public class Struct implements Type {
 
   @Override
   public Type bindGenerics(TypeBinding binding) {
-    var copy = new Struct(this);
+    var copy = new AbstractStruct(this);
     if (binding.hasUnboundedGeneric()) {
       throw new RuntimeException("Unbounded generics");
     }
@@ -133,7 +134,7 @@ public class Struct implements Type {
 
   @Override
   public Type copy() {
-    return new Struct(this);
+    return new AbstractStruct(this);
   }
 
   @Override

@@ -25,6 +25,7 @@ mod extractor;
 mod options;
 mod monitor;
 mod analysis;
+mod traits;
 
 #[cfg(feature = "analysis")]
 use crate::hir::hir_analysis;

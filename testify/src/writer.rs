@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::{PathBuf, Path};
@@ -16,7 +17,8 @@ pub struct MirObject {
 #[derive(Builder, Serialize)]
 pub struct HirObject {
   callables: Vec<Callable>,
-  traits: Vec<Trait>
+  // Types that implement traits
+  impls: std::collections::HashMap<String, Vec<String>>
 }
 
 #[cfg(feature = "analysis")]

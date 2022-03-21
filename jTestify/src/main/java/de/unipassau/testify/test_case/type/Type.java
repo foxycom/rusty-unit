@@ -53,7 +53,7 @@ public interface Type {
     return false;
   }
 
-  default Struct asStruct() {
+  default AbstractStruct asStruct() {
     throw new RuntimeException("Not with me");
   }
 
