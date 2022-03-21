@@ -7,12 +7,16 @@ import de.unipassau.testify.test_case.VarReference;
 import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.Method;
 import de.unipassau.testify.test_case.callable.RefItem;
-import de.unipassau.testify.test_case.callable.std.option.OptionInit.OptionNoneInit;
-import de.unipassau.testify.test_case.callable.std.option.OptionInit.OptionSomeInit;
+import de.unipassau.testify.test_case.callable.rand.StepRngInit;
+import de.unipassau.testify.test_case.callable.std.option.OptionCallable;
+import de.unipassau.testify.test_case.callable.std.option.OptionCallable.OptionNoneInit;
+import de.unipassau.testify.test_case.callable.std.option.OptionCallable.OptionSomeInit;
 import de.unipassau.testify.test_case.callable.std.StringInit;
-import de.unipassau.testify.test_case.type.Trait;
+import de.unipassau.testify.test_case.callable.std.option.OptionCallable.OptionUnwrap;
+import de.unipassau.testify.test_case.type.traits.AbstractTrait;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.rand.rngs.mock.StepRng;
+import de.unipassau.testify.test_case.type.traits.Trait;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -28,7 +32,7 @@ public class TyCtxt {
   private static final Set<Type> types = new HashSet<>();
 
   static {
-    types.add(new StepRng());
+    types.add(StepRng.INSTANCE);
   }
 
   private final List<Callable> callables = loadBaseCallables();
@@ -40,11 +44,19 @@ public class TyCtxt {
 
   private static List<Callable> loadBaseCallables() {
     var baseCallables = new ArrayList<Callable>();
+
+    // Option
     baseCallables.add(new OptionNoneInit());
     baseCallables.add(new OptionSomeInit());
+    baseCallables.add(new OptionUnwrap());
+
+    // TODO: 21.03.22 result
+
+    // Mocked random generator
+    baseCallables.add(new StepRngInit());
+
+    // String
     baseCallables.add(new StringInit());
-    baseCallables.add(RefItem.IMMUTABLE);
-    baseCallables.add(RefItem.MUTABLE);
 
     return baseCallables;
   }
@@ -106,15 +118,24 @@ public class TyCtxt {
     throw new RuntimeException("Not implemented");
   }
 
+
   public List<Callable> getCallables() {
     return callables;
   }
 
-  public List<Callable> getCallables(String filePath) {
-    return callables.stream().filter(
-            callable -> callable.getSrcFilePath() != null
-                && callable.getSrcFilePath().equals(filePath))
-        .toList();
+  public List<Callable> getCallables(String filePath, boolean localOnly) {
+    var stream = callables.stream();
+    if (filePath != null) {
+      stream = stream.filter(
+          callable -> callable.getSrcFilePath() != null
+              && callable.getSrcFilePath().equals(filePath));
+    }
+
+    if (localOnly) {
+      stream = stream.filter(callable -> callable.getSrcFilePath() != null);
+    }
+
+    return stream.toList();
   }
 
   public List<Pair<VarReference, Method>> methodsOf(List<VarReference> variables) {
@@ -166,11 +187,21 @@ public class TyCtxt {
       logger.debug("File path is not null, applying filtering");
       stream = stream.filter(callable -> callable.isPublic()
           || (callable.getSrcFilePath() != null && callable.getSrcFilePath().equals(filePath)));
+      var generators = stream.collect(toCollection(ArrayList::new));
+      return generators;
+    } else {
+      // Only consider local callables first. If there are none, continue with all
+      var generators = stream.collect(toCollection(ArrayList::new));
+
+      var localGenerators = generators.stream()
+          .filter(callable -> callable.getSrcFilePath() != null)
+          .collect(Collectors.toCollection(ArrayList::new));
+      if (!localGenerators.isEmpty()) {
+        return localGenerators;
+      } else {
+        return generators;
+      }
     }
-
-    var generators = stream.collect(toCollection(ArrayList::new));
-
-    return generators;
   }
 
   public <S extends Callable> List<Callable> wrappingGeneratorsOf(Type type, String filePath) {

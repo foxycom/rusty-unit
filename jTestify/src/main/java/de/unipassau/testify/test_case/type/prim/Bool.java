@@ -3,7 +3,16 @@ package de.unipassau.testify.test_case.type.prim;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.test_case.primitive.BoolValue;
 import de.unipassau.testify.test_case.primitive.PrimitiveValue;
-import de.unipassau.testify.test_case.type.Trait;
+import de.unipassau.testify.test_case.type.traits.AbstractTrait;
+import de.unipassau.testify.test_case.type.traits.Trait;
+import de.unipassau.testify.test_case.type.traits.std.clone.Clone;
+import de.unipassau.testify.test_case.type.traits.std.cmp.Eq;
+import de.unipassau.testify.test_case.type.traits.std.cmp.Ord;
+import de.unipassau.testify.test_case.type.traits.std.cmp.PartialEq;
+import de.unipassau.testify.test_case.type.traits.std.cmp.PartialOrd;
+import de.unipassau.testify.test_case.type.traits.std.default_.Default;
+import de.unipassau.testify.test_case.type.traits.std.hash.Hash;
+import de.unipassau.testify.test_case.type.traits.std.marker.Copy;
 import de.unipassau.testify.util.Rnd;
 import java.util.Set;
 
@@ -15,14 +24,14 @@ public enum Bool implements Prim {
 
   static {
     implementedTraits = Set.of(
-        new Trait("std::clone::Clone"),
-        new Trait("std::marker::Copy"),
-        new Trait("std::hash::Hash"),
-        new Trait("std::cmp::Ord"),
-        new Trait("std::cmp::PartialOrd"),
-        new Trait("std::cmp::Eq"),
-        new Trait("std::cmp::PartialEq"),
-        new Trait("std::default::Default")
+        Clone.INSTANCE,
+        Copy.INSTANCE,
+        Hash.INSTANCE,
+        Ord.INSTANCE,
+        PartialOrd.INSTANCE,
+        Eq.INSTANCE,
+        PartialEq.INSTANCE,
+        Default.INSTANCE
     );
   }
 
@@ -33,6 +42,11 @@ public enum Bool implements Prim {
 
   public Set<Trait> implementedTraits() {
     return implementedTraits;
+  }
+
+  @Override
+  public String encode() {
+    return getName();
   }
 
   @Override
@@ -52,6 +66,6 @@ public enum Bool implements Prim {
 
   @Override
   public String toString() {
-    return getName();
+    return encode();
   }
 }

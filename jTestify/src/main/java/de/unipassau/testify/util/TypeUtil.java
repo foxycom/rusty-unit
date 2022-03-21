@@ -17,13 +17,12 @@ public class TypeUtil {
   private static Set<Generic> getDeepGenerics(Type type, Set<Generic> generics) {
     if (type.isGeneric()) {
       generics.add(type.asGeneric());
-      return generics;
     } else {
       for (Type generic : type.generics()) {
         generics = getDeepGenerics(generic, generics);
       }
-      return generics;
     }
+    return generics;
   }
 
   public static TypeBinding getNecessaryBindings(Type generic, Type concrete) {

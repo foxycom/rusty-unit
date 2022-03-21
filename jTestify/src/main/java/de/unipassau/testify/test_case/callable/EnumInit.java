@@ -7,8 +7,8 @@ import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
 import de.unipassau.testify.test_case.statement.EnumStmt;
 import de.unipassau.testify.test_case.statement.Statement;
-import de.unipassau.testify.test_case.type.Enum;
-import de.unipassau.testify.test_case.type.Enum.EnumVariant;
+import de.unipassau.testify.test_case.type.AbstractEnum;
+import de.unipassau.testify.test_case.type.AbstractEnum.EnumVariant;
 import de.unipassau.testify.test_case.type.Type;
 import java.util.List;
 import java.util.Objects;
@@ -25,7 +25,7 @@ public class EnumInit implements Callable {
   @JsonProperty("src_file_path")
   private String srcFilePath;
 
-  public EnumInit(Enum type, EnumVariant variant, boolean isPublic) {
+  public EnumInit(AbstractEnum type, EnumVariant variant, boolean isPublic) {
     this.type = type;
     this.variant = variant;
     this.isPublic = isPublic;

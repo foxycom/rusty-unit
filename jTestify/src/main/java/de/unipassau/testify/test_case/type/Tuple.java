@@ -2,6 +2,7 @@ package de.unipassau.testify.test_case.type;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.collect.Streams;
+import de.unipassau.testify.test_case.type.traits.Trait;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -126,8 +127,13 @@ public class Tuple implements Type {
   }
 
   @Override
-  public String toString() {
+  public String encode() {
     var innerTypes = types.stream().map(Type::toString).collect(Collectors.joining(", "));
     return String.format("(%s)", innerTypes);
+  }
+
+  @Override
+  public String toString() {
+    return encode();
   }
 }

@@ -9,7 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import de.unipassau.testify.test_case.type.Array;
 import de.unipassau.testify.test_case.type.AbstractStruct;
-import de.unipassau.testify.test_case.type.Enum;
+import de.unipassau.testify.test_case.type.AbstractEnum;
 import de.unipassau.testify.test_case.type.Generic;
 import de.unipassau.testify.test_case.type.Ref;
 import de.unipassau.testify.test_case.type.Tuple;
@@ -52,7 +52,7 @@ public class TypeDeserializer extends StdDeserializer<Type> {
         yield new Ref(innerType, mutable);
       }
       case "Prim" -> mapper.readValue(node.toString(), Prim.class);
-      case "Enum" -> mapper.readValue(node.toString(), Enum.class);
+      case "Enum" -> mapper.readValue(node.toString(), AbstractEnum.class);
       case "Tuple" -> mapper.readValue(node.toString(), Tuple.class);
       case "Array" -> mapper.readValue(node.toString(), Array.class);
       default -> throw new RuntimeException("Not implemented: "+ typeName);

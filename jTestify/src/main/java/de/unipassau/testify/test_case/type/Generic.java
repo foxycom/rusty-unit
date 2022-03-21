@@ -1,6 +1,9 @@
 package de.unipassau.testify.test_case.type;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import de.unipassau.testify.test_case.type.traits.AbstractTrait;
+import de.unipassau.testify.test_case.type.traits.Trait;
+import de.unipassau.testify.test_case.type.traits.std.marker.Sized;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -19,7 +22,8 @@ public class Generic implements Type {
 
   public Generic(String name, List<Trait> bounds) {
     this.name = name;
-    this.bounds = bounds;
+    this.bounds = bounds.stream().filter(bound -> !bound.getName().equals(Sized.INSTANCE.getName()))
+        .toList();
   }
 
   @Override
@@ -90,6 +94,18 @@ public class Generic implements Type {
   }
 
   @Override
+  public String encode() {
+    var sb = new StringBuilder(name);
+    if (!bounds.isEmpty()) {
+      sb.append(": ");
+      var traits = bounds.stream().map(Trait::toString).collect(Collectors.joining(" + "));
+      sb.append(traits);
+    }
+
+    return sb.toString();
+  }
+
+  @Override
   public boolean isGeneric() {
     return true;
   }
@@ -126,14 +142,7 @@ public class Generic implements Type {
 
   @Override
   public String toString() {
-    var sb = new StringBuilder(name);
-    if (!bounds.isEmpty()) {
-      sb.append(": ");
-      var traits = bounds.stream().map(Trait::toString).collect(Collectors.joining(" + "));
-      sb.append(traits);
-    }
-
-    return sb.toString();
+    return encode();
   }
 
   public List<Trait> getBounds() {
@@ -145,6 +154,7 @@ public class Generic implements Type {
   }
 
   public void setBounds(List<Trait> bounds) {
-    this.bounds = bounds;
+    this.bounds = bounds.stream()
+        .filter(bound -> !bound.getName().equals(Sized.INSTANCE.getName())).toList();
   }
 }

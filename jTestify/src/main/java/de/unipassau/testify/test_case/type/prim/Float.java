@@ -4,25 +4,33 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.Constants;
 import de.unipassau.testify.test_case.primitive.FloatValue;
 import de.unipassau.testify.test_case.primitive.PrimitiveValue;
-import de.unipassau.testify.test_case.type.Trait;
+import de.unipassau.testify.test_case.type.traits.AbstractTrait;
+import de.unipassau.testify.test_case.type.traits.Trait;
+import de.unipassau.testify.test_case.type.traits.std.clone.Clone;
+import de.unipassau.testify.test_case.type.traits.std.cmp.Eq;
+import de.unipassau.testify.test_case.type.traits.std.cmp.Ord;
+import de.unipassau.testify.test_case.type.traits.std.cmp.PartialEq;
+import de.unipassau.testify.test_case.type.traits.std.cmp.PartialOrd;
+import de.unipassau.testify.test_case.type.traits.std.default_.Default;
+import de.unipassau.testify.test_case.type.traits.std.hash.Hash;
+import de.unipassau.testify.test_case.type.traits.std.marker.Copy;
 import de.unipassau.testify.util.Rnd;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 @JsonDeserialize(as = Float.class)
 public interface Float extends Prim {
 
-  Set<Trait> implementedTraits = new HashSet<>(Set.of(
-      new Trait("std::marker::Copy"),
-      new Trait("std::clone::Clone"),
-      new Trait("std::hash::Hash"),
-      new Trait("std::cmp::Ord"),
-      new Trait("std::cmp::PartialOrd"),
-      new Trait("std::cmp::Eq"),
-      new Trait("std::cmp::PartialEq"),
-      new Trait("std::default::Default")
-  ));
+  Set<Trait> implementedTraits = Set.of(
+      Copy.INSTANCE,
+      Clone.INSTANCE,
+      Hash.INSTANCE,
+      Ord.INSTANCE,
+      PartialOrd.INSTANCE,
+      Eq.INSTANCE,
+      PartialEq.INSTANCE,
+      Default.INSTANCE
+  );
 
   int bits();
 
@@ -67,8 +75,13 @@ public interface Float extends Prim {
     }
 
     @Override
-    public String toString() {
+    public String encode() {
       return getName();
+    }
+
+    @Override
+    public String toString() {
+      return encode();
     }
 
     @Override
@@ -108,8 +121,13 @@ public interface Float extends Prim {
     }
 
     @Override
-    public String toString() {
+    public String encode() {
       return getName();
+    }
+
+    @Override
+    public String toString() {
+      return encode();
     }
 
     @Override

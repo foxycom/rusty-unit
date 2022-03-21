@@ -1,6 +1,7 @@
 package de.unipassau.testify.test_case.type;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import de.unipassau.testify.test_case.type.traits.Trait;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -133,11 +134,7 @@ public class Ref implements Type {
 
   @Override
   public String toString() {
-    if (mutable) {
-      return String.format("&mut %s", innerType);
-    } else {
-      return String.format("&%s", innerType);
-    }
+    return encode();
   }
 
   @Override
@@ -148,5 +145,14 @@ public class Ref implements Type {
   @Override
   public Type copy() {
     return new Ref(this);
+  }
+
+  @Override
+  public String encode() {
+    if (mutable) {
+      return String.format("&mut %s", innerType);
+    } else {
+      return String.format("&%s", innerType);
+    }
   }
 }

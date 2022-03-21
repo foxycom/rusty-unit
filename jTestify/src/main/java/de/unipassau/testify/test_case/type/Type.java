@@ -3,6 +3,7 @@ package de.unipassau.testify.test_case.type;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.json.TypeDeserializer;
 import de.unipassau.testify.test_case.type.prim.Prim;
+import de.unipassau.testify.test_case.type.traits.Trait;
 import java.util.List;
 import java.util.Set;
 
@@ -53,7 +54,7 @@ public interface Type {
     return false;
   }
 
-  default AbstractStruct asStruct() {
+  default Struct asStruct() {
     throw new RuntimeException("Not with me");
   }
 
@@ -103,4 +104,6 @@ public interface Type {
   Type bindGenerics(TypeBinding binding);
 
   Type copy();
+
+  String encode();
 }

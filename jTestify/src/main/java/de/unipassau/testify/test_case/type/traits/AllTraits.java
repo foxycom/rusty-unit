@@ -1,6 +1,5 @@
 package de.unipassau.testify.test_case.type.traits;
 
-import de.unipassau.testify.test_case.type.Trait;
 import de.unipassau.testify.test_case.type.traits.rand.Rng;
 import de.unipassau.testify.test_case.type.traits.rand.RngCore;
 import java.util.List;
@@ -11,8 +10,8 @@ public class AllTraits {
 
   static {
     PREDEFINED_TRAITS = List.of(
-        new Rng(),
-        new RngCore()
+        Rng.INSTANCE,
+        RngCore.INSTANCE
     );
   }
 

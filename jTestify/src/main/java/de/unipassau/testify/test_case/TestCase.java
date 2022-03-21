@@ -19,14 +19,16 @@ import de.unipassau.testify.test_case.statement.PrimitiveStmt;
 import de.unipassau.testify.test_case.statement.Statement;
 import de.unipassau.testify.test_case.type.Array;
 import de.unipassau.testify.test_case.type.Generic;
-import de.unipassau.testify.test_case.type.Trait;
+import de.unipassau.testify.test_case.type.Ref;
+import de.unipassau.testify.test_case.type.traits.AbstractTrait;
 import de.unipassau.testify.test_case.type.Tuple;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.TypeBinding;
 import de.unipassau.testify.test_case.type.prim.Int.ISize;
 import de.unipassau.testify.test_case.type.prim.Prim;
-import de.unipassau.testify.test_case.type.std.traits.Copy;
-import de.unipassau.testify.test_case.type.std.traits.Default;
+import de.unipassau.testify.test_case.type.traits.Trait;
+import de.unipassau.testify.test_case.type.traits.std.default_.Default;
+import de.unipassau.testify.test_case.type.traits.std.marker.Copy;
 import de.unipassau.testify.test_case.visitor.LineNumberDebugVisitor;
 import de.unipassau.testify.test_case.visitor.TypeBindingStringVisitor;
 import de.unipassau.testify.test_case.visitor.Visitor;
@@ -356,9 +358,9 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       return insertMethodOnExistingVariable(variableAndMethod.getValue0(),
           variableAndMethod.getValue1());
     } else if (filePathBinding.isPresent()) {
-      callable = Rnd.choice(tyCtxt.getCallables(filePathBinding.get()));
+      callable = Rnd.choice(tyCtxt.getCallables(filePathBinding.get(), true));
     } else {
-      callable = Rnd.choice(tyCtxt.getCallables());
+      callable = Rnd.choice(tyCtxt.getCallables(null, true));
     }
 
     logger.info("({}) Inserting random stmt. Selected callable: {}", id, callable);
@@ -552,9 +554,11 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       logger.debug("({}) Found " + generators.size() + " generators", id);
       return generateArgFromGenerators(type, generators, typesToGenerate);
     } else if (type.isRef()) {
-      var generators = tyCtxt.generatorsOf(type, getFilePathBinding().orElse(null));
-      logger.debug("({}) Found " + generators.size() + " generators", id);
-      return generateArgFromGenerators(type, generators, typesToGenerate);
+      //var generators = tyCtxt.generatorsOf(type, getFilePathBinding().orElse(null));
+      //logger.debug("({}) Found " + generators.size() + " generators", id);
+      var reference = type.asRef();
+      return generateReference(reference, typesToGenerate);
+//      return generateArgFromGenerators(type, generators, typesToGenerate);
     } else if (type.isArray()) {
       return generateArray(type.asArray(), typesToGenerate);
     } else if (type.isTuple()) {
@@ -563,6 +567,41 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     } else {
       throw new RuntimeException("Not implemented: " + type);
     }
+  }
+
+  private Optional<VarReference> generateReference(Ref ref, Set<Type> typesToGenerate) {
+    RefItem refItem;
+    if (ref.isMutable()) {
+      refItem = RefItem.MUTABLE;
+    } else {
+      refItem = RefItem.IMMUTABLE;
+    }
+
+    var generics = TypeUtil.getDeepGenerics(ref);
+    var typeBinding = new TypeBinding((LinkedHashSet<Generic>) generics);
+    // Set for all generics some appropriate random type that complies with all constraints
+    // and type bounds
+    generics.stream().map(g -> Pair.with(g, getTypeFor(g))).filter(p -> p.getValue1().isPresent())
+        .forEach(p -> typeBinding.bindGeneric(p.getValue0(), p.getValue1().get()));
+    if (typeBinding.hasUnboundedGeneric()) {
+      logger.warn("({}) Could not bind all generics: {}", id, typeBinding.getUnboundGenerics());
+      return Optional.empty();
+    }
+
+    var refType = ref.getInnerType().bindGenerics(typeBinding);
+    var extendedTypesToGenerate = new HashSet<>(typesToGenerate);
+    extendedTypesToGenerate.add(ref);
+    var arg = generateArg(refType, extendedTypesToGenerate);
+    if (arg.isEmpty()) {
+      return Optional.empty();
+    }
+
+    var returnValue = createVariable(ref.bindGenerics(typeBinding));
+    returnValue.setBinding(typeBinding);
+
+    var stmt = refItem.toStmt(this, Collections.singletonList(arg.get()), returnValue);
+    addStmt(stmt);
+    return Optional.of(returnValue);
   }
 
   private Optional<VarReference> generateTuple(Tuple tuple, Set<Type> typesToGenerate) {
@@ -579,14 +618,16 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       return Optional.empty();
     }
 
+    var extendedTypesToGenerate = new HashSet<>(typesToGenerate);
+    extendedTypesToGenerate.add(tuple);
     var tupleTypes = tuple.getTypes().stream().map(t -> t.bindGenerics(typeBinding)).toList();
     var args = tupleTypes.stream()
-        .map(innerType -> generateArg(innerType, typesToGenerate))
+        .map(innerType -> generateArg(innerType, extendedTypesToGenerate))
         .filter(Optional::isPresent)
         .map(Optional::get)
         .toList();
 
-    if (args.size() != tuple.getTypes().size()) {
+    if (args.size() == tuple.getTypes().size()) {
       var returnValue = createVariable(tuple.bindGenerics(typeBinding));
       returnValue.setBinding(typeBinding);
       var stmt = tupleInit.toStmt(this, args, returnValue);
@@ -601,9 +642,9 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     // TODO: 27.02.22 1) [T; N] where T: Default (and N <= 32)
     // TODO: 27.02.22  [T; N] where T: Copy
     // TODO: 27.02.22 literal array init
-    if (array.implementedTraits().contains(new Default())) {
+    if (array.implementedTraits().contains(Default.INSTANCE)) {
       throw new RuntimeException("Not implemented");
-    } else if (array.implementedTraits().contains(new Copy())) {
+    } else if (array.implementedTraits().contains(Copy.INSTANCE)) {
       throw new RuntimeException("Not implemented");
     } else {
       var arrayInit = new ArrayInit(array);
@@ -620,10 +661,11 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         return Optional.empty();
       }
 
+      var extendedTypesToGenerate = new HashSet<>(typesToGenerate);
+      extendedTypesToGenerate.add(array);
       var actualElementsType = array.type().bindGenerics(typeBinding);
-
       var elements = IntStream.range(0, array.length())
-          .mapToObj(i -> generateArg(actualElementsType, typesToGenerate))
+          .mapToObj(i -> generateArg(actualElementsType, extendedTypesToGenerate))
           .filter(Optional::isPresent)
           .map(Optional::get)
           .collect(toCollection(ArrayList::new));

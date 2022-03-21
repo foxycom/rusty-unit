@@ -1,6 +1,7 @@
 package de.unipassau.testify.test_case.type;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import de.unipassau.testify.test_case.type.traits.Trait;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -102,6 +103,11 @@ public class Array implements Type {
   }
 
   @Override
+  public String encode() {
+    return String.format("[%s; %d]", ty, length);
+  }
+
+  @Override
   public boolean isArray() {
     return true;
   }
@@ -113,7 +119,7 @@ public class Array implements Type {
 
   @Override
   public String toString() {
-    return String.format("[%s; %d]", ty, length);
+    return encode();
   }
 
   @Override

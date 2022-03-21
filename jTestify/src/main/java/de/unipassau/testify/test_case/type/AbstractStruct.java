@@ -2,14 +2,13 @@ package de.unipassau.testify.test_case.type;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import de.unipassau.testify.test_case.type.traits.AbstractTrait;
+import de.unipassau.testify.test_case.type.traits.Trait;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -20,7 +19,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = "implementedTraits")
 @JsonDeserialize(as = AbstractStruct.class)
-public class AbstractStruct implements Type {
+public class AbstractStruct implements Struct {
 
   protected String name;
   protected List<Type> generics = Collections.emptyList();
@@ -52,54 +51,8 @@ public class AbstractStruct implements Type {
   }
 
   @Override
-  public String fullName() {
-    if (isLocal) {
-      return String.format("crate::%s", name);
-    } else {
-      return name;
-    }
-  }
-
-  @Override
-  public boolean isStruct() {
-    return true;
-  }
-
-  @Override
-  public AbstractStruct asStruct() {
-    return this;
-  }
-
-  @Override
   public List<Type> generics() {
     return generics;
-  }
-
-  @Override
-  public String varString() {
-    var segments = name.split("::");
-    return segments[segments.length - 1].toLowerCase(Locale.ROOT);
-  }
-
-  @Override
-  public boolean canBeSameAs(Type other) {
-    if (other.isStruct()) {
-      return isSameType(other.asStruct()) &&
-          generics.size() == other.generics().size() &&
-          IntStream.range(0, generics.size())
-              .allMatch(i -> generics.get(i).canBeSameAs(other.generics().get(i)));
-    } else {
-      return other.isGeneric();
-    }
-  }
-
-  @Override
-  public boolean canBeIndirectlySameAs(Type other) {
-    return canBeSameAs(other);
-  }
-
-  public boolean isSameType(AbstractStruct other) {
-    return name.equals(other.name) && isLocal == other.isLocal;
   }
 
   @Override
@@ -131,7 +84,6 @@ public class AbstractStruct implements Type {
     return copy;
   }
 
-
   @Override
   public Type copy() {
     return new AbstractStruct(this);
@@ -139,15 +91,11 @@ public class AbstractStruct implements Type {
 
   @Override
   public String toString() {
-    generics.forEach(Objects::requireNonNull);
+    return encode();
+  }
 
-    var sb = new StringBuilder(fullName());
-    if (!generics.isEmpty()) {
-      sb.append("<");
-      var genericsStr = generics.stream().map(Type::toGenericString).collect(Collectors.joining(", "));
-      sb.append(genericsStr);
-      sb.append(">");
-    }
-    return sb.toString();
+  @Override
+  public boolean isLocal() {
+    return isLocal;
   }
 }

@@ -1,9 +1,8 @@
 package de.unipassau.testify.test_case.type.std;
 
-import static com.google.common.truth.ExpectFailure.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
-import de.unipassau.testify.test_case.type.Enum;
+import de.unipassau.testify.test_case.type.AbstractEnum;
 import de.unipassau.testify.test_case.type.Generic;
 import java.util.Collections;
 import java.util.List;
@@ -20,7 +19,7 @@ class OptionTest {
   @Test
   public void testGenericOptionCanBeOptionOfSomeType() {
     var genericOption = new Option();
-    var actualOption = new Enum("std::option::Option",
+    var actualOption = new AbstractEnum("std::option::Option",
         List.of(new Generic("T", Collections.emptyList())),
         Collections.emptyList(),
         false, Collections.emptySet());

@@ -25,6 +25,9 @@ public class TestCaseGenerator implements ChromosomeGenerator<TestCase> {
   @Override
   public TestCase get() {
     var testCase = new TestCase(TestIdGenerator.get(), hir, mutation, crossover);
+    if (testCase.getId() == 4) {
+      System.out.println();
+    }
     while (testCase.size() < 5) {
       testCase.insertRandomStmt();
     }

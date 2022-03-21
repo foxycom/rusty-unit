@@ -1,15 +1,15 @@
 package de.unipassau.testify.test_case.type.std;
 
 import de.unipassau.testify.test_case.Param;
-import de.unipassau.testify.test_case.type.Enum;
+import de.unipassau.testify.test_case.type.AbstractEnum;
 import de.unipassau.testify.test_case.type.Generic;
-import de.unipassau.testify.test_case.type.Trait;
+import de.unipassau.testify.test_case.type.traits.AbstractTrait;
 import de.unipassau.testify.test_case.type.Type;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-public class Result extends Enum {
+public class Result extends AbstractEnum {
 
   private static final List<Type> stdGenerics = List.of(
       new Generic("T", Collections.emptyList()),
@@ -26,15 +26,15 @@ public class Result extends Enum {
         ),
         false,
         Set.of(
-            new Trait("std::clone::Clone"),
-            new Trait("std::marker::Copy"),
-            new Trait("std::cmp::Eq"),
-            new Trait("std::cmp::PartialEq"),
-            new Trait("std::hash::Hash"),
-            new Trait("std::cmp::Ord"),
-            new Trait("std::cmp::PartialOrd"),
-            new Trait("std::iter::IntoIterator"),
-            new Trait("std::fmt::Debug")
+            new AbstractTrait("std::clone::Clone"),
+            new AbstractTrait("std::marker::Copy"),
+            new AbstractTrait("std::cmp::Eq"),
+            new AbstractTrait("std::cmp::PartialEq"),
+            new AbstractTrait("std::hash::Hash"),
+            new AbstractTrait("std::cmp::Ord"),
+            new AbstractTrait("std::cmp::PartialOrd"),
+            new AbstractTrait("std::iter::IntoIterator"),
+            new AbstractTrait("std::fmt::Debug")
         )
     );
   }

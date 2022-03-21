@@ -1,11 +1,11 @@
 package de.unipassau.testify.test_case.type.std;
 
-import de.unipassau.testify.test_case.type.Enum;
-import de.unipassau.testify.test_case.type.Trait;
+import de.unipassau.testify.test_case.type.AbstractEnum;
+import de.unipassau.testify.test_case.type.traits.AbstractTrait;
 import java.util.Collections;
 import java.util.Set;
 
-public class Infallible extends Enum {
+public class Infallible extends AbstractEnum {
 
   public Infallible() {
     super(
@@ -14,8 +14,8 @@ public class Infallible extends Enum {
         Collections.emptyList(),
         false,
         Set.of(
-            new Trait("std::marker::Copy"),
-            new Trait("std::clone::Clone")
+            new AbstractTrait("std::marker::Copy"),
+            new AbstractTrait("std::clone::Clone")
         )
         );
   }

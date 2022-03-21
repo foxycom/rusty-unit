@@ -1,16 +1,16 @@
-package de.unipassau.testify.test_case.type;
+package de.unipassau.testify.test_case.type.traits;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import de.unipassau.testify.test_case.type.traits.rand.Rng;
-import de.unipassau.testify.test_case.type.traits.rand.RngCore;
+import de.unipassau.testify.test_case.type.AssociatedType;
+import de.unipassau.testify.test_case.type.Type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-@JsonDeserialize(as = Trait.class)
-public class Trait {
+@JsonDeserialize(as = AbstractTrait.class)
+public class AbstractTrait implements Trait {
 
   private String name;
   private List<Type> generics;
@@ -18,27 +18,28 @@ public class Trait {
   @JsonProperty("associated_types")
   private List<AssociatedType> associatedTypes;
 
-  public Trait() {
+  public AbstractTrait() {
   }
 
-  public Trait(String name) {
+  public AbstractTrait(String name) {
     this.name = name;
     this.generics = Collections.emptyList();
     this.associatedTypes = Collections.emptyList();
   }
 
-  public Trait(String name, List<Type> generics, List<AssociatedType> associatedTypes) {
+  public AbstractTrait(String name, List<Type> generics, List<AssociatedType> associatedTypes) {
     this.name = name;
     this.generics = generics;
     this.associatedTypes = associatedTypes;
   }
 
-  public Trait(Trait other) {
+  public AbstractTrait(AbstractTrait other) {
     this.name = other.name;
     this.generics = new ArrayList<>(other.generics);
     this.associatedTypes = new ArrayList<>(other.associatedTypes);
   }
 
+  @Override
   public String getName() {
     return name;
   }
@@ -47,7 +48,8 @@ public class Trait {
     this.name = name;
   }
 
-  public List<Type> getGenerics() {
+  @Override
+  public List<Type> generics() {
     return generics;
   }
 
@@ -55,7 +57,8 @@ public class Trait {
     this.generics = generics;
   }
 
-  public List<AssociatedType> getAssociatedTypes() {
+  @Override
+  public List<AssociatedType> associatedTypes() {
     return associatedTypes;
   }
 
@@ -69,10 +72,10 @@ public class Trait {
     if (this == o) {
       return true;
     }
-    if (!(o instanceof Trait)) {
+    if (!(o instanceof AbstractTrait)) {
       return false;
     }
-    Trait trait = (Trait) o;
+    AbstractTrait trait = (AbstractTrait) o;
     return name.equals(trait.name);
   }
 
@@ -86,7 +89,7 @@ public class Trait {
     return name;
   }
 
-  public Trait copy() {
-    return new Trait(this);
+  public AbstractTrait copy() {
+    return new AbstractTrait(this);
   }
 }
