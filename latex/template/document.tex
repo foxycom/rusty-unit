@@ -21,7 +21,7 @@
   giveninits=true
 ]{biblatex}
 \addbibresource{references.bib}
-
+\usepackage{xcolor}
 \usepackage[eulerchapternumbers]{template}
 \usepackage{blindtext}
 \usepackage{graphicx}
@@ -32,7 +32,21 @@
 \usepackage{amssymb}
 \usepackage{url}
 \usepackage[shortlabels]{enumitem}
-
+\usepackage[most]{tcolorbox}
+\tcbset{
+  frame code={}
+  center title,
+  left=0pt,
+  right=0pt,
+  top=0pt,
+  bottom=0pt,
+  colback=lightgray,
+  colframe=white,
+  width=\dimexpr\textwidth\relax,
+  enlarge left by=0mm,
+  boxsep=5pt,
+  arc=0pt,outer arc=0pt,
+}
 
 \usepackage[printonlyused]{acronym}
 
@@ -57,7 +71,8 @@
   %stepnumber=1,
   %firstnumber=1,
   numberfirstline=true,
-  basicstyle=\BeraMonottfamily
+  basicstyle=\BeraMonottfamily,
+  escapechar={@}
   %identifierstyle=,
   %stringstyle=\ttfamily,
   %keywordstyle=\color{OliveGreen},
@@ -170,7 +185,7 @@ Symbolic execution is not an execution of a program in a direct sense. Instead, 
 
 \section{Evolutionary algorithms}
 %Der potenzielle Suchraum für mögliche Inputdaten selbst bei einem sehr simplen Programm kann unendlich groß sein. Metaheuristische Ansätze versprechen eine Abhilfe. Das sind keine geschlossenen Algorithmen an sich, sondern Strategien, die auf spezifische Probleme angepasst werden können. Zum Beispiel wird für die Generierung von Testdaten bei Test Cases eine problem-spezifische Fitnessfunktion definiert, mit deren Hilfe die Qualität möglicher Lösungen des Problems verglichen werden kann~\cite{McMinn_2004}. Metaheurische Suche wird nicht nur für Testdatengenerierung verwendet. Andere Verwendungen umfassen:
-The potential search space for possible input data even for a very simple program can be infinite. Metaheuristic approaches promise a cure. These are not closed algorithms per se, but strategies that can be adapted to specific problems. For example, for test case data generation, a problem-specific fitness function can be defined to compare the quality of possible solutions, i.e., test cases, to the problem~\cite{McMinn_2004}. Metaheuristic search is not only used for test data generation. Other uses include:
+The potential search space for possible input data even for a very simple program can be infinite.\acp{EA}, which are metaheuristic approaches, promise a cure. These are not closed algorithms per se, but strategies that can be adapted to specific problems. For example, for test case data generation, a problem-specific fitness function can be defined to compare the quality of possible solutions, i.e., test cases, to the problem~\cite{McMinn_2004}. However, metaheuristic search is not only used for test data generation. Other uses include:
 \begin{itemize}
 	\item coverage of the program structure as part of a white-box testing strategy,
 	\item evaluating a specific program feature according to its formal specification,
@@ -181,7 +196,7 @@ TODO Links zu einzelnen Paper einfügen, z. B. Automotive.
 
 %Evolutionary algorithms setzen auf simulierte Evolution bei der Suche nach Lösungen zu einem spezifischen Problem und evolvieren Lösungskandidaten mit Hilfe von speziellen Operatoren, die von Genetik und natürlicher Selektion inspiriert sind. Genetische Algorithmen sind die bekannteste Ausprägung der evolutionären Algorithmen und nehmen ihre Anfänge irgendwo her. \todo{Keine Ahnung, ob das überhaupt sinnvoll ist, die Geschichte davon aufzuschreiben.} Eine Suche mit genetischen Algorithmen wird auf Basis von Rekombination von Zwischenlösungen durchgeführt, einem Mechanismus, um Informationen zwischen Lösungen auszutauschen und somit neue züchten~\cite{McMinn_2004}.
 
-Evolutionary algorithms rely on simulated evolution in the search for solutions to a specific problem and evolve candidates using special operators inspired by genetics and natural selection. Genetic algorithms are the best known instance of evolutionary algorithms and take their beginnings from \textbf{somewhere}. A search using genetic algorithms is performed based on recombination of intermediate solutions, a mechanism to exchange information between solutions and thus breed new ones~\cite{McMinn_2004}.
+Evolutionary algorithms are inspired by natural evolution and have been successfully used to address many kinds of optimization problems. In this context, a solution is encoded ''genetically'' as an individual and a set of individuals is called a population. The population is gradually improved or optimized by performing nature-inspired operations on individuals, such as mutation, which independently changes components of an individual with a low probability, or crossover, which merges at least two individuals to produce offspring~\cite{Campos2017a}. Genetic algorithms are the best known instance of evolutionary algorithms and take their beginnings from \textbf{somewhere}. A search using genetic algorithms is performed based on recombination of intermediate solutions, a mechanism to exchange information between solutions and thus breed new ones~\cite{McMinn_2004}.
 
 \section{Genetic Algorithms}
 TODO McMinn hat eine super Beschreibung von genetischen und evolutionären Algorithmen, Selektion, Crossover, Mutation, fortgeschrittene Repräsentationen von Individuen~\cite{McMinn_2004}. Außerdem wird der genetische Algorithmus in \cite{Fraser2011} und \cite{Fraser_2013} beschrieben. \cite{Fraser_2013} beschreibt außerdem die Suchoperatoren.
@@ -190,7 +205,9 @@ TODO McMinn hat eine super Beschreibung von genetischen und evolutionären Algor
 
 %Genetische Algorithmen sind die meist verbreitete Form von evolutionären Algorithmen, da sie einfach zu implementieren sind und im Schnitt gute Ergebnisse erzielen. Der Name ''genetischer Algorithmus'' kommt von der Analogie zwischen dem Enkodieren eines Lösungskandidaten als eine Sequenz von simplen Komponenten und der genetischen Struktur eines Chromosomes. Diese Analogie wird fortgeführt, indem einzelne Lösungen als Individuen oder Chromosomen bezeichnet werden~\cite{Campos2017}. Demnach werden Komponenten einer Lösung Gene genannt, wobei mögliche Werte einer Komponente Alleles und ihre Position in der Sequenz Locus heißen. Des Weiteren wird eine tatsächliche enkodierte Repräsentation einer Lösung, die von einem genetischen Algorithmus manipuliert wird, Genotyp und eine dekodierte - Phenotyp genannt~\cite{McMinn_2004}. Algorithm~\labelcref{alg:genetic-algorithm} zeigt abstrakt die Funktionsweise eines Standard genetischen Algorithmus. Die initiale Population wird typischerweise zufällig generiert oder aus einem bestimmten Seed generiert. In folgenden Generationen werden Nachkommen mittels Optimisierungs- oder Suchoperatoren gezüchtet, also Rekombination und Mutation. Es gibt viele Variationen des Standard GA. Zum Beispiel werden bei der monotonen Variante des Standard GA nach der Mutation und Evaluation der Fitness der Nachkommen entweder die besten Nachkommen oder die besten ''Parents'' der nächsten Population hinzugefügt. Beim Standard GA werden an der Stelle sowohl ''Parents'' als auch Nachkommen der nächsten Population hinzugefügt. Eine weitere Variante von Standard GA ist der Steady State GA, der wie die monotone Variante nur die besten Individuen nach einer Mutation behält, jedoch anstatt eine neue Population von Nachkommen zu kreieren, ersetzt die ''Parents'' durch Nachkommen in der ursprünglichen Population~\cite{Campos2017}.
 
-Genetic algorithms are the most common form of evolutionary algorithms because they are easy to implement and produce good results on average. The name ''genetic algorithm'' comes from the analogy between encoding a candidate solution as a sequence of simple components and the genetic structure of a chromosome. This analogy is continued by calling individual solutions individuals or chromosomes~\cite{Campos2017}. Accordingly, components of a solution are called genes, with possible values of a component called alleles and their positions in the sequence called locus. Furthermore, an actual encoded representation of a solution manipulated by a genetic algorithm is called genotype and a decoded one phenotype~\cite{McMinn_2004}. \Cref{alg:genetic-algorithm} abstractly shows the mechanism of a standard genetic algorithm. The initial population of candidate solutions is typically randomly generated or generated from a particular seed. In subsequent generations, offspring are bred using optimization or search operators, i.e., recombination and mutation. There are many variations of standard \ac{GA}. For example, in the monotonic variation of standard \ac{GA}, after mutation and evaluation of the fitness of the offspring, either the best descendants or the best parent chromosomes are added to the next population. In standard \ac{GA}, both parents and descendants of the next population are added at this point. Another variant of standard algorithm is steady state \ac{GA}, which, like the monotonic variant, retains only the best individuals after a mutation, but instead of creating a new population of offspring, replaces the ''parents'' with offspring in the original population~\cite{Campos2017}.
+Genetic algorithms are the most common form of evolutionary algorithms because they are easy to implement and produce good results on average. The name ''genetic algorithm'' comes from the analogy between encoding a candidate solution as a sequence of simple components and the genetic structure of a chromosome. This analogy is continued by calling individual solutions individuals or chromosomes~\cite{Campos2017}. Accordingly, components of a solution are called genes, with possible values of a component called alleles and their positions in the sequence called locus. Furthermore, an actual encoded representation of a solution manipulated by a genetic algorithm is called genotype and a decoded one phenotype~\cite{McMinn_2004}. \Cref{alg:genetic-algorithm} abstractly shows the mechanism of a standard genetic algorithm. The initial population of size~$p_s$ of candidate solutions is typically randomly generated or generated from a particular seed. Afterwards, a pair of individuals is selected from the population using some selection algorithm~$s_f$, such as rank-based, elitism, or tournament selection. Next, both selected individuals are recombined using crossover~$c_f$, e.g., single point or multiple point crossover, with a probability~$c_p$ to produce two new offspring $o_1$, $o_2$. Then, mutation is applied on both offspring, independently changing the genes with a probability of $m_p$, which usually is equal to $\frac{1}{n}$, where $n$ is the number of genes in a chromosome. The two mutated offspring are then included in the next population. At the end of each iteration, the fitness value of all individuals is computed.  
+
+There are many variations of standard \ac{GA}. For example, in the monotonic variation of standard \ac{GA}, after mutation and evaluation of the fitness of the offspring, either the best descendants or the best parent chromosomes are added to the next population. In standard \ac{GA}, both parents and descendants of the next population are added at this point. Another variant of standard algorithm is steady state \ac{GA}, which, like the monotonic variant, retains only the best individuals after a mutation, but instead of creating a new population of offspring, replaces the ''parents'' with offspring in the original population~\cite{Campos2017}.
 
 %Die unter anderem wesentlichen Punkte beim \Cref{alg:genetic-algorithm} sind das Messen der Fitness eines einzelnen Tests und der Mutationsoperator oder -funktion. Diese sind Faktoren, mit deren Hilfe eine aktuelle Population zu einer neuen evolviert werden, die mehr Chancen hat, einen Target abzudecken. Die Fitness bestimmt eines Individuums, zu überleben und in der neuen Population, evtl. in einer mutierten Form, teilzunehmen. Ein Mutationsoperator bestimmt hingegen, auf welche Weise neue Individuen (Test Cases) aus gegebenen generiert werden~\cite{Tonella2004}. Die Selektion von Individuen wird durch Fitness Funktionen gesteuert, sodass Individuen mit guter Fitness mit höher Wahrscheinlichkeit überleben und in der Zucht von Nachkommen teilnehmen. Im Kontext von Testgenerierung basieren Fitness Funktionen auf Kriterien der Code Coverage, wie z. B. Statement oder Branch Coverage. In den letzten Jahren gab es einen Trend, die Suche nach mehreren Coverage Kriterien gleichzeitig zu optimieren. Da Coverage Kriterien typischerweise keine widersprüchliche Ziele darstellen, können diese in einer weigted linearen Funktion kombiniert werden~\cite{Rojas2015}. Eine hohe Anzahl von Coverage Zielen kann jedoch die Performanz eines evolutionären Algorithmus negativ beeinflussen. Um das zu vermeiden, können generierte Tests für abgedeckte Ziele in einem Archiv gespeichert werden~\cite{Rojas2017}, wobei die Fitness Funktion dynamisch adaptiert wird, um die Suche nur in Richtung nicht abgedeckter Ziele zu leiten. Der Archiv kann auch bei für bessere Effektivität von Suchoperatoren verwendet werden, in dem beispielsweise neue Tests durch Mutation von bestehenden aus dem Archiv und nicht zufällig generiert werden~\cite{Campos2017}.
 
@@ -234,20 +251,20 @@ The essential points in the \Cref{alg:genetic-algorithm} are measuring the fitne
 \subsection{Crossover}
 \label{sec:background-crossover}
 %Ein wesentlicher Teil von genetischen Algorithmen ist die sogenannte Rekombination oder auch Crossover. Dieser Operator nimmt zwei Parent-Lösungen als Input und verbindet sie in einer bestimmten Weise, um zwei Nachkommen-Lösungen zu produzieren. Es gibt viele verschiedene Arten von Rekombination, aber die einfachste ist die One-Point-Rekombination~\cite{McMinn_2004}. Dabei wird ein einzelner Punkt in den zwei Lösungssequenzen gewählt, der die Sequenzen in Kopf und Schwanz trennt. Die Köpfe bzw. die Schwänze werden dann zwischen den beiden Sequenzen ausgetauscht. Eine One-Point Rekombination von zwei Individuen $[0, 255, 0]$ und $[255, 0, 255]$, die in Binärform jeweils als $000000001111111100000000$ und $111111110000000011111111$ enkodiert wären, an der Stelle $12$ würde zu folgenden zwei Nachkommen führen~\cite{McMinn_2004}:
-An essential part of genetic algorithms is the so-called recombination or crossover. This operator takes two parent solutions as input and combines them in a certain way to produce two offspring solutions. There are many different types of recombination, but the simplest one is one-point recombination~\cite{McMinn_2004}. It involves choosing a single point in two solution sequences that separates the sequences into heads and tails. The heads or tails are then exchanged between the  sequences. A one-point recombination of two individuals $[0, 255, 0]$ and $[255, 0, 255]$, which would be encoded in binary as $0000000011111100000000$ and $111111110000111111$, respectively, at position $12$ would result in the following two offspring~\cite{McMinn_2004}:
+An essential part of genetic algorithms is the so-called recombination or crossover. This operator loosely models the exchange of genetic information that takes place during reproduction in the natural world. This operator takes two or more parent solutions as input and combines them in a certain way to produce two or mroe offspring solutions. There are many different types of recombination, but the simplest one is one-point recombination~\cite{McMinn_2004}. It involves choosing a single point in two solution sequences that separates the sequences into heads and tails. The heads or tails are then exchanged between the  sequences. A one-point recombination of two individuals $[0, 255, 0]$ and $[255, 0, 255]$, which would be encoded in binary as $0000000011111100000000$ and $111111110000111111$, respectively, at position $12$ would result in the following two offspring~\cite{McMinn_2004}:
 
 \[
 \left.\begin{array}{c}
-000000001111 \\  %
-111111110000 %
+\textcolor{webgreen}{000000001111} \\  %
+\textcolor{thesisblue}{111111110000} %
 \end{array}\right|
 \begin{array}{c}
-111100000000 \\  %
-000011111111 %
+\textcolor{webgreen}{111100000000} \\  %
+\textcolor{thesisblue}{000011111111} %
 \end{array} \longrightarrow
 \begin{array}{c}
-000000001111000011111111 \\  %
-111111110000111100000000 %
+\textcolor{webgreen}{000000001111}\textcolor{thesisblue}{000011111111} \\  %
+\textcolor{thesisblue}{111111110000}\textcolor{webgreen}{111100000000} %
 \end{array}
 \]
 
@@ -272,11 +289,12 @@ Once the collection of parents is selected, recombination is applied to breed th
 A different method is the \textit{linear ranking} of individuals that can overcome the selection pressure issue. This technique sorts individuals according to their fitness, with the best individuals being selected according to their rank~\cite{whitley1989genitor}. In addition, there is also the \textit{tournament selection}, a noisy but fast method to select offspring. The respective population does not have to be sorted by fitness. Two individuals are randomly selected out of the population. Then, a random real number $0 < r < 1$ is drawn. If $r$ is less than $p$ (where $p$ is the probability that the fitter individual is selected), the individual with better fitness wins and is selected as the parent for the next generation, otherwise the other individual is selected. After that, the two individuals are placed back into the population and can be selected again at the next round. The procedure is repeated $N$ times until the required number of parents are selected for the next generation.
 
 \subsection{Mutation}
+Mutation involves random modification of offspring to introduce diversity into the search. Traditionally, on a binary representation, this involves flipping bits of each individual at a probability of $p_m$, where $p_m$ is typically $\frac{1}{n}$, where $n$ in turn is the length of the chromosomal bit string~\cite{Harman2010a}. 
 
 \subsection{Advanced Individual Encoding}
 %In einfachen Algorithmen werden Individuen typischerweise im Binärformat enkodiert. Das bringt aber einige Schwierigkeiten mit sich, vor allem wird dabei oft das Konzept verletzt, dass eine Nachbarslösung mit einer einfachen Mutation zu bewerkstelligen sein sollte. Das ist aber zum Beispiel wäre die Integerzahl 7 in der Binärrepräsentation als $0111$ enkodiert, die 8 aber als $1000$. Das heißt, um die Nachbarslösung von 7, also die 8, zu erreichen, müssten die verwendeten Suchoperatoren alle vier Bits verändern. Eine Binärrepräsentation der Lösung hat zwar den Effekt, dass die Lösungssequenz aus kleinsten Komponenten (Bits) besteht, die zu effektivsten Ergebnissen von Rekombination und Mutation führen. Davis~\cite{Davis1991} zeigte jedoch in seinen Experimenten mit genetischen Algorithmen, dass echte Lösungsrepräsentationen besser abgeschnitten hatten, als Binärrepräsentationen. Die Verwendung von echten Lösungsrepräsentationen stellt aber die Frage, wie die Rekombinations- und Mutationsoperatoren implementiert werden sollen. Die Rekombination braucht im Grunde nur die Repräsentation der Sequenz von Komponenten einer Lösung und kann ähnlich angewendet, wie auf eine Binärrepräsentation. Der Mutationsoperator muss dagegen auf jeden Fall auf das spezifische Problem zugeschnitten sein, z. B. kann eine Integerzahl trivialerweise durch eine zufällige ersetzt werden. In einer fortgeschrittenerer Mutation könnte eine solche Integerzahl leicht verändert werden, indem ein kleiner Betrag hinzu addiert bzw. subtrahiert wird. Auf diese Weise wird auch das Prinzip der lokalen Suche beibehalten~\cite{Davis1991}.
 
-Simple algorithms typically encode individuals in binary format, which is very easy to mutate and recombine. However, this simplicity has also it price. Especially the binary format often violates the rule that a neighbor solution should be reachable with a simple mutation. This is not always the case, as we can see from the example of integers $7$ and $8$,  which would be encoded as $0111$ and $1000$ in binary, respectively. This means that to reach the neighboring solution of $7$, i.e., $8$, the search operator used would have to change all four bits. Random mutation of binary sequences can also lead to many invalid solutions depending on the search problem. Even though the binary representation of solutions makes the corresponding sequences consist of the smallest components (bits) that lead to the most effective results of recombination and mutation, Davis~\cite{Davis1991} showed in their experiments with genetic algorithms that true solution representations performed better than binary representations. However, the use of true solution representations raises the question of how to implement the recombination and mutation operators. Recombination basically only needs the representation of the sequence of components of a solution and can be applied similarly as to a binary representation. The mutation operator, on the other hand, must be tailored to the specific problem in any case, e.g., an integer can trivially be replaced by a random one. In a more advanced mutation, such an integer could be modified by adding or subtracting some amount. In this way, the principle of local search keeps maintained, too~\cite{Davis1991}.
+Simple algorithms typically encode individuals in binary format, which is very easy to mutate and recombine. However, this simplicity has also its price. Especially the binary format often violates the rule that a neighbor solution should be reachable with a simple mutation. This is not always the case, as we can see from the example of integers $7$ and $8$,  which would be encoded as $0111$ and $1000$ in binary, respectively. This means that to reach the neighboring solution of $7$, i.e., $8$, the search operator used would have to change all four bits. Random mutation of binary sequences can also lead to many invalid solutions depending on the search problem. Even though the binary representation of solutions makes the corresponding sequences consist of the smallest components (bits) that lead to the most effective results of recombination and mutation, Davis~\cite{Davis1991} showed in their experiments with genetic algorithms that true solution representations performed better than binary representations. However, the use of true solution representations raises the question of how to implement the recombination and mutation operators. Recombination basically only needs the representation of the sequence of components of a solution and can be applied similarly as to a binary representation. The mutation operator, on the other hand, must be tailored to the specific problem in any case, e.g., an integer can trivially be replaced by a random one. In a more advanced mutation, such an integer could be modified by adding or subtracting some amount. In this way, the principle of local search keeps maintained, too~\cite{Davis1991}.
 
 
 \subsection{Objectives}
@@ -511,11 +529,38 @@ Transformations have not only been applied in the context of search: the idea to
 \clearpage
 \chapter{State of the Art}
 \label{chap:state-of-the-art}
-We give an overview over work that is related to our in this chapter. 
+We give an overview over work that is related to ours in this chapter. 
 
 \section{Fuzzer for Rust}
-TODO \cite{Campos2017a}.
+% TODO reword
+Fuzzing is a widely-adopted testing method that exercises a program by automatically generating inputs in a random or heuristic way. However, fuzzing approaches require definition of fuzz targets. A fuzz target defines an array of bytes as input for executing a program composed with some \acp{API}~\cite{Jiang2021}. Fuzzing tools can mutate the input of fuzz targets to explore different paths in \ac{SUT}. \Cref{lst:fuzz-target-example} shows an example of a fuzz target for the example \ac{SUT} \lstinline{ex_lib}.
 
+\begin{lstlisting}[language=Rust, style=boxed, caption={A sample problem for fuzz target generation~\cite{Jiang2021}}, label=lst:fuzz-target-example]
+mod ex_lib {
+  struct S1;
+  struct S2;
+  fn f1(a: i16) -> S1;
+  fn f2(b: u32) -> S2;
+  fn f3(c: &[u8]) -> S2;
+  fn f4(s1: S1, s2: &mut S2) -> S2;
+  fn f5(s2: &S2, d: &str);
+}
+
+fn example_fuzz_target_1(data: &[u8]) {
+  if data.len() > 3 {return;}
+  let a = to_i16(data, 0);
+  let c = to_slice::<u8>(data, 2, data.len());
+  let s1 = ex_lib::f1(a);
+  let mut s2 = ex_lib::f3(c);
+  let _ = ex_lib::f4(s1, &mut s2);
+}
+\end{lstlisting}
+
+\textbf{AFL++} is a reengineered fork of the popular coverage-guided fuzzer \textsc{AFL} by Zalewski~\cite{Zalewski2014}. It is an extensible community-driven open-source tool that incorporates state-of-the-art fuzzing research. The tool mutates a set of test cases to reach previously unexplored points in the program. The test case triggering new coverage is saved as part of the test case queue~\cite{Fioraldi2020}. Researchers can easily extend the current implementation with additional techniques and use the tool as a baseline for evaluating new ideas. \textit{afl.rs} provides the ability to apply \textsc{AFL++} to Rust.
+
+Another fuzzer can be used in combination with Rust programs is the \textbf{LLVM libFuzzer}, which is coverage-guided evolutionary fuzzing engine. It feeds fuzzed inputs to the library under test via specific fuzzing entry points, also known as \textit{target functions}. The fuzzer tracks which areas of the code are reached and generates mutations on the corpus of input data to maximize the code coverage. Some other tools build upon the libFuzzer and extend it with techniques like concolic testing~\cite{Rocha2020,Le2019}. Both LLVM libFuzzer and \textsc{AFL++} require manually written fuzz targets to be provided, however, i.e., a recipe where to put the generated data into.
+
+\textsc{RULF} is a fuzz target generator which, given the \ac{API} specification of a Rust library, can generate a set of fuzz targets and seamlessly integrate them with \textsc{AFL++} for fuzzing~\cite{Jiang2021}. The approach leverages a sophisticated traversal algoeithm, which can achieve high \ac{API} coverage with only a small set of shallow fuzz targets. To construct fuzz targets, the builds an \ac{API} dependence graph and analyses which \ac{API} calls return values of the type used as a parameter for other \ac{API} calls of the same \ac{SUT}. Using their approach, the autors discovered several bugs in popular Rust libraries. An important limitation of the tool is its inability to analyze generic components and generate fuzz targets for them.
 
 \section{Test Generators for Rust}
 % Es gibt eine Reihe von Tools, die für eine automatische Generierung von Tests auf DSE setzen, zum Beispiel \textsc{CUTE}, \textsc{jCUTE}~\cite{Sen2006} und \textsc{KLEE}~\cite{cadar2008klee}. KLEE hat zwei Ziele: (1) das Tool versucht, jede ausführbare Zeile in einem Programm auszuführen, d. h. hohe Statement Coverage zu erreichen und (2) bei jeder gefährlichen Operation (z. B. dereference, assertion) wird versucht zu überprüfen, ob es Werte gibt, die dabei zu einem Fehler führen könnten. Das letztere wird durch symbolische Ausführung erreicht. Da selbst in einfachen Programmen die Anzahl von Ausführungszuständen / -pfaden explodieren kann, wird von \textsc{KLEE} eine Reihe von Heuristiken und Optimisierungstechniken angewendet, um die Performanz zu erhöhen. Zum Beispiel werden nicht ganze Bäume bei Verzweigungen gecloned (Zustände sind nämlich Bäume), sondern es wird der write-on-copy Ansatz auf Objekt-Level angewendet. Unveränderte Teilbäume können von mehreren verschiedenen Zuständen referenziert werden. Außerdem wird versucht, Anfragen an den SAT Solver, um symbolische Werte in konkrete umzuwandeln, so weit vereinfacht wie möglich, da die Verarbeitungszeit der Anfragen, im Allgemeinen NP-vollständig sind~\cite{Lewis1983}, alles andere dominiert. Auf diese Weise konnten die Autoren die Ausführungszeit des Tools auf den GNU Coreutils um das 15-fache beschleunigen.
@@ -540,10 +585,6 @@ The authors of \textsc{KLOVER}~\cite{Li2011} describe the tool as the first to a
 \textbf{SUSHI}~\cite{Braione2018} is an open-source test generator for Java that combines both concolic and evolutionary testing. It does the latter by leveraging \textsc{EvoSuite}. The tool tries to synthesize test suites with high branch coverage. It explores the program execution space and computes the execution conditions of the program paths. Afterward, the path conditions will be translated into executable evaluators that quantify the distance of a concrete state from satisfying the corresponding path condition.
 
 \textbf{EvoObj}~\cite{Lin2021} is an extension to \textsc{EvoSuite}. The tool tackles the problem that the effectiveness of \ac{SBST} suffers greatly when generating complex object inputs due to search spaces that are neither continuous nor monotonic. The tool employs analysis of static control and data flow of a \ac{SUT} to create \textit{seed tests}. The seed tests can drastically increase the performance of the search by providing a more continuous and monotonic fitness landscape.
-
-\textbf{AFL++} is a reengineered fork of the popular coverage-guided fuzzer \textsc{AFL} by Zalewski~\cite{Zalewski2014}. It is an extensible community-driven open-source tool that incorporates state-of-the-art fuzzing research. The tool mutates a set of test cases to reach previously unexplored points in the program. The test case triggering new coverage is saved as part of the test case queue~\cite{Fioraldi2020}. Researchers can easily extend the current implementation with additional techniques and use the tool as a baseline for evaluating new ideas. \textit{afl.rs} provides the ability to apply \textsc{AFL++} to Rust.
-
-Another fuzzer can be used in combination with Rust programs is the \textbf{LLVM libFuzzer}, which is coverage-guided evolutionary fuzzing engine. It feeds fuzzed inputs to the library under test via specific fuzzing entry points, also known as \textit{target functions}. The fuzzer tracks which areas of the code are reached and generates mutations on the corpus of input data to maximize the code coverage. Some other tools build upon the libFuzzer and extend it with techniques like concolic testing~\cite{Rocha2020,Le2019}. Both LLVM libFuzzer and \textsc{AFL++} require manually written targets to be provided, however, i.e., a recipe where to put the generated data into.
 
 \section{Random Testing Tools}
 \textbf{Randoop}~\cite{Pacheco_2007} generates unit tests for Java code using feedback-directed random test generation. Feedback-directed random testing uses execution feedback gathered from executing test inputs as they are created to avoid generating redundant and illegal inputs. Randoop can verify some basic assumptions on programs. For instance, in general, programs should not crash, which is a sort of automated oracle. The tool can also check  contracts on the code, which may be supplied by the user. By default, it implements multiple default contracts that are employed in the Java language, e.g., reflexivity of \textit{Object.equals}~\cite{Fraser2013}. Randoop outputs two test suites; one contains contract-violating tests, and the other contains \textit{regression} tests, which do not violate contracts but instead capture an aspect of the current implementation of a \ac{SUT}. Those can discover inconsistencies between two versions of a software.
@@ -613,7 +654,7 @@ fn middle(p1: Point, p2: Point) -> Point {
 In \Cref{lst:example-functions-struct-enum}, we compute and return a new point, placed in between the two points provided. This may look strange to those used to seeing the return keyword used instead. While it is possible to return values in that way, it is considered idiomatic Rust to return by ending the function with an expression, which is implicitly interpreted by the compiler as a return statement.
 
 \subsection{Associated Functions and Methods}
-Functions can be associated with types in Rust, e.g., with enums or structs. Rust separates the definition of behavior from the definition of data. To implement behavior for an enum or a struct, we add an \lstinline{impl} block, as shown in \Cref{lst:example-struct-methods}. An example of a common associated function is a \lstinline{new} function that returns a value of the type the associated function is associated with, as shown in \Cref{lst:example-associated-function}.
+Functions can be associated with types in Rust, e.g., with enums or structs. Rust separates the definition of behavior from the definition of data. To implement behavior for an enum or a struct, we add an \lstinline{impl} block, as shown in \Cref{lst:example-associated-function}. An example of a common associated function is a \lstinline{new} function that returns a value of the type the associated function is associated with.
 
 \begin{lstlisting}[language=Rust, style=boxed, caption={Associating behavior with the \lstinline{Point} data type defined in \Cref{lst:example-struct-enum}}, label=lst:example-associated-function]
 impl Point {
@@ -1094,7 +1135,7 @@ i.e., if two keys are equal, their hashes must also be equal. Some of the traits
 \section{Test Execution}
 With Cargo, Rust provides a build system and a testing framework out-of-the-box. In Java, which is a managed language~\cite{Gough2005}, generated tests can be executed directly using Reflection and bytecode instrumentation, and coverage information can be collected in the same runtime process. This cannot be done that conveniently in Rust, and tests must first be compiled. Then the Cargo test framework is called on the module under test to run the tests. To speed up the process, a whole population of tests is compiled and run concurrently. To keep the exact coverage of each individual test, each test sets a \lstinline{thread_local} test ID at the beginning of its execution, which the instrumented \ac{SUT} uses during execution to trace the coverage.
 
-As shown in \Cref{fig:test-execution}, the instrumented \ac{SUT} reports important events during its execution to the message queue of the monitor thread (MT). These are, for example, the execution of a root branch (method or function) or a decision branch. For the latter, the branch distance, which is calculated on the fly, is passed along with other data. The MT is initialized before the threads are started and can either write collected coverage data to a file or send it directly to the main process via TCP.
+As shown in \Cref{fig:test-execution}, the instrumented \ac{SUT} reports important events during its execution to the message queue of the monitor thread (MT). These are, for example, the execution of a root branch (method or function) or a decision branch. For the latter, the branch distance, which is calculated on the fly, is passed along with other data. The MT is initialized before the threads are started and can either write collected coverage data to a file or send it directly to the main process via \ac{TCP}.
 
 \begin{figure}[h]
 \caption{An example concurrent execution of multiple tests with a monitor}
@@ -1103,7 +1144,7 @@ As shown in \Cref{fig:test-execution}, the instrumented \ac{SUT} reports importa
 \label{fig:test-execution}
 \end{figure}
 
-Real and complex software often interacts with its environment, for example by making I/O calls to the file system or establishing TCP connections. Lack of handling of the execution environment the \ac{SUT} lives within is still one of the open problems in \ac{SBST}~\cite{McMinn2011}. To avoid unwanted side effects, \textsc{EvoSuite}~\cite{Fraser2013a} relies on strict security measures of the Java Security Manager and prohibits most interactions of \ac{SUT} with its environments. These could lead to uncontrolled behavior if executed repeatedly, such as generating countless random files or even wiping the entire disk. Only few essential operations are allowed, such as I/O for the classloader, loading libraries, or reflection. As a preprocessing step, \textsc{EvoSuite} extracts only those methods that return the same result when run repeatedly with the same inputs, i.e., methods that are deterministic~\cite{Fraser2012}.
+Real and complex software often interacts with its environment, for example by making I/O calls to the file system or establishing \ac{TCP} connections. Lack of handling of the execution environment the \ac{SUT} lives within is still one of the open problems in \ac{SBST}~\cite{McMinn2011}. To avoid unwanted side effects, \textsc{EvoSuite}~\cite{Fraser2013a} relies on strict security measures of the Java Security Manager and prohibits most interactions of \ac{SUT} with its environments. These could lead to uncontrolled behavior if executed repeatedly, such as generating countless random files or even wiping the entire disk. Only few essential operations are allowed, such as I/O for the classloader, loading libraries, or reflection. As a preprocessing step, \textsc{EvoSuite} extracts only those methods that return the same result when run repeatedly with the same inputs, i.e., methods that are deterministic~\cite{Fraser2012}.
 
 \textsc{KLEE}~\cite{cadar2008klee} takes a different approach and redirects concrete calls, such as \lstinline{open()} and \lstinline{read()}, to \textit{models} that understand the semantics of the desired action well enough to generate the required constraints. These models are written in normal C code which the use can readily customize, extend, or even replace with their own custom implementation. Function calls are replaced in a pre-processing step in \ac{SUT} by mocks that mimic the original behavior. When the \ac{SUT} reads values from the environment, such as from a file, a legal, randomly generated value of the same type is returned as the original function would have done. When the \ac{SUT} writes to the environment, the values are stored in memory during the execution of the corresponding test such that the effect of these alterations are reflected in potential subsequent reads.
 
@@ -1195,7 +1236,8 @@ let pair: Pair<A, A> = Pair::of(a, a);
 We adopt the \Cref{alg:genobject} from Fraser and Zeller and use it to try to generate dependencies of methods and functions. Since we do not perform a complete analysis of all possible types, it may happen that \lstinline{GenObject} fails the search and cannot generate an object of the appropriate type. In this case, we skip the particular method or function for which we tried to generate the argument. Of course, this leads to worse coverage results, but a complete analysis of all possible cases is not easy and cannot be done within the scope of this work.
 
 \begin{algorithm}[t]
-\caption{$GenObject(c, G, M, t)$}\label{alg:genobject}
+\caption{$GenObject(c, G, M, t)$}
+\label{alg:genobject}
 \begin{algorithmic}
 \Input
   \Desc{$c$}{Datatype of desired object}
@@ -1262,7 +1304,7 @@ Da Chromosome werden in ihrer ''natürlichen'' Weise repräsentiert werden, und 
   #[test]
   fn test() {
     let usize_0 = 32;
-    let mut vec_0 = Vec::with_capacity(usize_0);
+    mut vec_0 = Vec::with_capacity(usize_0);
     let i32_0 = 45;
     vec_0.push(i32_0);
     let i32_1 = 106;
@@ -1285,7 +1327,7 @@ Da Chromosome werden in ihrer ''natürlichen'' Weise repräsentiert werden, und 
   }
   \end{lstlisting}
 
-  \item[Delete a statement] TODO Definition überarbeiten. For a test case $t = (s_1, s_2, \dots, s_l)$ with length~$l$, each statement~$s_i$ can be deleted with probability~$1/l$. As the value $v(s_i)$ might be used as an argument in any of the statements $s_{i+1}, \dots, s_l$, the test needs to be repaired to remain valid. For each statement $s_j$, $i < j \leq l$, if $s_j$ refers to $v(s_i)$, then this argument is replaced with another value out of the set $\{v(s_k) \left| 0 \leq k < j \wedge k \neq i \right\}$ which has the same type as $v(s_i)$ and is allowed to be used according to the rules from \Cref{sec:problem-representation}. If this is not possible, then $s_j$ is deleted as well recursively~\cite{Fraser2012}. In \Cref{lst:mutation-invocation-removal}, an instance of a vector was deleted, affecting the method calls on that instance as well. The \lstinline{push} method call returns nothing, so it could simply be eliminated since no other statements make use of it. The call to the \lstinline{len} method was transferred to the other instance of the same type present in the test (\lstinline{vec_1}). If there were no second instance of the same type in the test, or it was already consumed at this point, a new instance would again have to be generated on-the-fly.
+  \item[Delete a statement] For a test case $t = (s_1, s_2, \dots, s_l)$ with length~$l$, each statement~$s_i$ can be deleted with probability~$1/l$. As the value $v(s_i)$ might be used as an argument in any of the statements $s_{i+1}, \dots, s_l$, the test needs to be repaired to remain valid. For each statement $s_j$, $i < j \leq l$, if $s_j$ refers to $v(s_i)$, then this argument is replaced with another value out of the set $\{v(s_k) \left| 0 \leq k < j \wedge k \neq i \right\}$ which has the same type as $v(s_i)$ and is allowed to be used according to the rules from \Cref{sec:problem-representation}. If this is not possible, then $s_j$ is deleted as well recursively~\cite{Fraser2012}. In \Cref{lst:mutation-invocation-removal}, an instance of a vector was deleted, affecting the method calls on that instance as well. For the \lstinline{push} method call, there is no alternative instance of the same type. Since it does not return any value, it can simply be eliminated because no other statements make use of it. The call to the \lstinline{len} method was transferred to the other instance of the same type present in the test (\lstinline{vec_1}). If there were no second instance of the same type in the test, or it was already consumed at this point, the statement would be have been removed, too.
 
   \begin{lstlisting}[language=Rust, style=boxed, caption=, label=lst:mutation-invocation-removal, caption={The definition of \lstinline{vec_0} has been deleted, and statements that used it have been updated}]
   #[test]
@@ -1457,7 +1499,7 @@ x \textless{}= y    & x - y                  & y - x + 1               \\ \hline
 \label{sec:testability-transformations}
 
 
-A technique called \textit{testability transformation} tries to overcome this obstacle. A testability transformation is a source-to-source program transformation that seeks to improve the performance of some chosen test data generation technique~\cite{Harman2004}, e.g., reach difficult branches. Beyond that, a \ac{SUT} can be transformed in a way such that artificial branches are inserted into the code to guide the search into triggering some exceptional behavior and crash the program. For instance, \textsc{EvoSuite}~\cite{Fraser2013} employs multiple testability transformations such as array access transformation (\Cref{lst:evosuite-array-access-transformation}), division by zero transformation, or numerical overflow transformation. Those transformations do not increase code coverage in general but contribute to discovering potential unforeseen behavior and generating inputs that trigger it. Similar transformations can also be applied for Rust and are part of this approach.
+A technique called \textit{testability transformation} tries to overcome this obstacle. A testability transformation is a source-to-source program transformation that seeks to improve the performance of some chosen test data generation technique~\cite{Harman2004}, e.g., reach difficult branches. Beyond that, a \ac{SUT} can be transformed in a way such that artificial branches are inserted into the code to guide the search into triggering some exceptional behavior and crash the program. For instance, \textsc{EvoSuite}~\cite{Fraser2013} employs multiple testability transformations such as array access transformation (\Cref{lst:evosuite-array-access-transformation}), division by zero transformation, or numerical overflow transformation. Those transformations do not increase code coverage in general but contribute to discovering potential unforeseen behavior and generating inputs that trigger it.
 
 \begin{lstlisting}[language=Java, style=boxed, caption={Array access transformation in \textsc{EvoSuite} for Java}, label=lst:evosuite-array-access-transformation]
 // Original method
@@ -1477,6 +1519,8 @@ void foo(int x) {
 }
 \end{lstlisting}
 
+We apply similar ideas to \textsc{RustyUnit}. However, some of the problems that other programming languages have, do not affect Rust, e.g., there are no null pointers as in C or Java. Moreover, the Rust compiler already incorporates checks for common issues in the \ac{MIR} that are addressed by testability transformations. That is, we do not have to transform the \ac{MIR} to introduce new branches as in~\Cref{lst:evosuite-array-access-transformation}, but only trace these branches automatically inserted by the compiler. 
+
 %\subsection{Test Minimization}
 %Da sich diese Arbeit vor allem auf das Generieren vor Tests beschränkt, die möglichst hohe Coverage erreichen, jedoch generell keine Testorakel automatisch zur Verfügung stellt, sollen die Tests möglich kurz gehalten werden und das wesentliche tun, um einen bestimmten Branch zu erreichen. Das erhöht ihre Lesbarkeit und Verstänlichkeit. Fraser und Arcuri~\cite{Fraser2013a} schlagen als Verbesserung für ihr EvoSuite Tool folgendes Verfahren vor: Für jeden Coverage Goal wird ein Test aus der generierten Test Suite ausgewählt, der diesen Goal abdeckt. Dieser Test wird wrt to the coverage goal minimiert, so dass Statements, die nicht zur Ausführung des Goals beitragen, gelöscht werden. Wenn ein Goal bereits von einem minimierten Test abgedeckt ist, so wird kein weiterer Test für diesen Goal der finalen Test Suite hinzugefügt. Auf diese Weise werden Tests lesbarer für einen Menschen und können somit leichter manuell um Testorakel ergänzt werden.
 
@@ -1485,7 +1529,7 @@ void foo(int x) {
 \clearpage
 \chapter{Implementation}
 \label{chap:implementation}
-In this chapter we present essential parts of the implementation of \textsc{RustyUnit}. Um Tests zu generieren, benötigt \textsc{RustyUnit} den Zugriff auf den Quellcode des SUT, da die benötigte Analyse, anders als zum Beispiel bei EvoSuite für Java, nicht auf dem Kompilat stattfindet, sondern während des Kompilierprozesses stattfindet. The Rust compiler provides a convenient interface for controlling the compilation process. We register the analysis of the target program and instrument it using this interface. Die Ergebnisse der Analyse werden für die Generierung und Synthesis der Tests benötigt, während die Instrumentierung nötig ist, um die generierten Tests bei deren Ausführung auf ihre Fitness zu bewerten. Am Ende der Suche entsteht eine finale Testsuite in Form von Rust Quellcode zur Verfügung.
+In this chapter we present essential parts of the implementation of \textsc{RustyUnit}. To generate tests, \textsc{RustyUnit} needs access to the source code of the \ac{SUT} since, unlike \textsc{EvoSuite} for Java, for isntance, the required analysis and instrumentation does not take place on the compiled binary, but during the compilation process itself. The Rust compiler provides a convenient interface for controlling the compilation process. We register the analysis of the target program and instrument it using this interface. Die Ergebnisse der Analyse werden für die Generierung und Synthesis der Tests benötigt, während die Instrumentierung nötig ist, um die generierten Tests bei deren Ausführung auf ihre Fitness zu bewerten. Am Ende der Suche entsteht eine finale Testsuite in Form von Rust Quellcode zur Verfügung.
 
 % Die Übesicht des ganzen Prozesses
 \begin{figure}[h!]
@@ -1545,7 +1589,7 @@ impl rustc_driver::Callbacks for CompilerCallbacks {
   }
 }
 \end{lstlisting}
-However, even though a \ac{MIR} object is clonable and can be modified, there is no way to pass a modified version back to the compiler within a callback because both parameters are immutable. The compiler performs several distinct optimizations on the MIR, called passes. Accordingly, they can modify the MIR. In the earlier compiler versions it was possible to register a custom MirPass~\footnote{\url{https://doc.rust-lang.org/stable/nightly-rustc/rustc_mir/transform/trait.MirPass.html}} as part of a compiler plugin, but this possibility was later eliminated. However, there is still a way that allows us to propagate changes to the MIR back to the compiler, instead of extending it and building an own version of it. The \lstinline{config} callback provides a mutable \lstinline{Config} object which allows to replace the default \ac{MIR}-providing function \lstinline{optimized_mir} (among many others) with an own custom implementation. As shown in \Cref{lst:compiler-callbacks}, a provider for an optimized \ac{MIR} is a function pointer. Our custom provider implementation is a basic wrapper, which first obtains the original \ac{MIR} object using the default implementation, applies the \lstinline{MirVisitor}, which mutates the MIR in-place, and returns the mutated version. The compiler invokes the \lstinline{optimized_mir()} Provider in further steps, and thus, the mutated \ac{MIR} object will be propagated.
+However, even though a \ac{MIR} object is clonable and can be modified, there is no way to pass a modified version back to the compiler within a callback because both parameters are immutable. The compiler performs several distinct optimizations on the \ac{MIR}, called passes. Accordingly, they can modify the \ac{MIR}. In the earlier compiler versions it was possible to register a custom MirPass~\footnote{\url{https://doc.rust-lang.org/stable/nightly-rustc/rustc_mir/transform/trait.MirPass.html}} as part of a compiler plugin, but this possibility was later eliminated. However, there is still a way that allows us to propagate changes to the MIR back to the compiler, instead of extending it and building an own version of it. The \lstinline{config} callback provides a mutable \lstinline{Config} object which allows to replace the default \ac{MIR}-providing function \lstinline{optimized_mir} (among many others) with an own custom implementation. As shown in \Cref{lst:compiler-callbacks}, a provider for an optimized \ac{MIR} is a function pointer. Our custom provider implementation is a basic wrapper, which first obtains the original \ac{MIR} object using the default implementation, applies the \lstinline{MirVisitor}, which mutates the \ac{MIR} in-place, and returns the mutated version. The compiler invokes the \lstinline{optimized_mir()} Provider in further steps, and thus, the mutated \ac{MIR} object will be propagated.
 
 \begin{lstlisting}[language=Rust, style=boxed, caption={Running the Rust compiler like a library}, label=lst:running-compiler]
 fn run_rustc() -> Result<(), i32> {
@@ -1890,7 +1934,7 @@ Distance to branch (2, 3, 2) is 10.0
 Distance to branch (2, 3, 1) is 0.0
 \end{lstlisting}
 
-Since $10 < 20$, the execution takes the \lstinline{true} branch, i.e., the trace chain of blocks \lstinline{bb6} and \lstinline{bb7}. In \lstinline{bb6}, we trace the \lstinline{false} branch while the actually executed branch is \lstinline{true}. We know that because we can also evaluate the operation \lstinline{monitor::BinaryOp::LT} with the operands $10$ and $20$ in the monitor. To calculate the local branch distance, we resort to the formulas in \Cref{tab:local-branch-distance-formulas}.
+Since $10 < 20$, the execution takes the \lstinline{true} branch, i.e., the trace chain of blocks \lstinline{bb6} and \lstinline{bb7} get executed. In \lstinline{bb6}, we trace the \lstinline{false} branch while the actually executed branch is \lstinline{true}. We know that because we can also evaluate the operation \lstinline{monitor::BinaryOp::LT} with the operands $10$ and $20$ in the monitor. To calculate the local branch distance, we resort to the formulas in \Cref{tab:local-branch-distance-formulas}.
 
 For reference, \Cref{lst:basic-block-in-regular-rust} shows how the basic block~\lstinline{bb4} would look like if it was written in regular Rust.
 
@@ -1950,7 +1994,7 @@ fn get(_1: usize, _2: &[i32; 3]) -> i32 {
 
 That is, the compiler inserts an assertion that checks whether the index is less than the length of the array, which is statically constant. If the index is greater than or equal to the length, the program crashes. The other case, i.e. negative index, cannot occur since the index must always be of type \lstinline{usize}, i.e. an unsigned type. Thus, there is no reason to verify this case.
 
-Now, we need to insert tracing blocks for both, the ''good'' and the ''bad'' case. We could insert two branches always before an assertion block. However, in this case we would have to insert another branching block $s$, for example with switchInt, and if applicable we would have to change the original preceding assertion block so that it points to s. In the block s we would also have to copy the logic from the assertion block, which makes the whole thing even more complicated. Another option would be to change the assertion itself. An assertion in MIR has an optional unwind edge which, in the "bad" case, points to a sequence of blocks to clean up before the program crashes, if there is anything to clean up. Assume the function \lstinline{get} from \Cref{lst:array-index-access-example} does some allocations before accessing the array:
+Now, we need to insert tracing blocks for both, the ''good'' and the ''bad'' case. We could insert two branches always before an assertion block. However, in this case we would have to insert another branching block $s$, for example with \lstinline{switchInt}, and if applicable we would have to change the original preceding assertion block so that it points to $s$. In the block $s$ we would also have to copy the logic from the assertion block, which makes the whole thing even more complicated. Another option would be to change the assertion itself. An assertion in \ac{MIR} has an optional unwind edge which, in the "bad" case, points to a sequence of blocks to clean up before the program crashes, if there is anything to clean up. Assume the function \lstinline{get} from \Cref{lst:array-index-access-example} does some allocations before accessing the array:
 \begin{lstlisting}[language=Rust, style=boxed, caption={}]
 fn get(pos: usize, array: &[i32; 3]) -> i32 {
   let s = String::from("I'm using heap");
@@ -2006,6 +2050,7 @@ The assertion has now got a second edge. Regardless of whether the index is vali
 \label{fig:comparison-instrumented-assertion}
 \end{figure}
 
+We do the same for the case of overflows and underflows. \Cref{lst:mir-overflow-check} demonstrates an example of the \lstinline{add} function that performs addition of two eight-bit integers and the relevant basic block from its \ac{MIR}. In the \ac{MIR}, the compiler inserts an assertion about the value of the result to catch an overflow. We instrument the assertion and insert our tracing chains into the body of the function as described above.
 % OVERFLOW CHECK
 \begin{lstlisting}[language={}, style=boxed, caption={\ac{MIR} overflow check}, label=lst:mir-overflow-check]
 fn add(a: i8, b: i8) -> i8 {
@@ -2157,7 +2202,7 @@ fn rusty_test_0() {
 %\end{lstlisting}
 
 
-Generics play an even greater role in Rust than in other object-oriented languages. More precisely, Rust is not a typical object-oriented language and instead of using direct types, for example as method parameters, as is often the case in Java, generics are rather used in conjunction with trait bounds. Trait bounds define what behavior a particular generic type must be capable of. Das reduziert die Anzahl der möglichen Typen, die statt des Typparameters eingesetzt werden können. \Cref{lst:trait-bounds-example} implements the \lstinline{area} function in Rust, which takes a parameter of generic type~\lstinline{T}. \lstinline{T} must implement the \lstinline{HasArea} trait, which allows \lstinline{area} to access the trait's functions. Unlike Java, there is no Reflection provided in Rust. Source code is compiled directly to machine executable code, and all superfluous information is eliminated during the compilation process.
+Generics play an even greater role in Rust than in other object-oriented languages. More precisely, Rust is not a typical object-oriented language and instead of using direct types, for example as method parameters, as is often the case in Java, generics are rather used in conjunction with trait bounds. Trait bounds define what behavior a particular generic type must be capable of. This reduces the number of possible data types a type parameter can be filled with. \Cref{lst:trait-bounds-example} implements the \lstinline{area} function in Rust, which takes a parameter of generic type~\lstinline{T}. The type parameter \lstinline{T} must implement the \lstinline{HasArea} trait, which allows \lstinline{area} to access the trait's functions. Unlike Java, there is no Reflection provided in Rust. Source code is compiled directly to machine executable code, and all superfluous information is eliminated during the compilation process.
 
 \begin{lstlisting}[language=Rust, style=boxed, caption={A function that takes a generic types and specifies a bound}, label=lst:trait-bounds-example]
 trait HasArea {
@@ -2175,7 +2220,20 @@ impl HasArea for Rectangle {
 fn area<T: HasArea>(t: &T) -> f64 { t.area() }
 \end{lstlisting}
 
-Types that implement a particular trait must thus be found statically during compilation of the \ac{SUT} and thus annotated. Another difficulty is that traits themselves can be generic, as shown by the definition of \lstinline{IntoIterator} from the standard library and its implementation from the \textbf{trying}~\footnote{\url{https://crates.io/crates/trying}} crate in \Cref{lst:intoiterator-trait}.
+Types that implement a particular trait must thus be found statically during compilation of the \ac{SUT} and annotated. The compiler provides \acp{API} to query all traits and the \lstinline{impl} blocks, not only in the compiled \ac{SUT}, but also in its dependencies and in the standard library itself, as shown in \Cref{lst:query-types-that-implement-trait}.
+
+\begin{lstlisting}[language=Rust, style=boxed, caption={Query types for a trait}, label=lst:query-types-that-implement-trait]
+fn get_types_for_trait(trait_id: DefId, tcx: &TyCtxt<'_>) -> Vec<Type> {
+  let trait_impls = tcx.trait_impls_of(trait_id);
+  let types = trait_impls.iter()
+    .map(|im| tcx.type_of(im))
+    .collect::<Vec<_>>();
+
+  // TODO substitue blanket implementations
+}
+\end{lstlisting}
+
+Another difficulty is that traits themselves can be generic, as shown by the definition of \lstinline{IntoIterator} from the standard library and its implementation from the \textbf{trying}~\footnote{\url{https://crates.io/crates/trying}} crate in \Cref{lst:intoiterator-trait}.
 
 \begin{lstlisting}[language=Rust, style=boxed, caption={IntoIterator implementation in the \textbf{trying} crate}, label=lst:intoiterator-trait]
 pub trait IntoIterator {
@@ -2195,14 +2253,16 @@ impl<A: TrieAtom, V: TrieValue> IntoIterator
 }
 \end{lstlisting}
 
-However, finding all possible types implementing a particular trait which is not defined in the \ac{SUT} itself is difficult. Rust compiler proceeds similarly to C++ compiler when compiling: crates are compiled individually and independently and only then, for example, linked with the standard library. Vor allem bei Bibliotheken, zum Beispiel für Datenstruktur, deren \acp{API} möglichst generisch definiert werden, führt das zu Problemen. Oft sind die generischen Typparameter mit bestimmten Trait Bounds, zum Beispiel aus der Standard Library, versehen. Da wir nur das Crate and sich und seine Abhängigkeiten kompilieren, kommen wir so gar nicht zu den Typdefinitione Nevertheless, in order to provide certain implementations of traits when generating tests, we manually create several widely used type definitions as well as their methods and implemented traits. These definitions are automatically loaded and used by our tool. We define all primitive data types as well as several container types such as \lstinline{std::vec::Vec}. \Cref{lst:vec-definition} shows the shortened definition of \lstinline{std::vec::Vec}. Among other things, Vec implements the \lstinline{IntoIterator} trait and thus could be used as an argument to test the \lstinline{area} function from \Cref{lst:intoiterator-trait}. Moreover, it uses a generic type \lstinline{T} which has no trait bounds. The method list is also provided so that the tool can create or modify an object of the respective type.
+However, finding all possible types implementing a particular trait which is not defined in the \ac{SUT} itself is difficult. Rust compiler proceeds similarly to C++ compiler when compiling: crates are compiled individually and independently and only then, for example, linked with the standard library. However, the \ac{SUT} from which the build process was started is always compiled last after all dependencies. Thus, all information is available at the time when \textsc{RustyUnit} performs the analysis. 
 
-\begin{lstlisting}[language={}, style=boxed, caption={std::vec::Vec type definition}, label=lst:vec-definition]
-name = std::vec::Vec
-generics = [(T, None)]
-traits = [std::iter::IntoIterator, ...]
-methods = [new() -> Self<T>, len(&self) -> usize, ...]
-\end{lstlisting}
+%Nevertheless, in order to provide certain implementations of traits when generating tests, we manually create several widely used type definitions as well as their methods and implemented traits. These definitions are automatically loaded and used by our tool. We define all primitive data types as well as several container types such as \lstinline{std::vec::Vec}. \Cref{lst:vec-definition} shows the shortened definition of \lstinline{std::vec::Vec}. Among other things, Vec implements the \lstinline{IntoIterator} trait and thus could be used as an argument to test the \lstinline{area} function from \Cref{lst:intoiterator-trait}. Moreover, it uses a generic type \lstinline{T} which has no trait bounds. The method list is also provided so that the tool can create or modify an object of the respective type.
+
+% \begin{lstlisting}[language={}, style=boxed, caption={std::vec::Vec type definition}, label=lst:vec-definition]
+% name = std::vec::Vec
+% generics = [(T, None)]
+% traits = [std::iter::IntoIterator, ...]
+% methods = [new() -> Self<T>, len(&self) -> usize, ...]
+% \end{lstlisting}
 
 In general, we mainly use primitive data types for a \ac{SUT} to keep the generated tests simple as far as this satisfies the defined trait bounds. To create a call to the example method \lstinline{FooBar::foo} (\Cref{lst:generic-type-used-in-multiple-params}) in a generated test, we would do the following:
 
@@ -2342,6 +2402,58 @@ In order to use the \textit{instrument-coverage}~\footnote{\url{https://doc.rust
 
 \section{Results}
 \label{sec:results}
+% TODO reword
+In the following we analyse the benchmark results in order to answer our research questions and test our hypotheses. 
+
+\subsection{Coverage Goals in Evaluation Subjects}
+
+TODO 
+% RQ 1 answer
+\begin{tcolorbox}
+\textbf{Summary (RQ1):} \textsc{RustyUnit} covers $n$ out of $m$ coverage goals on average.  
+\end{tcolorbox}
+
+\subsection{Comparison with Random Search}
+Statistical difference has been measured with the Mann-Whitney U test. To quantify the improvement in a standadized way, we used the Vargha-Delaney~$\hat{A}_{12}$ effect size. In our context, the $\hat{A}_{12}$ is an estimation of the probability that, if we run \textsc{RustyUnit}, we will obtain better coverage than running the random search strategy. When two randomized algorithms are equivalent, then $\hat{A}_{12} = 0.5$. A high value $\hat{A}_{12} = 1$ means that, in \textit{all} of the $100$ runs of \textsc{RustyUnit}, we obtained coverage values higher than the ones obtained in \textit{all} of the $100$ runs of the random search strategy.
+
+\begin{table}[]
+\begin{tabular*}{\textwidth}{l @{\extracolsep{\fill}} rrr}
+\hline
+\textbf{Case Study} & \textbf{$\hat{A}_{12} < 0.5$} & \textbf{$\hat{A}_{12} = 0.5$} & \textbf{$\hat{A}_{12} > 0.5$} \\
+\hline
+gamie &  &  &  \\
+Pleco &  &  &  \\
+time &  &  &  \\
+url &  &  &  \\
+fixed &  &  &  \\
+ibig &  &  &  \\
+nom &  &  &  \\
+thousands &  &  &  \\
+trying &  &  &  \\
+crc &  &  &  \\
+rstar &  &  &  \\
+md5 &  &  &  \\
+bytecount &  &  &  \\
+PriorityQueue &  &  &  \\
+... & ... &  & ... \\
+\hline
+$\sum$ &  & &  \\
+\hline
+\end{tabular*}
+% TODO reword caption
+\caption{\label{tab:results-ru-rs-coverage}$\hat{A}_{12}$ measure values in the coverage comparisons: $\hat{A}_{12} < 0.5$ means \textsc{RustyUnit} resulted in less, $\hat{A}_{12} = 0.5$ equal, and $\hat{A}_{12} > 0.5$ better coverage than a random search approach}
+\end{table}
+
+The box-plot in Figure ... compares the actual obtained coverage values (averaged out of the $100$ runs) of \textsc{RustyUnit} and the random search strategy. In total, the coverage improvement ...
+
+% RQ 2 answer
+\begin{tcolorbox}
+\textbf{Summary (RQ2):} \textsc{RustyUnit} (hopefully) achieves \textbf{higher coverage} than random search test case generation. 
+\end{tcolorbox}
+
+\subsection{Manually written tests}
+
+\subsection{Comparison with DSE}
 
 \section{Threats to Validity}
 \label{sec:threats-to-validity}
