@@ -2489,7 +2489,7 @@ The box-plot in Figure~\ref{fig:resuslts-ru-rs-coverage} compares the actual obt
 
 TODO das mit den Farben funktioniert nicht so richtig :/
 \begin{tikzpicture}
-  \label{fig:results-ru-rs-coverage}
+  \caption{\label{fig:results-ru-rs-coverage} Comparison of statement coverage between \textsc{RustyUnit} and random search}
   \begin{axis}
     [ 
       ylabel={Coverage (\%)},
@@ -2521,13 +2521,12 @@ TODO das mit den Farben funktioniert nicht so richtig :/
   % gamie
   \addplot[boxplot] table[row sep=\\,y index=0] {
     0.55 \\ 
-    0.43 \\ 
     0.48 \\ 
     0.55 \\ 
     0.60 \\ 
     0.65 \\ 
     0.53 \\ 
-    0.30
+    0.30 \\
   };
   \addplot[boxplot] table[row sep=\\,y index=0] {
     0.3 \\ 
@@ -2536,7 +2535,7 @@ TODO das mit den Farben funktioniert nicht so richtig :/
     0.45 \\ 
     0.38 \\ 
     0.45 \\ 
-    0.24  
+    0.24 \\ 
   };
 
   % Pleco
@@ -2547,7 +2546,7 @@ TODO das mit den Farben funktioniert nicht so richtig :/
     0.50 \\ 
     0.48 \\ 
     0.43 \\ 
-    0.50   
+    0.50 \\  
   };
   \addplot[boxplot] table[row sep=\\,y index=0] {
     0.35 \\ 
@@ -2556,7 +2555,7 @@ TODO das mit den Farben funktioniert nicht so richtig :/
     0.18 \\ 
     0.25 \\ 
     0.30 \\ 
-    0.25  
+    0.25 \\ 
   };
 
   % time
@@ -2567,7 +2566,7 @@ TODO das mit den Farben funktioniert nicht so richtig :/
     0.55 \\ 
     0.30 \\ 
     0.55 \\ 
-    0.45  
+    0.45 \\
   };
   \addplot[boxplot] table[row sep=\\,y index=0] {
     0.30 \\ 
@@ -2576,34 +2575,34 @@ TODO das mit den Farben funktioniert nicht so richtig :/
     0.32 \\ 
     0.35 \\ 
     0.24 \\ 
-    0.15 
+    0.25 \\
   };
 
   % url
   \addplot[boxplot] table[row sep=\\,y index=0] {
     0.40 \\ 
-    0.54 \\ 
-    0.54 \\ 
-    0.65 \\ 
+    0.48 \\ 
+    0.44 \\ 
+    0.55 \\ 
     0.45 \\ 
     0.43 \\ 
-    0.440000 
+    0.34 \\
   };
   \addplot[boxplot] table[row sep=\\,y index=0] {
     0.30 \\ 
-    0.25 \\ 
+    0.35 \\ 
     0.15 \\ 
-    0.18 \\ 
+    0.28 \\ 
     0.32 \\ 
     0.23 \\ 
-    0.3 
+    0.3 \\ 
   };
   \end{axis}
 \end{tikzpicture}
 
 % RQ 2 answer
 \begin{tcolorbox}
-\textbf{Summary (RQ2):} \textsc{RustyUnit} (hopefully) achieves \textbf{higher coverage} than random search test case generation. 
+\textbf{Summary (RQ2):} \textsc{RustyUnit} \textbf{(hopefully)} achieves \textbf{higher coverage} than random search test case generation. 
 \end{tcolorbox}
 
 \subsection{Manually written tests}
