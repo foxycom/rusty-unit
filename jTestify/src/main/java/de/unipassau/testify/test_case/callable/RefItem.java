@@ -25,6 +25,7 @@ public enum RefItem implements Callable {
       null
   ), true);
 
+  public static final Generic T = new Generic("T", Collections.emptyList());
 
   private List<Param> params;
   private Type returnType;

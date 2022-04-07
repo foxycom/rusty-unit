@@ -358,19 +358,19 @@ fn adt_def_to_t(adt_def: &AdtDef, tcx: &TyCtxt<'_>) -> T {
   match adt_def.adt_kind() {
     AdtKind::Struct => {
       // Has only one variant
-      assert_eq!(adt_def.variants.len(), 1);
-      let variant = adt_def.variants.get(VariantIdx::from_usize(0)).unwrap();
-      let name = def_id_name(adt_def.did, tcx);
-      let generics = generics_of_item(adt_def.did, tcx);
-      T::Struct(StructT::new(&name, generics, is_local(adt_def.did)))
+      assert_eq!(adt_def.variants().len(), 1);
+      let variant = adt_def.variants().get(VariantIdx::from_usize(0)).unwrap();
+      let name = def_id_name(adt_def.did(), tcx);
+      let generics = generics_of_item(adt_def.did(), tcx);
+      T::Struct(StructT::new(&name, generics, is_local(adt_def.did())))
     }
     AdtKind::Union => {
       todo!("Adt def is union")
     }
     AdtKind::Enum => {
-      let enum_name = def_id_name(adt_def.did, tcx);
-      let mut variants = Vec::with_capacity(adt_def.variants.len());
-      for variant in &adt_def.variants {
+      let enum_name = def_id_name(adt_def.did(), tcx);
+      let mut variants = Vec::with_capacity(adt_def.variants().len());
+      for variant in adt_def.variants() {
         let variant_name = variant.name.to_string();
 
         let params = variant.fields.iter().map(|f| {
@@ -387,9 +387,9 @@ fn adt_def_to_t(adt_def: &AdtDef, tcx: &TyCtxt<'_>) -> T {
         }
       }
 
-      let generics = generics_of_item(adt_def.did, tcx);
+      let generics = generics_of_item(adt_def.did(), tcx);
 
-      let t = T::Enum(EnumT::new(&enum_name, generics, variants, is_local(adt_def.did)));
+      let t = T::Enum(EnumT::new(&enum_name, generics, variants, is_local(adt_def.did())));
       info!("Extracted enum: {:?}", t);
       t
     }

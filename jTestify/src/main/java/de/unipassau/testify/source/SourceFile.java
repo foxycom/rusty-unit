@@ -1,6 +1,7 @@
 package de.unipassau.testify.source;
 
 
+import de.unipassau.testify.Constants;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.visitor.TestCaseVisitor;
 import java.io.BufferedWriter;
@@ -75,8 +76,9 @@ public class SourceFile {
       out.write("\n");
 
       out.write("#[cfg(test)]\n");
-      out.write("mod rusty_tests {\n");
+      out.write(String.format("mod %s {\n", Constants.TEST_MOD_NAME));
       out.write("\tuse crate::*;\n");
+      //out.write("\tuse ntest::timeout;\n");
 
       var testCode = tests.stream()
           .map(testCase -> testCase.visit(visitor))

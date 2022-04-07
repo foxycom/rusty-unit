@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 import com.google.common.collect.Lists;
 import de.unipassau.testify.hir.TyCtxt;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
+import de.unipassau.testify.mir.MirAnalysis;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
@@ -40,7 +41,10 @@ class SinglePointFixedCrossoverTest {
   private SinglePointFixedCrossover crossover;
 
   @Mock
-  private TyCtxt analysis;
+  private TyCtxt hir;
+
+  @Mock
+  private MirAnalysis<TestCase> mir;
 
   @BeforeEach
   void setUp() {
@@ -129,7 +133,7 @@ class SinglePointFixedCrossoverTest {
     var visitor = new TestCaseVisitor();
     var debugVisitor = new CrossoverDebugVisitor(2);
 
-    var parentA = new TestCase(1, analysis, mutation, crossover);
+    var parentA = new TestCase(1, hir, mutation, crossover, mir);
     parentA.setStatements(getStatementsA(parentA));
 
     System.out.println(parentA.visit(debugVisitor));
@@ -138,12 +142,12 @@ class SinglePointFixedCrossoverTest {
     var vecConstructor = new StaticMethod("new", Collections.emptyList(), vecType, vecType, "");
     var vecRefType = new Ref(vecType, true);
 
-    when(analysis.generatorsOf(vecRefType, ""))
+    when(hir.generatorsOf(vecRefType, ""))
         .thenReturn(Lists.newArrayList(RefItem.MUTABLE));
 
-    when(analysis.generatorsOf(vecType, "")).thenReturn(Lists.newArrayList(vecConstructor));
+    when(hir.generatorsOf(vecType, "")).thenReturn(Lists.newArrayList(vecConstructor));
 
-    var parentB = new TestCase(2, analysis, mutation, crossover);
+    var parentB = new TestCase(2, hir, mutation, crossover, mir);
     parentB.setStatements(getStatementsB(parentB));
 
     System.out.println(parentB.visit(debugVisitor));

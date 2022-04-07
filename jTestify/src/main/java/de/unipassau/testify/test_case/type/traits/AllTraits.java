@@ -10,8 +10,8 @@ public class AllTraits {
 
   static {
     PREDEFINED_TRAITS = List.of(
-        Rng.INSTANCE,
-        RngCore.INSTANCE
+        Rng.getInstance(),
+        RngCore.getInstance()
     );
   }
 

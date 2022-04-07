@@ -195,7 +195,7 @@ public class EnumStmt implements Statement {
       for (int iParam = 0; iParam < mutatedEnumInit.getParams().size(); iParam++) {
         var param = mutatedEnumInit.getParams().get(iParam);
         var boundedParam = param.bindGenerics(returnValue.getBinding());
-        var newVariable = testCase.generateArg(boundedParam);
+        var newVariable = testCase.getArg(boundedParam.getType(), position());
         newVariable.ifPresent(args::add);
       }
 

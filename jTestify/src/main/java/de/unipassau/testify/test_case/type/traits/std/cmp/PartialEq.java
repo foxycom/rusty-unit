@@ -6,27 +6,19 @@ import de.unipassau.testify.test_case.type.traits.Trait;
 import java.util.Collections;
 import java.util.List;
 
-public enum PartialEq implements Trait {
-  INSTANCE;
+public class PartialEq extends Trait {
+  private static final PartialEq instance = new PartialEq();
 
-  private static final String NAME = "std::cmp::Eq";
-  private static final List<Type> GENERICS = Collections.emptyList();
-  private static final List<AssociatedType> ASSOCIATED_TYPES = Collections.emptyList();
-
-
-  @Override
-  public String getName() {
-    return NAME;
+  public static PartialEq getInstance() {
+    return instance;
   }
 
-  @Override
-  public List<Type> generics() {
-    return GENERICS;
+  private PartialEq() {
+    super(
+        "std::cmp::PartialEq",
+        Collections.emptyList(),
+        Collections.emptyList()
+    );
   }
-
-  @Override
-  public List<AssociatedType> associatedTypes() {
-    return ASSOCIATED_TYPES;
-  }
-
 }
+

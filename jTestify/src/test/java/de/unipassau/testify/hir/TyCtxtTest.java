@@ -2,7 +2,7 @@ package de.unipassau.testify.hir;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import de.unipassau.testify.test_case.type.traits.AbstractTrait;
+import de.unipassau.testify.test_case.type.traits.std.default_.Default;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -34,7 +34,7 @@ class TyCtxtTest {
 
   @Test
   void testRefIsizeDoesNotImplementDefault() {
-    assertThat(analysis.typesImplementing(List.of(new AbstractTrait("std::default::Default")))).isEmpty();
+    assertThat(analysis.typesImplementing(List.of(Default.getInstance()))).isEmpty();
   }
 
   @Test

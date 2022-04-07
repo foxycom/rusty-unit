@@ -1,4 +1,3 @@
-
 use log::{debug, error, info, warn};
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_hir::def_id::DefId;
@@ -13,14 +12,15 @@ use rustc_middle::mir::{
   SourceScope, Statement, StatementKind, SwitchTargets, Terminator, TerminatorKind, UnOp,
 };
 use rustc_middle::ty;
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
-use rustc_middle::ty::{Const, ConstKind, List, Region, RegionKind, ScalarInt, Ty, TyCtxt, TypeAndMut, UintTy};
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, MaybeResult};
+use rustc_middle::ty::{Const, ConstKind, ConstS, List, Region, RegionKind, ScalarInt, Ty, TyCtxt, TypeAndMut, UintTy};
 use rustc_span::Span;
 use rustc_target::abi::{Align, VariantIdx};
 use std::borrow::Borrow;
 use std::fs::File;
 use std::ops::Add;
 use std::path::Path;
+use petgraph::dot::Dot;
 use rustc_ast::Mutability;
 use crate::mir::ValueDef::Var;
 #[cfg(feature = "analysis")]
@@ -28,6 +28,7 @@ use crate::data_structures::{cdg, log_graph_to, visualize_graph};
 #[cfg(feature = "analysis")]
 use crate::writer::{MirObjectBuilder, MirObject, MirWriter};
 use crate::{DOT_DIR, INSTRUMENTED_MIR_LOG_NAME, LOG_DIR, RuConfig};
+use crate::data_structures::{original_cfg, truncated_cfg};
 use crate::monitor::{BinaryOp, UnaryOp};
 
 pub const CUSTOM_OPT_MIR: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<'tcx> =
@@ -52,12 +53,15 @@ pub const CUSTOM_OPT_MIR: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<
     let global_id = def_id_to_str(def, &tcx).replace("::", "__");
 
     #[cfg(feature = "analysis")]
-    let cdg = cdg(&body);
+    info!("MIR: Analyzing {:?}", def);
+
+    #[cfg(feature = "analysis")]
+        let (cfg, _) = truncated_cfg(&body);
+    #[cfg(feature = "analysis")]
+        let cdg = cdg(&cfg);
 
     #[cfg(feature = "analysis")]
     {
-      info!("MIR: Analyzing {:?}", def);
-
       let basic_blocks = body.basic_blocks();
       let basic_blocks_str = basic_blocks
           .iter_enumerated()
@@ -74,10 +78,14 @@ pub const CUSTOM_OPT_MIR: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<
       let locals_str = locals_decls.iter_enumerated()
           .map(|(local, decl)| format!("{:?} -> {:?}", local, decl))
           .collect::<Vec<_>>();
+      let (cfg, _) = crate::data_structures::original_cfg(&body);
+      let (truncated_cfg, _) = crate::data_structures::truncated_cfg(&body);
       let mut mir_object = MirObjectBuilder::default()
           .global_id(global_id.to_owned())
           .basic_blocks(basic_blocks_str)
           .cdg(serde_json::to_string(&cdg).unwrap())
+          .cfg(format!("{}", petgraph::dot::Dot::new(&cfg)))
+          .truncated_cfg(format!("{}", petgraph::dot::Dot::new(&truncated_cfg)))
           .locals(locals_str)
           .build()
           .unwrap();
@@ -113,6 +121,8 @@ pub const CUSTOM_OPT_MIR: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<
           .locals(locals)
           .basic_blocks(blocks)
           .cdg(serde_json::to_string(&cdg).unwrap())
+          .cfg("".to_string())
+          .truncated_cfg("".to_string())
           .build()
           .unwrap();
       MirWriter::write_instrumented(&instrumented_mir_object);
@@ -163,7 +173,7 @@ impl<'tcx> MirVisitor<'tcx> {
     body
   }
 
-  fn switch_value_to_const(&self, switch_ty: Ty<'tcx>, value: u128) -> &'tcx Const<'tcx> {
+  fn switch_value_to_const(&self, switch_ty: Ty<'tcx>, value: u128) -> Const<'tcx> {
     let param_env = ty::ParamEnv::empty();
     let switch_ty = self.tcx.lift(switch_ty).unwrap();
     let size = self.tcx.layout_of(param_env.and(switch_ty)).unwrap().size;
@@ -172,7 +182,7 @@ impl<'tcx> MirVisitor<'tcx> {
 
   fn mk_place(&self, index: usize) -> Place<'tcx> {
     Place {
-      local: Local::from(index),
+      local: Local::from_usize(index),
       projection: List::empty(),
     }
   }
@@ -181,66 +191,51 @@ impl<'tcx> MirVisitor<'tcx> {
     LocalDecl::new(ty, Span::default())
   }
 
-  fn mk_const_int(&self, data: u64) -> &'tcx Const<'tcx> {
-    let u64_ty = self.tcx.mk_mach_uint(UintTy::U64);
-    let scalar_data = ConstKind::Value(ConstValue::Scalar(Scalar::Int(ScalarInt::from(data))));
+  fn mk_const_int(&self, data: u64) -> Const<'tcx> {
+    // let u64_ty = self.tcx.mk_mach_uint(UintTy::U64);
+    // let scalar_data = ConstKind::Value(ConstValue::Scalar(Scalar::Int(<ScalarInt as From<u64>>::from(data))));
+    //
+    // let const_arg = Const {
+    //   ty: u64_ty,
+    //   val: scalar_data,
+    // };
 
-    let const_arg = Const {
-      ty: u64_ty,
-      val: scalar_data,
-    };
-
-    let const_arg = self.tcx.mk_const(const_arg);
+    let const_arg = Const::from_usize(self.tcx, data);
     const_arg
   }
 
-  fn mk_const_str(&self, str: &str) -> &'tcx Const<'tcx> {
+  fn mk_const_str(&self, str: &str) -> Const<'tcx> {
     let str_ty = self.mk_str_ty();
 
     let allocation = Allocation::from_bytes_byte_aligned_immutable(str.as_bytes());
-    let val = ConstKind::Value(
-      ConstValue::Slice {
-        data: self.tcx.intern_const_alloc(allocation),
-        start: 0,
-        end: str.len(),
-      }
-    );
+    // let val = ConstKind::Value(
+    //   ConstValue::Slice {
+    //     data: self.tcx.intern_const_alloc(allocation),
+    //     start: 0,
+    //     end: str.len(),
+    //   }
+    // );
 
-    let const_arg = Const {
-      ty: str_ty,
-      val,
+    let val = ConstValue::Slice {
+      data: self.tcx.intern_const_alloc(allocation),
+      start: 0,
+      end: str.len(),
     };
 
-    let const_arg = self.tcx.mk_const(const_arg);
-    const_arg
+    Const::from_value(self.tcx, val, str_ty)
   }
 
-  fn mk_const(&self, ty: Ty<'tcx>, val: ConstKind<'tcx>) -> &'tcx Const<'tcx> {
-    let constant = Const { ty, val };
-
-    let interned_constant = self.tcx.mk_const(constant);
-    interned_constant
-  }
-
-  fn mk_const_bool(&self, flag: bool) -> &'tcx Const<'tcx> {
-    let bool_ty = self.tcx.types.bool;
-    let data = ConstKind::Value(ConstValue::Scalar(Scalar::Int(ScalarInt::from(flag))));
-
-    let const_arg = Const {
-      ty: bool_ty,
-      val: data,
-    };
-
-    let const_arg = self.tcx.mk_const(const_arg);
-    const_arg
+  fn mk_const_bool(&self, flag: bool) -> Const<'tcx> {
+    Const::from_bool(self.tcx, flag)
   }
 
   fn mk_str_ty(&self) -> Ty<'tcx> {
-    self.tcx.mk_ref(&RegionKind::ReErased, TypeAndMut { ty: self.tcx.types.str_, mutbl: Mutability::Not })
+    let region = self.tcx.mk_region(RegionKind::ReErased);
+    self.tcx.mk_ref(region, TypeAndMut { ty: self.tcx.types.str_, mutbl: Mutability::Not })
   }
 
   fn mk_move_operand(&self, local: Local) -> Operand<'tcx> {
-    Operand::Move(Place::from(local))
+    Operand::Move(<Place as From<Local>>::from(local))
   }
 
   fn mk_cast_local_as_f64_stmt(&self, from: Local, to: Local) -> Statement<'tcx> {
@@ -305,10 +300,15 @@ impl<'tcx> MirVisitor<'tcx> {
   }
 
   fn mk_const_operand(&self, ty: Ty<'tcx>, val: ConstKind<'tcx>) -> Operand<'tcx> {
+    let const_s = ConstS {
+      ty,
+      val
+    };
+
     Operand::Constant(Box::new(Constant {
       span: Default::default(),
       user_ty: None,
-      literal: ConstantKind::Ty(self.mk_const(ty, val)),
+      literal: ConstantKind::Ty(self.tcx.mk_const(const_s)),
     }))
   }
 
@@ -322,12 +322,7 @@ impl<'tcx> MirVisitor<'tcx> {
     let terminator_place = self.mk_place(terminator_local.index());
 
     let fn_ty = self.tcx.type_of(fn_def_id);
-    let func_const = Const {
-      ty: fn_ty,
-      val: ConstKind::Value(ConstValue::Scalar(Scalar::Int(ScalarInt::ZST))),
-    };
-
-    let func_const = self.tcx.mk_const(func_const);
+    let func_const = Const::zero_sized(self.tcx, fn_ty);
 
     let func_constant = Constant {
       span: Span::default(),
@@ -370,7 +365,7 @@ impl<'tcx> MirVisitor<'tcx> {
   fn mk_dummy_source_info(&self) -> SourceInfo {
     SourceInfo {
       span: Default::default(),
-      scope: SourceScope::from(0usize),
+      scope: SourceScope::from_usize(0usize),
     }
   }
 
@@ -412,7 +407,7 @@ impl<'tcx> MirVisitor<'tcx> {
     let local_decl = self.mk_local_decl(unit_ty);
     let local_decls = &mut self.body.local_decls;
     local_decls.push(local_decl);
-    let local = Local::from(self.locals_num);
+    let local = Local::from_usize(self.locals_num);
     self.locals_num += 1;
     local
   }
@@ -421,7 +416,7 @@ impl<'tcx> MirVisitor<'tcx> {
     let local_decls = &mut self.body.local_decls;
     let local_decl = LocalDecl::new(ty, Span::default());
     local_decls.push(local_decl);
-    let local = Local::from(self.locals_num);
+    let local = Local::from_usize(self.locals_num);
     self.locals_num += 1;
     local
   }
@@ -459,7 +454,7 @@ impl<'tcx> MirVisitor<'tcx> {
     // as argument
     let (left_operand_stmt, left_local) = match left.as_ref() {
       ValueDef::Const(ty, val) => {
-        let left_local = self.store_local_decl(ty);
+        let left_local = self.store_local_decl(*ty);
         let operand = self.mk_const_operand(*ty, *val);
 
         (
@@ -480,7 +475,7 @@ impl<'tcx> MirVisitor<'tcx> {
 
     let (right_operand_stmt, right_local) = match right.as_ref() {
       ValueDef::Const(ty, val) => {
-        let right_local = self.store_local_decl(ty);
+        let right_local = self.store_local_decl(*ty);
         let operand = self.mk_const_operand(*ty, *val);
 
         (
@@ -526,17 +521,13 @@ impl<'tcx> MirVisitor<'tcx> {
     &mut self,
     target_block: u64,
     value_def: &ValueDef<'tcx>,
-    switch_value: Option<&'tcx Const>,
+    switch_value: Option<Const>,
     is_hit: bool,
   ) -> (Vec<Statement<'tcx>>, Vec<Operand<'tcx>>) {
     //debug!("MIR: mk_trace_statements_switch_int, {:?}", value_def);
     match value_def {
       ValueDef::BinaryOp(op, left, right) => {
-        let is_true_branch = if let Some(_) = switch_value {
-          false
-        } else {
-          true
-        };
+        let is_true_branch = switch_value.is_none();
         self.mk_trace_statements_binary_op(target_block, op, left, right, is_true_branch)
       }
       ValueDef::Const(ty, val) => {
@@ -596,11 +587,11 @@ impl<'tcx> MirVisitor<'tcx> {
 
         let stmts = vec![];
         let trace_call_args = vec![
-            // Global id
+          // Global id
           self.mk_const_str_operand(&self.global_id),
-            // Block id
+          // Block id
           self.mk_const_int_operand(target_block as u64),
-            self.mk_const_bool_operand(is_hit),
+          self.mk_const_bool_operand(is_hit),
         ];
         (stmts, trace_call_args)
       }
@@ -633,8 +624,8 @@ impl<'tcx> MirVisitor<'tcx> {
             let (left, right) = operands.as_ref();
             return Some(ValueDef::BinaryOp(
               to_binary_op(op),
-              Box::new(ValueDef::from(left)),
-              Box::new(ValueDef::from(right)),
+              Box::new(ValueDef::from_operand(left)),
+              Box::new(ValueDef::from_operand(right)),
             ));
           }
           Rvalue::UnaryOp(op, operand) => {
@@ -655,7 +646,7 @@ impl<'tcx> MirVisitor<'tcx> {
               }
               Operand::Constant(_) => Some(ValueDef::UnaryOp(
                 to_unary_op(op),
-                Box::new(ValueDef::from(operand)),
+                Box::new(ValueDef::from_operand(operand)),
               )),
             };
           }
@@ -755,7 +746,7 @@ impl<'tcx> MirVisitor<'tcx> {
 
     for arg in self.body.args_iter() {
       if place.local == arg {
-        return ValueDef::Var(Place::from(arg));
+        return ValueDef::Var(<Place as From<rustc_middle::mir::Local>>::from(arg));
       }
     }
 
@@ -831,7 +822,7 @@ impl<'tcx> MirVisitor<'tcx> {
 
     let args = self.mk_trace_statements_entry();
     let trace_fn = find_trace_entry_fn(&self.tcx);
-    let terminator = self.mk_call_terminator(args, BasicBlock::from(1usize), trace_fn);
+    let terminator = self.mk_call_terminator(args, BasicBlock::from_usize(1usize), trace_fn);
     let trace_block = self.mk_basic_block(vec![], terminator);
 
     let basic_blocks = body.basic_blocks_mut();
@@ -886,7 +877,7 @@ impl<'tcx> MirVisitor<'tcx> {
               target_block.as_usize() as u64
           );*/
           let switch_value_const =
-              switch_value.map(|sv| self.switch_value_to_const(switch_ty, sv));
+              switch_value.map(|sv| self.switch_value_to_const(*switch_ty, sv));
           let (first_tracing_block, tracing_chain) = self
               .mk_tracing_chain_from_switch_int(
                 &switch_operand_def,
@@ -918,12 +909,12 @@ impl<'tcx> MirVisitor<'tcx> {
     &mut self,
     switch_operand_def: &ValueDef<'tcx>,
     branch_to_trace_ids: &Vec<u64>,
-    switch_value: Option<&'tcx Const>,
+    switch_value: Option<Const>,
     target_block: BasicBlock,
   ) -> (BasicBlock, Vec<BasicBlockData<'tcx>>) {
     let mut tracing_chain = Vec::with_capacity(branch_to_trace_ids.len());
     let trace_fn = find_trace_fn_for(&self.tcx, &switch_operand_def);
-    let first_block = BasicBlock::from(self.basic_blocks_num);
+    let first_block = BasicBlock::from_usize(self.basic_blocks_num);
 
     let mut branches = branch_to_trace_ids.iter().peekable();
     while let Some(&branch_to_trace_id) = branches.next() {
@@ -931,7 +922,7 @@ impl<'tcx> MirVisitor<'tcx> {
       self.basic_blocks_num += 1;
 
       let next_block = if branches.peek().is_some() {
-        BasicBlock::from(self.basic_blocks_num)
+        BasicBlock::from_usize(self.basic_blocks_num)
       } else {
         // If this is the last element in the tracing chain, then point to the
         // original basic block
@@ -983,7 +974,6 @@ impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
       // Also apply local definitions
       body.local_decls = self.body.local_decls.clone();
     }
-
   }
 
   #[cfg(feature = "instrumentation")]
@@ -1094,7 +1084,7 @@ fn get_binary_op_def_id(tcx: &TyCtxt<'_>) -> DefId {
             return Some(i.def_id.to_def_id());
           }
         }
-        None
+        Option::None
       })
       .unwrap()
 }
@@ -1222,6 +1212,10 @@ impl<'a> ValueDef<'a> {
 
     panic!("Is not var");
   }
+
+  fn from_operand(operand: &Operand<'a>) -> ValueDef<'a> {
+    <Self as From<&Operand>>::from(operand)
+  }
 }
 
 impl<'a> From<&Operand<'a>> for ValueDef<'a> {
@@ -1230,8 +1224,8 @@ impl<'a> From<&Operand<'a>> for ValueDef<'a> {
       Operand::Copy(place) | Operand::Move(place) => ValueDef::Var(*place),
       Operand::Constant(constant) => match &constant.literal {
         ConstantKind::Ty(constant_ty) => {
-          let ty = constant_ty.ty;
-          let val = constant_ty.val;
+          let ty = constant_ty.ty();
+          let val = constant_ty.val();
           ValueDef::Const(ty, val)
         }
         ConstantKind::Val(_, _) => todo!(),

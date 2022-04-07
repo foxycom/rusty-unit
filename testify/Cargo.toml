@@ -36,10 +36,6 @@ derive_builder = "0.10.2"
 [dependencies.redis]
 version = "*"
 
-[workspace]
-members = [
-    "wrapper"
-]
 
 [target.'cfg(NOT_A_PLATFORM)'.dependencies]
 rustc_driver = {path = "/Users/tim/rust/compiler/rustc_driver"}

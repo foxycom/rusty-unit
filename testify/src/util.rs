@@ -107,7 +107,7 @@ pub fn ty_to_t(
               }
             }
             Res::PrimTy(prim_ty) => Some(T::from(*prim_ty)),
-            Res::SelfTy(trait_def_id, impl_) => {
+            Res::SelfTy {..} => {
               self_ty.map(|self_ty| self_ty.clone())
             }
             _ => {

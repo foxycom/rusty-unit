@@ -44,15 +44,15 @@ public class Option extends AbstractEnum {
         ),
         false,
         Set.of(
-            Clone.INSTANCE,
-            Copy.INSTANCE,
-            Default.INSTANCE,
-            Eq.INSTANCE,
-            PartialEq.INSTANCE,
-            Hash.INSTANCE,
-            Ord.INSTANCE,
-            PartialOrd.INSTANCE,
-            IntoIterator.INSTANCE
+            Clone.getInstance(),
+            Copy.getInstance(),
+            Default.getInstance(),
+            Eq.getInstance(),
+            PartialEq.getInstance(),
+            Hash.getInstance(),
+            Ord.getInstance(),
+            PartialOrd.getInstance(),
+            IntoIterator.getInstance()
         )
     );
   }

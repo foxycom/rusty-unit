@@ -15,7 +15,7 @@ pub fn hir_ty_to_t(
     TyKind::Path(qpath) => {
       let res = typeck_results.qpath_res(qpath, ty.hir_id);
       match res {
-        Res::SelfTy(trait_, alias_to) => {
+        Res::SelfTy{trait_, alias_to} => {
           info!("Self ty");
           if let Some((alias_to, _)) = alias_to {
             let mir_ty = tcx.type_of(alias_to);

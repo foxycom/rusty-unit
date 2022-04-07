@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 import de.unipassau.testify.hir.TyCtxt;
 import de.unipassau.testify.metaheuristics.operators.Crossover;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
+import de.unipassau.testify.mir.MirAnalysis;
 import de.unipassau.testify.test_case.callable.StaticMethod;
 import de.unipassau.testify.test_case.type.AbstractStruct;
 import de.unipassau.testify.test_case.type.Generic;
@@ -26,7 +27,10 @@ class TestCaseTest {
   private TestCase testCase;
 
   @Mock
-  private TyCtxt analysis;
+  private TyCtxt hir;
+
+  @Mock
+  private MirAnalysis<TestCase> mir;
 
   @Mock
   private Mutation<TestCase> mutation;
@@ -36,7 +40,7 @@ class TestCaseTest {
 
   @BeforeEach
   void setUp() {
-    testCase = new TestCase(2, analysis, mutation, crossover);
+    testCase = new TestCase(2, hir, mutation, crossover, mir);
   }
 
   @Test
@@ -53,7 +57,7 @@ class TestCaseTest {
     var callableUnderTest = new StaticMethod("a", params, ISize.INSTANCE, parent, "");
 
     var vecCallable = new StaticMethod("new", Collections.emptyList(), vecType, vecType, "");
-    when(analysis.generatorsOf(any(), null)).thenReturn(List.of(vecCallable));
+    when(hir.generatorsOf(any(), null)).thenReturn(List.of(vecCallable));
 
     testCase.insertCallable(callableUnderTest);
 

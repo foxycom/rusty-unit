@@ -1,5 +1,7 @@
 package de.unipassau.testify.server;
 
+import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome;
+import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
 import de.unipassau.testify.mir.BasicBlock;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,12 +15,12 @@ public class RedisStorage {
 
   private static final Jedis jedis = new Jedis();
 
-  public static Map<Integer, Map<BasicBlock, Double>> requestTraces() {
-    Map<Integer, Map<BasicBlock, Double>> coverage = new HashMap<>();
+  public static <C extends AbstractTestCaseChromosome<C>> Map<Integer, Map<MinimizingFitnessFunction<C>, Double>> requestTraces() {
+    Map<Integer, Map<MinimizingFitnessFunction<C>, Double>> coverage = new HashMap<>();
     Set<String> traces = jedis.smembers("traces");
 
     for (String trace : traces) {
-      var result = TraceParser.parse(trace);
+      var result = TraceParser.<C>parse(trace);
 
       if (result == null) {
         continue;

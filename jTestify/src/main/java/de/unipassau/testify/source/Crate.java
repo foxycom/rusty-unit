@@ -192,7 +192,7 @@ public class Crate implements ChromosomeContainer<TestCase> {
   private TyCtxt analyze(Path root, String crateName) throws IOException, InterruptedException {
 
     var processBuilder = new ProcessBuilder().directory(root.toFile())
-        .command("cargo", "+nightly-aarch64-apple-darwin", "build", "--all-features")
+        .command("cargo", Constants.RUST_TOOLCHAIN, "build", "--all-features")
         .redirectError(ERROR_PATH.toFile());
 
     var env = processBuilder.environment();

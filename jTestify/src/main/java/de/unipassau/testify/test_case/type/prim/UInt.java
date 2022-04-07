@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.Constants;
 import de.unipassau.testify.test_case.primitive.PrimitiveValue;
 import de.unipassau.testify.test_case.primitive.UIntValue;
-import de.unipassau.testify.test_case.type.traits.AbstractTrait;
 import de.unipassau.testify.test_case.type.traits.Trait;
 import de.unipassau.testify.test_case.type.traits.std.clone.Clone;
 import de.unipassau.testify.test_case.type.traits.std.cmp.Eq;
@@ -15,21 +14,20 @@ import de.unipassau.testify.test_case.type.traits.std.default_.Default;
 import de.unipassau.testify.test_case.type.traits.std.hash.Hash;
 import de.unipassau.testify.test_case.type.traits.std.marker.Copy;
 import de.unipassau.testify.util.Rnd;
-import java.util.HashSet;
 import java.util.Set;
 
 @JsonDeserialize(as = UInt.class)
 public interface UInt extends Prim {
 
   Set<Trait> implementedTraits = Set.of(
-      Copy.INSTANCE,
-      Clone.INSTANCE,
-      Hash.INSTANCE,
-      Ord.INSTANCE,
-      PartialOrd.INSTANCE,
-      Eq.INSTANCE,
-      PartialEq.INSTANCE,
-      Default.INSTANCE
+      Copy.getInstance(),
+      Clone.getInstance(),
+      Hash.getInstance(),
+      Ord.getInstance(),
+      PartialOrd.getInstance(),
+      Eq.getInstance(),
+      PartialEq.getInstance(),
+      Default.getInstance()
   );
 
   int bits();

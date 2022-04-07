@@ -37,7 +37,7 @@ public class Fitness implements MinimizingFitnessFunction<TestCase> {
 
   @Override
   public double getFitness(TestCase testCase) throws NullPointerException {
-    var coverage = testCase.getCoverage();
+    var coverage = testCase.branchDistance();
 
     return coverage.getOrDefault(basicBlock, Double.MAX_VALUE);
   }

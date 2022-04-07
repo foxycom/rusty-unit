@@ -27,6 +27,10 @@ public class Constants {
   public static final String HIR_LOG_PATH = properties.getProperty("hir-log-path");
   public static final String ANALYSIS_BIN = properties.getProperty("analysis-bin");
   public static final String INSTRUMENTATION_BIN = properties.getProperty("instrumentation-bin");
+  public static final String TEST_MOD_NAME = properties.getProperty("test-mod-name");
+  public static final String RUST_TOOLCHAIN = properties.getProperty("rust-toolchain");
+  public static final String TEST_PREFIX = properties.getProperty("test-prefix");
+  public static final int TEST_TIMEOUT = getInt("test-timeout");
 
   private static Properties loadProperties() {
     var properties = new Properties();

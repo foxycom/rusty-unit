@@ -38,6 +38,7 @@ use std::{fs, process};
 use std::str::FromStr;
 use clap::Parser;
 use rustc_driver::Compilation;
+use rustc_hir::intravisit::nested_filter::None;
 use rustc_interface::{Config, Queries};
 use rustc_interface::interface::Compiler;
 use rustc_middle::ty::TyCtxt;

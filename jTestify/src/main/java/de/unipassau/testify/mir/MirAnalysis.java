@@ -12,21 +12,22 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.json.JSONObject;
 
 public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
 
-  private final Map<String, CDG<C>> cdgs;
+  private final Map<String, CDG<MinimizingFitnessFunction<C>, C>> cdgs;
   private final Set<MinimizingFitnessFunction<C>> visitedBlocks = new HashSet<>();
 
   public MirAnalysis() {
     cdgs = parseCDGs();
   }
 
-  private Map<String, CDG<C>> parseCDGs() {
-    Map<String, CDG<C>> cdgs = new HashMap<>();
+  private Map<String, CDG<MinimizingFitnessFunction<C>, C>> parseCDGs() {
+    Map<String, CDG<MinimizingFitnessFunction<C>, C>> cdgs = new HashMap<>();
     var path = Paths.get(MIR_LOG_PATH);
     try (var stream = Files.walk(path, Integer.MAX_VALUE)) {
       stream
@@ -37,7 +38,11 @@ public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
               var content = Files.readString(file);
               var jsonRoot = new JSONObject(content);
               var globalId = jsonRoot.getString("global_id");
-              CDG<C> cdg = CDG.parse(globalId, jsonRoot.getString("cdg"));
+              if (globalId.equals("<tictactoe__GameState as std__cmp__PartialEq>__eq")) {
+                System.out.println();
+              }
+              var cdg = CDG.<MinimizingFitnessFunction<C>, C>parse(globalId,
+                  jsonRoot.getString("cdg"));
               cdgs.put(globalId, cdg);
             } catch (IOException e) {
               throw new RuntimeException(e);
@@ -48,6 +53,10 @@ public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
     }
 
     return cdgs;
+  }
+
+  public CDG<MinimizingFitnessFunction<C>, C> getCdgFor(String globalId) {
+    return Objects.requireNonNull(cdgs.get(globalId));
   }
 
   public Set<MinimizingFitnessFunction<C>> targets() {

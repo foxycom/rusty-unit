@@ -3,7 +3,6 @@ package de.unipassau.testify.test_case.type.prim;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.test_case.primitive.BoolValue;
 import de.unipassau.testify.test_case.primitive.PrimitiveValue;
-import de.unipassau.testify.test_case.type.traits.AbstractTrait;
 import de.unipassau.testify.test_case.type.traits.Trait;
 import de.unipassau.testify.test_case.type.traits.std.clone.Clone;
 import de.unipassau.testify.test_case.type.traits.std.cmp.Eq;
@@ -24,14 +23,14 @@ public enum Bool implements Prim {
 
   static {
     implementedTraits = Set.of(
-        Clone.INSTANCE,
-        Copy.INSTANCE,
-        Hash.INSTANCE,
-        Ord.INSTANCE,
-        PartialOrd.INSTANCE,
-        Eq.INSTANCE,
-        PartialEq.INSTANCE,
-        Default.INSTANCE
+        Clone.getInstance(),
+        Copy.getInstance(),
+        Hash.getInstance(),
+        Ord.getInstance(),
+        PartialOrd.getInstance(),
+        Eq.getInstance(),
+        PartialEq.getInstance(),
+        Default.getInstance()
     );
   }
 

@@ -6,27 +6,19 @@ import de.unipassau.testify.test_case.type.traits.Trait;
 import java.util.Collections;
 import java.util.List;
 
-public enum Eq implements Trait {
-  INSTANCE;
+public class Eq extends Trait {
+  private static final Eq instance = new Eq();
 
-  private static final String NAME = "std::cmp::Eq";
-  private static final List<Type> GENERICS = Collections.emptyList();
-  private static final List<AssociatedType> ASSOCIATED_TYPES = Collections.emptyList();
-
-
-  @Override
-  public String getName() {
-    return NAME;
+  public static Eq getInstance() {
+    return instance;
   }
 
-  @Override
-  public List<Type> generics() {
-    return GENERICS;
+  private Eq() {
+    super(
+        "std::cmp::Eq",
+        Collections.emptyList(),
+        Collections.emptyList()
+    );
   }
-
-  @Override
-  public List<AssociatedType> associatedTypes() {
-    return ASSOCIATED_TYPES;
-  }
-
 }
+

@@ -397,33 +397,16 @@ pub fn log_graph_to<A: Display, B: Display, P>(graph: &Graph<A, B>, path: P) -> 
 }
 
 /// A graph with nodes that are identified by basic block ids
-pub fn cdg(body: &Body<'_>) -> Graph<usize, usize> {
-  let (cfg, cfg_table) = truncated_cfg(body);
-  let (original_cfg, _) = original_cfg(body);
-  log_graph_to(
-    &cfg,
-    "/Users/tim/Documents/master-thesis/testify/truncated_cfg.dot",
-  );
-  log_graph_to(
-    &original_cfg,
-    "/Users/tim/Documents/master-thesis/testify/original_cfg.dot",
-  );
-
+pub fn cdg(cfg: &Graph<usize, usize>) -> Graph<usize, usize> {
   let mut reversed_cfg = cfg.clone();
   reversed_cfg.reverse();
 
-  // TODO this may be not always the case
-  //let exit_block = body.basic_blocks().last().unwrap();
   let root = cfg
       .node_indices()
       .find(|i| cfg.neighbors(*i).peekable().peek().is_none())
       .unwrap();
-  //println!("Root is {}", cfg.node_weight(root).unwrap());
-  //let root = cfg_table.get(&exit_block).unwrap();
+  // println!("Root is {}", cfg.node_weight(root).unwrap());
   let dominators = simple_fast(&reversed_cfg, root);
-
-  //let post_dominators = post_dominators(body);
-  //let immediate_post_dominators = immediate_post_dominators(&post_dominators);
 
   let cfg_edges = cfg
       .edge_indices()
@@ -479,6 +462,8 @@ pub fn cdg(body: &Body<'_>) -> Graph<usize, usize> {
     }
   }
 
+  println!("{}", Dot::new(&cdg));
+
   cfg.node_indices()
       .filter_map(|n| {
         let name = cfg.node_weight(n).unwrap();
@@ -505,46 +490,6 @@ pub fn lca<T: PartialEq + Copy>(a_seq: &[T], b_seq: &[T]) -> Option<T> {
     }
   }
   None
-}
-
-pub fn depth_map(tree: &HashMap<usize, HashSet<usize>>) -> HashMap<usize, usize> {
-  let mut depth_map = HashMap::new();
-  let entry = 0usize;
-
-  depth_map_inner(0, entry, tree, &mut depth_map);
-
-  depth_map
-}
-
-fn depth_map_inner(
-  depth: usize,
-  block: usize,
-  tree: &HashMap<usize, HashSet<usize>>,
-  depth_map: &mut HashMap<usize, usize>,
-) {
-  depth_map.insert(block, depth);
-  if let Some(children) = tree.get(&block) {
-    for child in children {
-      depth_map_inner(depth + 1, *child, tree, depth_map);
-    }
-  }
-}
-
-pub fn least_common_ancestor_of(
-  a: usize,
-  b: usize,
-  tree: &HashMap<usize, HashSet<usize>>,
-  depth_map: &HashMap<usize, usize>,
-) -> usize {
-  let a_ancestors = ancestors_of(a, tree);
-  let b_ancestors = ancestors_of(b, tree);
-  todo!()
-}
-
-pub fn ancestors_of(a: usize, tree: &HashMap<usize, HashSet<usize>>) -> Vec<usize> {
-  // TODO what about cyclic dependencies?
-  //let mut ancestors = vec![];
-  todo!()
 }
 
 pub fn edges(tree: HashMap<usize, HashSet<usize>>) -> HashSet<(usize, usize)> {
@@ -585,6 +530,7 @@ fn is_postdominated_by(a: usize, b: usize, tree: &HashMap<usize, HashSet<usize>>
 
 #[cfg(test)]
 mod tests {
+  use rustc_data_structures::vec_linked_list::iter;
   use super::*;
 
   #[test]
@@ -595,10 +541,16 @@ mod tests {
   }
 
   #[test]
-  fn smoke_test_tree_from_map() {
-    let map: HashMap<usize, HashSet<usize>> = serde_json::from_str("{\"0\":[1],\"4\":[5],\"8\":[],\"1\":[2],\"3\":[4],\"6\":[7],\"7\":[8],\"2\":[3,6],\"5\":[8]}").unwrap();
-
-    let tree = Graph::from_map(map);
-    println!("{}", serde_json::to_string(&tree).unwrap());
+  fn test_cdg() {
+    let mut cfg = Graph::new();
+    let edges: [(usize, usize); 2] = [(1, 2), (2, 2)];
+    let mut indexes = HashMap::new();
+    edges.iter().for_each(|(from, to)| {
+      indexes.entry(from).or_insert_with(|| cfg.add_node(from));
+      indexes.entry(to).or_insert_with(|| cfg.add_node(to));
+    });
+    edges.iter().for_each(|(from, to)| {
+      cfg.add_edge(*indexes.get(from).unwrap(), *indexes.get(to).unwrap(), 1);
+    })
   }
 }

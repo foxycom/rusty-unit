@@ -3,7 +3,6 @@ package de.unipassau.testify.test_case.type.prim;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.json.PrimDeserializer;
 import de.unipassau.testify.test_case.primitive.PrimitiveValue;
-import de.unipassau.testify.test_case.type.traits.AbstractTrait;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.TypeBinding;
 import de.unipassau.testify.test_case.type.prim.Float.Float32;

@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.Constants;
 import de.unipassau.testify.test_case.primitive.PrimitiveValue;
 import de.unipassau.testify.test_case.primitive.StringValue;
-import de.unipassau.testify.test_case.type.traits.AbstractTrait;
 import de.unipassau.testify.test_case.type.traits.Trait;
 import de.unipassau.testify.test_case.type.traits.std.clone.Clone;
 import de.unipassau.testify.test_case.type.traits.std.cmp.Eq;
@@ -23,11 +22,11 @@ public enum Str implements Prim {
 
   static {
     implementedTraits = Set.of(
-        Clone.INSTANCE,
-        Eq.INSTANCE,
-        PartialEq.INSTANCE,
-        Hash.INSTANCE,
-        Default.INSTANCE
+        Clone.getInstance(),
+        Eq.getInstance(),
+        PartialEq.getInstance(),
+        Hash.getInstance(),
+        Default.getInstance()
     );
   }
 

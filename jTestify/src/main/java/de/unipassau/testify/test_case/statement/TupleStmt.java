@@ -114,7 +114,7 @@ public class TupleStmt implements Statement {
       if (Rnd.get().nextDouble() < p) {
         var param = params().get(i).bindGenerics(returnValue.getBinding());
         var oldArg = args().get(i);
-        var newArg = testCase.generateArg(param);
+        var newArg = testCase.getArg(param.getType(), position());
         newArg.ifPresent(a -> replace(oldArg, a));
 
         changed = true;

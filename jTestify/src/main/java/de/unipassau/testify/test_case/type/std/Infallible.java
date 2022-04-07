@@ -1,7 +1,8 @@
 package de.unipassau.testify.test_case.type.std;
 
 import de.unipassau.testify.test_case.type.AbstractEnum;
-import de.unipassau.testify.test_case.type.traits.AbstractTrait;
+import de.unipassau.testify.test_case.type.traits.std.clone.Clone;
+import de.unipassau.testify.test_case.type.traits.std.marker.Copy;
 import java.util.Collections;
 import java.util.Set;
 
@@ -14,8 +15,8 @@ public class Infallible extends AbstractEnum {
         Collections.emptyList(),
         false,
         Set.of(
-            new AbstractTrait("std::marker::Copy"),
-            new AbstractTrait("std::clone::Clone")
+            Copy.getInstance(),
+            Clone.getInstance()
         )
         );
   }

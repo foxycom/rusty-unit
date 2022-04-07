@@ -169,15 +169,20 @@ public interface Statement {
     usableVariables.remove(currentVar);
 
     int numParamsOfThatType = numParamsOfType(paramType);
+
     // If there are fewer objects than parameters of that type,
     // we consider adding an instance
-    while (numParamsOfThatType + 1 > usableVariables.size()) {
+
+    // Try it max 3 times
+    int counter = 0;
+    while (counter < 3 && numParamsOfThatType + 1 > usableVariables.size()) {
       logger.info("Too few usable variables, trying to generate another one");
-      var var = testCase().generateArg(paramType);
+      var var = testCase().getArg(paramType, position());
       if (var.isPresent() && var.get().position() < position()) {
         usableVariables.add(var.get());
         logger.info("Generated variable of type {}", var.get().type());
       }
+      counter++;
     }
 
     if (usableVariables.isEmpty()) {

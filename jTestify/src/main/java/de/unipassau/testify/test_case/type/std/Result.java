@@ -3,38 +3,42 @@ package de.unipassau.testify.test_case.type.std;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.type.AbstractEnum;
 import de.unipassau.testify.test_case.type.Generic;
-import de.unipassau.testify.test_case.type.traits.AbstractTrait;
 import de.unipassau.testify.test_case.type.Type;
+import de.unipassau.testify.test_case.type.traits.std.clone.Clone;
+import de.unipassau.testify.test_case.type.traits.std.cmp.Eq;
+import de.unipassau.testify.test_case.type.traits.std.cmp.Ord;
+import de.unipassau.testify.test_case.type.traits.std.cmp.PartialEq;
+import de.unipassau.testify.test_case.type.traits.std.cmp.PartialOrd;
+import de.unipassau.testify.test_case.type.traits.std.fmt.Debug;
+import de.unipassau.testify.test_case.type.traits.std.hash.Hash;
+import de.unipassau.testify.test_case.type.traits.std.iter.IntoIterator;
+import de.unipassau.testify.test_case.type.traits.std.marker.Copy;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
 public class Result extends AbstractEnum {
-
-  private static final List<Type> stdGenerics = List.of(
-      new Generic("T", Collections.emptyList()),
-      new Generic("E", Collections.emptyList())
-  );
+  public static final Generic T = new Generic("T", Collections.emptyList());
+  public static final Generic E = new Generic("E", Collections.emptyList());
+  public static final EnumVariant OK = new TupleEnumVariant("Ok", List.of(new Param(T, false, null)));
+  public static final EnumVariant ERR = new TupleEnumVariant("Err", List.of(new Param(E, false, null)));
+  private static final List<Type> stdGenerics = List.of(T, E);
 
   public Result() {
     super(
         "std::result::Result",
         stdGenerics,
-        List.of(
-            new TupleEnumVariant("Ok", List.of(new Param(stdGenerics.get(0), false, null))),
-            new TupleEnumVariant("Err", List.of(new Param(stdGenerics.get(1), false, null)))
-        ),
+        List.of(OK, ERR),
         false,
         Set.of(
-            new AbstractTrait("std::clone::Clone"),
-            new AbstractTrait("std::marker::Copy"),
-            new AbstractTrait("std::cmp::Eq"),
-            new AbstractTrait("std::cmp::PartialEq"),
-            new AbstractTrait("std::hash::Hash"),
-            new AbstractTrait("std::cmp::Ord"),
-            new AbstractTrait("std::cmp::PartialOrd"),
-            new AbstractTrait("std::iter::IntoIterator"),
-            new AbstractTrait("std::fmt::Debug")
+            Clone.getInstance(),
+            Copy.getInstance(),
+            Eq.getInstance(),
+            PartialEq.getInstance(),
+            Hash.getInstance(),
+            Ord.getInstance(),
+            IntoIterator.getInstance(),
+            Debug.getInstance()
         )
     );
   }

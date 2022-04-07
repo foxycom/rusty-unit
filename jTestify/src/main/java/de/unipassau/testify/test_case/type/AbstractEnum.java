@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.json.EnumVariantDeserializer;
 import de.unipassau.testify.test_case.Param;
-import de.unipassau.testify.test_case.type.traits.AbstractTrait;
 import de.unipassau.testify.test_case.type.traits.Trait;
 import java.util.Collections;
 import java.util.List;

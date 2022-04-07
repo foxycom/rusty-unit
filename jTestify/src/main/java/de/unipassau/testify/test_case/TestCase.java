@@ -4,12 +4,15 @@ import static de.unipassau.testify.Constants.P_LOCAL_VARIABLES;
 import static java.util.stream.Collectors.toCollection;
 
 import com.google.common.base.Preconditions;
+import de.unipassau.testify.Constants;
 import de.unipassau.testify.generators.TestIdGenerator;
 import de.unipassau.testify.hir.TyCtxt;
 import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome;
+import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
 import de.unipassau.testify.metaheuristics.operators.Crossover;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
 import de.unipassau.testify.mir.BasicBlock;
+import de.unipassau.testify.mir.MirAnalysis;
 import de.unipassau.testify.test_case.callable.ArrayInit;
 import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.Method;
@@ -20,7 +23,6 @@ import de.unipassau.testify.test_case.statement.Statement;
 import de.unipassau.testify.test_case.type.Array;
 import de.unipassau.testify.test_case.type.Generic;
 import de.unipassau.testify.test_case.type.Ref;
-import de.unipassau.testify.test_case.type.traits.AbstractTrait;
 import de.unipassau.testify.test_case.type.Tuple;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.TypeBinding;
@@ -58,17 +60,19 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
   private int id;
   private List<Statement> statements;
-  private Map<BasicBlock, Double> coverage;
+  private Map<MinimizingFitnessFunction<TestCase>, Double> coverage;
+  private MirAnalysis<TestCase> mir;
   private boolean fails;
 
   public TestCase(int id, TyCtxt tyCtxt, Mutation<TestCase> mutation,
-      Crossover<TestCase> crossover) {
+      Crossover<TestCase> crossover, MirAnalysis<TestCase> mir) {
     super(mutation, crossover);
 
     this.id = id;
     this.tyCtxt = tyCtxt;
     this.statements = new ArrayList<>();
     this.coverage = new HashMap<>();
+    this.mir = mir;
 
     System.out.printf("Generated test %d%n", id);
   }
@@ -80,6 +84,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     this.statements = other.statements.stream().map(s -> s.copy(this))
         .collect(toCollection(ArrayList::new));
     this.coverage = new HashMap<>();
+    this.mir = other.mir;
     this.fails = false;
   }
 
@@ -102,6 +107,10 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
   public void setFails(boolean fails) {
     this.fails = fails;
+  }
+
+  public MirAnalysis<TestCase> mir() {
+    return mir;
   }
 
   @Override
@@ -149,7 +158,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     coverage.put(branch, distance);
   }
 
-  public void setCoverage(Map<BasicBlock, Double> coverage) {
+  public void setCoverage(Map<MinimizingFitnessFunction<TestCase>, Double> coverage) {
     if (coverage == null) {
       return;
     }
@@ -267,7 +276,35 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   }
 
   public String getName() {
-    return String.format("rusty_test_%d", id);
+    return String.format("%s_%d", Constants.TEST_PREFIX, id);
+  }
+
+  public VarReference referenceVariable(VarReference variable, boolean mutable) {
+    if (variable.testCase() == this) {
+      throw new IllegalStateException("The test does not contain this variable");
+    }
+
+    if (variable.type().isRef()) {
+      throw new RuntimeException("Referencing variable cannot be referenced");
+    }
+
+    RefItem refItem;
+    if (mutable) {
+      refItem = RefItem.MUTABLE;
+    } else {
+      refItem = RefItem.IMMUTABLE;
+    }
+
+    var typeBinding = new TypeBinding();
+    typeBinding.bindGeneric(RefItem.T, variable.type());
+
+    var returnType = new Ref(variable.type(), mutable);
+    var returnValue = createVariable(returnType);
+    returnValue.setBinding(typeBinding);
+
+    var stmt = refItem.toStmt(this, Collections.singletonList(variable), returnValue);
+    addStmt(stmt);
+    return returnValue;
   }
 
   public Set<Type> instantiatedTypes() {
@@ -515,10 +552,54 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         .toList();
   }
 
+  /**
+   * Either looks for an existing usable variable or creates a new variable to use as argument
+   * for the given type.
+   *
+   * @param type The type to get an argument for.
+   * @param usableBeforeLine The line number the possible argument shall be usable until (exclusively).
+   * @return Argument if possible.
+   */
+  public Optional<VarReference> getArg(Type type, int usableBeforeLine) {
+    Optional<VarReference> arg = Optional.empty();
+    if (type.isRef()) {
+      var borrowableVariables = borrowableVariablesOfType(type, usableBeforeLine);
+      if (!borrowableVariables.isEmpty()) {
+        var rawArg = Rnd.choice(borrowableVariables);
+        arg = Optional.of(referenceVariable(rawArg, true));
+      }
+    } else {
+      var consumableVariables = consumableVariablesOfType(type, usableBeforeLine);
+      if (!consumableVariables.isEmpty()) {
+        arg = Optional.of(Rnd.choice(consumableVariables));
+      }
+    }
+
+    if (arg.isPresent()) {
+      return arg;
+    } else {
+      return generateArg(type);
+    }
+  }
+
+  /**
+   * Creates a new variable as argument for the given parameter.
+   *
+   * @param param The parameter to create an argument for.
+   * @return Generated argument if successful.
+   */
   public Optional<VarReference> generateArg(Param param) {
     return generateArg(Objects.requireNonNull(param), new HashSet<>());
   }
 
+  /**
+   * Creates a new variable as argument for the given parameter. Also considers types that are
+   * being initialized recursively, such that we avoid infinite loops while creating dependencies.
+   *
+   * @param param The parameter to create an argument for.
+   * @param typesToGenerate Types that are already being generated.
+   * @return Generated argument if possible.
+   */
   private Optional<VarReference> generateArg(Param param,
       Set<Type> typesToGenerate) {
     logger.debug("({}) Starting to generate an argument for param {}", id, param);
@@ -529,9 +610,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       throw new RuntimeException("Not allowed");
     } else {
       var generators = tyCtxt.generatorsOf(param.getType(), getFilePathBinding().orElse(null));
-      /*if (generators.isEmpty()) {
-        generators = hirAnalysis.wrappingGeneratorsOf(param.getType(), getFilePathBinding().orElse(null));
-      }*/
       return generateArgFromGenerators(param.getType(), generators, typesToGenerate);
     }
   }
@@ -642,9 +720,9 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     // TODO: 27.02.22 1) [T; N] where T: Default (and N <= 32)
     // TODO: 27.02.22  [T; N] where T: Copy
     // TODO: 27.02.22 literal array init
-    if (array.implementedTraits().contains(Default.INSTANCE)) {
+    if (array.implementedTraits().contains(Default.getInstance())) {
       throw new RuntimeException("Not implemented");
-    } else if (array.implementedTraits().contains(Copy.INSTANCE)) {
+    } else if (array.implementedTraits().contains(Copy.getInstance())) {
       throw new RuntimeException("Not implemented");
     } else {
       var arrayInit = new ArrayInit(array);
@@ -753,17 +831,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     }
 
     var type = Rnd.choice(possibleTypes);
-    var boundedGenerics = type.generics().stream()
-        .map(g -> getTypeFor(g.asGeneric()))
-        .filter(Optional::isPresent)
-        .map(Optional::get)
-        .toList();
-
-    if (boundedGenerics.size() != type.generics().size()) {
-      return Optional.empty();
-    }
-
-    return Optional.of(type.replaceGenerics(boundedGenerics));
+    return Optional.of(type);
   }
 
   private VarReference generatePrimitive(Prim prim) {
@@ -851,16 +919,9 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
     var args = generator.getParams().stream()
         .map(p -> {
-          var usableVars = unconsumedVariablesOfType(p.getType());
-          if (!instantiatedTypes().contains(p.getType()) || usableVars.isEmpty()) {
-            var extendedTypesToGenerate = new HashSet<>(typesToGenerate);
-            extendedTypesToGenerate.add(type);
-            return generateArg(p.getType().bindGenerics(typeBinding), extendedTypesToGenerate);
-          } else {
-            // TODO check if those are used
-            var var = Rnd.choice(usableVars);
-            return Optional.of(var);
-          }
+          var extendedTypesToGenerate = new HashSet<>(typesToGenerate);
+          extendedTypesToGenerate.add(type);
+          return generateArg(p.getType().bindGenerics(typeBinding), extendedTypesToGenerate);
         })
         .filter(Optional::isPresent)
         .map(Optional::get)
@@ -944,7 +1005,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     return this;
   }
 
-  public Map<BasicBlock, Double> getCoverage() {
+  public Map<MinimizingFitnessFunction<TestCase>, Double> branchDistance() {
     return coverage;
   }
 }

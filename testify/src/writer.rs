@@ -9,7 +9,12 @@ use crate::types::{Callable, Trait};
 #[derive(Builder, Serialize)]
 pub struct MirObject {
   global_id: String,
+  #[cfg(feature = "analysis")]
   cdg: String,
+  #[cfg(feature = "analysis")]
+  cfg: String,
+  #[cfg(feature = "analysis")]
+  truncated_cfg: String,
   locals: Vec<String>,
   basic_blocks: Vec<String>,
 }

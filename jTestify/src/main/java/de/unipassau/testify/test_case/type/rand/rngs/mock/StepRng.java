@@ -15,21 +15,9 @@ public enum StepRng implements Struct {
   INSTANCE;
 
   private static final Set<Trait> implementedTraits = Set.of(
-      Rng.INSTANCE,
-      RngCore.INSTANCE
+      Rng.getInstance(),
+      RngCore.getInstance()
   );
-//
-//  public StepRng() {
-//    super(
-//        "rand::rngs::mock::StepRng",
-//        Collections.emptyList(),
-//        false,
-//        Set.of(
-//            AllTraits.byName("rand::Rng").orElseThrow(),
-//            AllTraits.byName("rand::RngCore").orElseThrow()
-//        )
-//    );
-//  }
 
   @Override
   public String getName() {
@@ -63,7 +51,7 @@ public enum StepRng implements Struct {
 
   @Override
   public Type copy() {
-    throw new RuntimeException("copy is not implemented");
+    return INSTANCE;
   }
 
   @Override

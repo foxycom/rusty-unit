@@ -109,8 +109,8 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
 }
 
 fn allowed_item(item: &Item<'_>, tcx: &TyCtxt<'_>) -> bool {
-  let item_name = item_to_name(item, &tcx);
-  !item_name.contains("serde") && !item_name.contains("test")
+  let item_name = item_to_name(item, &tcx).to_lowercase();
+  !item_name.contains("serde") && !item_name.contains("test") && !item_name.contains("snafu")
 }
 
 fn analyze_fn(

@@ -48,13 +48,14 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
   }
 
   private int collectCoverageFiles(File directory) throws IOException, InterruptedException {
-    var processBuilder = new ProcessBuilder("cargo", "+nightly-aarch64-apple-darwin", "test",
-        "rusty_tests").directory(directory).redirectOutput(LOG_PATH.toFile())
+    var processBuilder = new ProcessBuilder("cargo", Constants.RUST_TOOLCHAIN, "test",
+        Constants.TEST_MOD_NAME).directory(directory).redirectOutput(LOG_PATH.toFile())
         .redirectError(ERROR_PATH.toFile());
     var env = processBuilder.environment();
     env.put("RUSTFLAGS", "-Z instrument-coverage");
-    env.put("LLVM_PROFILE_FILE",
-        Paths.get(COVERAGE_DIR.toString(), "rusty-test-%m.profraw").toString());
+
+    var profRawFileName = String.format("%s-%%m.profraw", Constants.TEST_PREFIX.replace("_", "-"));
+    env.put("LLVM_PROFILE_FILE", Paths.get(COVERAGE_DIR.toString(), profRawFileName).toString());
 
     var process = processBuilder.start();
     return process.waitFor();
@@ -73,7 +74,8 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
 //        .collect(Collectors.joining(" "));
     var profRawFiles = Paths.get(COVERAGE_DIR.toFile().getCanonicalPath(), "rusty-test*.profraw");
     var command = String.format(
-        "cargo +nightly-aarch64-apple-darwin profdata -- merge -sparse %s -o %s",
+        "cargo %s profdata -- merge -sparse %s -o %s",
+        Constants.RUST_TOOLCHAIN,
         profRawFiles,
         Paths.get(COVERAGE_DIR.toFile().getCanonicalPath(), "rusty-tests.profdata"));
 
@@ -144,8 +146,9 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
 
   private Optional<List<Integer>> executeTestsWithInstrumentation(File directory, String crateName)
       throws IOException, InterruptedException, TestCaseDoesNotCompileException {
-    var processBuilder = new ProcessBuilder("cargo", "+nightly-aarch64-apple-darwin", "test",
-        "rusty_tests")
+    System.out.println("Running cargo");
+    var processBuilder = new ProcessBuilder("cargo", Constants.RUST_TOOLCHAIN, "test",
+        Constants.TEST_MOD_NAME)
         .directory(directory)
         .redirectError(ERROR_PATH.toFile());
 
@@ -159,6 +162,7 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
     var output = IOUtils.toString(process.getInputStream(), Charset.defaultCharset());
     var statusCode = process.waitFor();
 
+    System.out.println("Cargo exited");
     if (statusCode != 0) {
       if (output.contains("test result: FAILED.")) {
         // Some tests failed
@@ -202,7 +206,7 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
     }
 
     failedTests.ifPresent(tests -> logger.info(tests.size() + " tests failed"));
-    var coverage = RedisStorage.requestTraces();
+    var coverage = RedisStorage.<TestCase>requestTraces();
 
     for (TestCase testCase : container.chromosomes()) {
       failedTests.ifPresent(tests -> {

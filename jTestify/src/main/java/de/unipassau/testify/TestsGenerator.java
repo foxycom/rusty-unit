@@ -58,7 +58,7 @@ public class TestsGenerator {
     var crossover = new SinglePointFixedCrossover();
     var selection = new RankSelection<>(objectives, svd, preferenceSorter);
     var populationGenerator = new FixedSizePopulationGenerator<>(
-        new TestCaseGenerator(hir, mutation, crossover), POPULATION_SIZE);
+        new TestCaseGenerator(hir, mir, mutation, crossover), POPULATION_SIZE);
 
     var uncoveredObjectives = new UncoveredObjectives<>(objectives);
     var offspringGenerator = new OffspringGeneratorImpl(selection, uncoveredObjectives);
@@ -105,7 +105,7 @@ public class TestsGenerator {
     var crossover = new SinglePointFixedCrossover();
     var selection = new RankSelection<>(objectives, svd, preferenceSorter);
     var populationGenerator = new FixedSizePopulationGenerator<>(
-        new TestCaseGenerator(hir, mutation, crossover), POPULATION_SIZE);
+        new TestCaseGenerator(hir, mir, mutation, crossover), POPULATION_SIZE);
 
     var uncoveredObjectives = new UncoveredObjectives<>(objectives);
     var offspringGenerator = new OffspringGeneratorImpl(selection, uncoveredObjectives);

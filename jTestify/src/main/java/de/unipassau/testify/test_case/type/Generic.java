@@ -1,7 +1,6 @@
 package de.unipassau.testify.test_case.type;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import de.unipassau.testify.test_case.type.traits.AbstractTrait;
 import de.unipassau.testify.test_case.type.traits.Trait;
 import de.unipassau.testify.test_case.type.traits.std.marker.Sized;
 import java.util.Collections;
@@ -22,7 +21,7 @@ public class Generic implements Type {
 
   public Generic(String name, List<Trait> bounds) {
     this.name = name;
-    this.bounds = bounds.stream().filter(bound -> !bound.getName().equals(Sized.INSTANCE.getName()))
+    this.bounds = bounds.stream().filter(bound -> !bound.equals(Sized.getInstance()))
         .toList();
   }
 
@@ -155,6 +154,6 @@ public class Generic implements Type {
 
   public void setBounds(List<Trait> bounds) {
     this.bounds = bounds.stream()
-        .filter(bound -> !bound.getName().equals(Sized.INSTANCE.getName())).toList();
+        .filter(bound -> !bound.equals(Sized.getInstance())).toList();
   }
 }

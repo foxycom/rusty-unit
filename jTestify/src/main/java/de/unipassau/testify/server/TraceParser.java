@@ -1,15 +1,18 @@
 package de.unipassau.testify.server;
 
+import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome;
+import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
 import de.unipassau.testify.mir.BasicBlock;
 import org.javatuples.Triplet;
 
 public class TraceParser {
 
   /**
-   * A branch line example: <test id> $<global id>$ branch[<block id> <distance>]
-   * A root line example: <test id> $<global id>$ root
+   * A branch line example: <test id> $<global id>$ branch[<block id> <distance>] A root line
+   * example: <test id> $<global id>$ root
    */
-  public static Triplet<Integer, BasicBlock, Double> parse(String line) {
+  public static <C extends AbstractTestCaseChromosome<C>> Triplet<Integer, MinimizingFitnessFunction<C>, Double> parse(
+      String line) {
     int testId;
     try {
       testId = Integer.parseInt(line.substring(0, line.indexOf(" ")));
@@ -30,7 +33,7 @@ public class TraceParser {
 
       return Triplet.with(
           testId,
-          BasicBlock.of(globalId, blockId),
+          (MinimizingFitnessFunction<C>) BasicBlock.of(globalId, blockId),
           distance
       );
     } else if (line.startsWith("root")) {
@@ -40,7 +43,7 @@ public class TraceParser {
 
       return Triplet.with(
           testId,
-          BasicBlock.of(globalId, 0),
+          (MinimizingFitnessFunction<C>) BasicBlock.of(globalId, 0),
           0.0
       );
     } else {

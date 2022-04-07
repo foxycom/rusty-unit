@@ -1,6 +1,7 @@
 package de.unipassau.testify.test_case.visitor;
 
 import com.google.common.collect.Streams;
+import de.unipassau.testify.Constants;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
 import de.unipassau.testify.test_case.statement.Statement;
@@ -57,10 +58,8 @@ public class TestCaseVisitor implements Visitor {
 
   @Override
   public String visitTestCase(TestCase testCase) {
-    if (testCase.getId() == 13) {
-      System.out.println();
-    }
     var sb = new StringBuilder("#[test]\n");
+    //sb.append("#[timeout(").append(Constants.TEST_TIMEOUT).append(")]\n");
     sb.append("fn ").append(testCase.getName()).append("() {\n");
 
     sb.append("    rusty_monitor::set_test_id(").append(testCase.getId()).append(");\n");

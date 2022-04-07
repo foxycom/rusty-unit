@@ -6,26 +6,18 @@ import de.unipassau.testify.test_case.type.traits.Trait;
 import java.util.Collections;
 import java.util.List;
 
-public enum Clone implements Trait {
-  INSTANCE;
+public class Clone extends Trait {
+  private static final Clone instance = new Clone();
 
-  private static final String NAME = "std::clone::Clone";
-  private static final List<Type> GENERICS = Collections.emptyList();
-  private static final List<AssociatedType> ASSOCIATED_TYPES = Collections.emptyList();
-
-
-  @Override
-  public String getName() {
-    return NAME;
+  public static Clone getInstance() {
+    return instance;
   }
 
-  @Override
-  public List<Type> generics() {
-    return GENERICS;
-  }
-
-  @Override
-  public List<AssociatedType> associatedTypes() {
-    return ASSOCIATED_TYPES;
+  private Clone() {
+    super(
+        "std::clone::Clone",
+        Collections.emptyList(),
+        Collections.emptyList()
+    );
   }
 }
