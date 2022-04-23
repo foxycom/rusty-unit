@@ -52,8 +52,8 @@ public record BasicBlock(String globalId, int blockId) implements
         return Double.MAX_VALUE;
       }
 
-      int approachLevel = pathToThis.size() - parentIndex.getAsInt() - 1;
-      Preconditions.checkState(approachLevel >= 0);
+      int approachLevel = pathToThis.size() - parentIndex.getAsInt();
+      Preconditions.checkState(approachLevel > 0);
       return approachLevel + normalize(testCase.branchDistance().get(pathToThis.get(parentIndex.getAsInt())));
     }
   }
