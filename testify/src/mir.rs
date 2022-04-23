@@ -68,7 +68,6 @@ pub const CUSTOM_OPT_MIR: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<
           .map(|(block, data)| format!("{} -> {:?}", block.as_usize(), data))
           .collect::<Vec<_>>();
 
-
       if cfg!(file_writer) {
         let path = Path::new(DOT_DIR).join(format!("{}.dot", &global_id));
         visualize_graph(&cdg, &global_id);
@@ -531,7 +530,7 @@ impl<'tcx> MirVisitor<'tcx> {
         self.mk_trace_statements_binary_op(target_block, op, left, right, is_true_branch)
       }
       ValueDef::Const(ty, val) => {
-        todo!("Const (ty: {:?}, val: {:?})", ty, val)
+        (vec![], vec![])
       }
 
       ValueDef::Discriminant(_) => {
@@ -659,7 +658,9 @@ impl<'tcx> MirVisitor<'tcx> {
                 // during the execution
                 return Some(ValueDef::Var(*var));
               }
-              ConstantKind::Val(_, _) => todo!(),
+              ConstantKind::Val(const_value, ty) => {
+                return Some(ValueDef::Const(*ty, ConstKind::Value(*const_value)));
+              },
             },
             Operand::Move(place) | Operand::Copy(place) => {
               //let place = self.get_place(operand).unwrap();
@@ -1043,6 +1044,10 @@ fn find_trace_enum_fn(tcx: &TyCtxt<'_>) -> DefId {
   find_monitor_fn_by_name(tcx, "trace_branch_enum")
 }
 
+fn find_trace_const(tcx: &TyCtxt<'_>) -> DefId {
+  find_monitor_fn_by_name(tcx, "trace_const")
+}
+
 fn find_trace_fn_for(tcx: &TyCtxt<'_>, value_def: &ValueDef<'_>) -> DefId {
   match value_def {
     ValueDef::BinaryOp(_, _, _) => find_trace_bool_fn(tcx),
@@ -1051,6 +1056,7 @@ fn find_trace_fn_for(tcx: &TyCtxt<'_>, value_def: &ValueDef<'_>) -> DefId {
     ValueDef::Field(_, _) => find_trace_enum_fn(tcx),
     ValueDef::Call => find_trace_enum_fn(tcx),
     ValueDef::Var(_) => find_trace_enum_fn(tcx),
+    ValueDef::Const(_, _) => find_trace_const(tcx),
     _ => {
       todo!("Value def is {:?}", value_def)
     }
@@ -1062,15 +1068,6 @@ fn find_trace_branch_hit_fn(tcx: &TyCtxt<'_>) -> DefId {
 }
 
 fn is_rusty_monitor(hir_id: HirId, tcx: &TyCtxt<'_>) -> bool {
-  /*let name = tcx.hir().name(hir_id).as_str();
-  if name == "testify_monitor" {
-      true
-  } else if name == "additions" {
-      false
-  } else {
-      let parent = tcx.parent_module(hir_id);
-      is_testify_monitor(tcx.hir().local_def_id_to_hir_id(parent), tcx)
-  }*/
   let name = format!("{:?}", hir_id);
   name.contains("rusty_monitor")
 }
@@ -1228,7 +1225,7 @@ impl<'a> From<&Operand<'a>> for ValueDef<'a> {
           let val = constant_ty.val();
           ValueDef::Const(ty, val)
         }
-        ConstantKind::Val(_, _) => todo!(),
+        ConstantKind::Val(const_value, ty) => ValueDef::Const(*ty, ConstKind::Value(*const_value)),
       },
     }
   }

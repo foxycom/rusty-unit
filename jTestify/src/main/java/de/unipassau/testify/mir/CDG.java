@@ -116,7 +116,7 @@ public class CDG<M extends MinimizingFitnessFunction<C>, C extends AbstractTestC
    */
   public List<M> pathTo(M target) {
     var path = DijkstraShortestPath.findPathBetween(graph, root(), target);
-    Preconditions.checkNotNull(path);
+
     return path.getVertexList();
   }
 

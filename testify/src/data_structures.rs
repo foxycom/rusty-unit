@@ -407,7 +407,7 @@ pub fn cdg(cfg: &Graph<usize, usize>) -> Graph<usize, usize> {
       .unwrap();
   // println!("Root is {}", cfg.node_weight(root).unwrap());
   let dominators = simple_fast(&reversed_cfg, root);
-
+  println!("Dominators: {:?}", &dominators);
   let cfg_edges = cfg
       .edge_indices()
       .filter(|edge| {
@@ -420,6 +420,8 @@ pub fn cdg(cfg: &Graph<usize, usize>) -> Graph<usize, usize> {
         }
       })
       .collect::<Vec<_>>();
+  let cfg_edges_debug = cfg_edges.iter().map(|e| cfg.edge_endpoints(*e).unwrap()).collect::<Vec<_>>();
+  println!("CFG edges: {:?}", &cfg_edges_debug);
 
   let mut cdg = Graph::new();
   let mut cdg_table = HashMap::new();
@@ -434,7 +436,6 @@ pub fn cdg(cfg: &Graph<usize, usize>) -> Graph<usize, usize> {
     let b_dominators = dominators.dominators(b).unwrap().collect::<Vec<_>>();
 
     let lca = lca(&a_dominators, &b_dominators).unwrap();
-
     let a_name = *cfg.node_weight(a).unwrap();
     let a_index = *cdg_table
         .entry(a_name)
@@ -478,6 +479,7 @@ pub fn cdg(cfg: &Graph<usize, usize>) -> Graph<usize, usize> {
         cdg.add_edge(entry_index, index, 1usize);
       });
 
+  println!("{}", Dot::new(&cdg));
   cdg
 }
 
