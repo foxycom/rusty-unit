@@ -1,7 +1,7 @@
 use petgraph::algo::dominators::{simple_fast};
 use petgraph::dot::Dot;
 use petgraph::graph::NodeIndex;
-use petgraph::{Direction, Graph};
+use petgraph::{Direction, EdgeDirection, Graph};
 use rustc_data_structures::graph::WithSuccessors;
 use rustc_middle::mir::{BasicBlock, Body, TerminatorKind};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -12,6 +12,7 @@ use std::iter::{FromIterator};
 use std::path::Path;
 use std::process::Command;
 use log::{debug, error};
+use petgraph::data::DataMap;
 use rustc_ast::ptr::P;
 use rustc_middle::ty::layout::MaybeResult;
 use crate::DOT_DIR;
@@ -449,8 +450,10 @@ pub fn cdg(cfg: &Graph<usize, usize>) -> Graph<usize, usize> {
           let b_index = *cdg_table
               .entry(b_name)
               .or_insert_with(|| cdg.add_node(b_name));
-          cdg.add_edge(a_index, b_index, 1usize);
-          dependent_nodes.insert(b_name);
+          if !has_outgoing_edges(&cdg, b_index) {
+            cdg.add_edge(a_index, b_index, 1usize);
+            dependent_nodes.insert(b_name);
+          }
         });
 
     if lca == a {
@@ -458,8 +461,10 @@ pub fn cdg(cfg: &Graph<usize, usize>) -> Graph<usize, usize> {
       let lca_index = *cdg_table
           .entry(lca_name)
           .or_insert_with(|| cdg.add_node(lca_name));
-      cdg.add_edge(a_index, lca_index, 1usize);
-      dependent_nodes.insert(lca_name);
+      if !has_outgoing_edges(&cdg, lca_index) {
+        cdg.add_edge(a_index, lca_index, 1usize);
+        dependent_nodes.insert(lca_name);
+      }
     }
   }
 
@@ -481,6 +486,10 @@ pub fn cdg(cfg: &Graph<usize, usize>) -> Graph<usize, usize> {
 
   println!("{}", Dot::new(&cdg));
   cdg
+}
+
+fn has_outgoing_edges<N, E>(g: &Graph<N, E>, n: NodeIndex) -> bool {
+  g.edges_directed(n, Direction::Outgoing).count() > 0
 }
 
 pub fn lca<T: PartialEq + Copy>(a_seq: &[T], b_seq: &[T]) -> Option<T> {
