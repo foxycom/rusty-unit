@@ -8,8 +8,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.javatuples.Pair;
 
 public class FNDSImpl<C extends AbstractTestCaseChromosome<C>> implements FNDS<C> {
+
   private final DominationStrategy<C> domination;
 
   public FNDSImpl(DominationStrategy<C> domination) {

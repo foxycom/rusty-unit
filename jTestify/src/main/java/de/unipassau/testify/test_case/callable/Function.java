@@ -9,6 +9,7 @@ import de.unipassau.testify.test_case.statement.FunctionStmt;
 import de.unipassau.testify.test_case.statement.Statement;
 import de.unipassau.testify.test_case.type.Type;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @JsonDeserialize(as = Function.class)
@@ -117,4 +118,5 @@ public class Function implements Callable {
     }
     return String.format("%s(%s) -> %s", name, paramsStr, returnStr);
   }
+
 }

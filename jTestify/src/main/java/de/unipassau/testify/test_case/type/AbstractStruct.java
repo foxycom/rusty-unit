@@ -97,4 +97,22 @@ public class AbstractStruct implements Struct {
   public boolean isLocal() {
     return isLocal;
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof AbstractStruct)) {
+      return false;
+    }
+    AbstractStruct that = (AbstractStruct) o;
+    return isLocal == that.isLocal && name.equals(that.name) && generics.equals(that.generics)
+        && implementedTraits.equals(that.implementedTraits);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, generics, isLocal, implementedTraits);
+  }
 }

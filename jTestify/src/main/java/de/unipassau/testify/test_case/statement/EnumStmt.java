@@ -237,4 +237,22 @@ public class EnumStmt implements Statement {
   public int position() {
     return testCase.stmtPosition(this).orElseThrow();
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof EnumStmt)) {
+      return false;
+    }
+    EnumStmt enumStmt = (EnumStmt) o;
+    return id.equals(enumStmt.id) && Objects.equals(returnValue, enumStmt.returnValue)
+        && args.equals(enumStmt.args) && enumInit.equals(enumStmt.enumInit);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id, returnValue, args, enumInit);
+  }
 }

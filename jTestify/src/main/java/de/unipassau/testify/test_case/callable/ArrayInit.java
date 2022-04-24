@@ -8,6 +8,7 @@ import de.unipassau.testify.test_case.statement.array.DirectArrayInitStmt;
 import de.unipassau.testify.test_case.type.Array;
 import de.unipassau.testify.test_case.type.Type;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -80,5 +81,22 @@ public class ArrayInit implements Callable {
   @Override
   public Statement toStmt(TestCase testCase, List<VarReference> args, VarReference returnValue) {
     return new DirectArrayInitStmt(testCase, args, returnValue, this);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof ArrayInit)) {
+      return false;
+    }
+    ArrayInit arrayInit = (ArrayInit) o;
+    return array.equals(arrayInit.array) && params.equals(arrayInit.params);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(array, params);
   }
 }

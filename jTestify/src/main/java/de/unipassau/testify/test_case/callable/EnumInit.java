@@ -127,4 +127,22 @@ public class EnumInit implements Callable {
 
     return sb.toString();
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof EnumInit)) {
+      return false;
+    }
+    EnumInit enumInit = (EnumInit) o;
+    return isPublic == enumInit.isPublic && type.equals(enumInit.type) && variant.equals(
+        enumInit.variant);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(type, variant, isPublic);
+  }
 }

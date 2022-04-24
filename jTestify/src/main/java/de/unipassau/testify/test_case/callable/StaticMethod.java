@@ -133,4 +133,22 @@ public class StaticMethod implements Callable {
     }
     return String.format("%s::%s(%s) -> %s", parent.fullName(), name, paramsStr, returnStr);
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof StaticMethod)) {
+      return false;
+    }
+    StaticMethod that = (StaticMethod) o;
+    return isPublic == that.isPublic && name.equals(that.name) && params.equals(that.params)
+        && Objects.equals(returnType, that.returnType) && parent.equals(that.parent);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, params, returnType, parent, isPublic);
+  }
 }

@@ -9,6 +9,7 @@ import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.util.Rnd;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -159,5 +160,22 @@ public class PrimitiveStmt implements Statement {
   @Override
   public int position() {
     return testCase.stmtPosition(this).orElseThrow();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof PrimitiveStmt)) {
+      return false;
+    }
+    PrimitiveStmt that = (PrimitiveStmt) o;
+    return id.equals(that.id) && varReference.equals(that.varReference) && value.equals(that.value);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id, varReference, value);
   }
 }

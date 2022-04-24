@@ -3,16 +3,25 @@ package de.unipassau.testify.mir;
 import com.google.common.base.Preconditions;
 import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
 import de.unipassau.testify.test_case.TestCase;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.IntStream;
 
-public record BasicBlock(String globalId, int blockId) implements
+public class BasicBlock implements
     MinimizingFitnessFunction<TestCase> {
 
   private static final int DUMMY_ID = 42069;
+  private final String globalId;
 
-  public BasicBlock {
+  private final int blockId;
+
+  public BasicBlock(String globalId, int blockId) {
     Preconditions.checkState(blockId >= 0);
+    this.globalId = globalId;
+    this.blockId = blockId;
   }
 
   public static BasicBlock of(String globalId, int blockId) {
@@ -54,12 +63,39 @@ public record BasicBlock(String globalId, int blockId) implements
 
       int approachLevel = pathToThis.size() - parentIndex.getAsInt();
       Preconditions.checkState(approachLevel > 0);
-      return approachLevel + normalize(testCase.branchDistance().get(pathToThis.get(parentIndex.getAsInt())));
+
+      var fitness = approachLevel + normalize(testCase.branchDistance().get(pathToThis.get(parentIndex.getAsInt())));
+      return fitness;
     }
+  }
+
+  public String globalId() {
+    return globalId;
+  }
+
+  public int blockId() {
+    return blockId;
   }
 
   @Override
   public String id() {
     return globalId;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof BasicBlock)) {
+      return false;
+    }
+    BasicBlock that = (BasicBlock) o;
+    return blockId == that.blockId && globalId.equals(that.globalId);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(globalId, blockId);
   }
 }

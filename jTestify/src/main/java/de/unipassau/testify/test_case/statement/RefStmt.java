@@ -7,6 +7,7 @@ import de.unipassau.testify.test_case.callable.RefItem;
 import de.unipassau.testify.test_case.type.Type;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -147,4 +148,21 @@ public class RefStmt implements Statement {
     return testCase.stmtPosition(this).orElseThrow();
   }
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof RefStmt)) {
+      return false;
+    }
+    RefStmt refStmt = (RefStmt) o;
+    return arg.equals(refStmt.arg) && refItem == refStmt.refItem && returnValue.equals(
+        refStmt.returnValue) && id.equals(refStmt.id);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(arg, refItem, returnValue, id);
+  }
 }

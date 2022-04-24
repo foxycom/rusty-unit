@@ -142,4 +142,22 @@ public class Method implements Callable {
     }
     return String.format("%s::%s(%s) -> %s", parent.fullName(), name, paramsStr, returnStr);
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof Method)) {
+      return false;
+    }
+    Method method = (Method) o;
+    return isPublic == method.isPublic && params.equals(method.params) && Objects.equals(
+        returnType, method.returnType) && parent.equals(method.parent) && name.equals(method.name);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(params, returnType, parent, name, isPublic);
+  }
 }

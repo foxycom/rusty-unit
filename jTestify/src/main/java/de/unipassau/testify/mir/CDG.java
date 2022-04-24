@@ -26,9 +26,11 @@ import org.json.JSONObject;
 public class CDG<M extends MinimizingFitnessFunction<C>, C extends AbstractTestCaseChromosome<C>> {
 
   private final Graph<M, DefaultEdge> graph;
+  private final Map<M, List<M>> cache;
 
   public CDG(Graph<M, DefaultEdge> graph) {
     this.graph = graph;
+    this.cache = new HashMap<>();
   }
 
   // {"nodes":[18446744073709551615,0,1,2],"node_holes":[],"edge_property":"directed","edges":[[0,1,1],[0,2,1],[0,3,1],[0,0,1]]}
@@ -115,9 +117,14 @@ public class CDG<M extends MinimizingFitnessFunction<C>, C extends AbstractTestC
    * @return The path in the CDG.
    */
   public List<M> pathTo(M target) {
-    var path = DijkstraShortestPath.findPathBetween(graph, root(), target);
+    if (cache.containsKey(target)) {
+      return cache.get(target);
+    }
 
-    return path.getVertexList();
+    var path = DijkstraShortestPath.findPathBetween(graph, root(), target).getVertexList();
+    cache.put(target, path);
+
+    return path;
   }
 
   /**

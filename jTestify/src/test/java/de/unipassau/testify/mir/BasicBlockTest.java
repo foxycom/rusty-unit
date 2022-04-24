@@ -75,4 +75,23 @@ public class BasicBlockTest {
 
     assertThat(fitness).isEqualTo(Double.MAX_VALUE);
   }
+
+  @Test
+  public void testFitnessCache() {
+    Map<MinimizingFitnessFunction<TestCase>, Double> map = new HashMap<>();
+    map.put(new BasicBlock("id", 5), 10.0);
+
+    when(testCase.branchDistance()).thenReturn(map);
+    when(testCase.mir()).thenReturn(mir);
+    when(mir.getCdgFor(basicBlock.globalId())).thenReturn(cdg);
+
+    List<MinimizingFitnessFunction<TestCase>> path = List.of(new BasicBlock("id", 4), new BasicBlock("id", 5));
+    when(cdg.pathTo(basicBlock)).thenReturn(path);
+
+    double fitness = basicBlock.getFitness(testCase);
+    double secondFitness = basicBlock.getFitness(testCase);
+
+    assertThat(fitness).isEqualTo(1 + 10.0 / 11.0);
+    assertThat(secondFitness).isEqualTo(1 + 10.0 / 11.0);
+  }
 }

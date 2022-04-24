@@ -163,4 +163,22 @@ public class StructInitStmt implements Statement {
   public int position() {
     return testCase.stmtPosition(this).orElseThrow();
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof StructInitStmt)) {
+      return false;
+    }
+    StructInitStmt that = (StructInitStmt) o;
+    return id.equals(that.id) && args.equals(that.args) && returnValue.equals(that.returnValue)
+        && structInit.equals(that.structInit);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id, args, returnValue, structInit);
+  }
 }

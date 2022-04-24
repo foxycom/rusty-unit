@@ -172,4 +172,22 @@ public class TupleStmt implements Statement {
   public int position() {
     return testCase.stmtPosition(this).orElseThrow();
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof TupleStmt)) {
+      return false;
+    }
+    TupleStmt tupleStmt = (TupleStmt) o;
+    return id.equals(tupleStmt.id) && tupleInit.equals(tupleStmt.tupleInit) && returnValue.equals(
+        tupleStmt.returnValue) && args.equals(tupleStmt.args);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id, tupleInit, returnValue, args);
+  }
 }

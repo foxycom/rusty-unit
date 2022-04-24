@@ -112,4 +112,22 @@ public class StructInit implements Callable {
     sb.append(fields).append("}");
     return sb.toString();
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof StructInit)) {
+      return false;
+    }
+    StructInit that = (StructInit) o;
+    return isPublic == that.isPublic && params.equals(that.params) && returnType.equals(
+        that.returnType);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(params, returnType, isPublic);
+  }
 }

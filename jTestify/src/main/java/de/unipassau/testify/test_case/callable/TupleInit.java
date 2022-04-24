@@ -25,7 +25,6 @@ public class TupleInit implements Callable {
     this.returnType = new Tuple(types);
   }
 
-
   @Override
   public String getName() {
     throw new RuntimeException("getName is not implemented");
@@ -104,5 +103,22 @@ public class TupleInit implements Callable {
   public String toString() {
     var paramsStr = params.stream().map(Param::toString).collect(Collectors.joining(", "));
     return String.format("(%s) -> %s", paramsStr, returnType);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof TupleInit)) {
+      return false;
+    }
+    TupleInit tupleInit = (TupleInit) o;
+    return params.equals(tupleInit.params) && returnType.equals(tupleInit.returnType);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(params, returnType);
   }
 }

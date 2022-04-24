@@ -51,8 +51,6 @@ public abstract class CallableStmt implements Statement {
     this.args = args;
   }
 
-
-
   @Override
   public abstract List<Param> params();
 
@@ -137,5 +135,23 @@ public abstract class CallableStmt implements Statement {
   @Override
   public int position() {
     return testCase.stmtPosition(this).orElseThrow();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof CallableStmt)) {
+      return false;
+    }
+    CallableStmt that = (CallableStmt) o;
+    return id.equals(that.id) && args.equals(that.args) && Objects.equals(returnValue,
+        that.returnValue);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id, args, returnValue);
   }
 }
