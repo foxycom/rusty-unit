@@ -4,13 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b12c22c4-b5f7-4f70-8970-848dd736b280" name="Changes" comment="Update">
+    <list default="true" id="b12c22c4-b5f7-4f70-8970-848dd736b280" name="Changes" comment="Introduce cache">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/BasicBlock.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/BasicBlock.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/CDG.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/CDG.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/de/unipassau/testify/mir/CDGTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/de/unipassau/testify/mir/CDGTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../testify/analysis.sh" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/analysis.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../testify/src/mir.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/src/mir.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../testify/src/monitor.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/src/monitor.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/MirAnalysis.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/MirAnalysis.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/config.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/config.properties" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -50,11 +49,11 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
-        <option value="JUnit5 Test Class" />
         <option value="Interface" />
         <option value="Enum" />
         <option value="Class" />
         <option value="JUnit3 Test Class" />
+        <option value="JUnit5 Test Class" />
       </list>
     </option>
   </component>
@@ -98,7 +97,7 @@
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="com.intellij.testIntegration.createTest.CreateTestDialog.defaultLibrary" value="JUnit3" />
+    <property name="com.intellij.testIntegration.createTest.CreateTestDialog.defaultLibrary" value="JUnit5" />
     <property name="com.intellij.testIntegration.createTest.CreateTestDialog.defaultLibrarySuperClass.JUnit3" value="junit.framework.TestCase" />
     <property name="com.intellij.testIntegration.createTest.CreateTestDialog.defaultLibrarySuperClass.JUnit5" value="" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
@@ -109,44 +108,19 @@
   </component>
   <component name="RecentsManager">
     <key name="CreateTestDialog.Recents.Supers">
-      <recent name="junit.framework.TestCase" />
       <recent name="" />
+      <recent name="junit.framework.TestCase" />
     </key>
     <key name="MoveClassesOrPackagesDialog.RECENTS_KEY">
       <recent name="de.unipassau.testify.test_case.type.traits" />
     </key>
     <key name="CreateTestDialog.RecentsKey">
+      <recent name="de.unipassau.testify.algorithm" />
       <recent name="de.unipassau.testify.mir" />
       <recent name="de.unipassau.testify.test_case.type.std" />
     </key>
   </component>
-  <component name="RunManager" selected="Gradle.CDGTest.testMultipleRoots">
-    <configuration name="CDG" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
-      <option name="MAIN_CLASS_NAME" value="de.unipassau.testify.mir.CDG" />
-      <module name="jTestify.main" />
-      <extension name="coverage">
-        <pattern>
-          <option name="PATTERN" value="de.unipassau.testify.mir.*" />
-          <option name="ENABLED" value="true" />
-        </pattern>
-      </extension>
-      <method v="2">
-        <option name="Make" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="MirAnalysis" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
-      <option name="MAIN_CLASS_NAME" value="de.unipassau.testify.mir.MirAnalysis" />
-      <module name="jTestify.main" />
-      <extension name="coverage">
-        <pattern>
-          <option name="PATTERN" value="de.unipassau.testify.mir.*" />
-          <option name="ENABLED" value="true" />
-        </pattern>
-      </extension>
-      <method v="2">
-        <option name="Make" enabled="true" />
-      </method>
-    </configuration>
+  <component name="RunManager" selected="Application.TestCaseRunner">
     <configuration name="Run" type="Application" factoryName="Application">
       <option name="MAIN_CLASS_NAME" value="de.unipassau.testify.Main" />
       <module name="jTestify.main" />
@@ -161,7 +135,20 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
-    <configuration name="CDGTest.testIndependentTargets" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+    <configuration name="TestCaseRunner" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="de.unipassau.testify.exec.TestCaseRunner" />
+      <module name="jTestify.main" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="de.unipassau.testify.exec.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="BasicBlockTest" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
       <ExternalSystemSettings>
         <option name="executionName" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
@@ -174,7 +161,53 @@
           <list>
             <option value=":test" />
             <option value="--tests" />
-            <option value="&quot;de.unipassau.testify.mir.CDGTest.testIndependentTargets&quot;" />
+            <option value="&quot;de.unipassau.testify.mir.BasicBlockTest&quot;" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>false</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <method v="2" />
+    </configuration>
+    <configuration name="BasicBlockTest.testFitnessCache" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" value="" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value=":test" />
+            <option value="--tests" />
+            <option value="&quot;de.unipassau.testify.mir.BasicBlockTest.testFitnessCache&quot;" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>false</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <method v="2" />
+    </configuration>
+    <configuration name="BasicBlockTest.testGetWithApproachLevel" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" value="" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value=":test" />
+            <option value="--tests" />
+            <option value="&quot;de.unipassau.testify.mir.BasicBlockTest.testGetWithApproachLevel&quot;" />
           </list>
         </option>
         <option name="vmOptions" />
@@ -207,44 +240,21 @@
       <DebugAllEnabled>false</DebugAllEnabled>
       <method v="2" />
     </configuration>
-    <configuration name="CDGTest.testPathTo" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
-      <ExternalSystemSettings>
-        <option name="executionName" />
-        <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="externalSystemIdString" value="GRADLE" />
-        <option name="scriptParameters" value="" />
-        <option name="taskDescriptions">
-          <list />
-        </option>
-        <option name="taskNames">
-          <list>
-            <option value=":test" />
-            <option value="--tests" />
-            <option value="&quot;de.unipassau.testify.mir.CDGTest.testPathTo&quot;" />
-          </list>
-        </option>
-        <option name="vmOptions" />
-      </ExternalSystemSettings>
-      <ExternalSystemDebugServerProcess>false</ExternalSystemDebugServerProcess>
-      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
-      <DebugAllEnabled>false</DebugAllEnabled>
-      <method v="2" />
-    </configuration>
     <list>
       <item itemvalue="Application.Run" />
-      <item itemvalue="Application.MirAnalysis" />
-      <item itemvalue="Application.CDG" />
-      <item itemvalue="Gradle.CDGTest.testIndependentTargets" />
-      <item itemvalue="Gradle.CDGTest.testPathTo" />
+      <item itemvalue="Application.TestCaseRunner" />
+      <item itemvalue="Gradle.BasicBlockTest.testGetWithApproachLevel" />
       <item itemvalue="Gradle.CDGTest.testMultipleRoots" />
+      <item itemvalue="Gradle.BasicBlockTest" />
+      <item itemvalue="Gradle.BasicBlockTest.testFitnessCache" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Application.TestCaseRunner" />
+        <item itemvalue="Gradle.BasicBlockTest.testFitnessCache" />
+        <item itemvalue="Gradle.BasicBlockTest.testGetWithApproachLevel" />
+        <item itemvalue="Gradle.BasicBlockTest" />
         <item itemvalue="Gradle.CDGTest.testMultipleRoots" />
-        <item itemvalue="Gradle.CDGTest.testPathTo" />
-        <item itemvalue="Gradle.CDGTest.testIndependentTargets" />
-        <item itemvalue="Application.CDG" />
-        <item itemvalue="Application.MirAnalysis" />
       </list>
     </recent_temporary>
   </component>
@@ -275,7 +285,7 @@
       <workItem from="1649190259925" duration="25000" />
       <workItem from="1649351248917" duration="2132000" />
       <workItem from="1649687661191" duration="96000" />
-      <workItem from="1650559161520" duration="3197000" />
+      <workItem from="1650559161520" duration="19815000" />
     </task>
     <task id="LOCAL-00001" summary="Update">
       <created>1644703983025</created>
@@ -375,7 +385,21 @@
       <option name="project" value="LOCAL" />
       <updated>1649351267026</updated>
     </task>
-    <option name="localTasksCounter" value="15" />
+    <task id="LOCAL-00015" summary="Basic Block tests">
+      <created>1650753034978</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1650753034978</updated>
+    </task>
+    <task id="LOCAL-00016" summary="Introduce cache">
+      <created>1650759882261</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1650759882261</updated>
+    </task>
+    <option name="localTasksCounter" value="17" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -397,7 +421,9 @@
     <MESSAGE value="Separate analysis and instrumentation" />
     <MESSAGE value="Backup" />
     <MESSAGE value="Update" />
-    <option name="LAST_COMMIT_MESSAGE" value="Update" />
+    <MESSAGE value="Basic Block tests" />
+    <MESSAGE value="Introduce cache" />
+    <option name="LAST_COMMIT_MESSAGE" value="Introduce cache" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -411,11 +437,6 @@
           <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/server/TraceParser.java</url>
           <line>49</line>
           <option name="timeStamp" value="17" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/TypeBinding.java</url>
-          <line>22</line>
-          <option name="timeStamp" value="69" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/util/TypeUtil.java</url>

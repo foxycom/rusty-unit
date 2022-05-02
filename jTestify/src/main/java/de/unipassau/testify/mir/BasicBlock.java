@@ -3,11 +3,7 @@ package de.unipassau.testify.mir;
 import com.google.common.base.Preconditions;
 import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
 import de.unipassau.testify.test_case.TestCase;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
 import java.util.stream.IntStream;
 
 public class BasicBlock implements
@@ -64,8 +60,9 @@ public class BasicBlock implements
       int approachLevel = pathToThis.size() - parentIndex.getAsInt();
       Preconditions.checkState(approachLevel > 0);
 
-      var fitness = approachLevel + normalize(testCase.branchDistance().get(pathToThis.get(parentIndex.getAsInt())));
-      return fitness;
+      return approachLevel + normalize(
+          testCase.branchDistance().get(pathToThis.get(parentIndex.getAsInt()))
+      );
     }
   }
 

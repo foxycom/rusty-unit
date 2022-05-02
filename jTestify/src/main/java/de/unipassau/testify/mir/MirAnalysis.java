@@ -38,9 +38,6 @@ public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
               var content = Files.readString(file);
               var jsonRoot = new JSONObject(content);
               var globalId = jsonRoot.getString("global_id");
-              if (globalId.equals("<tictactoe__GameState as std__cmp__PartialEq>__eq")) {
-                System.out.println();
-              }
               var cdg = CDG.<MinimizingFitnessFunction<C>, C>parse(globalId,
                   jsonRoot.getString("cdg"));
               cdgs.put(globalId, cdg);
@@ -52,6 +49,7 @@ public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
       throw new RuntimeException("Could not parse CDGs from mir logs", e);
     }
 
+    System.out.println("Finished graph analysis");
     return cdgs;
   }
 

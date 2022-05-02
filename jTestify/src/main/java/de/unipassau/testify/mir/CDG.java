@@ -4,8 +4,6 @@ import com.google.common.base.Preconditions;
 import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome;
 import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
 import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -22,15 +20,25 @@ import org.jgrapht.nio.Attribute;
 import org.jgrapht.nio.DefaultAttribute;
 import org.jgrapht.nio.dot.DOTExporter;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class CDG<M extends MinimizingFitnessFunction<C>, C extends AbstractTestCaseChromosome<C>> {
+  private static final Logger logger = LoggerFactory.getLogger(CDG.class);
 
   private final Graph<M, DefaultEdge> graph;
   private final Map<M, List<M>> cache;
+  private final M root;
 
   public CDG(Graph<M, DefaultEdge> graph) {
     this.graph = graph;
     this.cache = new HashMap<>();
+    this.root = root(graph);
+
+    for (M object : graph.vertexSet()) {
+      var path = DijkstraShortestPath.findPathBetween(graph, root, object).getVertexList();
+      cache.put(object, path);
+    }
   }
 
   // {"nodes":[18446744073709551615,0,1,2],"node_holes":[],"edge_property":"directed","edges":[[0,1,1],[0,2,1],[0,3,1],[0,0,1]]}
@@ -103,7 +111,7 @@ public class CDG<M extends MinimizingFitnessFunction<C>, C extends AbstractTestC
         });
   }
 
-  private M root() {
+  private M root(Graph<M, DefaultEdge> graph) {
     var root = graph.vertexSet().stream().filter(MinimizingFitnessFunction::isDummy).toList();
     Preconditions.checkState(root.size() == 1);
     return root.get(0);
@@ -117,13 +125,8 @@ public class CDG<M extends MinimizingFitnessFunction<C>, C extends AbstractTestC
    * @return The path in the CDG.
    */
   public List<M> pathTo(M target) {
-    if (cache.containsKey(target)) {
-      return cache.get(target);
-    }
-
-    var path = DijkstraShortestPath.findPathBetween(graph, root(), target).getVertexList();
-    cache.put(target, path);
-
+    var path = cache.get(target);
+    Preconditions.checkNotNull(path);
     return path;
   }
 
