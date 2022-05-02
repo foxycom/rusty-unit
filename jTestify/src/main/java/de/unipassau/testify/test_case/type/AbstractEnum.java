@@ -4,11 +4,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.json.EnumVariantDeserializer;
 import de.unipassau.testify.test_case.Param;
+import de.unipassau.testify.test_case.callable.Method;
 import de.unipassau.testify.test_case.type.traits.Trait;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.Builder;
 
 @Builder
@@ -69,6 +71,11 @@ public class AbstractEnum implements Enum {
   @Override
   public Set<Trait> implementedTraits() {
     return implementedTraits;
+  }
+
+  @Override
+  public Method unwrapMethod() {
+    return new Method("unwrap", Collections.emptyList(), List.of(new Param(this, false, null)), generics.get(0), this);
   }
 
   @Override

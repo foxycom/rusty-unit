@@ -4,29 +4,22 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b12c22c4-b5f7-4f70-8970-848dd736b280" name="Changes" comment="Add debug class">
-      <change afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/exec/Output.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/exec/Timer.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/linearity/Crossover.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/linearity/Mutation.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/linearity/Operator.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCaseMetadata.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestSuiteMetadata.java" afterDir="false" />
+    <list default="true" id="b12c22c4-b5f7-4f70-8970-848dd736b280" name="Changes" comment="Update performance issues">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/Constants.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/Constants.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/TestsGenerator.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/TestsGenerator.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/FNDSImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/FNDSImpl.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/Pareto.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/Pareto.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/dynamosa/DynaMOSA.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/dynamosa/DynaMOSA.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/exec/TestCaseRunner.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/exec/TestCaseRunner.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/generator/OffspringGeneratorImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/generator/OffspringGeneratorImpl.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/metaheuristics/chromosome/AbstractTestCaseChromosome.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/metaheuristics/chromosome/AbstractTestCaseChromosome.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/BasicBlock.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/BasicBlock.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/hir/TyCtxt.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/hir/TyCtxt.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/CDG.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/CDG.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/MirAnalysis.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/MirAnalysis.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/SourceFile.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/SourceFile.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestSuiteMetadata.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestSuiteMetadata.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/operators/BasicMutation.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/operators/BasicMutation.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/AbstractEnum.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/AbstractEnum.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/Type.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/Type.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/std/Option.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/std/Option.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/std/Result.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/std/Result.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/visitor/TestCaseVisitor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/visitor/TestCaseVisitor.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/resources/config.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/config.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/de/unipassau/testify/mir/BasicBlockTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/de/unipassau/testify/mir/BasicBlockTest.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -303,7 +296,7 @@
       <workItem from="1649351248917" duration="2132000" />
       <workItem from="1649687661191" duration="96000" />
       <workItem from="1650559161520" duration="19815000" />
-      <workItem from="1651491121315" duration="13587000" />
+      <workItem from="1651491121315" duration="24078000" />
     </task>
     <task id="LOCAL-00001" summary="Update">
       <created>1644703983025</created>
@@ -431,7 +424,14 @@
       <option name="project" value="LOCAL" />
       <updated>1651491166607</updated>
     </task>
-    <option name="localTasksCounter" value="19" />
+    <task id="LOCAL-00019" summary="Update performance issues">
+      <created>1651506216502</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1651506216502</updated>
+    </task>
+    <option name="localTasksCounter" value="20" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -449,6 +449,7 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
+    <option name="CHECK_CODE_SMELLS_BEFORE_PROJECT_COMMIT" value="false" />
     <MESSAGE value="Compute correct LLVM coverage" />
     <MESSAGE value="Separate analysis and instrumentation" />
     <MESSAGE value="Backup" />
@@ -457,7 +458,8 @@
     <MESSAGE value="Update" />
     <MESSAGE value="Second cache" />
     <MESSAGE value="Add debug class" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add debug class" />
+    <MESSAGE value="Update performance issues" />
+    <option name="LAST_COMMIT_MESSAGE" value="Update performance issues" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -478,38 +480,23 @@
           <option name="timeStamp" value="76" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/exec/TestCaseRunner.java</url>
-          <line>129</line>
-          <option name="timeStamp" value="102" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/Crate.java</url>
           <line>90</line>
           <option name="timeStamp" value="121" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java</url>
-          <line>510</line>
-          <option name="timeStamp" value="139" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java</url>
-          <line>460</line>
-          <option name="timeStamp" value="140" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java</url>
-          <line>665</line>
+          <line>671</line>
           <option name="timeStamp" value="141" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java</url>
-          <line>695</line>
+          <line>701</line>
           <option name="timeStamp" value="142" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java</url>
-          <line>738</line>
+          <line>744</line>
           <option name="timeStamp" value="143" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
@@ -523,14 +510,14 @@
           <option name="timeStamp" value="155" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java</url>
-          <line>610</line>
-          <option name="timeStamp" value="156" />
+          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/util/TypeUtil.java</url>
+          <line>29</line>
+          <option name="timeStamp" value="173" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java</url>
-          <line>284</line>
-          <option name="timeStamp" value="169" />
+          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/visitor/TestCaseVisitor.java</url>
+          <line>61</line>
+          <option name="timeStamp" value="182" />
         </line-breakpoint>
         <breakpoint enabled="true" type="java-exception">
           <properties class="java.lang.IllegalStateException" package="java.lang" />

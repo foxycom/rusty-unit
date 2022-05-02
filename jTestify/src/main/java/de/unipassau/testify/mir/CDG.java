@@ -30,18 +30,21 @@ public class CDG<M extends MinimizingFitnessFunction<C>, C extends AbstractTestC
   private final Graph<M, DefaultEdge> graph;
   private final Map<M, List<M>> pathCache;
   private final Map<M, Integer> distanceCache;
+  private final Map<M, Set<M>> dependenceCache;
   private final M root;
 
   public CDG(Graph<M, DefaultEdge> graph) {
     this.graph = graph;
     this.pathCache = new HashMap<>();
     this.distanceCache = new HashMap<>();
+    this.dependenceCache = new HashMap<>();
     this.root = root(graph);
 
     for (M object : graph.vertexSet()) {
       var path = DijkstraShortestPath.findPathBetween(graph, root, object).getVertexList();
       pathCache.put(object, path);
       distanceCache.put(object, path.size() - 1);
+      dependenceCache.put(object, allSubTargets(object));
     }
   }
 

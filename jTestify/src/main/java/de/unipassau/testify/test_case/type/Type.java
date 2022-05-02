@@ -2,6 +2,7 @@ package de.unipassau.testify.test_case.type;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.json.TypeDeserializer;
+import de.unipassau.testify.test_case.callable.Method;
 import de.unipassau.testify.test_case.type.prim.Prim;
 import de.unipassau.testify.test_case.type.traits.Trait;
 import java.util.List;
@@ -24,6 +25,14 @@ public interface Type {
 
   default boolean wraps(Type type) {
     return false;
+  }
+
+  default Type unwrapType() {
+    throw new RuntimeException("Not with me");
+  }
+
+  default Method unwrapMethod() {
+    throw new RuntimeException("Not with me");
   }
 
   default boolean isPrim() {

@@ -51,7 +51,7 @@ public class BasicMutation implements Mutation<TestCase> {
         && testCase.size() < Constants.CHROMOSOME_LENGTH) {
       count++;
 
-      if (testCase.insertRandomStmt()) {
+      if (testCase.insertRandomStmt().isPresent()) {
         changed = true;
       }
     }

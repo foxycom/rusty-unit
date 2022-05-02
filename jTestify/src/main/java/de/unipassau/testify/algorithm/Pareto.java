@@ -2,6 +2,7 @@ package de.unipassau.testify.algorithm;
 
 import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome;
 import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
+import de.unipassau.testify.mir.MirAnalysis;
 import java.util.List;
 
 public class Pareto<C extends AbstractTestCaseChromosome<C>> implements DominationStrategy<C> {

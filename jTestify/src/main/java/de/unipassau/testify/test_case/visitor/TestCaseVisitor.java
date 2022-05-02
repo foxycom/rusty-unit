@@ -58,7 +58,11 @@ public class TestCaseVisitor implements Visitor {
 
   @Override
   public String visitTestCase(TestCase testCase) {
-    var sb = new StringBuilder("#[test]\n");
+    if (testCase.getId() == 508) {
+      System.out.println();
+    }
+    var sb = new StringBuilder("#[no_coverage]\n");
+    sb.append("#[test]\n");
     //sb.append("#[timeout(").append(Constants.TEST_TIMEOUT).append(")]\n");
     sb.append("fn ").append(testCase.getName()).append("() {\n");
 

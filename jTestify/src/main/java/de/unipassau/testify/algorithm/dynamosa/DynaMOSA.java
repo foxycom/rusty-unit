@@ -38,8 +38,7 @@ public class DynaMOSA<C extends AbstractTestCaseChromosome<C>> implements Geneti
       SVD<C> svd,
       ChromosomeContainer<C> container,
       MirAnalysis<C> mir,
-      Output<C> output
-      ) {
+      Output<C> output) {
     this.maxGenerations = maxGenerations;
     this.populationSize = populationSize;
     this.populationGenerator = populationGenerator;

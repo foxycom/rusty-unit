@@ -43,9 +43,9 @@ public class TyCtxt {
     var baseCallables = new ArrayList<Callable>();
 
     // Option
-    baseCallables.add(new OptionNoneInit());
-    baseCallables.add(new OptionSomeInit());
-    baseCallables.add(new OptionUnwrap());
+//    baseCallables.add(new OptionNoneInit());
+//    baseCallables.add(new OptionSomeInit());
+//    baseCallables.add(new OptionUnwrap());
 
     // TODO: 21.03.22 result
 
@@ -174,7 +174,7 @@ public class TyCtxt {
     var stream = callables.stream()
         .filter(subClass::isInstance)
         .filter(callable -> callable.returnsValue()
-            && callable.getReturnType().canBeSameAs(type));
+            && (callable.getReturnType().canBeSameAs(type) || callable.getReturnType().wraps(type)));
     // Unless we want the type explicitly, exclude completely generic callables like
     // Option::unwrap(Option) -> T, which would generate a wrapper just to unwrap it later
 //        .filter(callable -> (callable.getReturnType().getName().equals(type.getName()))

@@ -56,6 +56,7 @@ public class SourceFile {
   public void onCopied() throws IOException {
     if (type == FileType.MAIN) {
       try (var out = new BufferedWriter(new FileWriter(executionPath.toFile()))) {
+        out.write("#![feature(no_coverage)]\n");
         out.write("pub mod rusty_monitor;\n");
         var content = Files.readString(originalPath);
         out.write(content);

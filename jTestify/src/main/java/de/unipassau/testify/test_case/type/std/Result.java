@@ -1,6 +1,7 @@
 package de.unipassau.testify.test_case.type.std;
 
 import de.unipassau.testify.test_case.Param;
+import de.unipassau.testify.test_case.callable.Method;
 import de.unipassau.testify.test_case.type.AbstractEnum;
 import de.unipassau.testify.test_case.type.Generic;
 import de.unipassau.testify.test_case.type.Type;
@@ -41,5 +42,20 @@ public class Result extends AbstractEnum {
             Debug.getInstance()
         )
     );
+  }
+
+  @Override
+  public boolean wraps(Type type) {
+    return getGenerics().get(0).canBeSameAs(type);
+  }
+
+  @Override
+  public Type unwrapType() {
+    return generics().get(0);
+  }
+
+  @Override
+  public Method unwrapMethod() {
+    return new Method("unwrap", Collections.emptyList(), Collections.emptyList(), generics().get(0), this);
   }
 }
