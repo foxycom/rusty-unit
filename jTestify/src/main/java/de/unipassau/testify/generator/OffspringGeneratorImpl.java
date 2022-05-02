@@ -2,12 +2,14 @@ package de.unipassau.testify.generator;
 
 import static de.unipassau.testify.Constants.P_CROSSOVER;
 
+import de.unipassau.testify.exec.Timer;
 import de.unipassau.testify.metaheuristics.operators.Selection;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.UncoveredObjectives;
 import de.unipassau.testify.util.Rnd;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class OffspringGeneratorImpl implements OffspringGenerator<TestCase> {
   private final Selection<TestCase> selection;
@@ -21,6 +23,10 @@ public class OffspringGeneratorImpl implements OffspringGenerator<TestCase> {
 
   @Override
   public List<TestCase> get(List<TestCase> population) {
+    var timer = new Timer();
+    timer.start();
+
+    System.out.println("\t>> Generating offspring");
     List<TestCase> offspringPopulation = new ArrayList<>();
     uncoveredObjectives.setCurrentPopulation(population);
     while (offspringPopulation.size() < population.size()) {
@@ -42,7 +48,6 @@ public class OffspringGeneratorImpl implements OffspringGenerator<TestCase> {
       offspring1 = offspring1.mutate();
       offspring2 = offspring2.mutate();
 
-
       if (population.size() - offspringPopulation.size() >= 2) {
         offspringPopulation.add(offspring1);
         offspringPopulation.add(offspring2);
@@ -50,6 +55,9 @@ public class OffspringGeneratorImpl implements OffspringGenerator<TestCase> {
         offspringPopulation.add(List.of(offspring1, offspring2).get(Rnd.get().nextInt(2)));
       }
     }
+
+    var elapsedTime = timer.end();
+    System.out.printf("\t>> Finished. Took %ds%n", TimeUnit.MILLISECONDS.toSeconds(elapsedTime));
 
     return offspringPopulation;
   }

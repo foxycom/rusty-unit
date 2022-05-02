@@ -19,7 +19,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.concurrent.TimeUnit;
 import org.apache.commons.io.IOUtils;
 import org.javatuples.Pair;
 import org.slf4j.Logger;
@@ -146,7 +146,10 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
 
   private Optional<List<Integer>> executeTestsWithInstrumentation(File directory, String crateName)
       throws IOException, InterruptedException, TestCaseDoesNotCompileException {
-    System.out.println("Running cargo");
+    System.out.println("\t>> cargo +nightly test");
+
+    var timer = new Timer();
+    timer.start();
     var processBuilder = new ProcessBuilder("cargo", Constants.RUST_TOOLCHAIN, "test",
         Constants.TEST_MOD_NAME)
         .directory(directory)
@@ -162,7 +165,8 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
     var output = IOUtils.toString(process.getInputStream(), Charset.defaultCharset());
     var statusCode = process.waitFor();
 
-    System.out.println("Cargo exited");
+    var elapsedTime = timer.end();
+    System.out.printf("\t>> Finished. Took %ds%n", TimeUnit.MILLISECONDS.toSeconds(elapsedTime));
     if (statusCode != 0) {
       if (output.contains("test result: FAILED.")) {
         // Some tests failed

@@ -12,6 +12,7 @@ import de.unipassau.testify.algorithm.PreferenceSorterImpl;
 import de.unipassau.testify.algorithm.SVDImpl;
 import de.unipassau.testify.algorithm.dynamosa.DynaMOSA;
 import de.unipassau.testify.algorithm.mosa.MOSA;
+import de.unipassau.testify.exec.Output;
 import de.unipassau.testify.generator.OffspringGeneratorImpl;
 import de.unipassau.testify.hir.TyCtxt;
 import de.unipassau.testify.json.JSONParser;
@@ -112,6 +113,8 @@ public class TestsGenerator {
 
     var archive = new ArchiveImpl<>(objectives);
 
+    var output = new Output<TestCase>(cli.getCrateName());
+
     var mosa = new DynaMOSA<>(
         GENERATIONS,
         POPULATION_SIZE,
@@ -121,7 +124,8 @@ public class TestsGenerator {
         archive,
         svd,
         crate,
-        mir
+        mir,
+        output
     );
 
     var solutions = mosa.findSolution();

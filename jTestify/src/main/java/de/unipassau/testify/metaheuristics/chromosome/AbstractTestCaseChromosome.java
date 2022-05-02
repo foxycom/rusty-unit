@@ -24,6 +24,8 @@ public abstract class AbstractTestCaseChromosome<C extends AbstractTestCaseChrom
     return size() == 0;
   }
 
+  public abstract int getId();
+
   /**
    * Returns the statements of this test case chromosome.
    *

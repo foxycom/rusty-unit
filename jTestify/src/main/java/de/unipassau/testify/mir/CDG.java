@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.jgrapht.Graph;
 import org.jgrapht.Graphs;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
@@ -27,17 +28,20 @@ public class CDG<M extends MinimizingFitnessFunction<C>, C extends AbstractTestC
   private static final Logger logger = LoggerFactory.getLogger(CDG.class);
 
   private final Graph<M, DefaultEdge> graph;
-  private final Map<M, List<M>> cache;
+  private final Map<M, List<M>> pathCache;
+  private final Map<M, Integer> distanceCache;
   private final M root;
 
   public CDG(Graph<M, DefaultEdge> graph) {
     this.graph = graph;
-    this.cache = new HashMap<>();
+    this.pathCache = new HashMap<>();
+    this.distanceCache = new HashMap<>();
     this.root = root(graph);
 
     for (M object : graph.vertexSet()) {
       var path = DijkstraShortestPath.findPathBetween(graph, root, object).getVertexList();
-      cache.put(object, path);
+      pathCache.put(object, path);
+      distanceCache.put(object, path.size() - 1);
     }
   }
 
@@ -77,6 +81,21 @@ public class CDG<M extends MinimizingFitnessFunction<C>, C extends AbstractTestC
     });
     exporter.exportGraph(graph, writer);
     return writer.toString();
+  }
+
+  public int approachLevel(M object, Set<M> coveredObjects) {
+    var path = pathTo(object);
+    // Last element is object itself
+    var i = path.size() - 1;
+    while (i >= 0) {
+      var ascendant = path.get(i);
+      if (coveredObjects.contains(ascendant)) {
+        break;
+      }
+      i--;
+    }
+
+    return path.size() - i - 1;
   }
 
   public Set<M> targets() {
@@ -125,7 +144,7 @@ public class CDG<M extends MinimizingFitnessFunction<C>, C extends AbstractTestC
    * @return The path in the CDG.
    */
   public List<M> pathTo(M target) {
-    var path = cache.get(target);
+    var path = pathCache.get(target);
     Preconditions.checkNotNull(path);
     return path;
   }

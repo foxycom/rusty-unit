@@ -30,7 +30,10 @@ public class FNDSImpl<C extends AbstractTestCaseChromosome<C>> implements FNDS<C
       S.put(p, new LinkedList<>());
       n.put(p, 0);
 
-      for (C q : population) {
+      for (var q : population) {
+        if (p.getId() == q.getId()) {
+          continue;
+        }
         if (domination.dominates(p, q, objectives)) {
           S.get(p).add(q);
         } else if (domination.dominates(q, p, objectives)) {

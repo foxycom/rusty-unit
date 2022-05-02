@@ -4,14 +4,11 @@ import com.google.common.base.Preconditions;
 import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
 import de.unipassau.testify.test_case.TestCase;
 import java.util.Objects;
-import java.util.stream.IntStream;
 
-public class BasicBlock implements
-    MinimizingFitnessFunction<TestCase> {
+public class BasicBlock implements MinimizingFitnessFunction<TestCase> {
 
   private static final int DUMMY_ID = 42069;
   private final String globalId;
-
   private final int blockId;
 
   public BasicBlock(String globalId, int blockId) {
@@ -41,28 +38,22 @@ public class BasicBlock implements
   @Override
   public double getFitness(TestCase testCase) throws NullPointerException {
     var branchDistance = testCase.branchDistance();
-    if (branchDistance.containsKey(this)) {
+
+    var coveredTargets = branchDistance.keySet();
+    var cdg = testCase.mir().getCdgFor(globalId);
+
+    var path = cdg.pathTo(this);
+    int approachLevel = cdg.approachLevel(this, coveredTargets);
+    Preconditions.checkState(approachLevel >= 0 && approachLevel <= path.size());
+
+    if (approachLevel == 0) {
       return normalize(branchDistance.get(this));
+    } else if (approachLevel == path.size()) {
+      return Double.MAX_VALUE;
     } else {
-      var coveredTargets = testCase.branchDistance().keySet();
-      var cdg = testCase.mir().getCdgFor(globalId);
-      var pathToThis = cdg.pathTo(this);
-
-      // Determine nearest covered parent block index in the tree path
-      var parentIndex = IntStream.range(0, pathToThis.size())
-          .filter(i -> coveredTargets.contains(pathToThis.get(i)))
-          .findFirst();
-
-      if (parentIndex.isEmpty()) {
-        return Double.MAX_VALUE;
-      }
-
-      int approachLevel = pathToThis.size() - parentIndex.getAsInt();
-      Preconditions.checkState(approachLevel > 0);
-
-      return approachLevel + normalize(
-          testCase.branchDistance().get(pathToThis.get(parentIndex.getAsInt()))
-      );
+      var nearestCoveredObject = path.get(path.size() - approachLevel - 1);
+      var localFitness = testCase.branchDistance().get(nearestCoveredObject);
+      return approachLevel + normalize(localFitness);
     }
   }
 
@@ -84,10 +75,9 @@ public class BasicBlock implements
     if (this == o) {
       return true;
     }
-    if (!(o instanceof BasicBlock)) {
+    if (!(o instanceof BasicBlock that)) {
       return false;
     }
-    BasicBlock that = (BasicBlock) o;
     return blockId == that.blockId && globalId.equals(that.globalId);
   }
 

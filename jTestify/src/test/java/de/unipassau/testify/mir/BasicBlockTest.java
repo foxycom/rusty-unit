@@ -8,6 +8,7 @@ import de.unipassau.testify.test_case.TestCase;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,6 +39,10 @@ public class BasicBlockTest {
     Map<MinimizingFitnessFunction<TestCase>, Double> map = new HashMap<>();
     map.put(basicBlock, 2.0);
     when(testCase.branchDistance()).thenReturn(map);
+    when(testCase.mir()).thenReturn(mir);
+    when(mir.getCdgFor("id")).thenReturn(cdg);
+    when(cdg.pathTo(basicBlock)).thenReturn(List.of(basicBlock));
+    when(cdg.approachLevel(basicBlock, Set.of(basicBlock))).thenReturn(0);
 
     double fitness = basicBlock.getFitness(testCase);
 
@@ -48,14 +53,16 @@ public class BasicBlockTest {
   public void testGetWithApproachLevel() {
     Map<MinimizingFitnessFunction<TestCase>, Double> map = new HashMap<>();
     map.put(new BasicBlock("id", 5), 10.0);
+    map.put(new BasicBlock("id", 4), 10.0);
 
     when(testCase.branchDistance()).thenReturn(map);
     when(testCase.mir()).thenReturn(mir);
+
     when(mir.getCdgFor(basicBlock.globalId())).thenReturn(cdg);
+    when(cdg.approachLevel(basicBlock, Set.of(new BasicBlock("id", 5), new BasicBlock("id", 4)))).thenReturn(1);
 
     List<MinimizingFitnessFunction<TestCase>> path = List.of(new BasicBlock("id", 4), new BasicBlock("id", 5));
     when(cdg.pathTo(basicBlock)).thenReturn(path);
-
     double fitness = basicBlock.getFitness(testCase);
 
     assertThat(fitness).isEqualTo(1 + 10.0 / 11.0);

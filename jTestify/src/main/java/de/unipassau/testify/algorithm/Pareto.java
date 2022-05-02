@@ -9,10 +9,10 @@ public class Pareto<C extends AbstractTestCaseChromosome<C>> implements Dominati
   @Override
   public boolean dominates(C c1, C c2,
       List<MinimizingFitnessFunction<C>> objectives) {
-    if (objectives.stream().anyMatch(m -> c2.getFitness(m) < c1.getFitness(m))) {
+    if (objectives.parallelStream().anyMatch(m -> c2.getFitness(m) < c1.getFitness(m))) {
       return false;
     }
 
-    return objectives.stream().anyMatch(m -> c1.getFitness(m) < c2.getFitness(m));
+    return objectives.parallelStream().anyMatch(m -> c1.getFitness(m) < c2.getFitness(m));
   }
 }

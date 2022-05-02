@@ -2,6 +2,7 @@ package de.unipassau.testify.mir;
 
 import static de.unipassau.testify.Constants.MIR_LOG_PATH;
 
+import de.unipassau.testify.exec.Timer;
 import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome;
 import de.unipassau.testify.metaheuristics.fitness_functions.FitnessFunction;
 import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.json.JSONObject;
 
@@ -27,6 +29,9 @@ public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
   }
 
   private Map<String, CDG<MinimizingFitnessFunction<C>, C>> parseCDGs() {
+    System.out.println("-- Graph analysis");
+    var timer = new Timer();
+    timer.start();
     Map<String, CDG<MinimizingFitnessFunction<C>, C>> cdgs = new HashMap<>();
     var path = Paths.get(MIR_LOG_PATH);
     try (var stream = Files.walk(path, Integer.MAX_VALUE)) {
@@ -49,7 +54,8 @@ public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
       throw new RuntimeException("Could not parse CDGs from mir logs", e);
     }
 
-    System.out.println("Finished graph analysis");
+    var elapsedTime = timer.end();
+    System.out.printf("-- Finished. Took %ds%n", TimeUnit.MILLISECONDS.toSeconds(elapsedTime));
     return cdgs;
   }
 

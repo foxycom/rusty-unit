@@ -3,6 +3,8 @@ package de.unipassau.testify.test_case;
 import static de.unipassau.testify.Constants.P_LOCAL_VARIABLES;
 import static java.util.stream.Collectors.toCollection;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
 import de.unipassau.testify.Constants;
 import de.unipassau.testify.generators.TestIdGenerator;
@@ -73,8 +75,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     this.statements = new ArrayList<>();
     this.coverage = new HashMap<>();
     this.mir = mir;
-
-    System.out.printf("Generated test %d%n", id);
   }
 
   public TestCase(TestCase other) {
@@ -92,6 +92,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     return tyCtxt;
   }
 
+  @Override
   public int getId() {
     return id;
   }
@@ -960,6 +961,10 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     return new VarReference(this, type);
   }
 
+  public Map<MinimizingFitnessFunction<TestCase>, Double> branchDistance() {
+    return coverage;
+  }
+
   public String getTypeBindingsString() {
     var sb = new StringBuilder();
     var visitor = new TypeBindingStringVisitor(this);
@@ -1005,7 +1010,4 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     return this;
   }
 
-  public Map<MinimizingFitnessFunction<TestCase>, Double> branchDistance() {
-    return coverage;
-  }
 }
