@@ -394,6 +394,8 @@ fn foo(a: i32, b: i32, c: i32) -> i32 {
 \label{fig:example-control-dependencies}
 \end{figure}
 
+TODO DynaMOSA paper explains the terms dominator, post-dominator, dependence and so on.
+
 Panichella et al.~\cite{Panichella2018} therefore introduced the \ac{DynaMOSA}, which adds to \ac{MOSA} the ability to dynamically focus the search on the subset of previously uncovered targets based on the control dependency hierarchy. In this way, uncovered targets that can be reached by other uncovered targets placed higher in the hierarchy are temporarily removed from the list of objectives. They will be added back later when their parents are covered. This is done for the reason that the temporarily removed targets cannot be covered until their parents are covered in the first place, which is attempted by the search focused only on the parents and shall lead to a more effective consumption of the search budget. \Cref{fig:example-control-dependencies} shows the nodes of the control dependence graph that \ac{DynaMOSA} would consider with a given test \code{foo(1, 3, 3)}. Green marks the nodes that are covered by the test, yellow is the node that need to be covered yet, and red nodes are temporarily ignored because they cannot be reached at that point without nodes $3$ and $11$ being covered first. Since \ac{DynaMOSA} optimizes a subset of the targets also considered by \ac{MOSA}, \ac{DynaMOSA} is guaranteed to be at least as efficient. In their experiments, the authors of both algorithms learned that \ac{DynaMOSA} achieved significantly higher coverage than \ac{WSA}, but also \ac{MOSA}, on a dataset consisting of 346 Java classes.
 
 
