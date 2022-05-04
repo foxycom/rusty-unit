@@ -3,6 +3,7 @@ package de.unipassau.testify.algorithm.dynamosa;
 import de.unipassau.testify.algorithm.Archive;
 import de.unipassau.testify.algorithm.PreferenceSorter;
 import de.unipassau.testify.algorithm.SVD;
+import de.unipassau.testify.exec.LLVMCoverage;
 import de.unipassau.testify.exec.Output;
 import de.unipassau.testify.generator.OffspringGenerator;
 import de.unipassau.testify.metaheuristics.algorithm.GeneticAlgorithm;
@@ -10,6 +11,7 @@ import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome
 import de.unipassau.testify.metaheuristics.chromosome.FixedSizePopulationGenerator;
 import de.unipassau.testify.mir.MirAnalysis;
 import de.unipassau.testify.source.ChromosomeContainer;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -55,28 +57,38 @@ public class DynaMOSA<C extends AbstractTestCaseChromosome<C>> implements Geneti
   @Override
   public List<C> findSolution() {
     var nOfTargets = mir.targets().size();
+    var targets = mir.independentTargets();
 
-    var population = populationGenerator.get();
+    List<C> population;
+    int execCode;
+    do {
+      population = populationGenerator.get();
+      container.addAll(population);
+      execCode = container.executeWithInstrumentation();
+    } while (execCode != 0);
 
     output.addPopulation(0, population);
-
-    var allTargets = mir.targets();
-    var targets = mir.independentTargets();
-    container.addAll(population);
-    container.executeWithInstrumentation();
     archive.update(population);
     targets = mir.updateTargets(targets, population);
 
     output.addCoveredTargets(0, nOfTargets - targets.size(), nOfTargets);
 
     for (int gen = 1; gen < maxGenerations; gen++) {
+      try {
+        container.addAll(archive.get());
+        var llvmCoverage = container.executeWithLlvmCoverage();
+        System.out.printf("\t>> Coverage: %.2f%n", llvmCoverage.lineCoverage);
+      } catch (IOException | InterruptedException e) {
+        e.printStackTrace();
+      }
+
       System.out.printf("-- Generation %d%n", gen);
       var offspring = offspringGenerator.get(population);
 
       output.addPopulation(gen, offspring);
-
       container.addAll(offspring);
-      container.executeWithInstrumentation();
+      execCode = container.executeWithInstrumentation();
+
       archive.update(offspring);
       targets = mir.updateTargets(targets, population);
 

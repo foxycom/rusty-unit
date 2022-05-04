@@ -108,7 +108,9 @@ public class CDG<M extends MinimizingFitnessFunction<C>, C extends AbstractTestC
   public Set<M> independentTargets() {
     var root = graph.vertexSet().stream().filter(MinimizingFitnessFunction::isDummy).findAny()
         .get();
-    return Graphs.neighborSetOf(graph, root);
+    var neighbours = Graphs.neighborSetOf(graph, root);
+    neighbours.remove(root);
+    return neighbours;
   }
 
   public Set<M> dependentTargets(M target) {

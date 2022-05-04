@@ -2694,11 +2694,11 @@ Strictly speaking, some of the generated tests may not fall into the category of
 % TODO reword
 Solving a research problem almost always leads to new problems and further open questions. In this final section of the thesis, we want to discuss a few such questions that arose during the work on the thesis. We leave them as future work because they would blast the scope of this work. 
 
-We already stated in the evaluation that the whole process of generating tests for Rust with \tech is relatively slow and cannot be applied easily to all crates of any size out in the wild. The execution time is very tied to the execution of the Rust compiler and I/O operations, which means that the cost of the runtime of the generated tests themselves is not the bottleneck. At this point, cache optimizations could be made or the way \ac{SUT} is instrumented and tests are executed could be adjusted. Furthermore, the generated tests contain a lot of unnecessary statements, which would lead to the running, but more importantly comprehension overhead of a humble developer who would have to deal with them, since the tests do not use automatic oracles like assertions. This leads us to the other aspect of test generation: \tech does not generate real test cases, but only program executions. A test oracle, which determines whether the result of an execution is correct and meets the expectations, is missing. Some test generation tools, such as \textsc{EvoSuite}, can automatically incorporate assertions, for example by using the recorded behavior of \ac{SUT} for regression testing. In the future, a mechanism for automatically generated oracles could also be provided in \tech.
+We already stated in the evaluation that the whole process of generating tests for Rust with \tech is relatively slow and cannot be applied easily to all crates of any size out in the wild. The execution time is tied to the execution of the Rust compiler and I/O operations, which means that the cost of the runtime of the generated tests themselves is not the bottleneck in general. At this point, cache optimizations could be made or the way \ac{SUT} is instrumented and tests are executed could be adjusted. Furthermore, the generated tests contain a lot of unnecessary statements, which would lead to the running, but more importantly comprehension overhead of a humble developer who would have to deal with them since the tests do not automatically employ assertions. This leads us to the other aspect of test generation: \tech does not generate real test cases, but only program executions. A test oracle, which determines whether the result of an execution is correct and meets the expectations, is missing. Some test generation tools, such as \textsc{EvoSuite}, can automatically incorporate assertions, for example by using the recorded behavior of \ac{SUT} for regression testing. In the future, a mechanism for automatically generated oracles could also be provided in \tech.
 
-Another aspect of test generation is the scope of the test cases. Unit testing, as the name suggests, refers to individual units. Traditionally, complex dependencies are replaced by mocks in unit tests, e.g., a database connection. As far as possible, \tech exploits real data types, even if they come from other units, which makes it more an integration test suite generator. Rust's ecosystem already offers many mock libraries, but unlike Java, they do not rely on reflection, but on Rust's strong macro system and generate mocks at compile time. It would be interesting to extend \tech's search-based algorithm with functional mocks to achieve potentially better coverage, such as Arcuri et al.~\cite{Arcuri2017} do for \textsc{EvoSuite}.
+Another aspect of test generation is the scope of the test cases. Unit testing, as the name suggests, refers to individual units. Traditionally, complex dependencies are replaced by mocks in unit tests, e.g., a database connection. As far as possible, \tech exploits real data types, even if they originate in other units, which makes some test more integration than unit tests. Rust's ecosystem already offers many mock libraries, but unlike Java, they do not rely on runtime reflection, but on Rust's strong macro system and generate mocks at compile time. It would be interesting to extend \tech's search-based algorithm with functional mocks to achieve potentially better coverage, such as Arcuri et al.~\cite{Arcuri2017} do for \textsc{EvoSuite}.
 
-Finally, it would be useful to use Rust's compiler analysis for more meaningful tests. \tech is a compiler wrapper and can thus access all compiler internals during the analysis of the \ac{SUT}. Advanced static analysis of the \ac{SUT}, such as backwards search of the definitions of operands in conditions, could help generate better tests with higher coverage. 
+Finally, it would be useful to use Rust's compiler analysis for more meaningful tests. \tech is a compiler wrapper and can thus access all compiler internals during the analysis of the \ac{SUT}. Advanced static analysis of the \ac{SUT}, such as interprocedural search of the initialization of operands used in conditions, could help generate better tests with higher coverage. 
 
 
 \backmatter% Now we are in the appendix
@@ -2707,14 +2707,14 @@ Finally, it would be useful to use Rust's compiler analysis for more meaningful 
 \thispagestyle{empty}
 \null\vfill
 \noindent\textbf{Eidesstattliche Erklärung:}\\[1.5ex]
-Hiermit versichere ich an Eides statt, daß ich diese Bachelorarbeit
+Hiermit versichere ich an Eides statt, dass ich diese Bachelorarbeit
 selbstständig und ohne Benutzung anderer als der angegebenen Quellen und
-Hilfsmittel angefertigt habe und daß alle Ausführungen, die wörtlich oder
-sinngemäß übernommen wurden, als solche gekennzeichnet sind, sowie daß ich die
-Bachelorarbeit in gleicher oder ähnlicher Form noch keiner anderen
+Hilfsmittel angefertigt habe und dass alle Ausführungen, die wörtlich oder
+sinngemäß übernommen wurden, als solche gekennzeichnet sind, sowie dass ich die
+Masterarbeit in gleicher oder ähnlicher Form noch keiner anderen
 Prüfungsbehörde vorgelegt habe.\\[1.5cm]
-Place, \today\quad\rule{6cm}{0.1mm}\\
-\null\hspace{5cm} {\small Thesis Author}
+Passau, \today\quad\rule{6cm}{0.1mm}\\
+\null\hspace{5cm} {\small Vsevolod Tymofyeyev}
 
 \clearpage
 \input{acronyms}

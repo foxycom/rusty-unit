@@ -202,26 +202,30 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
     RedisStorage.clear();
 
     var directory = new File(container.getPath());
-    Optional<List<Integer>> failedTests;
+    Optional<List<Integer>> failedTestIds;
     try {
-      failedTests = executeTestsWithInstrumentation(directory, container.getName());
+      failedTestIds = executeTestsWithInstrumentation(directory, container.getName());
     } catch (TestCaseDoesNotCompileException e) {
-      throw new RuntimeException("Huh?", e);
+      logger.error("Tests did not compile", e);
+      return 1;
     }
 
-    failedTests.ifPresent(tests -> logger.info(tests.size() + " tests failed"));
+    failedTestIds.ifPresent(tests -> logger.info(tests.size() + " tests failed"));
     var coverage = RedisStorage.<TestCase>requestTraces();
 
-    for (TestCase testCase : container.chromosomes()) {
-      failedTests.ifPresent(tests -> {
-        if (tests.contains(testCase.getId())) {
-          testCase.setFails(true);
-        }
-      });
+    if (failedTestIds.isPresent()) {
+      var ids = failedTestIds.get();
+      var failedTests = container.chromosomes().stream().filter(t -> ids.contains(t.getId())).toList();
+      container.chromosomes().removeAll(failedTests);
+      failedTests.forEach(t -> t.metadata().setFails(true));
+    }
 
+    for (TestCase testCase : container.chromosomes()) {
       var testCoverage = coverage.get(testCase.getId());
       testCase.setCoverage(testCoverage);
     }
+
+    container.refresh();
 
     return 0;
   }

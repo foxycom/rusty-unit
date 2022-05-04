@@ -24,13 +24,13 @@ public class ArchiveImpl<C extends AbstractTestCaseChromosome<C>> implements Arc
       C bestTestCase;
       var bestLength = Integer.MAX_VALUE;
       if ((bestTestCase = getCaseThatCovers(u)) != null) {
-        bestLength = bestTestCase.getStatements().size();
+        bestLength = bestTestCase.size();
       }
 
       for (var testCase : population) {
         var score = u.getFitness(testCase);
-        var length = testCase.getStatements().size();
-        if (score == 0 && length <= bestLength && !testCase.fails()) {
+        var length = testCase.size();
+        if (score == 0 && length <= bestLength && !testCase.metadata().fails()) {
           // replace bestTestCase with testCase in archive
           replaceBy(bestTestCase, testCase);
           bestTestCase = testCase;

@@ -42,7 +42,7 @@ public class Crate implements ChromosomeContainer<TestCase> {
   private final List<SourceFile> sourceFiles;
   private final ChromosomeExecutor<TestCase> executor;
   private final String crateName;
-  private final List<TestCase> testCases;
+  private List<TestCase> testCases;
 
   public static Crate parse(Path root, List<Path> mainFiles, String crateName)
       throws IOException, InterruptedException {
@@ -140,10 +140,7 @@ public class Crate implements ChromosomeContainer<TestCase> {
   }
 
   @Override
-  public void addAll(List<TestCase> testCases) {
-    this.testCases.clear();
-    this.testCases.addAll(testCases);
-
+  public void refresh() {
     Preconditions.checkState(!sourceFiles.isEmpty());
     Map<String, List<TestCase>> sorted = new HashMap<>();
 
@@ -170,15 +167,22 @@ public class Crate implements ChromosomeContainer<TestCase> {
   }
 
   @Override
+  public void addAll(List<TestCase> testCases) {
+    this.testCases = testCases;
+
+    refresh();
+  }
+
+  @Override
   public List<TestCase> chromosomes() {
     return testCases;
   }
 
   @Override
-  public void executeWithInstrumentation() {
+  public int executeWithInstrumentation() {
     // Write tests into the source files
     try {
-      var statusCode = executor.runWithInstrumentation(this);
+      return executor.runWithInstrumentation(this);
     } catch (IOException | InterruptedException e) {
       throw new RuntimeException(e);
     }

@@ -63,8 +63,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   private List<Statement> statements;
   private Map<MinimizingFitnessFunction<TestCase>, Double> coverage;
   private MirAnalysis<TestCase> mir;
-  private boolean fails;
-  private Double[] cov;
+  private TestCaseMetadata metadata;
 
   public TestCase(int id, TyCtxt tyCtxt, Mutation<TestCase> mutation,
       Crossover<TestCase> crossover, MirAnalysis<TestCase> mir) {
@@ -75,6 +74,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     this.statements = new ArrayList<>();
     this.coverage = new HashMap<>();
     this.mir = mir;
+    this.metadata = new TestCaseMetadata(id);
   }
 
   public TestCase(TestCase other) {
@@ -85,7 +85,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         .collect(toCollection(ArrayList::new));
     this.coverage = new HashMap<>();
     this.mir = other.mir;
-    this.fails = false;
+    this.metadata = new TestCaseMetadata(id);
   }
 
   public TyCtxt getHirAnalysis() {
@@ -101,15 +101,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     this.id = id;
   }
 
-  @Override
-  public boolean fails() {
-    return fails;
-  }
-
-  public void setFails(boolean fails) {
-    this.fails = fails;
-  }
-
   public MirAnalysis<TestCase> mir() {
     return mir;
   }
@@ -121,6 +112,11 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
   public List<Statement> getStatements() {
     return statements;
+  }
+
+  @Override
+  public TestCaseMetadata metadata() {
+    return metadata;
   }
 
   public Optional<Statement> getLastCrateStmt() {
@@ -135,9 +131,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         .filter(s -> !s.isPublic())
         .map(Statement::getSrcFilePath)
         .collect(Collectors.toSet());
-    if (paths.size() > 1) {
-      throw new RuntimeException();
-    }
     Preconditions.checkState(paths.size() <= 1);
 
     return paths.stream().findFirst();

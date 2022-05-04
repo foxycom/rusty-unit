@@ -7,8 +7,9 @@ import java.util.List;
 
 public interface ChromosomeContainer<C extends AbstractTestCaseChromosome<C>> {
   void addAll(List<C> chromosomes);
+  void refresh();
   List<C> chromosomes();
-  void executeWithInstrumentation();
+  int executeWithInstrumentation();
   LLVMCoverage executeWithLlvmCoverage() throws IOException, InterruptedException;
   String getPath();
   String getName();
