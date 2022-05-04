@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -164,6 +165,12 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
     var process = processBuilder.start();
     var output = IOUtils.toString(process.getInputStream(), Charset.defaultCharset());
     var statusCode = process.waitFor();
+
+    // TODO: 04.05.22 log build output
+    var path = Paths.get(Constants.OUTPUT_PATH, "build", System.currentTimeMillis() + ".log");
+    var writer = Files.newBufferedWriter(path);
+    writer.write(output);
+    writer.flush();
 
     var elapsedTime = timer.end();
     System.out.printf("\t>> Finished. Took %ds%n", TimeUnit.MILLISECONDS.toSeconds(elapsedTime));

@@ -9,12 +9,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-public class ArchiveImpl<C extends AbstractTestCaseChromosome<C>> implements Archive<C> {
+public class DefaultArchive<C extends AbstractTestCaseChromosome<C>> implements Archive<C> {
 
   private final Set<C> archive;
   private final Set<MinimizingFitnessFunction<C>> objectives;
 
-  public ArchiveImpl(Set<MinimizingFitnessFunction<C>> objectives) {
+  public DefaultArchive(Set<MinimizingFitnessFunction<C>> objectives) {
     this.archive = new HashSet<>();
     this.objectives = objectives;
   }

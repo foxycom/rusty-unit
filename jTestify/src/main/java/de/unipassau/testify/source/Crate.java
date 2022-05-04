@@ -154,6 +154,7 @@ public class Crate implements ChromosomeContainer<TestCase> {
               .toString());
       sorted.putIfAbsent(filePathBinding, new ArrayList<>());
       sorted.get(filePathBinding).add(testCase);
+      testCase.metadata().setFilePath(filePathBinding);
     });
 
     sorted.forEach((path, tests) -> {

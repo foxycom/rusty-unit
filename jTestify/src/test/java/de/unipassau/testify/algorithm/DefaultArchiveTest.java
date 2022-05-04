@@ -1,15 +1,13 @@
 package de.unipassau.testify.algorithm;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
 import de.unipassau.testify.mir.BasicBlock;
 import de.unipassau.testify.test_case.TestCase;
-import de.unipassau.testify.test_case.TestCaseMetadata;
-import java.util.HashSet;
+import de.unipassau.testify.test_case.metadata.TestCaseMetadata;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,7 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class ArchiveImplTest {
+class DefaultArchiveTest {
 
   private Archive<TestCase> archive;
 
@@ -44,7 +42,7 @@ class ArchiveImplTest {
         basicBlock2,
         basicBlock3
     );
-    archive = new ArchiveImpl<>(objectives);
+    archive = new DefaultArchive<>(objectives);
   }
 
   @Test

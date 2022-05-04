@@ -2,7 +2,8 @@ package de.unipassau.testify.metaheuristics.chromosome;
 
 import de.unipassau.testify.metaheuristics.operators.Crossover;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
-import de.unipassau.testify.test_case.TestCaseMetadata;
+import de.unipassau.testify.test_case.metadata.MetaData;
+import de.unipassau.testify.test_case.metadata.TestCaseMetadata;
 import de.unipassau.testify.test_case.statement.Statement;
 import java.util.Iterator;
 import java.util.List;
@@ -44,5 +45,5 @@ public abstract class AbstractTestCaseChromosome<C extends AbstractTestCaseChrom
     return getStatements().iterator();
   }
 
-  public abstract TestCaseMetadata metadata();
+  public abstract MetaData metadata();
 }

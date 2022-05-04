@@ -3,17 +3,15 @@ package de.unipassau.testify.test_case.operators;
 import de.unipassau.testify.Constants;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
 import de.unipassau.testify.test_case.TestCase;
-import de.unipassau.testify.test_case.visitor.TestCaseVisitor;
-import de.unipassau.testify.test_case.visitor.Visitor;
 import de.unipassau.testify.util.Rnd;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class BasicMutation implements Mutation<TestCase> {
+public class DefaultMutation implements Mutation<TestCase> {
 
-  private static final Logger logger = LoggerFactory.getLogger(BasicMutation.class);
+  private static final Logger logger = LoggerFactory.getLogger(DefaultMutation.class);
 
   @Override
   public TestCase apply(TestCase testCase) {

@@ -1,4 +1,4 @@
-package de.unipassau.testify.test_case;
+package de.unipassau.testify.test_case.metadata;
 
 public class TestSuiteMetadata {
   private long executionTime;

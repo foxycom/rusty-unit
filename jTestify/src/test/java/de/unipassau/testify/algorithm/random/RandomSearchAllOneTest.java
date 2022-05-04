@@ -1,7 +1,7 @@
 package de.unipassau.testify.algorithm.random;
 
 import de.unipassau.testify.algorithm.Archive;
-import de.unipassau.testify.algorithm.ArchiveImpl;
+import de.unipassau.testify.algorithm.DefaultArchive;
 import de.unipassau.testify.allone.MaxOne;
 import de.unipassau.testify.allone.MaxOneContainer;
 import de.unipassau.testify.allone.MaxOneCrossover;
@@ -43,7 +43,7 @@ class RandomSearchAllOneTest {
         crossover = new MaxOneCrossover();
         chromosomeGenerator = new MaxOneGenerator(length, mutation, crossover);
         populationGenerator = new FixedSizePopulationGenerator<>(chromosomeGenerator, 3);
-        archive = new ArchiveImpl<>(objectives);
+        archive = new DefaultArchive<>(objectives);
         container = new MaxOneContainer();
         randomSearch = new RandomSearch<>(2, populationGenerator, archive, container);
     }

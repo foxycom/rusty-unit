@@ -48,6 +48,7 @@ public class Output<C extends AbstractTestCaseChromosome<C>> {
 
     var jo = new JsonObject();
     jo.add("id", new JsonPrimitive(testCase.getId()));
+    jo.add("filePath", new JsonPrimitive(testCase.metadata().filePath()));
 
     var statementsArray = new JsonArray(testCase.size());
     for (var stmt : testCase.getStatements()) {

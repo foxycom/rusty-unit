@@ -4,7 +4,7 @@ import de.unipassau.testify.generators.TestIdGenerator;
 import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome;
 import de.unipassau.testify.metaheuristics.operators.Crossover;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
-import de.unipassau.testify.test_case.TestCaseMetadata;
+import de.unipassau.testify.test_case.metadata.TestCaseMetadata;
 import de.unipassau.testify.test_case.statement.Statement;
 import java.util.ArrayList;
 import java.util.List;

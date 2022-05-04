@@ -18,6 +18,8 @@ import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.Method;
 import de.unipassau.testify.test_case.callable.RefItem;
 import de.unipassau.testify.test_case.callable.TupleInit;
+import de.unipassau.testify.test_case.metadata.MetaData;
+import de.unipassau.testify.test_case.metadata.TestCaseMetadata;
 import de.unipassau.testify.test_case.statement.PrimitiveStmt;
 import de.unipassau.testify.test_case.statement.Statement;
 import de.unipassau.testify.test_case.type.Array;
@@ -37,7 +39,6 @@ import de.unipassau.testify.test_case.visitor.Visitor;
 import de.unipassau.testify.util.Rnd;
 import de.unipassau.testify.util.TypeUtil;
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -115,7 +116,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   }
 
   @Override
-  public TestCaseMetadata metadata() {
+  public MetaData metadata() {
     return metadata;
   }
 
