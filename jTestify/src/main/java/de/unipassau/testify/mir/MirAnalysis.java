@@ -1,10 +1,8 @@
 package de.unipassau.testify.mir;
 
-import static de.unipassau.testify.Constants.MIR_LOG_PATH;
 
 import de.unipassau.testify.exec.Timer;
 import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome;
-import de.unipassau.testify.metaheuristics.fitness_functions.FitnessFunction;
 import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
 import java.io.IOException;
 import java.nio.file.Files;

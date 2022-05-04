@@ -15,9 +15,9 @@ import java.util.List;
 public class Output<C extends AbstractTestCaseChromosome<C>> {
   private final File directory;
 
-  public Output(String crateName) {
+  public Output(String crateName, String crateRoot) {
     var dirName = String.format("%s-%d", crateName, System.currentTimeMillis());
-    var path = Paths.get(Constants.OUTPUT_PATH, dirName);
+    var path = Paths.get(crateRoot, "generated-tests", dirName);
     directory = path.toFile();
     var result = directory.mkdirs();
     if (!result) {

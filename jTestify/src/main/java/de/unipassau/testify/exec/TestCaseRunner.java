@@ -2,6 +2,7 @@ package de.unipassau.testify.exec;
 
 import com.jayway.jsonpath.JsonPath;
 import de.unipassau.testify.Constants;
+import de.unipassau.testify.Main.CLI;
 import de.unipassau.testify.exception.TestCaseDoesNotCompileException;
 import de.unipassau.testify.server.RedisStorage;
 import de.unipassau.testify.source.ChromosomeContainer;
@@ -30,48 +31,49 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
 
   private static final Logger logger = LoggerFactory.getLogger(TestCaseRunner.class);
 
-  private static final Path COVERAGE_DIR = Paths.get(System.getProperty("user.dir"), "..", "tmp",
-      "coverage");
-  private static final Path LOG_PATH = Paths.get(System.getProperty("user.dir"), "..", "tmp",
-      "jTestify",
-      "tests.log");
-  private static final Path ERROR_PATH = Paths.get(System.getProperty("user.dir"), "..", "tmp",
-      "jTestify",
-      "tests.error");
   private static final Path SCRIPTS_PATH = Paths.get(System.getProperty("user.dir"), "scripts");
 
-  public TestCaseRunner() {
+  private final Path logPath;
+  private final Path errorPath;
+  private final Path coverageDir;
+  private final Path instrumenter;
+
+  public TestCaseRunner(CLI cli, String executionRoot) {
+    this.coverageDir = Paths.get(executionRoot, "coverage");
+    this.logPath = Paths.get(cli.getCrateRoot(), "tests.log");
+    this.errorPath = Paths.get(cli.getCrateRoot(), "tests.error");
+    this.instrumenter = Paths.get(cli.getInstrumenterPath());
   }
 
   private void clear() {
-    Arrays.stream(Objects.requireNonNull(COVERAGE_DIR.toFile().listFiles())).filter(File::isFile)
+    Arrays.stream(Objects.requireNonNull(coverageDir.toFile().listFiles())).filter(File::isFile)
         .forEach(File::delete);
   }
 
   private int collectCoverageFiles(File directory) throws IOException, InterruptedException {
     var processBuilder = new ProcessBuilder("cargo", Constants.RUST_TOOLCHAIN, "test",
-        Constants.TEST_MOD_NAME).directory(directory).redirectOutput(LOG_PATH.toFile())
-        .redirectError(ERROR_PATH.toFile());
+        Constants.TEST_MOD_NAME).directory(directory).redirectOutput(logPath.toFile())
+        .redirectError(errorPath.toFile());
     var env = processBuilder.environment();
     env.put("RUSTFLAGS", "-Z instrument-coverage");
 
     var profRawFileName = String.format("%s-%%m.profraw", Constants.TEST_PREFIX.replace("_", "-"));
-    env.put("LLVM_PROFILE_FILE", Paths.get(COVERAGE_DIR.toString(), profRawFileName).toString());
+    env.put("LLVM_PROFILE_FILE", Paths.get(coverageDir.toString(), profRawFileName).toString());
 
     var process = processBuilder.start();
     return process.waitFor();
   }
 
   private int mergeCoverageFiles(File directory) throws IOException, InterruptedException {
-    var profRawFiles = Paths.get(COVERAGE_DIR.toFile().getCanonicalPath(), "rusty-test*.profraw");
+    var profRawFiles = Paths.get(coverageDir.toFile().getCanonicalPath(), "rusty-test*.profraw");
     var command = String.format(
         "cargo %s profdata -- merge -sparse %s -o %s",
         Constants.RUST_TOOLCHAIN,
         profRawFiles,
-        Paths.get(COVERAGE_DIR.toFile().getCanonicalPath(), "rusty-tests.profdata"));
+        Paths.get(coverageDir.toFile().getCanonicalPath(), "rusty-tests.profdata"));
 
     var processBuilder = new ProcessBuilder("bash", "-c", command).directory(directory)
-        .redirectOutput(LOG_PATH.toFile()).redirectError(ERROR_PATH.toFile());
+        .redirectOutput(logPath.toFile()).redirectError(errorPath.toFile());
     var process = processBuilder.start();
     return process.waitFor();
   }
@@ -80,10 +82,10 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
       throws InterruptedException, IOException {
     var script = Paths.get(SCRIPTS_PATH.toString(), "coverage-report.sh").toString();
 
-    var profdata = Paths.get(COVERAGE_DIR.toString(), "rusty-tests.profdata").toString();
+    var profdata = Paths.get(coverageDir.toString(), "rusty-tests.profdata").toString();
 
     var processBuilder = new ProcessBuilder(script, profdata).directory(directory)
-        .redirectError(ERROR_PATH.toFile());
+        .redirectError(errorPath.toFile());
     var process = processBuilder.start();
 
     var reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -144,10 +146,10 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
     var processBuilder = new ProcessBuilder("cargo", Constants.RUST_TOOLCHAIN, "test",
         Constants.TEST_MOD_NAME)
         .directory(directory)
-        .redirectError(ERROR_PATH.toFile());
+        .redirectError(errorPath.toFile());
 
     var env = processBuilder.environment();
-    env.put("RUSTC_WRAPPER", Constants.INSTRUMENTATION_BIN);
+    env.put("RUSTC_WRAPPER", instrumenter.toString());
     env.put("RUST_LOG", "info");
     env.put("RU_STAGE", "instrumentation");
     env.put("RU_CRATE_NAME", crateName);
@@ -156,11 +158,12 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
     var output = IOUtils.toString(process.getInputStream(), Charset.defaultCharset());
     var statusCode = process.waitFor();
 
-    // TODO: 04.05.22 log build output
-    var path = Paths.get(Constants.OUTPUT_PATH, "build", System.currentTimeMillis() + ".log");
-    var writer = Files.newBufferedWriter(path);
-    writer.write(output);
-    writer.flush();
+    var path = Paths.get(directory.getAbsolutePath(), "build", System.currentTimeMillis() + ".log");
+    path.getParent().toFile().mkdirs();
+    try(var writer = Files.newBufferedWriter(path)) {
+      writer.write(output);
+      writer.flush();
+    }
 
     var elapsedTime = timer.end();
     System.out.printf("\t>> Finished. Took %ds%n", TimeUnit.MILLISECONDS.toSeconds(elapsedTime));
@@ -185,13 +188,6 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
       return Optional.empty();
     }
   }
-
-  public static void main(String[] args) throws IOException, InterruptedException {
-    var runner = new TestCaseRunner();
-    var coverage = runner.run("/Users/tim/Documents/master-thesis/evaluation/current");
-    System.out.println(coverage.lineCoverage);
-  }
-
 
   @Override
   public int runWithInstrumentation(ChromosomeContainer<TestCase> container)

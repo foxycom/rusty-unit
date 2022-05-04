@@ -23,11 +23,6 @@ public class Constants {
   public static final int MAX_DELTA = getInt("max-delta");
   public static final int MAX_INT = getInt("max-int");
   public static final int MAX_STRING_LENGTH = getInt("max-string-length");
-  public static final String MIR_LOG_PATH = properties.getProperty("mir-log-dir");
-  public static final String HIR_LOG_PATH = properties.getProperty("hir-log-path");
-  public static final String OUTPUT_PATH = properties.getProperty("output-path");
-  public static final String ANALYSIS_BIN = properties.getProperty("analysis-bin");
-  public static final String INSTRUMENTATION_BIN = properties.getProperty("instrumentation-bin");
   public static final String TEST_MOD_NAME = properties.getProperty("test-mod-name");
   public static final String RUST_TOOLCHAIN = properties.getProperty("rust-toolchain");
   public static final String TEST_PREFIX = properties.getProperty("test-prefix");

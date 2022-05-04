@@ -1,7 +1,6 @@
 package de.unipassau.testify;
 
 import static de.unipassau.testify.Constants.GENERATIONS;
-import static de.unipassau.testify.Constants.HIR_LOG_PATH;
 import static de.unipassau.testify.Constants.POPULATION_SIZE;
 
 import de.unipassau.testify.Main.CLI;
@@ -36,10 +35,7 @@ import java.util.Set;
 
 public class TestsGenerator {
   public static void runMOSA(CLI cli) throws IOException, InterruptedException {
-    var crate = Crate.parse(Paths.get(cli.getCrateRoot()),
-        cli.getMainFiles().stream().map(Path::of).toList(), cli.getCrateName());
-
-    // TODO: 12.02.22 run instrumentation of the crate
+    var crate = Crate.load(cli);
 
     var hirLog = new File(cli.getHirPath());
     var hirJson = Files.readString(hirLog.toPath());
@@ -81,10 +77,7 @@ public class TestsGenerator {
   }
 
   public static void runDynaMOSA(CLI cli) throws IOException, InterruptedException {
-    var crate = Crate.parse(Paths.get(cli.getCrateRoot()),
-        cli.getMainFiles().stream().map(Path::of).toList(), cli.getCrateName());
-
-    // TODO: 12.02.22 run instrumentation of the crate
+    var crate = Crate.load(cli);
 
     var hirLog = new File(cli.getHirPath());
     var hirJson = Files.readString(hirLog.toPath());
@@ -109,7 +102,7 @@ public class TestsGenerator {
 
     var archive = new DefaultArchive<>(objectives);
 
-    var output = new Output<TestCase>(cli.getCrateName());
+    var output = new Output<TestCase>(cli.getCrateName(), cli.getCrateRoot());
 
     var mosa = new DynaMOSA<>(
         GENERATIONS,
@@ -130,8 +123,7 @@ public class TestsGenerator {
   }
 
   public static void runRandomSearch(CLI cli) throws IOException, InterruptedException {
-    var crate = Crate.parse(Paths.get(cli.getCrateRoot()),
-          cli.getMainFiles().stream().map(Path::of).toList(), cli.getCrateName());
+    var crate = Crate.load(cli);
 
     var hirLog = new File(cli.getHirPath());
     var hirJson = Files.readString(hirLog.toPath());

@@ -31,6 +31,9 @@ public class Main {
 
     @Option(longName = "mir")
     String getMirPath();
+
+    @Option(shortName = "i", longName = "instrumenter")
+    String getInstrumenterPath();
   }
 
   public static void main(String[] args) throws IOException, InterruptedException {
