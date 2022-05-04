@@ -23,8 +23,10 @@ public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
 
   private final Map<String, CDG<MinimizingFitnessFunction<C>, C>> cdgs;
   private final Set<MinimizingFitnessFunction<C>> visitedBlocks = new HashSet<>();
+  private final String mirPath;
 
-  public MirAnalysis() {
+  public MirAnalysis(String mirPath) {
+    this.mirPath = mirPath;
     cdgs = parseCDGs();
   }
 
@@ -33,7 +35,7 @@ public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
     var timer = new Timer();
     timer.start();
     Map<String, CDG<MinimizingFitnessFunction<C>, C>> cdgs = new HashMap<>();
-    var path = Paths.get(MIR_LOG_PATH);
+    var path = Paths.get(mirPath);
     try (var stream = Files.walk(path, Integer.MAX_VALUE)) {
       stream
           .filter(Files::isRegularFile)

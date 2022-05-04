@@ -53,7 +53,6 @@ public class DynaMOSA<C extends AbstractTestCaseChromosome<C>> implements Geneti
     this.output = output;
   }
 
-
   @Override
   public List<C> findSolution() {
     var nOfTargets = mir.targets().size();
@@ -65,6 +64,9 @@ public class DynaMOSA<C extends AbstractTestCaseChromosome<C>> implements Geneti
       population = populationGenerator.get();
       container.addAll(population);
       execCode = container.executeWithInstrumentation();
+      if (execCode != 0) {
+        System.out.println("\t>> Broken tests found, regenerating...");
+      }
     } while (execCode != 0);
 
     output.addPopulation(0, population);
@@ -74,14 +76,6 @@ public class DynaMOSA<C extends AbstractTestCaseChromosome<C>> implements Geneti
     output.addCoveredTargets(0, nOfTargets - targets.size(), nOfTargets);
 
     for (int gen = 1; gen < maxGenerations; gen++) {
-//      try {
-//        container.addAll(archive.get());
-//        var llvmCoverage = container.executeWithLlvmCoverage();
-//        System.out.printf("\t>> Coverage: %.2f%n", llvmCoverage.lineCoverage);
-//      } catch (IOException | InterruptedException e) {
-//        e.printStackTrace();
-//      }
-
       System.out.printf("-- Generation %d%n", gen);
       var offspring = offspringGenerator.get(population);
 

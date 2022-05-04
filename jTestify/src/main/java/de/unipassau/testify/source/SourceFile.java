@@ -57,7 +57,6 @@ public class SourceFile {
     if (type == FileType.MAIN) {
       try (var out = new BufferedWriter(new FileWriter(executionPath.toFile()))) {
         out.write("#![feature(no_coverage)]\n");
-        out.write("pub mod rusty_monitor;\n");
         var content = Files.readString(originalPath);
         out.write(content);
       }
@@ -68,9 +67,7 @@ public class SourceFile {
     var visitor = new TestCaseVisitor();
 
     try (var out = new BufferedWriter(new FileWriter(executionPath.toFile()))) {
-      if (type == FileType.MAIN) {
-        out.write("pub mod rusty_monitor;\n");
-      }
+
 
       var content = Files.readString(originalPath);
       out.write(content);

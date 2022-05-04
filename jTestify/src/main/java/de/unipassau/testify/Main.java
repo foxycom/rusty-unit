@@ -25,6 +25,12 @@ public class Main {
 
     @Option(shortName = "a", longName = "algo")
     String getAlgorithm();
+
+    @Option(longName = "hir")
+    String getHirPath();
+
+    @Option(longName = "mir")
+    String getMirPath();
   }
 
   public static void main(String[] args) throws IOException, InterruptedException {

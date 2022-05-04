@@ -36,7 +36,6 @@ public class Crate implements ChromosomeContainer<TestCase> {
   private static final Path ERROR_PATH = Paths.get(System.getProperty("user.dir"), "..", "tmp",
       "jTestify",
       "tests.error");
-  private static final String MONITOR_PATH = "/Users/tim/Documents/master-thesis/testify/src/monitor.rs";
   private final Path originalRoot;
   private final Path executionRoot;
   private final List<SourceFile> sourceFiles;
@@ -106,26 +105,19 @@ public class Crate implements ChromosomeContainer<TestCase> {
 
   private void copyToExecutionDir() throws IOException {
     FileUtils.copyDirectory(originalRoot.toFile(), executionRoot.toFile());
-
-    var monitorFile = new File(MONITOR_PATH);
-    var executionMonitorFile = Paths.get(executionRoot.toString(), "src", "rusty_monitor.rs");
-    com.google.common.io.Files.copy(monitorFile, executionMonitorFile.toFile());
     for (SourceFile sourceFile : sourceFiles) {
       sourceFile.onCopied();
     }
 
     // Add redis dependency
-    var cargoToml = findCargoToml();
-    addDependencies(cargoToml);
+//    var cargoToml = findCargoToml();
+//    addDependencies(cargoToml);
   }
 
   private void addDependencies(Path cargoToml) throws IOException {
     var sink = com.google.common.io.Files.asCharSink(cargoToml.toFile(), Charsets.UTF_8,
         FileWriteMode.APPEND);
     sink.write("\n[dependencies.redis]\nversion = \"*\"\n");
-
-    //[dependencies.redis]
-    //version = "*"
   }
 
   private Path findCargoToml() {

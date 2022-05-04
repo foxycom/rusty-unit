@@ -41,10 +41,10 @@ public class TestsGenerator {
 
     // TODO: 12.02.22 run instrumentation of the crate
 
-    var hirLog = new File(HIR_LOG_PATH);
+    var hirLog = new File(cli.getHirPath());
     var hirJson = Files.readString(hirLog.toPath());
     var hir = new TyCtxt(JSONParser.parse(hirJson));
-    var mir = new MirAnalysis<TestCase>();
+    var mir = new MirAnalysis<TestCase>(cli.getMirPath());
 
     Set<MinimizingFitnessFunction<TestCase>> objectives = mir.targets();
 
@@ -78,8 +78,6 @@ public class TestsGenerator {
     var solutions = mosa.findSolution();
 
     crate.addAll(solutions);
-    var llvmCoverage = crate.executeWithLlvmCoverage();
-    System.out.printf("Coverage: %.2f%n", llvmCoverage.lineCoverage);
   }
 
   public static void runDynaMOSA(CLI cli) throws IOException, InterruptedException {
@@ -88,10 +86,10 @@ public class TestsGenerator {
 
     // TODO: 12.02.22 run instrumentation of the crate
 
-    var hirLog = new File(HIR_LOG_PATH);
+    var hirLog = new File(cli.getHirPath());
     var hirJson = Files.readString(hirLog.toPath());
     var hir = new TyCtxt(JSONParser.parse(hirJson));
-    var mir = new MirAnalysis<TestCase>();
+    var mir = new MirAnalysis<TestCase>(cli.getMirPath());
 
     Set<MinimizingFitnessFunction<TestCase>> objectives = mir.targets();
 
@@ -129,18 +127,16 @@ public class TestsGenerator {
     var solutions = mosa.findSolution();
 
     crate.addAll(solutions);
-    var llvmCoverage = crate.executeWithLlvmCoverage();
-    System.out.printf("Coverage: %.2f%n", llvmCoverage.lineCoverage);
   }
 
   public static void runRandomSearch(CLI cli) throws IOException, InterruptedException {
     var crate = Crate.parse(Paths.get(cli.getCrateRoot()),
           cli.getMainFiles().stream().map(Path::of).toList(), cli.getCrateName());
 
-    var hirLog = new File(HIR_LOG_PATH);
+    var hirLog = new File(cli.getHirPath());
     var hirJson = Files.readString(hirLog.toPath());
     var hir = new TyCtxt(JSONParser.parse(hirJson));
-    var mir = new MirAnalysis<TestCase>();
+    var mir = new MirAnalysis<TestCase>(cli.getMirPath());
 
     var mutation = new DefaultMutation();
     var crossover = new SinglePointFixedCrossover();
@@ -155,7 +151,5 @@ public class TestsGenerator {
     var solutions = rs.findSolution();
 
     crate.addAll(solutions);
-    var llvmCoverage = crate.executeWithLlvmCoverage();
-    System.out.printf("Coverage: %.2f%n", llvmCoverage.lineCoverage);
   }
 }

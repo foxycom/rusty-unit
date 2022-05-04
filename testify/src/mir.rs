@@ -77,14 +77,14 @@ pub const CUSTOM_OPT_MIR: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<
       let locals_str = locals_decls.iter_enumerated()
           .map(|(local, decl)| format!("{:?} -> {:?}", local, decl))
           .collect::<Vec<_>>();
-      let (cfg, _) = crate::data_structures::original_cfg(&body);
-      let (truncated_cfg, _) = crate::data_structures::truncated_cfg(&body);
+      let (cfg, _) = original_cfg(&body);
+      let (truncated_cfg, _) = truncated_cfg(&body);
       let mut mir_object = MirObjectBuilder::default()
           .global_id(global_id.to_owned())
           .basic_blocks(basic_blocks_str)
           .cdg(serde_json::to_string(&cdg).unwrap())
-          .cfg(format!("{}", petgraph::dot::Dot::new(&cfg)))
-          .truncated_cfg(format!("{}", petgraph::dot::Dot::new(&truncated_cfg)))
+          .cfg(format!("{}", Dot::new(&cfg)))
+          .truncated_cfg(format!("{}", Dot::new(&truncated_cfg)))
           .locals(locals_str)
           .build()
           .unwrap();

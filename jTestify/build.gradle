@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id "io.freefair.lombok" version "6.4.1"
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
 }
 
 group 'de.unipassau'
@@ -32,6 +33,23 @@ dependencies {
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
 }
 
+jar {
+    manifest {
+        attributes(
+                'Main-Class': 'de.unipassau.testify.Main'
+        )
+    }
+}
+
+shadowJar {
+    archiveBaseName.set('rusty-unit')
+    archiveClassifier.set('')
+    archiveVersion.set('')
+}
+
 test {
     useJUnitPlatform()
 }
+
+
+//apply plugin: 'com.github.johnrengelman.shadow'
