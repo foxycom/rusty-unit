@@ -145,8 +145,8 @@ public class Crate implements ChromosomeContainer<TestCase> {
     Map<String, List<TestCase>> sorted = new HashMap<>();
 
     var allowedFiles = sourceFiles.stream()
-        .filter(f -> !f.getExecutionPath().endsWith("lib.rs")
-            && !f.getExecutionPath().endsWith("monitor.rs")).toList();
+        .filter(f -> !f.getExecutionPath().toString().endsWith("lib.rs")
+            && !f.getExecutionPath().toString().endsWith("monitor.rs")).toList();
 
     testCases.forEach(testCase -> {
       var filePathBinding = testCase.getFilePathBinding()

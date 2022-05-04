@@ -64,10 +64,6 @@ public class BasicMutation implements Mutation<TestCase> {
     logger.info("Starting change mutation");
     var p = 1d / testCase.size();
 
-    if (testCase.getId() == 34) {
-      System.out.println();
-    }
-
     int count = 0;
     var changed = false;
     for (int position = 0; position < testCase.size(); position++) {

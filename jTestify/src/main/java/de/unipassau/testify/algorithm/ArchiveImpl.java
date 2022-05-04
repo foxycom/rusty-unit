@@ -6,6 +6,7 @@ import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFu
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 public class ArchiveImpl<C extends AbstractTestCaseChromosome<C>> implements Archive<C> {
@@ -28,14 +29,17 @@ public class ArchiveImpl<C extends AbstractTestCaseChromosome<C>> implements Arc
       }
 
       for (var testCase : population) {
+        Objects.requireNonNull(testCase);
         var score = u.getFitness(testCase);
         var length = testCase.size();
         if (score == 0 && length <= bestLength && !testCase.metadata().fails()) {
-          // replace bestTestCase with testCase in archive
-          replaceBy(bestTestCase, testCase);
           bestTestCase = testCase;
           bestLength = length;
         }
+      }
+
+      if (bestTestCase != null) {
+        archive.add(bestTestCase);
       }
     }
   }
