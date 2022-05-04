@@ -3,6 +3,7 @@ package de.unipassau.testify.test_case.statement;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.statement.array.DirectArrayInitStmt;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.util.Rnd;
@@ -111,6 +112,8 @@ public interface Statement {
   default DirectArrayInitStmt asArrayStmt() {
     throw new RuntimeException("Not with me");
   }
+
+  Callable getCallable();
 
   boolean consumes(VarReference var);
 

@@ -4,6 +4,7 @@ import de.unipassau.testify.Constants;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.primitive.PrimitiveValue;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.util.Rnd;
@@ -101,6 +102,11 @@ public class PrimitiveStmt implements Statement {
   @Override
   public PrimitiveStmt asPrimitiveStmt() {
     return this;
+  }
+
+  @Override
+  public Callable getCallable() {
+    throw new RuntimeException("Not implemented");
   }
 
   @Override

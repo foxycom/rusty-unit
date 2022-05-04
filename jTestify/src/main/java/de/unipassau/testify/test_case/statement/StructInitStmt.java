@@ -6,6 +6,7 @@ import com.google.common.collect.Streams;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.StructInit;
 import de.unipassau.testify.test_case.type.Type;
 import java.util.ArrayList;
@@ -63,6 +64,11 @@ public class StructInitStmt implements Statement {
   @Override
   public StructInitStmt asStructInitStmt() {
     return this;
+  }
+
+  @Override
+  public Callable getCallable() {
+    return structInit;
   }
 
   public List<Param> params() {

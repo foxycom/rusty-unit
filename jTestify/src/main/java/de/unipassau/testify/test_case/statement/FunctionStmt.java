@@ -3,6 +3,7 @@ package de.unipassau.testify.test_case.statement;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.Function;
 import de.unipassau.testify.test_case.type.Type;
 import java.util.ArrayList;
@@ -44,6 +45,11 @@ public class FunctionStmt extends CallableStmt {
   @Override
   public boolean isPublic() {
     return function.isPublic();
+  }
+
+  @Override
+  public Callable getCallable() {
+    return function;
   }
 
   @Override

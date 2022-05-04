@@ -108,6 +108,25 @@ public class Function implements Callable {
   }
 
   @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Function function = (Function) o;
+    return isPublic == function.isPublic && name.equals(function.name) && params.equals(
+          function.params) && Objects.equals(returnType, function.returnType)
+          && generics.equals(function.generics);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, params, isPublic, returnType, generics);
+  }
+
+  @Override
   public String toString() {
     var paramsStr = params.stream().map(Param::toString).collect(Collectors.joining(", "));
     String returnStr;

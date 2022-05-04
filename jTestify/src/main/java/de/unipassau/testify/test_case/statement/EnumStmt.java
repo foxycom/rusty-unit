@@ -5,6 +5,7 @@ import static java.util.stream.Collectors.toCollection;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.EnumInit;
 import de.unipassau.testify.test_case.type.AbstractEnum;
 import de.unipassau.testify.test_case.type.AbstractEnum.EnumVariant;
@@ -22,7 +23,6 @@ public class EnumStmt implements Statement {
 
   private final UUID id;
   private VarReference returnValue;
-
   private List<VarReference> args;
   private TestCase testCase;
   private EnumInit enumInit;
@@ -128,6 +128,11 @@ public class EnumStmt implements Statement {
   @Override
   public EnumStmt asEnumStmt() {
     return this;
+  }
+
+  @Override
+  public Callable getCallable() {
+    return enumInit;
   }
 
   @Override

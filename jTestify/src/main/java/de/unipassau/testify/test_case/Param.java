@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.TypeBinding;
+import java.util.Objects;
 
 @JsonDeserialize(as = Param.class)
 public class Param {
@@ -96,5 +97,23 @@ public class Param {
     sb.append(type);
 
     return sb.toString();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Param param = (Param) o;
+    return mutable == param.mutable && type.equals(param.type) && Objects.equals(name,
+          param.name);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(type, mutable, name);
   }
 }

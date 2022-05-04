@@ -59,15 +59,16 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
   private static final Logger logger = LoggerFactory.getLogger(TestCase.class);
   private final TyCtxt tyCtxt;
-
   private int id;
   private List<Statement> statements;
   private Map<MinimizingFitnessFunction<TestCase>, Double> coverage;
   private MirAnalysis<TestCase> mir;
   private TestCaseMetadata metadata;
 
+  private final CallableSelector callableSelector;
+
   public TestCase(int id, TyCtxt tyCtxt, Mutation<TestCase> mutation,
-      Crossover<TestCase> crossover, MirAnalysis<TestCase> mir) {
+      Crossover<TestCase> crossover, MirAnalysis<TestCase> mir, CallableSelector callableSelector) {
     super(mutation, crossover);
 
     this.id = id;
@@ -76,6 +77,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     this.coverage = new HashMap<>();
     this.mir = mir;
     this.metadata = new TestCaseMetadata(id);
+    this.callableSelector = callableSelector;
   }
 
   public TestCase(TestCase other) {
@@ -87,6 +89,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     this.coverage = new HashMap<>();
     this.mir = other.mir;
     this.metadata = new TestCaseMetadata(id);
+    this.callableSelector = other.callableSelector;
   }
 
   public TyCtxt getHirAnalysis() {
@@ -384,9 +387,9 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     var filePathBinding = getFilePathBinding();
     Callable callable;
 
-    var possiblemMethods = tyCtxt.methodsOf(variables());
-    if (Rnd.get().nextDouble() < P_LOCAL_VARIABLES && !possiblemMethods.isEmpty()) {
-      var variableAndMethod = Rnd.choice(possiblemMethods);
+    var possibleMethods = tyCtxt.methodsOf(variables());
+    if (Rnd.get().nextDouble() < P_LOCAL_VARIABLES && !possibleMethods.isEmpty()) {
+      var variableAndMethod = Rnd.choice(possibleMethods);
       return insertMethodOnExistingVariable(variableAndMethod.getValue0(),
           variableAndMethod.getValue1());
     } else if (filePathBinding.isPresent()) {
@@ -887,7 +890,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       }
     }
 
-    // fn foo<A>(x: A, v: Vec<A>) -> Option<A>;
 
     if (generator == null) {
       logger.warn("({}) Could not find appropriate generator for {}", id, type);

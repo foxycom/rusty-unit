@@ -5,6 +5,7 @@ import com.google.common.collect.Streams;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.TupleInit;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.util.Rnd;
@@ -157,6 +158,11 @@ public class TupleStmt implements Statement {
   @Override
   public TupleStmt asTupleStmt() {
     return this;
+  }
+
+  @Override
+  public Callable getCallable() {
+    return tupleInit;
   }
 
   @Override

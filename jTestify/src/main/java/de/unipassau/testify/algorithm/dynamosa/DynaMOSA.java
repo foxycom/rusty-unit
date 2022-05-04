@@ -11,6 +11,8 @@ import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome
 import de.unipassau.testify.metaheuristics.chromosome.FixedSizePopulationGenerator;
 import de.unipassau.testify.mir.MirAnalysis;
 import de.unipassau.testify.source.ChromosomeContainer;
+import de.unipassau.testify.test_case.CallableSelector;
+import de.unipassau.testify.test_case.callable.Callable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -71,6 +73,7 @@ public class DynaMOSA<C extends AbstractTestCaseChromosome<C>> implements Geneti
 
     output.addPopulation(0, population);
     archive.update(population);
+    CallableSelector.setCurrentPopulation(archive.get());
     targets = mir.updateTargets(targets, population);
 
     output.addCoveredTargets(0, nOfTargets - targets.size(), nOfTargets);
@@ -84,6 +87,7 @@ public class DynaMOSA<C extends AbstractTestCaseChromosome<C>> implements Geneti
       execCode = container.executeWithInstrumentation();
 
       archive.update(offspring);
+      CallableSelector.setCurrentPopulation(archive.get());
       targets = mir.updateTargets(targets, population);
 
       output.addCoveredTargets(gen, nOfTargets - targets.size(), nOfTargets);

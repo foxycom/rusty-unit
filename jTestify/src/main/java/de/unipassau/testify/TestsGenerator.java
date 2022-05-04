@@ -20,6 +20,7 @@ import de.unipassau.testify.metaheuristics.chromosome.FixedSizePopulationGenerat
 import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
 import de.unipassau.testify.mir.MirAnalysis;
 import de.unipassau.testify.source.Crate;
+import de.unipassau.testify.test_case.CallableSelector;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.TestCaseGenerator;
 import de.unipassau.testify.test_case.UncoveredObjectives;
@@ -49,11 +50,12 @@ public class TestsGenerator {
     var fnds = new FNDSImpl<>(pareto);
     var preferenceSorter = new PreferenceSorterImpl<>(objectives, fnds);
 
+    var callableSelector = new CallableSelector();
     var mutation = new DefaultMutation();
     var crossover = new SinglePointFixedCrossover();
     var selection = new RankSelection<>(objectives, svd, preferenceSorter);
     var populationGenerator = new FixedSizePopulationGenerator<>(
-        new TestCaseGenerator(hir, mir, mutation, crossover), POPULATION_SIZE);
+        new TestCaseGenerator(hir, mir, mutation, crossover, callableSelector), POPULATION_SIZE);
 
     var uncoveredObjectives = new UncoveredObjectives<>(objectives);
     var offspringGenerator = new OffspringGeneratorImpl(selection, uncoveredObjectives);
@@ -86,6 +88,7 @@ public class TestsGenerator {
 
     Set<MinimizingFitnessFunction<TestCase>> objectives = mir.targets();
 
+    var callableSelector = new CallableSelector();
     var svd = new SVDImpl<>(objectives);
     var pareto = new Pareto<TestCase>();
     var fnds = new FNDSImpl<>(pareto);
@@ -95,7 +98,7 @@ public class TestsGenerator {
     var crossover = new SinglePointFixedCrossover();
     var selection = new RankSelection<>(objectives, svd, preferenceSorter);
     var populationGenerator = new FixedSizePopulationGenerator<>(
-        new TestCaseGenerator(hir, mir, mutation, crossover), POPULATION_SIZE);
+        new TestCaseGenerator(hir, mir, mutation, crossover, callableSelector), POPULATION_SIZE);
 
     var uncoveredObjectives = new UncoveredObjectives<>(objectives);
     var offspringGenerator = new OffspringGeneratorImpl(selection, uncoveredObjectives);
@@ -130,9 +133,10 @@ public class TestsGenerator {
     var hir = new TyCtxt(JSONParser.parse(hirJson));
     var mir = new MirAnalysis<TestCase>(cli.getMirPath());
 
+    var callableSelector = new CallableSelector();
     var mutation = new DefaultMutation();
     var crossover = new SinglePointFixedCrossover();
-    var chromosomeGenerator = new TestCaseGenerator(hir, mir, mutation, crossover);
+    var chromosomeGenerator = new TestCaseGenerator(hir, mir, mutation, crossover, callableSelector);
     var populationGenerator = new FixedSizePopulationGenerator<>(chromosomeGenerator, POPULATION_SIZE);
 
     Set<MinimizingFitnessFunction<TestCase>> objectives = mir.targets();

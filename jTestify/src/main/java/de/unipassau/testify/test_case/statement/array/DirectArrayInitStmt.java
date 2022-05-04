@@ -4,6 +4,7 @@ import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
 import de.unipassau.testify.test_case.callable.ArrayInit;
+import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.statement.Statement;
 import de.unipassau.testify.test_case.type.Type;
 import java.util.ArrayList;
@@ -126,6 +127,11 @@ public class DirectArrayInitStmt implements Statement {
   @Override
   public DirectArrayInitStmt asArrayStmt() {
     return this;
+  }
+
+  @Override
+  public Callable getCallable() {
+    return arrayInit;
   }
 
   @Override

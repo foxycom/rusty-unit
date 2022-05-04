@@ -4,6 +4,7 @@ import com.google.common.collect.Streams;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.util.Rnd;
 import java.util.ArrayList;
@@ -31,7 +32,6 @@ public abstract class CallableStmt implements Statement {
     this.args = args;
     this.returnValue = returnValue;
   }
-
   @Override
   public TestCase testCase() {
     return testCase;

@@ -3,6 +3,7 @@ package de.unipassau.testify.test_case.statement;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.RefItem;
 import de.unipassau.testify.test_case.type.Type;
 import java.util.Collections;
@@ -101,6 +102,11 @@ public class RefStmt implements Statement {
   @Override
   public RefStmt asRefStmt() {
     return this;
+  }
+
+  @Override
+  public Callable getCallable() {
+    return refItem;
   }
 
   @Override
