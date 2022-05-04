@@ -124,6 +124,15 @@ colframe=white,colback=codegray}
 \crefname{lstlisting}{listing}{listings}
 \Crefname{lstlisting}{Listing}{Listings}
 
+\newcommand{\benchnum}{10\xspace}
+\newcommand{\loc}{36216\xspace}
+\newcommand{\methodsnum}{6661\xspace}
+\newcommand{\tech}{\textsc{RustyUnit}\xspace}
+\newcommand{\runs}{30\xspace}
+\newcommand{\hir}{\ac{HIR}\xspace}
+\newcommand{\mir}{\ac{MIR}\xspace}
+\newcommand{\cfg}{\ac{CFG}\xspace}
+
 \begin{document}
 \automark[section]{chapter}
 \frontmatter
@@ -178,7 +187,7 @@ All data, as well as the case study, can be found on our GitHub repository.
 
 \section{Structure of the Thesis}
 % TODO reword
-First, we give an overview over the relevant background on approaches and algorithms that automate tasks in software engineering (\Cref{chap:backgroud}), especially in terms of test generation, which is necessary to understand the concept we build our ideas on. We shall then provide an overview over related work (\Cref{chap:state-of-the-art}), both, regarding test generation with the common approaches as well as test generation specifically for Rust. Then, we introduce the basic concepts of the Rust programming language (\Cref{chap:rust-programming-language}) and what are the pecularities of it in contrast to common programming languages like C++, C\#, or Java. With the language concepts being presented to the reader, we in introduce our \textsc{RustyUnit} tool for automatic test case generation (\Cref{chap:sbst-in-rust}) and provide it's implementation details (\Cref{chap:implementation}). To show the performance of our approach, we provide an extensive evaluation (\Cref{chap:evaluation}), followed by an outlook on possible future research directions (\Cref{chap:future-work}).
+First, we give an overview over the relevant background on approaches and algorithms that automate tasks in software engineering (\Cref{chap:backgroud}), especially in terms of test generation, which is necessary to understand the concept we build our ideas on. We shall then provide an overview over related work (\Cref{chap:state-of-the-art}), both, regarding test generation with the common approaches as well as test generation specifically for Rust. Then, we introduce the basic concepts of the Rust programming language (\Cref{chap:rust-programming-language}) and what are the pecularities of it in contrast to common programming languages like C++, C\#, or Java. With the language concepts being presented to the reader, we in introduce our tool called \tech for automatic test case generation (\Cref{chap:sbst-in-rust}) and provide it's implementation details (\Cref{chap:implementation}). To show the performance of our approach, we provide an extensive evaluation (\Cref{chap:evaluation}), followed by an outlook on possible future research directions (\Cref{chap:future-work}).
 
 \clearpage
 
@@ -550,7 +559,7 @@ In his second example, McMinn applies transformations to serialize and deseriali
 
 % TODO reword{}
 
-Transformations have not only been applied in the context of search: the idea to check error conditions was first mentioned in 1976 by Clarke~\cite{Clarke1976} in the context of symbolic execution. Active Property Checking~\cite{Godefroid_2005} describes the use of explicit error branches in the path constraints during \ac{DSE}. By having explicit constraints on the error conditions, \ac{DSE} exploration will try to negate also the error conditions, such that if there exist an input that leads to the error it will be found. This is also implemented in other state-of-the-art \ac{DSE} tools, e.g., Pex~\cite{Tillmann2008} automatically adds constraints that check references against null, divisions against zero, etc. Barr et al.~\cite{Barr2013} instrument programs with additional branches to find floating point exceptions with symbolic execution. These addtional constraints are similar to the error conditions we instroduce in the \ac{MIR} transformation (see \Cref{sec:mir-testability-transformations}), even though some of them are not applicable to Rust due to language pecularities, e.g., there no concept of null pointers.
+Transformations have not only been applied in the context of search: the idea to check error conditions was first mentioned in 1976 by Clarke~\cite{Clarke1976} in the context of symbolic execution. Active Property Checking~\cite{Godefroid_2005} describes the use of explicit error branches in the path constraints during \ac{DSE}. By having explicit constraints on the error conditions, \ac{DSE} exploration will try to negate also the error conditions, such that if there exist an input that leads to the error it will be found. This is also implemented in other state-of-the-art \ac{DSE} tools, e.g., Pex~\cite{Tillmann2008} automatically adds constraints that check references against null, divisions against zero, etc. Barr et al.~\cite{Barr2013} instrument programs with additional branches to find floating point exceptions with symbolic execution. These addtional constraints are similar to the error conditions we instroduce in the \mir transformation (see \Cref{sec:mir-testability-transformations}), even though some of them are not applicable to Rust due to language pecularities, e.g., there no concept of null pointers.
 
 \clearpage
 \chapter{State of the Art}
@@ -631,7 +640,7 @@ In Rust, this problem is addressed by the ownership system, which requires that 
 Rust comes with official package managers, which we briefly describe in the following sections.
 
 \subsection{Cargo}
-Cargo is the name of Rust’s package manager, which is provided out-of-the-box. It can be used to create new packages, download dependencies and compile packages. More advanced features supported by Cargo are publishing packages and running tests. Packages created and used by cargo are known as crates. Cargo is designed to be the central tool which developers use when working with crates. When programs have the cargo prefix, Cargo will forward function calls to them as if they were called without the prefix, providing information on the crate in the context that it was called. Tools like Clippy work in this way.
+Cargo is the name of Rust's package manager, which is provided out-of-the-box. It can be used to create new packages, download dependencies and compile packages. More advanced features supported by Cargo are publishing packages and running tests. Packages created and used by cargo are known as crates. Cargo is designed to be the central tool which developers use when working with crates. When programs have the cargo prefix, Cargo will forward function calls to them as if they were called without the prefix, providing information on the crate in the context that it was called. Tools like Clippy work in this way.
 
 \subsection{Rustup}
 While Cargo is used to manage crates, Rustup is used to manage Rust tools, like Cargo and the Rust compiler, and any other components which have been added to the toolchain. Among other things, Rustup makes it possible to have fine-grained control over the version of Rust used to compile crates. To understand how this affects development, we explain the versioning used in the Rust ecosystem. New stable and beta versions of Rust are released every six weeks, and a nightly version is released every night, based on the previous day's master branch in the central git repository. The beta versions are based on the latest nightly every six weeks, and the stable versions are based on the previous beta.
@@ -964,22 +973,22 @@ Thus, the restrictive ownership model for genetic search has certain implication
 The lifetime of a reference determines the duration it is valid for. Each reference in Rust has a lifetime, and the compiler infers constraints for these lifetimes based on how they are used. The compiler will emit an error if the lifetime constraints cannot be satisfied. Sometimes the compiler requires hints for the relationship between the input and output lifetimes of a function. It will always require annotations on type definitions. This is important for two reasons. First, it allows the compiler to ensure that a reference never outlives the underlying value, and second, it allows the compiler to ensure that there never is an overlap of mutable access to a value.
 
 \section{Overview of the Compiler}
-As with most compilers, the Rust compiler (\texttt{rustc}) goes through several phases, each of which uses some \ac{IR} to facilitate computatations. In general, working directly with the source code is extremely inconvinient and error-prone. Source code is designed to be human-friendly while at the same time being unambiguous, but it's less convenient for doing something like type checking.
+As with most compilers, the Rust compiler (\emph{rustc}) goes through several phases, each of which uses some \ac{IR} to facilitate computatations. In general, working directly with the source code is extremely inconvinient and error-prone. Source code is designed to be human-friendly while at the same time being unambiguous, but it's less convenient for doing something like type checking.
 
-Instead most compilers, including \texttt{rustc}, build some sort of \ac{IR} out of the source code which is easier to analyze. \texttt{rustc} has a few \acp{IR}, each optimized for different purposes:
+Instead, most compilers, including \emph{rustc}, build some sort of \ac{IR} out of the source code which is easier to analyze. The compiler has a few \acp{IR}, each optimized for different purposes:
 
 \begin{itemize}
     \item Token stream: the lexer produces a stream of tokens directly from the source code. This stream of token is easier for the parser to deal with than raw text.
     \item \ac{AST}: the abstract syntax tree is built from the stream of tokens. It represents almost exactly what a user wrote. It helps to do some syntactic sanity checking (e.g., checking that a type is expected where the user wrote one).
-    \item \ac{HIR}: This is a desugared and compiler-friendly representation of the \ac{AST} that is generated after parsing, macro expansion, and name resolution. It's still close to what the user wrote syntactically, but it includes implicit information such as elided lifetimes. Also, some expression forms have been converted to simpler ones, e.g., \texttt{for} loops are converted to a more basic \texttt{loop}. This \ac{IR} is amenable to type checking.
+    \item \hir: This is a desugared and compiler-friendly representation of the \ac{AST} that is generated after parsing, macro expansion, and name resolution. It's still close to what the user wrote syntactically, but it includes implicit information such as elided lifetimes. Also, some expression forms have been converted to simpler ones, e.g., \texttt{for} loops are converted to a more basic \texttt{loop}. This \ac{IR} is amenable to type checking.
     % Lowering to HIR: https://rustc-dev-guide.rust-lang.org/lowering.html
-    \item \ac{THIR}: This is an intermediate between \ac{HIR} and \ac{MIR}. It's similar to \ac{HIR} but it is fully typed and a bit more desugared.
-    \item \ac{MIR}: This \ac{IR} is a \ac{CFG}. It shows the basic blocks of a program and how control flow can go between them. A basic block contains simple typed statements (e.g., assignments, simple computations, etc.) and control flow edges to other basic blocks. This representation is used to for borrow checking and other important dataflow-based checks, such as checking uninitialized values.
+    \item \ac{THIR}: This is an intermediate between \hir and \mir. It's similar to \hir but it is fully typed and a bit more desugared.
+    \item \mir: This \ac{IR} is a \cfg. It shows the basic blocks of a program and how control flow can go between them. A basic block contains simple typed statements (e.g., assignments, simple computations, etc.) and control flow edges to other basic blocks. This representation is used to for borrow checking and other important dataflow-based checks, such as checking uninitialized values.
     \item LLVM \ac{IR}: This is a standard form of all input to the LLVM compiler. LLVM \ac{IR} is a typed assembly language with lots of annotations. It is designed to be easy for other compilers to emit and also rich enough for LLVM to run optimizations on it.
 \end{itemize}
 
 \subsection{High-Level Intermediate Representation}
-Many parts of the \ac{HIR} resemble Rust surface syntax quite closely, with the exception that some of Rust's expression forms have been desugared away. Für die Analyse von verfügbaren Strukturen, Methoden und Funktionen müssen wir möglichst viele Informationen bekommen, die vom Compiler zur Verfügung gestellt werden. Die \ac{HIR} ist dafür perfekt geeignet, denn auf dieser Ebene werden zugleich die Typen explizit vom Compiler ausgefüllt und es werden noch alle für uns relevante Sprachelemente beibehalten. Lediglich werden intraprozedurale Elemente desugared, for instance, \texttt{for} loops are converted into a \texttt{loop} and do not appear in the \ac{HIR}.
+Many parts of the \hir resemble Rust surface syntax quite closely, with the exception that some of Rust's expression forms have been desugared away. Für die Analyse von verfügbaren Strukturen, Methoden und Funktionen müssen wir möglichst viele Informationen bekommen, die vom Compiler zur Verfügung gestellt werden. Die \hir ist dafür perfekt geeignet, denn auf dieser Ebene werden zugleich die Typen explizit vom Compiler ausgefüllt und es werden noch alle für uns relevante Sprachelemente beibehalten. Lediglich werden intraprozedurale Elemente desugared, for instance, \texttt{for} loops are converted into a \texttt{loop} and do not appear in the \hir.
 \begin{lstlisting}[style=boxed, caption={An example Rust program that we convert to HIR}, label=lst:hir-lowering]
 struct IntVec {
     vec: Vec<i32>
@@ -994,7 +1003,7 @@ impl IntVec {
 }
 \end{lstlisting}
 
-\Cref{lst:hir-lowering,lst:hir-lowered} demonstrate a comparison of the same program before and after lowering to \ac{HIR}. The main differences are the desugared \texttt{for} loop and the filled in type declaration of the \texttt{self} parameter of the \texttt{foo} method. Da wir für das Generieren eines Tests für die gegebene \texttt{foo} Methode nur die Methodensignatur sowie die Structdefinition brauchen, stellt das Desugaring kein Problem dar.
+\Cref{lst:hir-lowering,lst:hir-lowered} demonstrate a comparison of the same program before and after lowering to \hir. The main differences are the desugared \texttt{for} loop and the filled in type declaration of the \texttt{self} parameter of the \texttt{foo} method. Da wir für das Generieren eines Tests für die gegebene \texttt{foo} Methode nur die Methodensignatur sowie die Structdefinition brauchen, stellt das Desugaring kein Problem dar.
 
 \begin{lstlisting}[style=boxed, caption={HIR of the code in \Cref{lst:hir-lowering}}, label=lst:hir-lowered]
 struct IntVec {
@@ -1022,20 +1031,19 @@ impl IntVec {
 }
 \end{lstlisting}
 
-Bei der nächsten Lowering Stufe, nämlich \ac{THIR}, kennt, ähnlich wie \ac{MIR}, nur function bodies, d. h. nur ausführbaren Code. Folglich hat \ac{THIR} keine Repräsentation für Items wie \texttt{struct} oder
-\texttt{trait} und ist daher für diese Art der Analyse nicht hilfreich.
+The next lowering step, i.e., \ac{THIR}, similarly to \mir, only contains function bodies, i.e., executable code. Consequently, \ac{THIR} has no representation for items such as \texttt{struct} or \texttt{trait} and is therefore not suitable for this type of analysis.
 
 \subsection{Mid-Level Intermediate Representation}
 % TODO umformulieren und so
-\ac{MIR} is based on the \ac{CFG} of a program and is fully typed. The \ac{MIR} for a given function consists of a series of basic blocks. A basic block is an atomic unit of the program's \ac{CFG}, is guaranteed to execute completely, and is made up of a sequence of statements followed, optionally, by a terminator, which corresponds to an edge in the \ac{CFG}. \ac{MIR}, being very much internal to the Rust compiler, does not have a stable definition and undergoes frequent changes. There is no stable surface syntax for \ac{MIR}, only one intended for debugging, which we will use here to show examples of analysis and instrumentation. Rather it is defined as a collection of data structures. \ac{MIR} has enough information to make our program instrumentation feasible, though its unstable nature makes the consumption of \ac{MIR} challenging to maintain across different toolchain versions.
+\mir is based on the \cfg of a program and is fully typed. The \mir for a given function consists of a series of basic blocks. A basic block is an atomic unit of the program's \cfg, is guaranteed to execute completely, and is made up of a sequence of statements followed, optionally, by a terminator, which corresponds to an edge in the \cfg. \mir, being very much internal to the Rust compiler, does not have a stable definition and undergoes frequent changes. There is no stable surface syntax for \mir, only one intended for debugging, which we will use here to show examples of analysis and instrumentation. Rather it is defined as a collection of data structures. \mir has enough information to make our program instrumentation feasible, though its unstable nature makes the consumption of \mir challenging to maintain across different toolchain versions.
 
 At this level, each executable piece of code, e.g., a function or a method, is represented as a \texttt{Body} object, which contains information about locals (parameters, user-defined variables, compiler-defined variables, and the return value) and basic blocks.
 
 Locals are memory allocations allocated on the stack (conceptually, at least), such as function arguments, local variables, and temporaries. These are identified by an index, written with a leading underscore, like \texttt{\string_1}. There is also a special local (\texttt{\string_0}) allocated to store the return value. 
 
-Basic blocks consist of statements, which are in terms of \ac{MIR} actions with one successor. The statements of a basic block are mostly definitions of locals, e.g., atomic computations, which are later used by the corresponding terminator. A terminator is an action with potentially mutliple successors and is always placed at the end of a basic block. A terminator can be, for instance, a \texttt{Call} (function call), a \texttt{Return} (returns the \texttt{\string_0} local), a \texttt{Goto} jump (jump to the given block number), a \texttt{SwitchInt}, or an \texttt{Assert}. \textsc{RustyUnit} makes use mainly of \texttt{SwitchInt} and \texttt{Assert} terminators. 
+Basic blocks consist of statements, which are in terms of \mir actions with one successor. The statements of a basic block are mostly definitions of locals, e.g., atomic computations, which are later used by the corresponding terminator. A terminator is an action with potentially mutliple successors and is always placed at the end of a basic block. A terminator can be, for instance, a \emph{Call} (function call), a \emph{Return} (returns the \texttt{\string_0} local), a \emph{Goto} jump (jump to the given block number), a \emph{SwitchInt}, or an \emph{Assert}. \tech makes use mainly of \emph{SwitchInt} and \emph{Assert} terminators. 
 
-\texttt{SwitchInt} results from lowering \texttt{if} and \texttt{loop} conditions and \texttt{match} expressions. The value of it's operand always evaluates to an integer; the execution jumps depending on its value to one of the targets. There is also a dedicated \texttt{otherwise} value for all other cases. Each possible value (e.g., $0$ and $1$ for \textit{false} and \textit{true}, respectively, in \texttt{if} conditions) has a corresponding basic block which the execution jumps to. Assume that there are two functions, \texttt{cheeky\string_itoa(x: i32)} and \texttt{bold\string_itoa(x: i32)} which both return a string (more precisely, a reference to a static string value) based on the input number, as shown in \Cref{lst:mir-lowering}.
+\emph{SwitchInt} results from lowering \texttt{if} and \texttt{loop} conditions and \texttt{match} expressions. The value of it's operand always evaluates to an integer; the execution jumps depending on its value to one of the targets. There is also a dedicated \emph{otherwise} value for all other cases. Each possible value (e.g., $0$ and $1$ for \emph{false} and \emph{true}, respectively, in if conditions) has a corresponding basic block which the execution jumps to. Assume that there are two functions, \texttt{cheeky\string_itoa(x: i32)} and \texttt{bold\string_itoa(x: i32)} which both return a string (more precisely, a reference to a static string value) based on the input number, as shown in~\Cref{lst:mir-lowering}.
 
 \begin{lstlisting}[style=boxed, caption={HIR of the code in \Cref{lst:hir-lowering}}, label=lst:mir-lowering]
 fn cheeky_itoa(x: i32) -> &'static str {
@@ -1056,12 +1064,12 @@ fn bold_itoa(x: i32) -> &'static str {
 }
 \end{lstlisting}
 
-As mentioned earlier, conditions like those in loops, \texttt{match} and \texttt{if} expressions are converted to \texttt{switchInt} terminators. In \Cref{lst:mir-lowered-first}, the \ac{MIR} for the function \texttt{cheeky\string_itoa} is shown in its debug form. It has been cleaned up for simplicity and usually still includes many debugging comments on the individual statements and terminators. Only two locals are given, the return value \texttt{\string_0} of type \texttt{\string&str} 
+As mentioned earlier, conditions like those in loops, \texttt{match} and \texttt{if} expressions are converted to \texttt{switchInt} terminators. In \Cref{lst:mir-lowered-first}, the \mir for the function \texttt{cheeky\string_itoa} is shown in its debug form. It has been cleaned up for simplicity and usually still includes many debugging comments on the individual statements and terminators. Only two locals are given, the return value \texttt{\string_0} of type \texttt{\string&str} 
 and the function parameter \texttt{\string_1} of type \texttt{i32}.
 
-We can see that the entry block, which is always \texttt{bb0}, consists only of the \texttt{switchInt} termiantor, which, based on the value of the function parameter \texttt{\string_1}, directs execution to either block number $2$ (if \texttt{\string_1} is $0$) or $3$ (if \texttt{\string_1} is $42$). If neither case matches, the execution jumps to block $1$. For the decision, the values, which are always integers, are directly compared. Each of the following three blocks defines the return local and points to the last block (\texttt{\string_4}), which returns \texttt{\string_0} to the caller. 
+We can see that the entry block, which is always \texttt{bb0}, consists only of the \texttt{switchInt} terminator, which, based on the value of the function parameter \texttt{\string_1}, directs execution to either block number $2$ (if \texttt{\string_1} is $0$) or $3$ (if \texttt{\string_1} is $42$). If neither case matches, the execution jumps to block $1$. For the decision, the values, which are always integers, are directly compared. Each of the following three blocks defines the return local and points to the last block (\texttt{\string_4}), which returns \texttt{\string_0} to the caller. 
 
-\begin{lstlisting}[style=boxed, caption={\ac{MIR} of the \texttt{cheeky\string_itoa} function}, label=lst:mir-lowered-first]
+\begin{lstlisting}[style=boxed, caption={\mir of the \texttt{cheeky\string_itoa} function}, label=lst:mir-lowered-first]
 fn cheeky_itoa(_1: i32) -> &str {
   let mut _0: &str;
 
@@ -1095,9 +1103,9 @@ fn cheeky_itoa(_1: i32) -> &str {
 }
 \end{lstlisting}
 
-The \ac{MIR} of the \texttt{bold\string_itoa} function ist similarly structured (\Cref{lst:mir-lowered-second}). The entry block compares the parameter value with the constant $42$ in line ... and stores the boolean result, which technically is an integer ($0$ or $1$ for false and true, respectively) into the local \texttt{\string_2}. The \texttt{switchInt} decides again, based on the value of its operand, which block the execution must jump to.  
+The \mir of the \texttt{bold\string_itoa} function ist similarly structured (\Cref{lst:mir-lowered-second}). The entry block compares the parameter value with the constant $42$ in line ... and stores the boolean result, which technically is an integer ($0$ or $1$ for false and true, respectively) into the local \texttt{\string_2}. The \texttt{switchInt} decides again, based on the value of its operand, which block the execution must jump to.  
 
-\begin{lstlisting}[style=boxed, caption={\ac{MIR} of the \texttt{bold\string_itoa} function}, label=lst:mir-lowered-second]
+\begin{lstlisting}[style=boxed, caption={\mir of the \texttt{bold\string_itoa} function}, label=lst:mir-lowered-second]
 fn bold_itoa(_1: i32) -> &str {
   let mut _0: &str;                    
   let mut _2: bool;                    
@@ -1125,17 +1133,11 @@ fn bold_itoa(_1: i32) -> &str {
 }
 \end{lstlisting}
 
-As can be seen, the terminators described are essentially responsible for determining the direction of execution. We will later take advantage of this property and instrument these terminators in tested Rust programs to track program execution triggered by \textsc{RustyUnit}'s generated tests. Thus, we will learn which tests cover which paths.
+As can be seen, the terminators described are essentially responsible for determining the direction of execution. We will later take advantage of this property and instrument these terminators in tested Rust programs to track program execution triggered by tests generated from \tech. Thus, we will learn which tests cover which paths.
 
 \clearpage
 \chapter{Search-based Unit Test Generation in Rust}
 \label{chap:sbst-in-rust}
-%\begin{figure}[h]
-%\caption{Übersicht des RustyUnit Tools}
-%\centering
-%\includegraphics[width=\textwidth]{old-overview}
-%\label{fig:old-overview}
-%\end{figure}
 
 \section{Instrumentation}
 Tests that are generated by a search-based technique need to be executed at least once to provide some feedback on their fitness in regard to the \ac{SUT}. At this point, the coverage data and branch distances can be collected. In order to do so, the \ac{SUT} has to be instrumented with additional code, which traces the executed paths. Many other state of the art tools that generate coverage for Java instrument the bytecode of the compiled \ac{SUT} and use Reflection to run the generated tests. However, Rust compiles to machine code. Although there exist tools that allow static analysis and binary transformation, e.g., reg.ng~\cite{DiFederico2018}, the instrumentation will be done on the source code level. \textbf{syn} and \textbf{quote} are two mature libraries that allow parsing Rust code into a syntax tree and converting the tree back to regular code, respectively.
@@ -1242,9 +1244,9 @@ Fraser and Zeller~\cite{Fraser2012} describe in their work on mutation-based gen
 \end{algorithm}
 
 
-% Die initiale Population wird zufällig generiert, wie im Algorithmus~\labelcref{alg:random-generation-of-a-test} dargestellt. Bevor die Tests generiert werden, werden alle verfügbaren Methoden, Konstruktoren und Funktionen, sowie Attribute von Structs statisch aus der \ac{HIR} des \ac{SUT} extrahiert. Bei einem zufällig generierten Test wird daraus ein zufälliger Aufruf eingefügt. Die evtl. notwendigen Argumente (ggf. inklusive des Aufrufers, das heißt des Methodeninhabers) werden dabei ebenfalls generiert. Dafür werden entsprechende Aufrufe, die Rückgabewerte von passenden Datentypen haben, rekursiv eingefügt (Algorithmus~\labelcref{alg:genobject}), wenn im Test Case nicht bereits Instanzen eines solchen Datentyps definiert und entsprechend den Regeln aus \Cref{sec:problem-representation} verwendbar sind. Während der Suche werden die Datentypen, die zu instanziieren bereits versucht wird, gemerkt, um unendliche Rekursionen zu vermeiden. Laut den Algorithmen~\labelcref{alg:random-generation-of-a-test} und~\labelcref{alg:genobject} werden neue Objekte nur dann generiert, wenn sie nicht im Test bereits existieren. Fraser und Zeller~\cite{Fraser2012} schlagen jedoch vor, bestehende Objekte nur mit einer gewissen Wahrscheinlichkeit wiederzuverwenden, um Diversität in generierten Test Cases zu erhöhen. In ihren Experimenten haben sie festgestellt, dass eine Wahrscheinlichkeit von 90\% Prozent am effektivsten ist. Rust's affines Typsystem macht eine Wiederverwendung von bereits definierten Objekten komplizierter, da es analysiert werden muss, inwieweit eine bestimmte Variable in einem gegebenen Test noch verwendbar ist. Das heißt, dass eine bereits definierte Variable nur dann von einem neu eingefügten Statement~$s$ verwendet werden darf, wenn sie als frei verwendbar markiert. \todo{Das gilt nicht für Typen, die Copy implementieren}Genauer werden die Regeln folgenderweise definiert: Sei~$t$ ein Test Case und $pos(s)$ eine Funktion, die die Position eines Statements~$s$ in der Sequenz der Statements von~$t$ zurückgibt. Sei~$o$ eine Objekt, das von einem Statement~$gen$ definiert wird. Sei~$s$ ein Statement, welches~$o$ verwendet. Dann ist $t$ nur in dem Fall ein valider Test Case, wenn folgende Regeln eingehalten werden:
+% Die initiale Population wird zufällig generiert, wie im Algorithmus~\labelcref{alg:random-generation-of-a-test} dargestellt. Bevor die Tests generiert werden, werden alle verfügbaren Methoden, Konstruktoren und Funktionen, sowie Attribute von Structs statisch aus der \hir des \ac{SUT} extrahiert. Bei einem zufällig generierten Test wird daraus ein zufälliger Aufruf eingefügt. Die evtl. notwendigen Argumente (ggf. inklusive des Aufrufers, das heißt des Methodeninhabers) werden dabei ebenfalls generiert. Dafür werden entsprechende Aufrufe, die Rückgabewerte von passenden Datentypen haben, rekursiv eingefügt (Algorithmus~\labelcref{alg:genobject}), wenn im Test Case nicht bereits Instanzen eines solchen Datentyps definiert und entsprechend den Regeln aus \Cref{sec:problem-representation} verwendbar sind. Während der Suche werden die Datentypen, die zu instanziieren bereits versucht wird, gemerkt, um unendliche Rekursionen zu vermeiden. Laut den Algorithmen~\labelcref{alg:random-generation-of-a-test} und~\labelcref{alg:genobject} werden neue Objekte nur dann generiert, wenn sie nicht im Test bereits existieren. Fraser und Zeller~\cite{Fraser2012} schlagen jedoch vor, bestehende Objekte nur mit einer gewissen Wahrscheinlichkeit wiederzuverwenden, um Diversität in generierten Test Cases zu erhöhen. In ihren Experimenten haben sie festgestellt, dass eine Wahrscheinlichkeit von 90\% Prozent am effektivsten ist. Rust's affines Typsystem macht eine Wiederverwendung von bereits definierten Objekten komplizierter, da es analysiert werden muss, inwieweit eine bestimmte Variable in einem gegebenen Test noch verwendbar ist. Das heißt, dass eine bereits definierte Variable nur dann von einem neu eingefügten Statement~$s$ verwendet werden darf, wenn sie als frei verwendbar markiert. \todo{Das gilt nicht für Typen, die Copy implementieren}Genauer werden die Regeln folgenderweise definiert: Sei~$t$ ein Test Case und $pos(s)$ eine Funktion, die die Position eines Statements~$s$ in der Sequenz der Statements von~$t$ zurückgibt. Sei~$o$ eine Objekt, das von einem Statement~$gen$ definiert wird. Sei~$s$ ein Statement, welches~$o$ verwendet. Dann ist $t$ nur in dem Fall ein valider Test Case, wenn folgende Regeln eingehalten werden:
 
-The initial population is randomly generated as shown in the \Cref{alg:random-generation-of-a-test}. Before the tests are generated, all available methods, constructors and functions, as well as attributes of structs are statically extracted from the \ac{HIR} of the \ac{SUT}. For a randomly generated test, a random call is inserted from this. The possibly necessary arguments (including the caller, i.e. the method owner, if applicable) are also generated during the process. To this end, corresponding calls that have return values of suitable data types are inserted recursively (algorithm~\labelcref{alg:genobject}), if instances of such a data type are not already defined in the test case and usable according to the rules from \Cref{sec:problem-representation}. During the search, the data types that are already attempted to be instantiated are remembered to avoid infinite recursion. According to the \Cref{alg:random-generation-of-a-test, alg:genobject}, new objects are generated only if they do not already exist in the test. However, Fraser and Zeller~\cite{Fraser2012} suggest reusing existing objects only with a certain probability to increase diversity in generated test cases. In their experiments, they found that a probability of 90\% percent was most effective. Rust's affine type system makes reuse of previously defined objects more complicated because it requires analysis of the extent to which a given variable is still usable in a given test. This means that an already defined variable may only be used by a newly inserted statement~$s$ if it is marked as freely usable. More precisely, the rules are defined as follows: let~$t$ be a test case and $pos(s)$ be a function that returns the position of a statement~$s$ in the sequence of statements of~$t$. Let~$o$ be an object defined by a statement~$gen$. Let~$s$ be a statement that uses~$o$. Then $t$ is a valid test case only if the following rules are satisfied:
+The initial population is randomly generated as shown in the \Cref{alg:random-generation-of-a-test}. Before the tests are generated, all available methods, constructors and functions, as well as attributes of structs are statically extracted from the \hir of the \ac{SUT}. For a randomly generated test, a random call is inserted from this. The possibly necessary arguments (including the caller, i.e. the method owner, if applicable) are also generated during the process. To this end, corresponding calls that have return values of suitable data types are inserted recursively (algorithm~\labelcref{alg:genobject}), if instances of such a data type are not already defined in the test case and usable according to the rules from \Cref{sec:problem-representation}. During the search, the data types that are already attempted to be instantiated are remembered to avoid infinite recursion. According to the \Cref{alg:random-generation-of-a-test, alg:genobject}, new objects are generated only if they do not already exist in the test. However, Fraser and Zeller~\cite{Fraser2012} suggest reusing existing objects only with a certain probability to increase diversity in generated test cases. In their experiments, they found that a probability of 90\% percent was most effective. Rust's affine type system makes reuse of previously defined objects more complicated because it requires analysis of the extent to which a given variable is still usable in a given test. This means that an already defined variable may only be used by a newly inserted statement~$s$ if it is marked as freely usable. More precisely, the rules are defined as follows: let~$t$ be a test case and $pos(s)$ be a function that returns the position of a statement~$s$ in the sequence of statements of~$t$. Let~$o$ be an object defined by a statement~$gen$. Let~$s$ be a statement that uses~$o$. Then $t$ is a valid test case only if the following rules are satisfied:
 
 \begin{itemize}
     \item $pos(gen) < pos(s)$, AND
@@ -1452,13 +1454,13 @@ let f64_4 = areacalculator_0.area_by_value(rectangle_0);
 
 In order to better guide the selection of parents for future generations, all individuals in a population are evaluated according to their fitness. A good fitness function is very important in the search for solutions. Solutions that are ''better'' than others in a certain way should be rewarded with better fitness values. Whatever is a better fitness, a higher or lower fitness depends on whether the search strategy tries to maximize or minimize the fitness function~\cite{McMinn_2004}.
 
-% Bei der Suche verwenden wir die Branch Coverage, d. h., jeder Branch ist ein Target. Wenn ein Branch ausgeführt wird, wird der entsprechende Test in Bezug auf diesen Target als gut markiert. Wird eine Funktion oder Methode ausgeführt, ein Branch jedoch nicht, dann bestimmt die Fitness die Distanz des jeweiligen Test Cases zur einer Ausführung des Targets. Wir verwenden die weit verbreitete Definition der Fitness für Branch Coverage, \textit{approach level} und \textit{branch distance} Berechnung, die in der such-basierten Generierung der Test Daten eingesetzt wird~\cite{McMinn_2004}. Der Approach Level beschreibt wie weit ein Test Case von einem Target im \ac{CFG} entfernt war, wenn der Test Case vom Kurs abgewichen ist. Wir berechnen den Approach Level in der Anzahl der verfehlten Control Dependencies zwischen dem Target und dem Punkt, an dem der Test Case eine falsche Abzweigung genommen hat. Approach Level ist gleich 0 wenn alle kontrollabhängige Branches vom Test Case erreicht wurden.
+% Bei der Suche verwenden wir die Branch Coverage, d. h., jeder Branch ist ein Target. Wenn ein Branch ausgeführt wird, wird der entsprechende Test in Bezug auf diesen Target als gut markiert. Wird eine Funktion oder Methode ausgeführt, ein Branch jedoch nicht, dann bestimmt die Fitness die Distanz des jeweiligen Test Cases zur einer Ausführung des Targets. Wir verwenden die weit verbreitete Definition der Fitness für Branch Coverage, \textit{approach level} und \textit{branch distance} Berechnung, die in der such-basierten Generierung der Test Daten eingesetzt wird~\cite{McMinn_2004}. Der Approach Level beschreibt wie weit ein Test Case von einem Target im \cfg entfernt war, wenn der Test Case vom Kurs abgewichen ist. Wir berechnen den Approach Level in der Anzahl der verfehlten Control Dependencies zwischen dem Target und dem Punkt, an dem der Test Case eine falsche Abzweigung genommen hat. Approach Level ist gleich 0 wenn alle kontrollabhängige Branches vom Test Case erreicht wurden.
 
 
-In the search, we use branch coverage, i.e., each branch is a target. When a branch is executed, the corresponding test is marked as good with respect to this target. If a function or method is executed but a branch is not, then the fitness determines the distance of the respective test case to an execution of the target. We use the widely used definition of fitness for branch coverage, \textit{approach level} and \textit{branch distance} computation, which is used in search-based generation of test data~\cite{McMinn_2004}. The approach level describes how far a test case was from a target in the \ac{CFG} when the test case deviated from the course. We compute approach level in terms of the number of missed control dependencies between the target and the point where the test case took a wrong turn. Approach level is equal to $0$ if all control dependency edges were reached by the test case.
+In the search, we use branch coverage, i.e., each branch is a target. When a branch is executed, the corresponding test is marked as good with respect to this target. If a function or method is executed but a branch is not, then the fitness determines the distance of the respective test case to an execution of the target. We use the widely used definition of fitness for branch coverage, \textit{approach level} and \textit{branch distance} computation, which is used in search-based generation of test data~\cite{McMinn_2004}. The approach level describes how far a test case was from a target in the \cfg when the test case deviated from the course. We compute approach level in terms of the number of missed control dependencies between the target and the point where the test case took a wrong turn. Approach level is equal to $0$ if all control dependency edges were reached by the test case.
 
 % TODO reword
-The branch distance estimates how far the branch at which execution diverged is from evaluating to the necessary outcome. To determine these values, the test case has to be executed once on the unmodified software. If the target executed, then approach level and branch distance are $0$. Otherwise, the rules from \Cref{tab:local-branch-distance-formulas} are used for calculation of numeric values. For all other cases, the local branch distance is either $0$ or $1$ depending on whether the respective branch was executed or not. Assume the function \texttt{bar} from \Cref{lst:example-branch-distance-boolean-flag} which takes a boolean named \texttt{flag}. When called \texttt{bar(true)}, the branch distance for the \textit{true} branch is $0$ since it gets executed, while the branch distance for the \textit{false} branch is $1$ because we do not know how the boolean value has been computed. It could be a result of some numbers comparison, a function call, or just a constant. Figuring that out requires complex static analysis that is not in the scope of \textsc{RustyUnit}. 
+The branch distance estimates how far the branch at which execution diverged is from evaluating to the necessary outcome. To determine these values, the test case has to be executed once on the unmodified software. If the target executed, then approach level and branch distance are $0$. Otherwise, the rules from \Cref{tab:local-branch-distance-formulas} are used for calculation of numeric values. For all other cases, the local branch distance is either $0$ or $1$ depending on whether the respective branch was executed or not. Assume the function \texttt{bar} from \Cref{lst:example-branch-distance-boolean-flag} which takes a boolean named \texttt{flag}. When called \texttt{bar(true)}, the branch distance for the \textit{true} branch is $0$ since it gets executed, while the branch distance for the \textit{false} branch is $1$ because we do not know how the boolean value has been computed. It could be a result of some numbers comparison, a function call, or just a constant. Figuring that out requires complex static analysis that is not in the scope of \tech. 
 
 \begin{lstlisting}[style=boxed, caption={Computation of local branch distance for a boolean flag that we do not know where it came from}, label=lst:example-branch-distance-boolean-flag]
 fn bar(flag: bool) {
@@ -1557,7 +1559,7 @@ void foo(int x) {
 }
 \end{lstlisting}
 
-We apply similar ideas to \textsc{RustyUnit}. However, some of the problems that other programming languages have, do not affect Rust, e.g., there are no null pointers as in C or Java. Moreover, the Rust compiler already incorporates checks for common issues in the \ac{MIR} that are addressed by testability transformations. That is, we do not have to transform the \ac{MIR} to introduce new branches as in~\Cref{lst:evosuite-array-access-transformation}, but only trace these branches automatically inserted by the compiler. 
+We apply similar ideas to \tech. However, some of the problems that other programming languages have, do not affect (safe) Rust, e.g., there are no null pointers as in C or Java. Moreover, the Rust compiler already incorporates checks for common issues in the \mir that are addressed by testability transformations. That is, we do not have to transform the \mir to introduce new branches as in~\Cref{lst:evosuite-array-access-transformation}, but only trace these branches automatically inserted by the compiler. 
 
 %\subsection{Test Minimization}
 %Da sich diese Arbeit vor allem auf das Generieren vor Tests beschränkt, die möglichst hohe Coverage erreichen, jedoch generell keine Testorakel automatisch zur Verfügung stellt, sollen die Tests möglich kurz gehalten werden und das wesentliche tun, um einen bestimmten Branch zu erreichen. Das erhöht ihre Lesbarkeit und Verstänlichkeit. Fraser und Arcuri~\cite{Fraser2013a} schlagen als Verbesserung für ihr EvoSuite Tool folgendes Verfahren vor: Für jeden Coverage Goal wird ein Test aus der generierten Test Suite ausgewählt, der diesen Goal abdeckt. Dieser Test wird wrt to the coverage goal minimiert, so dass Statements, die nicht zur Ausführung des Goals beitragen, gelöscht werden. Wenn ein Goal bereits von einem minimierten Test abgedeckt ist, so wird kein weiterer Test für diesen Goal der finalen Test Suite hinzugefügt. Auf diese Weise werden Tests lesbarer für einen Menschen und können somit leichter manuell um Testorakel ergänzt werden.
@@ -1567,7 +1569,7 @@ We apply similar ideas to \textsc{RustyUnit}. However, some of the problems that
 \clearpage
 \chapter{Implementation}
 \label{chap:implementation}
-In this chapter we present essential parts of the implementation of \textsc{RustyUnit}. To generate tests, \textsc{RustyUnit} needs access to the source code of the \ac{SUT} since, unlike \textsc{EvoSuite} for Java, for isntance, the required analysis and instrumentation does not take place on the compiled binary, but during the compilation process itself. The Rust compiler provides a convenient interface for controlling the compilation process. We register the analysis of the target program and instrument it using this interface. Die Ergebnisse der Analyse werden für die Generierung und Synthesis der Tests benötigt, während die Instrumentierung nötig ist, um die generierten Tests bei deren Ausführung auf ihre Fitness zu bewerten. Am Ende der Suche entsteht eine finale Testsuite in Form von Rust Quellcode zur Verfügung.
+In this chapter we present essential parts of the implementation of \tech. To generate tests, \tech needs access to the source code of the \ac{SUT} since, unlike \textsc{EvoSuite} for Java, for isntance, the required analysis and instrumentation does not take place on the compiled binary, but during the compilation process itself. The Rust compiler provides a convenient interface for controlling the compilation process. We register the analysis of the target program and instrument it using this interface. Die Ergebnisse der Analyse werden für die Generierung und Synthesis der Tests benötigt, während die Instrumentierung nötig ist, um die generierten Tests bei deren Ausführung auf ihre Fitness zu bewerten. Am Ende der Suche entsteht eine finale Testsuite in Form von Rust Quellcode zur Verfügung.
 
 % Die Übesicht des ganzen Prozesses
 \begin{figure}[h!]
@@ -1590,7 +1592,7 @@ With compiler internals available, we can implement some of the callbacks that t
     \item \texttt{after\string_analysis}
 \end{enumerate}
 
-The \texttt{config} method will be called before creating the compiler instance and allows to change the default compiler configuration. Each of the other three functions will be called after the end of the corresponding compilation phase. The interface provides the \texttt{after\string_*} hooks with an instance of the compiler and, more important, with a \texttt{Queries} object which allows to query the global context of the program under compilation and also the \ac{HIR} and \ac{MIR}. It is very convenient because this way we can extract all the items defined in the target crate, including functions and methods along with their parameters and return types. We need this data to know what statements can be placed in a generated test. Another important point is that at this stage we can obtain full type paths, which the compiler has resolved until then, e.g., \texttt{std::fs::File} instead of just \texttt{File}.
+The \texttt{config} method will be called before creating the compiler instance and allows to change the default compiler configuration. Each of the other three functions will be called after the end of the corresponding compilation phase. The interface provides the \texttt{after\string_*} hooks with an instance of the compiler and, more important, with a \texttt{Queries} object which allows to query the global context of the program under compilation and also the \hir and \mir. It is very convenient because this way we can extract all the items defined in the target crate, including functions and methods along with their parameters and return types. We need this data to know what statements can be placed in a generated test. Another important point is that at this stage we can obtain full type paths, which the compiler has resolved until then, e.g., \texttt{std::fs::File} instead of just \texttt{File}.
 
 \begin{lstlisting}[style=boxed, caption={The Rust compiler interface accepts an object which implements its callback trait, allowing us to execute code at different compilation phases}, label=lst:compiler-callbacks]
 struct CompilerCallbacks;
@@ -1627,7 +1629,7 @@ impl rustc_driver::Callbacks for CompilerCallbacks {
   }
 }
 \end{lstlisting}
-However, even though a \ac{MIR} object is clonable and can be modified, there is no way to pass a modified version back to the compiler within a callback because both parameters are immutable. The compiler performs several distinct optimizations on the \ac{MIR}, called passes. Accordingly, they can modify the \ac{MIR}. In the earlier compiler versions it was possible to register a custom MirPass~\footnote{\url{https://doc.rust-lang.org/stable/nightly-rustc/rustc_mir/transform/trait.MirPass.html}} as part of a compiler plugin, but this possibility was later eliminated. However, there is still a way that allows us to propagate changes to the \ac{MIR} back to the compiler, instead of extending it and building an own version of it. The \texttt{config} callback provides a mutable \texttt{Config} object which allows to replace the default \ac{MIR}-providing function \texttt{optimized\string_mir} (among many others) with an own custom implementation. As shown in \Cref{lst:compiler-callbacks}, a provider for an optimized \ac{MIR} is a function pointer. Our custom provider implementation is a basic wrapper, which first obtains the original \ac{MIR} object using the default implementation, applies the \texttt{MirVisitor}, which mutates the \ac{MIR} in-place, and returns the mutated version. The compiler invokes the \texttt{optimized\string_mir()} Provider in further steps, and thus, the mutated \ac{MIR} object will be propagated.
+However, even though a \mir object is clonable and can be modified, there is no way to pass a modified version back to the compiler within a callback because both parameters are immutable. The compiler performs several distinct optimizations on the \mir, called passes. Accordingly, they can modify the \mir. In the earlier compiler versions it was possible to register a custom MirPass~\footnote{\url{https://doc.rust-lang.org/stable/nightly-rustc/rustc_mir/transform/trait.MirPass.html}} as part of a compiler plugin, but this possibility was later eliminated. However, there is still a way that allows us to propagate changes to the \mir back to the compiler, instead of extending it and building an own version of it. The \texttt{config} callback provides a mutable \texttt{Config} object which allows to replace the default \mir-providing function \texttt{optimized\string_mir} (among many others) with an own custom implementation. As shown in \Cref{lst:compiler-callbacks}, a provider for an optimized \mir is a function pointer. Our custom provider implementation is a basic wrapper, which first obtains the original \mir object using the default implementation, applies the \texttt{MirVisitor}, which mutates the \mir in-place, and returns the mutated version. The compiler invokes the \texttt{optimized\string_mir()} Provider in further steps, and thus, the mutated \mir object will be propagated.
 
 \begin{lstlisting}[style=boxed, caption={Running the Rust compiler like a library}, label=lst:running-compiler]
 fn run_rustc() -> Result<(), i32> {
@@ -1664,24 +1666,24 @@ fn main() {
 
 \texttt{RUSTC\string_WRAPPER=./instrumentation cargo \string+nightly build}
 
-Since our wrapper uses \texttt{rustc\string_private} features, we have to tell Cargo to enable the nightly channel. The next step is to define how to instrument the \ac{MIR} so that we can observe the execution paths triggered by an execution of generated tests.
+Since our wrapper uses \texttt{rustc\string_private} features, we have to tell Cargo to enable the nightly channel. The next step is to define how to instrument the \mir so that we can observe the execution paths triggered by an execution of generated tests.
 
-%The whole process starts, when we run the compiler for the first time on a target crate that we want to test. During this process we can already extract the available items like structs and their methods by traversing the \ac{HIR}.
+%The whole process starts, when we run the compiler for the first time on a target crate that we want to test. During this process we can already extract the available items like structs and their methods by traversing the \hir.
 
 \section{HIR Analysis}
-For the purpose of test generation, \ac{HIR} and \ac{MIR} are of primary importance. First, we are interested in all possible functions, structs/enums, and their methods and fields in the crate we want to test. This information allows us to evaluate which statements we can use in a generated test at all and what types of instances do those statements produce. We call functions and methods generators since those can generate instances and values of the required types when we recursively search for a dependency. The fact that desugaring has already been performed in the \ac{HIR} has no influence at this point, because the transformations are only performed intra-procedurally. We are only interested in type and method definitions, their parameters and return types, which still remain unchanged at this level. Moreover, thanks to \ac{HIR} we can also determine the absolute path of a type, for example a parameter. Relative type names, such as \texttt{File} instead of \texttt{std::fs::File}, can lead to difficulties when compiling the generated tests due to missing imports. Thus, it is easier to carry a complete type path, and by means of \ac{HIR} we can easily query this.
+For the purpose of test generation, \hir and \mir are of primary importance. First, we are interested in all possible functions, structs/enums, and their methods and fields in the crate we want to test. This information allows us to evaluate which statements we can use in a generated test at all and what types of instances do those statements produce. We call functions and methods generators since those can generate instances and values of the required types when we recursively search for a dependency. The fact that desugaring has already been performed in the \hir has no influence at this point, because the transformations are only performed intra-procedurally. We are only interested in type and method definitions, their parameters and return types, which still remain unchanged at this level. Moreover, thanks to \hir we can also determine the absolute path of a type, for example a parameter. Relative type names, such as \texttt{File} instead of \texttt{std::fs::File}, can lead to difficulties when compiling the generated tests due to missing imports. Thus, it is easier to carry a complete type path, and by means of \hir we can easily query this.
 
 % TODO reword
-The top-level data structure in the \ac{HIR} is the \texttt{Crate}, which stores the contents of the crate currently being compiled. The Rust compiler compiles crates independently and, thus, only ever constructs \ac{HIR} for the current crate. Technically, the \ac{HIR} \texttt{Crate} structure contains a number of maps that serve to organize the content of the crate for easier access. For instance, the contents of individual items (e.g., modules, functions, traits, impls and so on) in the \ac{HIR} are not directly accessible in the parents. So, for example, if there is a module item \texttt{foo} containing a function \texttt{bar()}:
+The top-level data structure in the \hir is the \texttt{Crate}, which stores the contents of the crate currently being compiled. The Rust compiler compiles crates independently and, thus, only ever constructs \hir for the current crate. Technically, the \hir \texttt{Crate} structure contains a number of maps that serve to organize the content of the crate for easier access. For instance, the contents of individual items (e.g., modules, functions, traits, impls and so on) in the \hir are not directly accessible in the parents. So, for example, if there is a module item \texttt{foo} containing a function \texttt{bar()}:
 
 \begin{lstlisting}[style=boxed, caption={}]
 mod foo() {
     fn bar() { }
 }
 \end{lstlisting}
-then in the \ac{HIR}, the representation of module \texttt{foo} would only have the ID \texttt{I} of \texttt{bar()}. To get the details of the function, we would lookup \texttt{I} in the \texttt{items} map of the \ac{HIR}, as shown in \Cref{lst:hir-analysis}. One nice result from this representation is that one can iterate over all items in the crate by iterating over the key-value pairs in these maps (without the need to trawl through the whole \ac{HIR}). The other reason for such decoupled design is for better integration with incremental compilation. This way, if we gain access to some item, e.g., for the module \texttt{foo}, we only gain access to the id for \texttt{bar()}, and we must invoke some functions to lookup the contents of the function given its id. This gives the compiler a chance to observe that we accessed the data for \texttt{bar()}, and then record the compilation dependency.
+then in the \hir, the representation of module \texttt{foo} would only have the ID \texttt{I} of \texttt{bar()}. To get the details of the function, we would lookup \texttt{I} in the \texttt{items} map of the \hir, as shown in \Cref{lst:hir-analysis}. One nice result from this representation is that one can iterate over all items in the crate by iterating over the key-value pairs in these maps (without the need to trawl through the whole \hir). The other reason for such decoupled design is for better integration with incremental compilation. This way, if we gain access to some item, e.g., for the module \texttt{foo}, we only gain access to the id for \texttt{bar()}, and we must invoke some functions to lookup the contents of the function given its id. This gives the compiler a chance to observe that we accessed the data for \texttt{bar()}, and then record the compilation dependency.
 
-In \Cref{lst:hir-analysis} we iterate over the \texttt{items} map of the \ac{HIR} and extract the relevant elements like functions, structs, and methods by pattern matching the type of an item. Each item stores a \texttt{Span} object, which shows its origin at the source code level, i.e., the source file it has been defined within. This is important for us because in Rust, unlike, for instance, in Java, unit tests can and should, by convention, be written into the files that contain the code to test. This also means that unit tests, also our generated tests, can invoke private functions and methods directly, which in turn can lead to higher coverage.
+In \Cref{lst:hir-analysis} we iterate over the \texttt{items} map of the \hir and extract the relevant elements like functions, structs, and methods by pattern matching the type of an item. Each item stores a \texttt{Span} object, which shows its origin at the source code level, i.e., the source file it has been defined within. This is important for us because in Rust, unlike, for instance, in Java, unit tests can and should, by convention, be written into the files that contain the code to test. This also means that unit tests, also our generated tests, can invoke private functions and methods directly, which in turn can lead to higher coverage.
 
 % TODO also add enums and traits
 \begin{lstlisting}[style=boxed, caption={Iterate over the items in the HIR of a crate}, label=lst:hir-analysis]
@@ -1768,13 +1770,15 @@ fn address_to_string(address: &Address) -> String {
 Hier muss die Analyse der MIR beschrieben werden, also wie wird die MIR (CFG) zum Post-Dominator Tree und dann zum CDG umgewandelt. Einige der Nodes sind bereits Objectives, die gecovert werden müssen.
 
 % Building CDG from MIR
-To improve the effectivity of generated tests, both DynaMOSA and the used fitness function (approach level) rely on information from a \ac{CDG}~\cite{Ferrante1987} of the \ac{SUT}. A \ac{CDG} can be constructed from a \ac{CFG} and its post-dominator tree. \ac{MIR} itself is a \ac{CFG}, so before instrumenting it, we can build the post-dominator-tree and the \ac{CDG} of each method we want to test. We do not use the complete \ac{CFG} of a \texttt{Body}, but rather a subset of it. Rust compiler creates many unwinding edges that point to basic blocks whose task is to cleanup the stack in case the program panics at some points of it's execution. However, here we only want to analyse and test regular program execution, not the cleanup logic of the compiler. Furthermore, considering unwind nodes results in \ac{CFG} having multiple exit nodes, which complicate the computation of a post-dominator tree. The standard algorithm to compute a dominator tree from a \ac{CFG} can also yield a post-dominator tree when applied to reversed \ac{CFG}, given that the original \ac{CFG} has a single exit point, i.e., a single entry point with reversed edges.
+To improve the effectivity of generated tests, both DynaMOSA and the used fitness function (approach level) rely on information from a \ac{CDG}~\cite{Ferrante1987} of the \ac{SUT}. A \ac{CDG} can be constructed from a \cfg and its post-dominator tree. \mir itself is a \cfg, so before instrumenting it, we can build the post-dominator-tree and the \ac{CDG} of each method we want to test. We do not use the complete \cfg of a \texttt{Body}, but rather a subset of it. Rust compiler creates many unwinding edges that point to basic blocks whose task is to cleanup the stack in case the program panics at some points of it's execution. However, here we only want to analyse and test regular program execution, not the cleanup logic of the compiler. Furthermore, considering unwind nodes results in \cfg having multiple exit nodes, which complicate the computation of a post-dominator tree. We filter out most of the unwind edges from a \cfg except for those described in~\Cref{sec:mir-testability-transformations}. To simplify further tree computations, we add a dummy exit node that we point all original exit nodes to, in case if there are at least two dedicated exit nodes. 
+
+The standard algorithm to compute a dominator tree from a \cfg can also yield a post-dominator tree when applied to reversed \cfg, given that the original \cfg has a single exit point, i.e., a single entry point with reversed edges.
 
 Prosser introduced the notion of dominance in a 1959 paper on the analysis of flow diagrams, defining it as follows:
-\textit{We say box i dominates box j if every path (leading from input to output through the diagram) which passes through box j must also pass through box i. Thus box i dominates box j if box j is subordinate to box i in the program}~\cite{Prosser1959}. He did not specify the algorithm to compute dominance, though. Since then, several algorithms for calculating dominance have been presented. Post-dominance can be computed the same way on a \ac{CFG} with reversed edges, given that the \ac{CFG} has a single exit point. In this work, we use the \texttt{petgraph} graph library for Rust, which provides an implementation of the simple, fast dominance algorithm~\cite{Cooper2001} by Cooper et al. Finally, we compute a \ac{CDG} for each method body based on the algorithm~\cite{Ferrante1987} described by Ferrante et al.
+\textit{We say box i dominates box j if every path (leading from input to output through the diagram) which passes through box j must also pass through box i. Thus box i dominates box j if box j is subordinate to box i in the program}~\cite{Prosser1959}. He did not specify the algorithm to compute dominance, though. Since then, several algorithms for calculating dominance have been presented. Post-dominance can be computed the same way on a \cfg with reversed edges, given that the \cfg has a single exit point. In this work, we use the \texttt{petgraph} graph library for Rust, which provides an implementation of the simple, fast dominance algorithm~\cite{Cooper2001} by Cooper et al. Finally, we compute a \ac{CDG} for each method body based on the algorithm~\cite{Ferrante1987} described by Ferrante et al.
 
 \section{MIR Instrumentation}
-The only compiler callback we implement at is point is the \texttt{config} function, which allows us to modify the \ac{MIR} of a target program on the fly. The internal compiler crates already provide a \texttt{MutVisitor}~\footnote{\url{https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/trait.MutVisitor.html}} which can be used to traverse and modify \ac{MIR} objects. To trace the execution of branches of a \ac{SUT}, we need to insert additional code at relevant places in the \ac{MIR}. Those are mainly entry basic blocks (to trace if a body has been entered at all during an execution of a test) and basic blocks that introduce branches and split the execution flow, e.g., those having \texttt{SwitchInt} and \texttt{Assert} terminators. Technically, there are also other terminators which have more than one successor, e.g., \texttt{Call}s, which are function invocations. However, the optional additional branch is used to point to basic blocks which unwind the stack in case the function being called panics, i.e., the program crashes. At this point, we are only interested in basic blocks that belong to the regular execution of the program. \Cref{lst:example-function-to-instrument,lst:mir-of-example-function-to-instrument} show an example function we want to instrument and the relevant parts of it's \ac{MIR}.
+The only compiler callback we implement at is point is the \texttt{config} function, which allows us to modify the \mir of a target program on the fly. The internal compiler crates already provide a \texttt{MutVisitor}~\footnote{\url{https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/trait.MutVisitor.html}} which can be used to traverse and modify \mir objects. To trace the execution of branches of a \ac{SUT}, we need to insert additional code at relevant places in the \mir. Those are mainly entry basic blocks (to trace if a body has been entered at all during an execution of a test) and basic blocks that introduce branches and split the execution flow, e.g., those having \texttt{SwitchInt} and \texttt{Assert} terminators. Technically, there are also other terminators which have more than one successor, e.g., \texttt{Call}s, which are function invocations. However, the optional additional branch is used to point to basic blocks which unwind the stack in case the function being called panics, i.e., the program crashes. At this point, we are only interested in basic blocks that belong to the regular execution of the program. \Cref{lst:example-function-to-instrument,lst:mir-of-example-function-to-instrument} show an example function we want to instrument and the relevant parts of it's \mir.
 
 \begin{lstlisting}[style=boxed, caption={Example function to instrument}, label=lst:example-function-to-instrument]
 fn foo(x: i32, y: i32) {
@@ -1786,7 +1790,7 @@ fn foo(x: i32, y: i32) {
 }
 \end{lstlisting}
 
-Within the entry basic block in the \ac{MIR}, the two input arguments are compared and their result is stored into the local variable~\texttt{\string_3}. Then, based on the comparison result, the execution of the function can either jump to the block~\texttt{bb1} (if~\texttt{x} was less than~\texttt{y}) or \texttt{bb3} (if~\texttt{x} was greater or equal to~\texttt{y}), that is, there are two branches at this point.
+Within the entry basic block in the \mir, the two input arguments are compared and their result is stored into the local variable~\texttt{\string_3}. Then, based on the comparison result, the execution of the function can either jump to the block~\texttt{bb1} (if~\texttt{x} was less than~\texttt{y}) or \texttt{bb3} (if~\texttt{x} was greater or equal to~\texttt{y}), that is, there are two branches at this point.
 \begin{lstlisting}[style=boxed, caption={MIR of the \texttt{foo} function}, label=lst:mir-of-example-function-to-instrument]
 fn foo(_1: i32, _2: i32) -> () {
   // Locals definition
@@ -1815,7 +1819,7 @@ fn foo(_1: i32, _2: i32) -> () {
 For simplicity, we will consider individual instrumentation methods separately in the next chapters. Effectively, however, they will all be used together to trace various aspects of program execution.
 
 \subsection{Body Entry Instrumentation}
-To trace the entry of a function, we have to insert a call to our monitor at the very beginning. A function call is always a terminator in \ac{MIR}; that is, we must insert a whole new basic block for each trace function invocation. It must be the very first block in the sequence of basic blocks of the respective function, i.e., \texttt{bb0}, so we shift the original blocks by one and let our new artificial tracing block point to the original entry block, which is \texttt{bb1} now. Since the \ac{MIR} graph of each function is an independent data structure, they all have independent identificators, e.g., the id of the module and the function currently being compiled. The combination of the two allows us to uniquely identify functions. The ids are assigned by the compiler and are already known at the time of instrumentation, which is why we only weave them in as constants. Assume that the id of the module in which the function \texttt{foo} is defined is equal to $2$, and the id of the function itself is $3$. Then, after instrumenting the entry of the function, it's \ac{MIR} looks like:
+To trace the entry of a function, we have to insert a call to our monitor at the very beginning. A function call is always a terminator in \mir; that is, we must insert a whole new basic block for each trace function invocation. It must be the very first block in the sequence of basic blocks of the respective function, i.e., \texttt{bb0}, so we shift the original blocks by one and let our new artificial tracing block point to the original entry block, which is \texttt{bb1} now. Since the \mir graph of each function is an independent data structure, they all have independent identificators, e.g., the id of the module and the function currently being compiled. The combination of the two allows us to uniquely identify functions. The ids are assigned by the compiler and are already known at the time of instrumentation, which is why we only weave them in as constants. Assume that the id of the module in which the function \texttt{foo} is defined is equal to $2$, and the id of the function itself is $3$. Then, after instrumenting the entry of the function, it's \mir looks like:
 
 \begin{lstlisting}[style=boxed, caption={}, label=lst:mir-instrument-root]
 fn foo(_1: i32, _2: i32) -> () {
@@ -1870,10 +1874,10 @@ Visited root branch (2, 3)
 \end{figure}
 
 \subsection{Branch Instrumentation}
-To trace the execution of a branch, we need to insert calls to the monitor after a branch has been taken and just before it starts to execute. Doing so, we first update a terminator where branching begins, e.g., \texttt{switchInt}, to point to our artificial tracing blocks. Here, the number of tracing blocks per branch is equal to the number of branches. This is due to the fact that after a particular branch is taken, we want to trace the distance for all branches. This means that for each possible branch a call to the monitor is needed, i.e. a basic block. At this point, we know pretty much on what basis a particular branch is taken and can thus incorporate appropriate logic. Exact values are then inserted and traced at runtime. In the end, we put a chain of tracing blocks with length $l >= 2$ in each branch. Then, the last block of each tracing chain must point to the original target block of the branching terminator. \Cref{lst:mir-instrument-branch} provides an instrumented version of the \ac{MIR} shown in \Cref{lst:mir-of-example-function-to-instrument}.
+To trace the execution of a branch, we need to insert calls to the monitor after a branch has been taken and just before it starts to execute. Doing so, we first update a terminator where branching begins, e.g., \texttt{switchInt}, to point to our artificial tracing blocks. Here, the number of tracing blocks per branch is equal to the number of branches. This is due to the fact that after a particular branch is taken, we want to trace the distance for all branches. This means that for each possible branch a call to the monitor is needed, i.e. a basic block. At this point, we know pretty much on what basis a particular branch is taken and can thus incorporate appropriate logic. Exact values are then inserted and traced at runtime. In the end, we put a chain of tracing blocks with length $l >= 2$ in each branch. Then, the last block of each tracing chain must point to the original target block of the branching terminator. \Cref{lst:mir-instrument-branch} provides an instrumented version of the \mir shown in \Cref{lst:mir-of-example-function-to-instrument}.
 
 
-\begin{lstlisting}[language={}, style=boxed, caption={Instrumented branches in the \ac{MIR} of the \texttt{foo} function}, label=lst:mir-instrument-branch]
+\begin{lstlisting}[language={}, style=boxed, caption={Instrumented branches in the \mir of the \texttt{foo} function}, label=lst:mir-instrument-branch]
 fn foo(_1: i32, _2: i32) -> () {
   // Locals definition
   // ...
@@ -1962,7 +1966,7 @@ fn foo(_1: i32, _2: i32) -> () {
 }
 \end{lstlisting}
 
-In tracing chains (\texttt{bb4}, \texttt{bb5}) and (\texttt{bb6}, \texttt{bb7}) we want to invoke appropriate monitor functions and store all the information we need to identify and compute the branch distance. The \ac{CFG} before and after instrumentation is shown in Figure~\Cref{fig:comparison-instrumented-branch-cfg}. As with \texttt{monitor::trace\string_root} in \Cref{lst:mir-instrument-root}, for each tracing call, we specify the ids of the module and function, as well as the id of the branch which the tracing runs within. The branch id is usually the number of the block the branching terminator originally pointed to, e.g., in this case we have to branch ids: $1$ and $2$. We also store the the operands of the binary operation in the \texttt{if} conditional, as well as the binary operation itself. In the end, the polarization of the branches remains, i.e., \texttt{true} or \texttt{false}. With this information we can distinguish in the monitor whether the given branch is hit or not and determine the distance with the help of the values and the binary operation. For example, assume we invoke \texttt{foo(10, 20)} again, then, we get the following trace output:
+In tracing chains (\texttt{bb4}, \texttt{bb5}) and (\texttt{bb6}, \texttt{bb7}) we want to invoke appropriate monitor functions and store all the information we need to identify and compute the branch distance. The \cfg before and after instrumentation is shown in Figure~\Cref{fig:comparison-instrumented-branch-cfg}. As with \texttt{monitor::trace\string_root} in \Cref{lst:mir-instrument-root}, for each tracing call, we specify the ids of the module and function, as well as the id of the branch which the tracing runs within. The branch id is usually the number of the block the branching terminator originally pointed to, e.g., in this case we have to branch ids: $1$ and $2$. We also store the the operands of the binary operation in the \texttt{if} conditional, as well as the binary operation itself. In the end, the polarization of the branches remains, i.e., \texttt{true} or \texttt{false}. With this information we can distinguish in the monitor whether the given branch is hit or not and determine the distance with the help of the values and the binary operation. For example, assume we invoke \texttt{foo(10, 20)} again, then, we get the following trace output:
 
 \begin{lstlisting}[language={}, style=boxed, caption={}, label=lst:mir-instrument-branch-trace-output]
 // bb6 gets executed
@@ -1998,7 +2002,7 @@ monitor::trace_branch_bool(
 \subsection{Testability Transformation Instrumentation}
 \label{sec:mir-testability-transformations}
 % TODO reword
-In the following, we describe several transformations implemented in the \textsc{RustyUnit} test, some of which were presented by Fraser and Arcuri~\cite{Fraser2013} for the \textsc{EvoSuite} tool. The transformations are implemented at the \ac{MIR} level. To do this, we need to introduce more tracing blocks at crucial points. Basically, the Rust compiler transforms input programs in the same way as it is done with testability transformations, which are described in section 2. It inserts assertions at relevant places to check unexpected behavior, for example, whether an index is within array bounds or whether an arithmetic operation results in overflow or underflow.
+In the following, we describe several transformations implemented in the \tech test, some of which were presented by Fraser and Arcuri~\cite{Fraser2013} for the \textsc{EvoSuite} tool. The transformations are implemented at the \mir level. To do this, we need to introduce more tracing blocks at crucial points. Basically, the Rust compiler transforms input programs in the same way as it is done with testability transformations, which are described in section 2. It inserts assertions at relevant places to check unexpected behavior, for example, whether an index is within array bounds or whether an arithmetic operation results in overflow or underflow.
 
 For instance, when an arithmetic operation is accessed with an inappropriate index, the program will panic and crash. This happens because the compiler inserts checks before each array access and verifes whether the index is within the bounds of the array. Assume the following function that takes an index and an \texttt{i32} array and returns the value at the given position:
 \begin{lstlisting}[style=boxed, caption={}, label=lst:array-index-access-example]
@@ -2007,7 +2011,7 @@ fn get(pos: usize, array: &[i32; 3]) -> i32 {
 }
 \end{lstlisting}
 
-The relevant part of it's \ac{MIR} looks like this:
+The relevant part of it's \mir looks like this:
 \begin{lstlisting}[language={}, style=boxed, caption={}, label=lst:mir-boundary-check]
 fn get(_1: usize, _2: &[i32; 3]) -> i32 {
   // Locals  definition
@@ -2032,7 +2036,7 @@ fn get(_1: usize, _2: &[i32; 3]) -> i32 {
 
 That is, the compiler inserts an assertion that checks whether the index is less than the length of the array, which is statically constant. If the index is greater than or equal to the length, the program crashes. The other case, i.e. negative index, cannot occur since the index must always be of type \texttt{usize}, i.e. an unsigned type. Thus, there is no reason to verify this case.
 
-Now, we need to insert tracing blocks for both, the ''good'' and the ''bad'' case. We could insert two branches always before an assertion block. However, in this case we would have to insert another branching block $s$, for example with \texttt{switchInt}, and if applicable we would have to change the original preceding assertion block so that it points to $s$. In the block $s$ we would also have to copy the logic from the assertion block, which makes the whole thing even more complicated. Another option would be to change the assertion itself. An assertion in \ac{MIR} has an optional unwind edge which, in the "bad" case, points to a sequence of blocks to clean up before the program crashes, if there is anything to clean up. Assume the function \texttt{get} from \Cref{lst:array-index-access-example} does some allocations before accessing the array:
+Now, we need to insert tracing blocks for both, the ''good'' and the ''bad'' case. We could insert two branches always before an assertion block. However, in this case we would have to insert another branching block $s$, for example with \texttt{switchInt}, and if applicable we would have to change the original preceding assertion block so that it points to $s$. In the block $s$ we would also have to copy the logic from the assertion block, which makes the whole thing even more complicated. Another option would be to change the assertion itself. An assertion in \mir has an optional unwind edge which, in the "bad" case, points to a sequence of blocks to clean up before the program crashes, if there is anything to clean up. Assume the function \texttt{get} from \Cref{lst:array-index-access-example} does some allocations before accessing the array:
 \begin{lstlisting}[style=boxed, caption={}]
 fn get(pos: usize, array: &[i32; 3]) -> i32 {
   let s = String::from("I'm using heap");
@@ -2040,7 +2044,7 @@ fn get(pos: usize, array: &[i32; 3]) -> i32 {
 }
 \end{lstlisting}
 
-Then, the the \ac{MIR} of the function becomes a bit different:
+Then, the the \mir of the function becomes a bit different:
 \begin{lstlisting}[language={}, style=boxed, caption={}, label=lst:mir-boundary-check-with-unwinding]
 fn get(_1: usize, _2: &[i32; 3]) -> i32 {
   // Locals  definition
@@ -2088,9 +2092,9 @@ The assertion has now got a second edge. Regardless of whether the index is vali
 \label{fig:comparison-instrumented-assertion}
 \end{figure}
 
-We do the same for the case of overflows and underflows. \Cref{lst:mir-overflow-check} demonstrates an example of the \texttt{add} function that performs addition of two eight-bit integers and the relevant basic block from its \ac{MIR}. In the \ac{MIR}, the compiler inserts an assertion about the value of the result to catch an overflow. We instrument the assertion and insert our tracing chains into the body of the function as described above.
+We do the same for the case of overflows and underflows. \Cref{lst:mir-overflow-check} demonstrates an example of the \texttt{add} function that performs addition of two eight-bit integers and the relevant basic block from its \mir. In the \mir, the compiler inserts an assertion about the value of the result to catch an overflow. We instrument the assertion and insert our tracing chains into the body of the function as described above.
 % OVERFLOW CHECK
-\begin{lstlisting}[language={}, style=boxed, caption={\ac{MIR} overflow check}, label=lst:mir-overflow-check]
+\begin{lstlisting}[language={}, style=boxed, caption={\mir overflow check}, label=lst:mir-overflow-check]
 fn add(a: i8, b: i8) -> i8 {
   a + b
 }
@@ -2123,7 +2127,7 @@ bb0: {
 
 
 \section{Handling Generics and Traits}
-A large part of \ac{SBST} approaches is applied to managed languages such as Java, since these offer a rich set of tools and features like reflection. It allows to analyze the code of the \ac{SUT} and extract information needed for generating tests by querying the appropriate language \ac{API}, like \texttt{getGenericParameters} of a \texttt{java.lang.reflect.Method} instance to get generic parameters. When tests are generated for generic elements, it is sometimes difficult to replace a generic type parameter with a matching concrete type because execution depends on the one concrete type~\cite{Fraser2014b}. As shown in \Cref{lst:java-isinstanceof}, an execution path for generic methods can be affected by checks for the concrete type of a generic instance. Many approaches to analyzing Java programs operate at the bytecode level after type erasure has already happened. This means that bytecode does not know anything about generics, they are replaced, for example, by \texttt{Object}.
+A large part of \ac{SBST} approaches is applied to managed languages such as Java, since these offer a rich set of tools and features like reflection. It allows to analyze the code of the \ac{SUT} and extract information needed for generating tests by querying the appropriate language \ac{API}, like \texttt{getGenericParameters} of a \texttt{java.lang.reflect.Method} instance to get generic parameters. When tests are generated for generic elements, it is sometimes difficult to replace a generic type parameter with a matching concrete type because execution depends on the one concrete type~\cite{Fraser2014b}. As shown in \Cref{lst:java-isinstanceof}, an execution path for generic methods can be affected by checks for the concrete type of a generic instance. Many approaches to analyzing Java programs operate at the bytecode level after type erasure has already happened. This means that bytecode does not know anything about generics, they are replaced, for example, by \texttt{Object}. 
 
 \begin{lstlisting}[language=Java, style=boxed, caption={The execution path of the generic Java method depends on the concrete type of the argument}, label=lst:java-isinstanceof]
 public class GenericsExample<T, K> {
@@ -2141,7 +2145,7 @@ public class GenericsExample<T, K> {
 }
 \end{lstlisting}
 
-TODO
+A similar idea is also possible in Rust to find out the concrete type of a generic, as shown in~\Cref{lst:rust-runtime-reflection}. A crucial requirement of this is the conversion of the generic type to \texttt{dyn Any}. Then, we can check the runtime type of \texttt{value}. The downcasts are also part of MIR and thus can theoretically be used to determine possible suitable types for a generic to narrow down the space of possible types. However, since generics with trait bounds are often a more suitable option, this feature is quite rare and cannot be found in the evaluation subjects, which makes us rely on a more general approach. 
 
 \begin{lstlisting}[style=boxed, caption={The execution path of the generic Rust function depends on the concrete type of the argument}, label=lst:rust-runtime-reflection]
 use std::fmt::Debug;
@@ -2165,51 +2169,77 @@ fn typed_input<T: Any>(value: &T) -> i32 {
 }
 \end{lstlisting}
 
+Whenever \tech needs to bind a generic type with an actual one, it applies \Cref{alg:get-necessary-bindings}. The algorithm returns a type binding, which is a mapping from generic to actual types. Assume that we want to know how the type parameters \emph{T} and \emph{E} should be replaced in \texttt{Result<Box<T>, E>} to get a \texttt{Result<Box<MyType>, MyError>}. \Cref{alg:get-necessary-binding} starts from the most outer type, i.e., \texttt{Result}. Since the given type is not a type parameter and also not a reference, the algorithm unwraps the generics of the outer type and recursively tries to map \texttt{Box<T>} to \texttt{Box<MyType>} and \texttt{E} to \texttt{Error}. \texttt{E} is a type parameter, so we store the binding \texttt{\string{E -> Error\string}}. \texttt{Box} is a not a type parameter and not a reference either. In the last step, the algorithm stores the additional binding \texttt{\string{T -> MyType\string}}.
+
+\begin{algorithm}[t]
+  \caption{$GetNecessaryBindings(G, C, T)$}\label{alg:get-necessary-bindings}
+\begin{algorithmic}
+\Input
+  \Desc{$G$}{A generic type}
+  \Desc{$C$}{A concrete type}
+  \Desc{$T$}{Type binding}
+\EndInput
+
+\If{$G$ is a type parameter}
+\State $T[G] \gets C$
+\Else
+  \If{$G$ is a reference and $C$ is a reference}
+    \State $G_r \gets $ referenced type of $G$
+    \State $C_r \gets $ referenced type of $C$
+    \State $GetNecessaryBindings(G_r, C_r, T)$
+  \Else
+    \State $I_g \gets $ inner generics of $G$
+    \State $I_c \gets $ inner generics of $C$
+    \State $n \gets \left| I_g \right|$
+    \For{$i \in (1, n)$}
+      \State $GetNecessaryBindings(I_g[i], I_c[i], T)$
+    \EndFor
+  \EndIf
+\EndIf
+\end{algorithmic}
+\end{algorithm}
+
 % TODO reword
-The problem of generics becomes relevant whenever the test generation algorithm attempts to instantiate a new instance of a generic type, or to satisfy a parameter for a newly inserted method call. Assume that our test generation algorithm decides to add a call to the method \texttt{new(bar: T)} of the struct \texttt{Foo<T>}, which is defined as follows:
+The problem of generics becomes relevant whenever the test generation algorithm attempts to instantiate a new instance of a generic type, or to satisfy a parameter for a newly inserted method call. Assume that our test generation algorithm decides to add a call to the method \texttt{get(self: \&Foo<T>)} of the struct \texttt{Foo<T>}, which is defined and implemented as follows:
 \begin{lstlisting}[style=boxed, caption={}, label=lst:basic-generics-example]
 struct Foo<T> {
-    bar: T
+  bar: T
 }
 
 impl<T> for Foo<T> {
-    fn new(bar: T) -> Self {
-        Self { bar }
-    }
+  fn new(bar: T) -> Self {
+    Self { bar }
+  }
 
-    fn update(&mut self, bar: T) {
-        // ...
-    }
+  fn get(&self) -> Option<T> {
+    // ...
+  }
+
+  fn update(&mut self, bar: T) {
+    // ...
+  }
 }
 \end{lstlisting}
 
-% Aus der \ac{HIR} Analyse wissen wir, dass \texttt{T} ein Typparameter des Structs ist und durch keine weiteren Constraints gebunden ist. Das heißt, dass der Algorithmus in dem Fall einen beliebigen Typen statt \texttt{T} füllen kann. Um den Aufwand bei den Tests kleiner zu halten, prüfen wir immer zuerst, ob wir einen generischen Typparameter nicht durch einen primitiven Typ aus der Standard Library füllen können, sofern die Constraints dies erlauben. Hier würde sich der Algorithmus zum Beispiel für \texttt{isize} entscheiden. Somit würde folgender Methodenaufruf zum Test hinzugefügt:
-
-From the \ac{HIR} analysis, we know that \texttt{T} is a type parameter of the struct and is not bound by any other constraints. This means that the algorithm can fill any type instead of \texttt{T} in that case. To keep the testing effort smaller, we always check first whether we cannot fill a generic type parameter by a primitive type from the standard library, if the constraints allow this. Here, for example, the algorithm would choose \texttt{isize}. Thus, the following method call would be added to the test:
+From the \hir analysis we know that \texttt{T} is a type parameter of the struct and is not bound by any other constraints. This means that \tech can freely replace \texttt{T} by any type in that case. To keep the testing effort smaller, we always check first whether we cannot fill a generic type parameter by a primitive type from the standard library, if the constraints allow this. Here, for instance, the algorithm could choose \emph{isize} as a good candidate. Here, the strategy is to first determine the return type of the selected method and then create the potentially necessary dependencies backwards based on that. That is, we invoke \texttt{Foo::get(\&self)} and store the return value into a variable of type \texttt{Option<isize>}. We obtain a type binding $TB$ with \texttt{GetNecessaryBindings(Option<T>, Option<isize>, TB)}. The binding \texttt{\string{T -> isize\string}} between the generic type parameter and the concrete type is stored for the variable for later use.
 
 \begin{lstlisting}[style=boxed, caption={}, label=lst:building-generic-test-1]
 #[test]
 fn rusty_test_0() {
-    // ...
-    let mut isize_0 = 42isize;
-    let mut foo_0: Foo<isize> = Foo::new(isize_0);
-    // ...
+  let mut option_0: Option<isize> = Foo::get(&foo_0);
 }
 \end{lstlisting}
-
+The test in \Cref{lst:building-generic-test-1} is not compilable as is, though. That is why we use \texttt{GenObject} to create an instance of \texttt{Foo}, e.g., by invoking its constructor. The constructor has a parameter of type \texttt{T} which we already have a binding for, which effectively makes us able to call the constructor with a random integer, as shown in~\Cref{lst:building-generic-test-2}.
 % Das Mapping \texttt|{T -> isize}| zwischen dem generischen Typparameter und dem konkreten Typ wird für die Variable für die spätere Nutzung gespeichert. So kann zum Beispiel ein weiterer Methodenaufruf, e.g., \texttt{update(&mut self, bar: T)}, auf der \texttt{Foo} Instanz generiert werden. Für den Aufruf muss erst das passende Argument generiert werden. Dabei ist bereits bekannt, dass die Variable \texttt{foo_0} den Typ \texttt{Foo<isize>} und somit das Mapping von \texttt{T} nach \texttt{isize} hat. Auf dieser Wissensbasis generiert der Algorithmus zwei weitere Statements wie folgt:
 
-The mapping \texttt{\string{T -> isize\string}} between the generic type parameter and the concrete type is stored for the variable for later use. For example, another method call, e.g., \texttt{update(\string&mut self, bar: T)}, can be generated on the \texttt{Foo} instance. For the call, the appropriate argument must be generated first. It is already known that the variable \texttt{foo\string_0} has the type \texttt{Foo<isize>} and thus the mapping from \texttt{T} to \texttt{isize}. Using this knowledge base, the algorithm generates two more statements as follows:
+For example, another method call, e.g., \texttt{update(\string&mut self, bar: T)}, can be generated on the \texttt{Foo} instance. For the call, the appropriate argument must be generated first. It is already known that the variable \texttt{foo\string_0} has the type \texttt{Foo<isize>} and thus the mapping from \texttt{T} to \texttt{isize}. Using this knowledge base, the algorithm generates two more statements as follows:
 
 \begin{lstlisting}[style=boxed, caption={}, label=lst:building-generic-test-2]
 #[test]
 fn rusty_test_0() {
-  // ...
   let mut isize_0 = 42isize;
-  let mut isize_1 = 145isize;
   let mut foo_0: Foo<isize> = Foo::new(isize_0);
-  Foo::update(&mut foo_0, isize_1);
-  // ...
+  let mut option_0: Option<isize> = Foo::get(&foo_0);
 }
 \end{lstlisting}
 
@@ -2240,7 +2270,7 @@ fn rusty_test_0() {
 %\end{lstlisting}
 
 
-Generics play an even greater role in Rust than in other object-oriented languages. More precisely, Rust is not a typical object-oriented language and instead of using direct types, for example as method parameters, as is often the case in Java, generics are rather used in conjunction with trait bounds. Trait bounds define what behavior a particular generic type must be capable of. This reduces the number of possible data types a type parameter can be filled with. \Cref{lst:trait-bounds-example} implements the \texttt{area} function in Rust, which takes a parameter of generic type~\texttt{T}. The type parameter \texttt{T} must implement the \texttt{HasArea} trait, which allows \texttt{area} to access the trait's functions. Unlike Java, there is no Reflection provided in Rust. Source code is compiled directly to machine executable code, and all superfluous information is eliminated during the compilation process.
+Generics play a very important role in Rust. Rust is not a typical object-oriented language and instead of using direct types, for example as method parameters, as is often the case in Java, generics are rather used in conjunction with trait bounds. Trait bounds define what behavior a particular generic type must be capable of. This reduces the number of possible data types a type parameter can be filled with. \Cref{lst:trait-bounds-example} implements the \texttt{area} function in Rust, which takes a parameter of generic type~\texttt{T}. The type parameter \texttt{T} must implement the \texttt{HasArea} trait, which allows \texttt{area} to access the trait's functions. Unlike Java, there is only a limited runtime reflection provided in Rust. Source code is compiled directly to machine executable code, and all superfluous information is eliminated during the compilation process.
 
 \begin{lstlisting}[style=boxed, caption={A function that takes a generic types and specifies a bound}, label=lst:trait-bounds-example]
 trait HasArea {
@@ -2258,7 +2288,7 @@ impl HasArea for Rectangle {
 fn area<T: HasArea>(t: &T) -> f64 { t.area() }
 \end{lstlisting}
 
-Types that implement a particular trait must thus be found statically during compilation of the \ac{SUT} and annotated. The compiler provides \acp{API} to query all traits and the \texttt{impl} blocks, not only in the compiled \ac{SUT}, but also in its dependencies and in the standard library itself, as shown in \Cref{lst:query-types-that-implement-trait}.
+Types that implement a particular trait must thus be found statically during compilation of the \ac{SUT} and annotated. The compiler provides \acp{API} to query all traits and the collection of the respective \texttt{impl} blocks, not only in the compiled \ac{SUT}, but also in its dependencies and in the standard library itself, as shown in \Cref{lst:query-types-that-implement-trait}. Each \texttt{impl} block associate with a specific type, i.e., struct or enum. Thus, we can transitively learn if a type implements a certain trait in general. 
 
 \begin{lstlisting}[style=boxed, caption={Query types for a trait}, label=lst:query-types-that-implement-trait]
 fn get_types_for_trait(trait_id: DefId, tcx: &TyCtxt<'_>) -> Vec<Type> {
@@ -2271,36 +2301,32 @@ fn get_types_for_trait(trait_id: DefId, tcx: &TyCtxt<'_>) -> Vec<Type> {
 }
 \end{lstlisting}
 
-Another difficulty is that traits themselves can be generic, as shown by the definition of \texttt{IntoIterator} from the standard library and its implementation from the \textbf{trying}~\footnote{\url{https://crates.io/crates/trying}} crate in \Cref{lst:intoiterator-trait}.
+Things get more complicated when a trait is generic because it can be implemented multiple times for the same type with different values of the type parameters. ~\Cref{lst:from-trait-example} demonstrates an example implementation of the \texttt{std::convert::From} trait for the type \texttt{MyInt} with a 32-bit integer and a string. Due to the increasing complexity of handling generic traits, \tech can only analyze simple cases, i.e. implementations of non-generic traits, while ignoring the rest.
 
-\begin{lstlisting}[style=boxed, caption={IntoIterator implementation in the \textbf{trying} crate}, label=lst:intoiterator-trait]
-pub trait IntoIterator {
-  type Item;
-  type IntoIter: Iterator;
-  fn into_iter(self) -> Self::IntoIter;
+\begin{lstlisting}[style=boxed, caption={Example implementation oft the std::convert::From trait from the Rust standard library}, label=lst:from-trait-example]
+pub trait From<T> {
+  fn from(T) -> Self;
 }
 
-impl<A: TrieAtom, V: TrieValue> IntoIterator
-  for Trie<A, V> {
-  type Item = KeyValue<A, V>;
-  type IntoIter = TrieIntoIterator<A, V>;
+struct MyInt {
+  value: i32
+}
 
-  fn into_iter(self) -> Self::IntoIter {
-    // implementation ...
+impl From<i32> for MyInt {
+  fn from(x: i32) -> MyInt {
+    MyInt { value: x }
+  }
+}
+
+impl From<String> for MyInt {
+  fn from(s: String) -> MyInt {
+    let value = s.parse::<i32>().unwrap();
+    MyInt { value }
   }
 }
 \end{lstlisting}
 
-However, finding all possible types implementing a particular trait which is not defined in the \ac{SUT} itself is difficult. Rust compiler proceeds similarly to C++ compiler when compiling: crates are compiled individually and independently and only then, for example, linked with the standard library. However, the \ac{SUT} from which the build process was started is always compiled last after all dependencies. Thus, all information is available at the time when \textsc{RustyUnit} performs the analysis. 
-
-%Nevertheless, in order to provide certain implementations of traits when generating tests, we manually create several widely used type definitions as well as their methods and implemented traits. These definitions are automatically loaded and used by our tool. We define all primitive data types as well as several container types such as \texttt{std::vec::Vec}. \Cref{lst:vec-definition} shows the shortened definition of \texttt{std::vec::Vec}. Among other things, Vec implements the \texttt{IntoIterator} trait and thus could be used as an argument to test the \texttt{area} function from \Cref{lst:intoiterator-trait}. Moreover, it uses a generic type \texttt{T} which has no trait bounds. The method list is also provided so that the tool can create or modify an object of the respective type.
-
-% \begin{lstlisting}[language={}, style=boxed, caption={std::vec::Vec type definition}, label=lst:vec-definition]
-% name = std::vec::Vec
-% generics = [(T, None)]
-% traits = [std::iter::IntoIterator, ...]
-% methods = [new() -> Self<T>, len(&self) -> usize, ...]
-% \end{lstlisting}
+%However, finding all possible types implementing a particular trait which is not defined in the \ac{SUT} itself is difficult. Rust compiler proceeds similarly to C++ compiler when compiling: crates are compiled individually and independently and only then, for example, linked with the standard library. However, the \ac{SUT} from which the build process was started is always compiled last after all dependencies. Thus, all information is available at the time when \tech performs the analysis. 
 
 In general, we mainly use primitive data types for a \ac{SUT} to keep the generated tests simple as far as this satisfies the defined trait bounds. To create a call to the example method \texttt{FooBar::foo} (\Cref{lst:generic-type-used-in-multiple-params}) in a generated test, we would do the following:
 
@@ -2346,7 +2372,7 @@ fn rusty_test_0() {
 \label{chap:evaluation}
 % TODO reword
 
-We provide an empirical study on our search-based tool \textsc{RustyUnit} for automatic test case generation. We start by our reserch questions in \Cref{sec:research-questions}. Thereafter, we present our hypotheses we want to check during the evaluation in \Cref{sec:hypotheses}. Furthermore, we define the criteria for selecting case subjects for evaluation and present our case study in \Cref{sec:case-study-subjects} and explain the environment setup we used in \Cref{sec:environment-setup}. In \Cref{sec:results} we present the results and discuss them in \Cref{sec:discussion}. Finally, we conclude this chapter with a discussion of the threats to validity in \Cref{sec:threats-to-validity}.
+We provide an empirical study on our search-based tool \tech for automatic test case generation. We start by our reserch questions in \Cref{sec:research-questions}. Thereafter, we present our hypotheses we want to check during the evaluation in \Cref{sec:hypotheses}. Furthermore, we define the criteria for selecting case subjects for evaluation and present our case study in \Cref{sec:case-study-subjects} and explain the environment setup we used in \Cref{sec:environment-setup}. In \Cref{sec:results} we present the results and discuss them in \Cref{sec:discussion}. Finally, we conclude this chapter with a discussion of the threats to validity in \Cref{sec:threats-to-validity}.
 
 
 \section{Research Questions}
@@ -2357,24 +2383,26 @@ We now define questions that guide our evaluation. To determine how well our sea
 %Symbolic execution often has problems constructing nice test suites with complex types, which is why this technique is rather applied to find bugs in a \ac{SUT}, than generate tests with high coverage. Seach-based approach do the opposite, they are good at generating tests with high coverage, but are not as good at finding bugs as they do not make use of test oracles~\cite{Fraser2013}.
 
 \begin{enumerate}[start=1, label={\bfseries RQ\arabic*:}]
-    \item How many coverage goals does \textsc{RustyUnit} cover?
-    \item Does the \ac{GA} of \textsc{RustyUnit} achieve a better coverage than random search?
-    \item Does \textsc{RustyUnit} generate less and shorter test cases than random search?
-    \item Does \textsc{RustyUnit} achieve a higher code coverage than manually written tests in case study subjects?
-    \item Does \textsc{RustyUnit} achieve a higher code coverage than the \ac{DSE}-based \textsc{KLEE}?
-    \item How do the covered targets of \textsc{RustyUnit} and \textsc{KLEE} differ?
+    \item How many coverage goals does \tech cover?
+    % Compare coverage and length of tests
+    \item How does the \ac{GA} of \tech compare to a random search?
+    %\item Does the \ac{GA} of \tech achieve a better coverage than random search?
+    %\item Does \tech generate less and shorter test cases than random search?
+    \item Does \tech achieve improve the coverage of manually written tests in case study subjects?
+    %\item Does \tech achieve a higher code coverage than the \ac{DSE}-based \textsc{KLEE}?
+    %\item How do the covered targets of \tech and \textsc{KLEE} differ?
 \end{enumerate} 
 
 
 \section{Hypotheses}
 \label{sec:hypotheses}
-TODO Hier werden Hypothesen zur Evaluation beschrieben, die wir später mit Hilfe des nicht parametrisierten Mann-Whitney-U-Test jeweils für den Vergleich der Ergebnisse zwischen (random search und \textsc{RustyUnit}) und (\textsc{RustyUnit} und \textsc{KLEE}) überprüfen. Theoretisch wäre auch t-Test möglich, allerdings ist die Normalverteilung der Ergebnisse der such-basierten Testgeneierung nicht gegeben. Außerdem können wir keinen echten Mittelwert und Varianz bestimmen, da der Prozess theoretisch lange laufen könnte, sofern die 100\% Coverage nicht erreicht wird. Er ist praktisch durch die Rechen- und vor allem Speicherkapazität der Maschine begrenzt, was jedoch nur eine ''künstliche'' Grenze ist. Die Nullhypothese $H0$ wäre jeweils, dass sich die Performanz der Algorithmen nicht unterscheidet, bei $\alpha = 0.05$, wobei diese nicht so eine große Rolle spielt und man laut Arcuri~\cite{Arcuri2011} alle Ergebnisse unabhängig von der Signifikanz angeben und den Leser selbst entscheiden lassen sollte, inwieweit der jeweilige Algorithmus für ihn in Frage kommt. Statistische Auswertung und praktische, ''gefühlte'' Ergebnisse können sich bei randomisierten Algorithmen stark unterscheiden. 
+TODO Hier werden Hypothesen zur Evaluation beschrieben, die wir später mit Hilfe des nicht parametrisierten Mann-Whitney-U-Test jeweils für den Vergleich der Ergebnisse zwischen (random search und \tech) und (\tech und \textsc{KLEE}) überprüfen. Theoretisch wäre auch t-Test möglich, allerdings ist die Normalverteilung der Ergebnisse der such-basierten Testgeneierung nicht gegeben. Außerdem können wir keinen echten Mittelwert und Varianz bestimmen, da der Prozess theoretisch lange laufen könnte, sofern die 100\% Coverage nicht erreicht wird. Er ist praktisch durch die Rechen- und vor allem Speicherkapazität der Maschine begrenzt, was jedoch nur eine ''künstliche'' Grenze ist. Die Nullhypothese $H0$ wäre jeweils, dass sich die Performanz der Algorithmen nicht unterscheidet, bei $\alpha = 0.05$, wobei diese nicht so eine große Rolle spielt und man laut Arcuri~\cite{Arcuri2011} alle Ergebnisse unabhängig von der Signifikanz angeben und den Leser selbst entscheiden lassen sollte, inwieweit der jeweilige Algorithmus für ihn in Frage kommt. Statistische Auswertung und praktische, ''gefühlte'' Ergebnisse können sich bei randomisierten Algorithmen stark unterscheiden. 
 
-Des Weiteren bestimmen wir jeweils die Effektgröße der Ergebnisse zwischen (random search und \textsc{RustyUnit}) und (\textsc{RustyUnit} und \textsc{KLEE}). Dazu nehmen wir den nicht parametrierten Vargha und Deleney's $\hat{A}_{12}$ Maßstab für die Effektgröße. Dessen Verwendung für randomisierte Algorithmen in Software Engineering wurde in~\cite{Leech2002} begründet und ein Beispiel dessen Verwendung im Kontext von Software Engineering mit randomisierten Algorithmen wird in~\cite{Poulding2010} gezeigt. 
+Des Weiteren bestimmen wir jeweils die Effektgröße der Ergebnisse zwischen (random search und \tech) und (\tech und \textsc{KLEE}). Dazu nehmen wir den nicht parametrierten Vargha und Deleney's $\hat{A}_{12}$ Maßstab für die Effektgröße. Dessen Verwendung für randomisierte Algorithmen in Software Engineering wurde in~\cite{Leech2002} begründet und ein Beispiel dessen Verwendung im Kontext von Software Engineering mit randomisierten Algorithmen wird in~\cite{Poulding2010} gezeigt. 
 
 \section{Case Study Subjects}
 \label{sec:case-study-subjects}
-For the evaluation, we randomly chose 15 open source crates from the Cargo's crate registry. This results in a total of 6661 methods.
+For the evaluation, we randomly chose \benchnum open source crates from the Cargo's crate registry. This results in a total of~\methodsnum methods.
 
 \begin{table}[]
 \begin{tabular*}{\textwidth}{l @{\extracolsep{\fill}} rrr}
@@ -2397,13 +2425,13 @@ bytecount & 66 &  & 341 \\
 PriorityQueue & 361 &  & 1173 \\
 ... & ... &  & ... \\
 \hline
-$\sum$ & 6661 & & 36216 \\
+$\sum$ & \methodsnum & & \loc \\
 \hline
 \end{tabular*}
 \caption{\label{tab:properties-of-case-study-subjects}Number of methods, branches, and lines of code in the case study subjects}
 \end{table}
 % TODO reword
-The libraries were chosen with respect to their testability. For experiments, it is necessary that the units are testable without complex interactions with external resources (e.g., databases, networks and filesystem) and are not multi-threaded. In fact, each experiment should be run in an independent way, and there might be issues if automatically generated test cases do not properly de-allocate resources. Notice that this is a problem common to practically all automated testing techniques in the literature. \Cref{tab:properties-of-case-study-subjects} summarizes the properties of these case study subjects in terms of the number of methods, branches, and lines of code. We calculated these metrics using Mozilla's rust-code-analysis tool~\cite{Ardito2020}. By ''methods'' is meant the total number of methods, functions, and closures. Lines of code means the number of logical lines, i.e. statements, in the respective crate as specified by the \textit{LLOC} metric in rust-code-analysis.
+The libraries were chosen with respect to their testability. For experiments, it is necessary that the units are testable without complex interactions with external resources (e.g., databases, networks and filesystem) and are not multi-threaded. In fact, each experiment should be run in an independent way, and there might be issues if automatically generated test cases do not properly de-allocate resources. Notice that this is a problem common to practically all automated testing techniques in the literature. \Cref{tab:properties-of-case-study-subjects} summarizes the properties of these case study subjects in terms of the number of methods, branches, and lines of code. We calculated these metrics using Mozilla's \emph{rust-code-analysis} tool~\cite{Ardito2020}. By ''methods'' is meant the total number of methods, functions, and closures. Lines of code means the number of logical lines, i.e. statements, in the respective crate as specified by the \textit{LLOC} metric in rust-code-analysis.
 
 % Specifically, we picked the following crates:
 % \begin{itemize}
@@ -2422,21 +2450,17 @@ The libraries were chosen with respect to their testability. For experiments, it
 % TODO reword
 As witnessed in \Cref{sec:search-operators}, search algorithms are influenced by a great number of parameters. For many of these there are ''best practices''. We chose many of them based on the experience of other search-based tools like \textsc{EvoSuite}~\cite{Fraser_2011a} and \textsc{Pynguin}~\cite{Lukasczyk2020}. Altough longer test cases are better in general, we limited the length of test cases to $L = 80$ because we experienced this to be a suitable length at which the test case execution does not take too long, altough the initial test cases are generated with only $10$ statements each. The population size for the \ac{GA} was chosen to be $80$.
 
-Search algorithms are often compared in terms of the number of fitness evaluations or generated chromosome samples. That is, the algorithms used in the evaluation have the same budget of generated chromosomes and the performance of the algorithms is compared using the code coverage of test cases that remain after the algorithms have used up the budget. This is what we use to compare \textsc{RustyUnit} with random search. As discussed by Ali et al.~\cite{Ali2010}, a search algorithm should always be compared against at least random search in order to check that the algorithm is not simply successful because the search problem is easy. For evaluation, we have included the option of a random search, which generates random test cases in a manner similar to the initial population in the genetic algorithm of \textsc{RustyUnit}. The random search also uses an archive and stores test cases that execute previously uncovered branches in \ac{SUT}. The random search uses the same parameters for maximum test length, population size, and any probabilities as are set for \textsc{RustyUnit}. The intuition is that the \ac{GA} of \textsc{RustyUnit} will at least provide better test cases in terms of code coverage, since the basis for generation is the same, but the \ac{GA} of \textsc{RustyUnit} has a lead.
+Search algorithms are often compared in terms of the number of fitness evaluations or generated chromosome samples. That is, the algorithms used in the evaluation have the same budget of generated chromosomes and the performance of the algorithms is compared using the code coverage of test cases that remain after the algorithms have used up the budget. This is what we use to compare \tech with random search. As discussed by Ali et al.~\cite{Ali2010}, a search algorithm should always be compared against at least random search in order to check that the algorithm is not simply successful because the search problem is easy. For evaluation, we have included the option of a random search, which generates random test cases in a manner similar to the initial population in the genetic algorithm of \tech. The random search also uses an archive and stores test cases that execute previously uncovered branches in \ac{SUT}. The random search uses the same parameters for maximum test length, population size, and any probabilities as are set for \tech. The intuition is that the \ac{GA} of \tech will at least provide better test cases in terms of code coverage, since the basis for generation is the same, but the \ac{GA} of \tech has a lead.
 
-% Den Vergleich von \textsc{RustyUnit} \ac{GA} mit dem \ac{DSE}-basierten Tool KLEE können wir nicht anhand der Anzahl von generierten Chromosomen durchziehen, da \ac{DSE} Algorithmen keine Chromosome generieren und somit nicht die Evaluation der Fitness durchführen. Das einzige adäquate Kriterium ist in diesem Fall die Zeit. Das heißt, dass beide Algorithmen, dass die Suche entweder nach dem Finden einer Lösung mit 100\% Coverage oder nach dem Ablaufen einer bestimmten Zeit. \acp{GA} besitzen die Eigenschaft, dass sie zu jedem Zeitpunkt ihrer Ausführung eine Sammlung von bereits gefundenen Test Cases haben, sodass ein Abbruch nach einem gewissen Zeitlimit trotzdem handhabbare Ergebnisse haben kann. Ob das für \ac{DSE} ebenso der Fall ist, bezweifeln wir hier etwas. Wenn nicht, dann heißt das, dass das Zeitbudget maßgeblich von der Ausführungszeit von KLEE bestimmt wird. Nach dem das Tool fertig wird, können wir \textsc{RustyUnit} ebenfalls stoppen.
-
-The comparison of \textsc{RustyUnit} \ac{GA} with the \ac{DSE}-based tool \textsc{KLEE} cannot be carried through based on the number of chromosomes generated, since \ac{DSE} algorithms do not generate chromosomes and thus do not perform fitness evaluation. The only adequate criterion in this case is time. That is, both algorithms that search either after finding a solution with $100\%$ coverage or after a certain time has elapsed. \acp{GA} have the property that they have a collection of already found test cases at any point in their execution, so stopping after a certain time limit can still have manageable results. Whether this is equally the case for \ac{DSE}, we somewhat doubt here. If not, it means that the time budget is largely determined by the execution time of \textsc{KLEE}. After the tool finishes, we can stop \textsc{RustyUnit} as well.
+The comparison of \tech \ac{GA} with the \ac{DSE}-based tool \textsc{KLEE} cannot be carried through based on the number of chromosomes generated, since \ac{DSE} algorithms do not generate chromosomes and thus do not perform fitness evaluation. The only adequate criterion in this case is time. That is, both algorithms that search either after finding a solution with $100\%$ coverage or after a certain time has elapsed. \acp{GA} have the property that they have a collection of already found test cases at any point in their execution, so stopping after a certain time limit can still have manageable results. Whether this is equally the case for \ac{DSE}, we somewhat doubt here. If not, it means that the time budget is largely determined by the execution time of \textsc{KLEE}. After the tool finishes, we can stop \tech as well.
 
 % Um die Performanz der Algorithmen zu messen, wird bei der Evaluation der generierten Test Cases die sogenannte \textit{instrument-coverage} des Rust Compilers verwendet. Rust unterstützt eigentlich zwei Coverage-Arten. Zum einen, die \textit{gcov}, die die Debug Information verwendet, um von LLVM IR nach Quellcode zu mappen. Dabei wird die LLVM IR instrumentiert, um die ausgeführten Befehle zu zählen. Da LLVM jedoch nichts von der Codesturktur von Rust weiß, gehen auf diese Weise viele Details verloren und die gemessene Coverage ist nur eine Annäherung an die tatsächliche Coverage, was nur mittelmäßig gut ist. Zum anderen unterstützen die neueren Versionen des Rust Compilers die Quellcode-basierte Coverage, auch genannt \textit{instrument-coverage}. Hierbei wird Rust Code (seine MIR, um genau zu sein) direkt instrumentiert, bevor er in die LLVM IR umgewandelt wird. Da die MIR ein Mapping zwischen Quellcode und dem CFG eines Programms ist, können selbst Stellen wie short-circuited conditionals, closures, and match guards präzise abgebildet werden.
 
-To measure the performance of the algorithms, the so-called \textit{instrument-coverage} of the Rust compiler is used when evaluating the generated test cases. Rust actually supports two types of coverage. For one, the \textit{gcov}, which uses the debug information to map from LLVM \ac{IR} to source code. In this case, the LLVM \ac{IR} is instrumented to count the executed instructions. However, since LLVM does not know anything about Rust's code structure, a lot of details are lost this way and the measured coverage is only an approximation of the actual coverage, which is only moderately good. On the other hand, the newer versions of the Rust compiler support source code based coverage, also called \textit{instrument-coverage}. Here, some Rust code (its \ac{MIR}, to be precise) is instrumented directly before being converted to the LLVM \ac{IR}. Since the \ac{MIR} is a mapping between source code and the \ac{CFG} of a program, even places like short-circuited conditionals, closures, and match guards can be accurately mapped.
+To measure the performance of the algorithms, the so-called \textit{instrument-coverage} of the Rust compiler is used when evaluating the generated test cases. Rust actually supports two types of coverage. For one, the \textit{gcov}, which uses the debug information to map from LLVM \ac{IR} to source code. In this case, the LLVM \ac{IR} is instrumented to count the executed instructions. However, since LLVM does not know anything about Rust's code structure, a lot of details are lost this way and the measured coverage is only an approximation of the actual coverage, which is only moderately good. On the other hand, the newer versions of the Rust compiler support source code-based coverage, also called \textit{instrument-coverage}. Here, the \mir of a \ac{SUT} is instrumented directly before being converted to the LLVM \ac{IR}. Since the \mir is a mapping between source code and the \cfg of a program, even places like short-circuited conditionals, closures, and match guards can be accurately mapped.
 
-% Damit die \textit{instrument-coverage}~\footnote{\url{https://doc.rust-lang.org/stable/unstable-book/compiler-flags/instrument-coverage.html}} benutzt werden kann, muss das SUT mit dem entsprechenden Flag \texttt{-Z instrument-coverage} kompiliert werden. Hierbei wird eine \textit{profiler runtime} benötigt, die im \textit{nightly} Compiler bereits mit dabei ist. Somit wird ein entsprechendes SUT mit \raggedright\texttt{RUSTFLAGS="-Z instrument-coverage" cargo +nightly build} gebaut. Bei der Ausführung des gebauten Programs bzw. Tests werden von LLVM entsprechende Coverage (\texttt{profdata}) Dateien generiert, die nach dem Postprocessing die Line- sowie Branchcoverage per Quellcode-Datei des SUT enthalten. Für jeden der drei Algorithmen vergleichen wir die Line- und Branch-Coverage, sowie die Länge und Anzahl der generierten Tests. Da beide Tools, \textit{KLEE} und \textit{RustyUnit}, Tests in Quellcode-Form generiert werden, können sie zusammen mit dem SUT kompiliert und ihre Quellcode-basierte Coverage direkt verglichen werden.
+In order to use the \textit{instrument-coverage}~\footnote{\url{https://doc.rust-lang.org/stable/unstable-book/compiler-flags/instrument-coverage.html}} the SUT must be compiled with the corresponding flag \texttt{-Z instrument-coverage}. This requires a \textit{profiler runtime}, which is already included in the \textit{nightly} compiler. Thus a corresponding SUT is built with \raggedright\texttt{RUSTFLAGS="-Z instrument-coverage" cargo +nightly build}. When the built program or test is executed, LLVM generates corresponding coverage (\emph{profdata}) files, which after post-processing contain the line as well as branch coverage per source file of the \ac{SUT}. For each of the three algorithms, we compare the line and branch coverage, as well as the length and number of generated tests. Since both tools, \textsc{KLEE} and \tech, generate tests in source code form, they can be compiled along with the \ac{SUT} and their source code-based coverage can be directly compared.
 
-In order to use the \textit{instrument-coverage}~\footnote{\url{https://doc.rust-lang.org/stable/unstable-book/compiler-flags/instrument-coverage.html}} the SUT must be compiled with the corresponding flag \texttt{-Z instrument-coverage}. This requires a \textit{profiler runtime}, which is already included in the \textit{nightly} compiler. Thus a corresponding SUT is built with \raggedright\texttt{RUSTFLAGS="-Z instrument-coverage" cargo +nightly build}. When the built program or test is executed, LLVM generates corresponding coverage (\texttt{profdata}) files, which after post-processing contain the line as well as branch coverage per source file of the \ac{SUT}. For each of the three algorithms, we compare the line and branch coverage, as well as the length and number of generated tests. Since both tools, \textsc{KLEE} and \textsc{RustyUnit}, generate tests in source code form, they can be compiled along with the \ac{SUT} and their source code-based coverage can be directly compared.
-
-\textsc{RustyUnit} and search-based testing relies on randomized algorithms, which are inherently affected by chance. Running a randomized algorithm twice will most likely produce different results. It is essential to use rigorous statistical methods to properly analyze the performance of randomized algorithms when we need to compare two or more of them. In this work, we follow the guidelines described by Arcuri and Briand~\cite{Arcuri2011}. Since comparisons with simpler alternatives (at a very minimimum random search) is a necessity when one proposes a novel randomized algorithm or addresses a new software engineering problem~\cite{Ali2010}, statistical testing should be part of the according work, which reports such empirical study. For each of the 14 crates, we ran \textsc{RustyUnit} against the random search and \textsc{KLEE} to compare their achieved code coverage. Each experiment comparison was repeated ...? times (~\cite{Arcuri2011} schlägt mindestens $1000$ vor, bei begründet langer Ausführungszeit kann es auch weniger sein) with different seeds for the random number generator.
+\tech and search-based testing relies on randomized algorithms, which are inherently affected by chance. Running a randomized algorithm twice will most likely produce different results. It is essential to use rigorous statistical methods to properly analyze the performance of randomized algorithms when we need to compare two or more of them. In this work, we follow the guidelines described by Arcuri and Briand~\cite{Arcuri2011}. Since comparisons with simpler alternatives (at a very minimimum random search) is a necessity when one proposes a novel randomized algorithm or addresses a new software engineering problem~\cite{Ali2010}, statistical testing should be part of the according work, which reports such empirical study. For each of the 14 crates, we ran \tech against the random search and \textsc{KLEE} to compare their achieved code coverage. Each experiment comparison was repeated ...? times (~\cite{Arcuri2011} schlägt mindestens $1000$ vor, bei begründet langer Ausführungszeit kann es auch weniger sein) with different seeds for the random number generator.
 
 \section{Results}
 \label{sec:results}
@@ -2448,16 +2472,16 @@ In the following we analyse the benchmark results in order to answer our researc
 TODO 
 % RQ 1 answer
 \begin{tcolorbox}
-\textbf{Summary (RQ1):} \textsc{RustyUnit} covers $n$ out of $m$ coverage goals on average.  
+\textbf{Summary (RQ1):} \tech covers $n$ out of $m$ coverage goals on average.  
 \end{tcolorbox}
 
 \subsection{Failing Tests}
 TODO 
 
-Figure ... lists the failures found in each of the case study subject by \textsc{RustyUnit}. 
+Figure ... lists the failures found in each of the case study subject by \tech. 
 
-\subsection{Comparison with Random Search}
-Statistical difference has been measured with the Mann-Whitney U test. To quantify the improvement in a standadized way, we used the Vargha-Delaney~$\hat{A}_{12}$ effect size. In our context, the $\hat{A}_{12}$ is an estimation of the probability that, if we run \textsc{RustyUnit}, we will obtain better coverage than running the random search strategy. When two randomized algorithms are equivalent, then $\hat{A}_{12} = 0.5$. A high value $\hat{A}_{12} = 1$ means that, in \textit{all} of the $100$ runs of \textsc{RustyUnit}, we obtained coverage values higher than the ones obtained in \textit{all} of the $100$ runs of the random search strategy.
+\subsection{\tech vs Random Test Generation}
+Statistical difference has been measured with the Mann-Whitney U test. To quantify the improvement in a standadized way, we used the Vargha-Delaney~$\hat{A}_{12}$ effect size. In our context, the $\hat{A}_{12}$ is an estimation of the probability that, if we run \tech, we will obtain better coverage than running the random search strategy. When two randomized algorithms are equivalent, then $\hat{A}_{12} = 0.5$. A high value $\hat{A}_{12} = 1$ means that, in \textit{all} of the \runs runs of \tech, we obtained coverage values higher than the ones obtained in \textit{all} of the \runs runs of the random search strategy.
 
 \begin{table}[]
 \begin{tabular*}{\textwidth}{l @{\extracolsep{\fill}} rrr}
@@ -2484,14 +2508,13 @@ $\sum$ &  & &  \\
 \hline
 \end{tabular*}
 % TODO reword caption
-\caption{\label{tab:results-ru-rs-coverage}$\hat{A}_{12}$ measure values in the coverage comparisons: $\hat{A}_{12} < 0.5$ means \textsc{RustyUnit} resulted in less, $\hat{A}_{12} = 0.5$ equal, and $\hat{A}_{12} > 0.5$ better coverage than a random search approach}
+\caption{\label{tab:results-ru-rs-coverage}$\hat{A}_{12}$ measure values in the coverage comparisons: $\hat{A}_{12} < 0.5$ means \tech resulted in less, $\hat{A}_{12} = 0.5$ equal, and $\hat{A}_{12} > 0.5$ better coverage than a random search approach}
 \end{table}
 
-The box-plot in Figure ... compares the actual obtained coverage values (averaged out of the $100$ runs) of \textsc{RustyUnit} and the random search strategy. In total, the coverage improvement ...
+The box-plot in Figure ... compares the actual obtained coverage values (averaged out of the \runs runs) of \tech and the random search strategy. In total, the coverage improvement ...
 
 TODO das mit den Farben funktioniert nicht so richtig :/
 \begin{tikzpicture}
-  %\caption{\label{fig:results-ru-rs-coverage} Comparison of statement coverage between \textsc{RustyUnit} and random search}
   \begin{axis}
     [ 
       ylabel={Coverage (\%)},
@@ -2604,7 +2627,7 @@ TODO das mit den Farben funktioniert nicht so richtig :/
 
 % RQ 2 answer
 \begin{tcolorbox}
-\textbf{Summary (RQ2):} \textsc{RustyUnit} \textbf{(hopefully)} achieves \textbf{higher coverage} than random search test case generation. 
+\textbf{Summary (RQ2):} \tech \textbf{(hopefully)} at least a comparable coverage to the random test generation or better. Additionally, tests generated by \tech are shorter. 
 \end{tcolorbox}
 
 \subsection{Manually written tests}
@@ -2613,11 +2636,19 @@ TODO das mit den Farben funktioniert nicht so richtig :/
 
 \section{Threats to Validity}
 \label{sec:threats-to-validity}
-Die in der Evaluation verwendeten Crates sind eher klein gehalten und vor allem so, dass sie möglichst wenige Dependencies haben, d. h. in sich geschlossen bleiben. Sie interagieren nicht mit der Umgebung, z. B. mittels I/O, und wodurch die Ergebnisse nicht auf alle möglichen Rust Programme generalisiert werden können. Außerdem wird hier teilweise ein wichtiges Feature von Rust außer Acht gelassen: Die Codegenerierung mittels Makros. Der zur Kompilierzeit generierte Code, wie beispielsweise vom \texttt{serde} Crate, stellt unter anderem Schwierigkeiten durch seine Komplexität dar, die einen extensiven Zeitaufwand benötigt. Des Weiteren werdem hier keine Multithreaded Programme behandelt. Streng genommen sind die hier generierten Tests nicht ganz Unit Tests, da sie unter anderem auf modulfremde Implementierungen zugreifen, um Argumente für einen bestimmten Methodaufruf zu generieren. Das wird normalerweise mittels Mocks gehandhabt (zum Beispiel mit Hilfe des Mockito~\footnote{\url{https://site.mockito.org/}} Framework für Java). Leider funktioniert das in Rust bis jetzt nur mäßig gut, da Mocks nur für Traits gut funktionieren, jedoch nicht für konkrete Structs. 
+\subsection*{Internal Validity}
 
-Moreover, bei den generierten Tests möchte man unter anderem wissen, ob zwei Tests eigentlich equal und dadurch teilweise überflüssig sind, allerdings ist das ein ganz anderes Problem. Somit generieren wir einfach einen Haufen von Tests und hoffen auf das Beste. Um den Rest soll sich jemand in Future kümmern.
+\subsection*{External Validity}
+% TODO reword
+We used \benchnum open-source crates for our evaluation. They are small and, above all, have as few dependencies as possible, i.e., they stay self-contained. The crates do not interact with the environment, e.g., by means of I/O, nor do they use some sort of parallelism. Furthermore, the number of subjects and their intention is not diverse enough, so the results may not generalize to all Rust programs.
 
-MIR ist nicht stabil und kann sich in zukünftigen Versionen ändern, sodass die Implementierung nicht mehr zusammenpasst.
+\subsection*{Construct Validity}
+% TODO reword
+Strictly speaking, some of the generated tests may not fall into the category of unit tests, as our approach cannot mock dependencies and instead generates real instances regardless of their origin and complexity. The testing frameworks for Rust are still very limited in their flexibility because mocks, like so many other things in Rust, are created using macros at compile time. Also, they can mostly only mock traits and no structs or enums. Furthermore, with our approach, we cannot measure fault finding capability of the generated tests as our tool does not employ assertions, which is explicitly out of scope of this work. Finally, our approach exploits instrumentation and analysis of \mir, which is unstable and is subject to silent and breaking changes. 
+
+%Außerdem wird hier teilweise ein wichtiges Feature von Rust außer Acht gelassen: Die Codegenerierung mittels Makros. Der zur Kompilierzeit generierte Code, wie beispielsweise vom \texttt{serde} Crate, stellt unter anderem Schwierigkeiten durch seine Komplexität dar, die einen extensiven Zeitaufwand benötigt.  Leider funktioniert das in Rust bis jetzt nur mäßig gut, da Mocks nur für Traits gut funktionieren, jedoch nicht für konkrete Structs. 
+
+%Moreover, bei den generierten Tests möchte man unter anderem wissen, ob zwei Tests eigentlich equal und dadurch teilweise überflüssig sind, allerdings ist das ein ganz anderes Problem. Somit generieren wir einfach einen Haufen von Tests und hoffen auf das Beste. Um den Rest soll sich jemand in Future kümmern.
 
 % \section{Code Coverage Comparison with Manually Written Tests}
 % \begin{table}[]
@@ -2663,11 +2694,11 @@ MIR ist nicht stabil und kann sich in zukünftigen Versionen ändern, sodass die
 % TODO reword
 Solving a research problem almost always leads to new problems and further open questions. In this final section of the thesis, we want to discuss a few such questions that arose during the work on the thesis. We leave them as future work because they would blast the scope of this work. 
 
-We already stated in the evaluation that the whole process of generating tests for Rust with \textsc{RustyUnit} is relatively slow and cannot be applied easily to all crates of any size out in the wild. The execution time is very tied to the execution of the Rust compiler and I/O operations, which means that the cost of the runtime of the generated tests themselves is not the bottleneck. At this point, cache optimizations could be made or the way \ac{SUT} is instrumented and tests are executed could be adjusted. Furthermore, the generated tests contain a lot of unnecessary statements, which would lead to the running, but more importantly comprehension overhead of a humble developer who would have to deal with them, since the tests do not use automatic oracles like assertions. This leads us to the other aspect of test generation: \textsc{RustyUnit} does not generate real test cases, but only program executions. A test oracle, which determines whether the result of an execution is correct and meets the expectations, is missing. Some test generation tools, such as \textsc{EvoSuite}, can automatically incorporate assertions, for example by using the recorded behavior of \ac{SUT} for regression testing. In the future, a mechanism for automatically generated oracles could also be provided in \textsc{RustyUnit}.
+We already stated in the evaluation that the whole process of generating tests for Rust with \tech is relatively slow and cannot be applied easily to all crates of any size out in the wild. The execution time is very tied to the execution of the Rust compiler and I/O operations, which means that the cost of the runtime of the generated tests themselves is not the bottleneck. At this point, cache optimizations could be made or the way \ac{SUT} is instrumented and tests are executed could be adjusted. Furthermore, the generated tests contain a lot of unnecessary statements, which would lead to the running, but more importantly comprehension overhead of a humble developer who would have to deal with them, since the tests do not use automatic oracles like assertions. This leads us to the other aspect of test generation: \tech does not generate real test cases, but only program executions. A test oracle, which determines whether the result of an execution is correct and meets the expectations, is missing. Some test generation tools, such as \textsc{EvoSuite}, can automatically incorporate assertions, for example by using the recorded behavior of \ac{SUT} for regression testing. In the future, a mechanism for automatically generated oracles could also be provided in \tech.
 
-Another aspect of test generation is the scope of the test cases. Unit testing, as the name suggests, refers to individual units. Traditionally, complex dependencies are replaced by mocks in unit tests, e.g., a database connection. As far as possible, \textsc{RustyUnit} exploits real data types, even if they come from other units, which makes it more an integration test suite generator. Rust's ecosystem already offers many mock libraries, but unlike Java, they do not rely on reflection, but on Rust's strong macro system and generate mocks at compile time. It would be interesting to extend \textsc{RustyUnit}'s search-based algorithm with functional mocks to achieve potentially better coverage, such as Arcuri et al.~\cite{Arcuri2017} do for \textsc{EvoSuite}.
+Another aspect of test generation is the scope of the test cases. Unit testing, as the name suggests, refers to individual units. Traditionally, complex dependencies are replaced by mocks in unit tests, e.g., a database connection. As far as possible, \tech exploits real data types, even if they come from other units, which makes it more an integration test suite generator. Rust's ecosystem already offers many mock libraries, but unlike Java, they do not rely on reflection, but on Rust's strong macro system and generate mocks at compile time. It would be interesting to extend \tech's search-based algorithm with functional mocks to achieve potentially better coverage, such as Arcuri et al.~\cite{Arcuri2017} do for \textsc{EvoSuite}.
 
-Finally, it would be useful to use Rust's compiler analysis for more meaningful tests. \textsc{RustyUnit} is a compiler wrapper and can thus access all compiler internals during the analysis of the \ac{SUT}. Advanced static analysis of the \ac{SUT}, such as backwards search of the definitions of operands in conditions, could help generate better tests with higher coverage. 
+Finally, it would be useful to use Rust's compiler analysis for more meaningful tests. \tech is a compiler wrapper and can thus access all compiler internals during the analysis of the \ac{SUT}. Advanced static analysis of the \ac{SUT}, such as backwards search of the definitions of operands in conditions, could help generate better tests with higher coverage. 
 
 
 \backmatter% Now we are in the appendix
