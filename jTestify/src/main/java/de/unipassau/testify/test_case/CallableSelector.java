@@ -29,6 +29,13 @@ public class CallableSelector {
             return Integer.compare(f1, f2);
         });
 
+        var p = 1.0 / sortedCallables.size();
+        for (var callable : sortedCallables) {
+            if (Rnd.get().nextDouble() < p) {
+                return callable;
+            }
+        }
+
         return sortedCallables.get(0);
     }
 

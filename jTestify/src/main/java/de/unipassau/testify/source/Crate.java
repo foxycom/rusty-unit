@@ -96,6 +96,7 @@ public class Crate implements ChromosomeContainer<TestCase> {
     }
 
     private void copyToExecutionDir() throws IOException {
+        FileUtils.deleteDirectory(executionRoot.toFile());
         FileUtils.copyDirectory(originalRoot.toFile(), executionRoot.toFile());
         for (SourceFile sourceFile : sourceFiles) {
             sourceFile.onCopied();

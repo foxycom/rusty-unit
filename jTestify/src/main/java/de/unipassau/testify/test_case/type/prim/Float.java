@@ -94,7 +94,7 @@ public interface Float extends Prim {
 
     @Override
     public double minValue() {
-      return java.lang.Float.MIN_VALUE;
+      return -java.lang.Float.MAX_VALUE;
     }
   }
 
@@ -140,7 +140,7 @@ public interface Float extends Prim {
 
     @Override
     public double minValue() {
-      return Double.MIN_VALUE;
+      return -Double.MAX_VALUE;
     }
   }
 }

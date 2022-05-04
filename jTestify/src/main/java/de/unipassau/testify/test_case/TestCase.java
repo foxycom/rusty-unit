@@ -393,9 +393,11 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       return insertMethodOnExistingVariable(variableAndMethod.getValue0(),
           variableAndMethod.getValue1());
     } else if (filePathBinding.isPresent()) {
-      callable = Rnd.choice(tyCtxt.getCallables(filePathBinding.get(), true));
+//      callable = Rnd.choice(tyCtxt.getCallables(filePathBinding.get(), true));
+      callable = CallableSelector.select(tyCtxt.getCallables(filePathBinding.get(), true));
     } else {
-      callable = Rnd.choice(tyCtxt.getCallables(null, true));
+//      callable = Rnd.choice(tyCtxt.getCallables(null, true));
+      callable = CallableSelector.select(tyCtxt.getCallables(null, true));
     }
 
     logger.info("({}) Inserting random stmt. Selected callable: {}", id, callable);
