@@ -2,11 +2,19 @@ package de.unipassau.testify.test_case.type;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.collect.Streams;
+import de.unipassau.testify.test_case.Param;
+import de.unipassau.testify.test_case.callable.Callable;
+import de.unipassau.testify.test_case.callable.Method;
+import de.unipassau.testify.test_case.callable.TupleAccess;
+import de.unipassau.testify.test_case.type.prim.UInt.USize;
+import de.unipassau.testify.test_case.type.std.Option;
 import de.unipassau.testify.test_case.type.traits.Trait;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import lombok.EqualsAndHashCode;
 import org.javatuples.Pair;
 
@@ -78,9 +86,20 @@ public class Tuple implements Type {
   }
 
   @Override
-  public boolean wraps(Type type) {
-    return types.stream()
-        .anyMatch(innerType -> innerType.canBeSameAs(type) || innerType.wraps(type));
+  public Optional<Integer> wraps(Type type) {
+    var res = IntStream.range(0, types.size())
+          .filter(i -> types.get(i).canBeSameAs(type) || types.get(i).wraps(type).isPresent())
+          .findFirst();
+    if (res.isPresent()) {
+      return Optional.of(res.getAsInt());
+    } else {
+      return Optional.empty();
+    }
+  }
+
+  @Override
+  public Callable unwrapMethod(int at) {
+    return new TupleAccess(this, types.get(at));
   }
 
   @Override

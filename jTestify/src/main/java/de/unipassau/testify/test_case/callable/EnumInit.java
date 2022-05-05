@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
-import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.var.VarReference;
 import de.unipassau.testify.test_case.statement.EnumStmt;
 import de.unipassau.testify.test_case.statement.Statement;
 import de.unipassau.testify.test_case.type.AbstractEnum;

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.json.CallableDeserializer;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
-import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.var.VarReference;
 import de.unipassau.testify.test_case.statement.Statement;
 import de.unipassau.testify.test_case.type.Type;
 import java.util.List;
@@ -26,6 +26,18 @@ public interface Callable {
 
   default boolean isMethod() {
     return false;
+  }
+
+  default Method asMethod() {
+    throw new RuntimeException("Not with me");
+  }
+
+  default boolean isTupleAccess() {
+    return false;
+  }
+
+  default TupleAccess asTupleAccess() {
+    throw new RuntimeException("Not with me");
   }
 
   default boolean generates(Type type) {

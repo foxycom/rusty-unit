@@ -2,7 +2,7 @@ package de.unipassau.testify.test_case.statement.array;
 
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
-import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.var.VarReference;
 import de.unipassau.testify.test_case.callable.ArrayInit;
 import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.statement.Statement;

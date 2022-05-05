@@ -1,6 +1,7 @@
 package de.unipassau.testify.test_case.type.std;
 
 import de.unipassau.testify.test_case.Param;
+import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.Method;
 import de.unipassau.testify.test_case.type.AbstractEnum;
 import de.unipassau.testify.test_case.type.Generic;
@@ -9,13 +10,13 @@ import de.unipassau.testify.test_case.type.traits.std.clone.Clone;
 import de.unipassau.testify.test_case.type.traits.std.cmp.Eq;
 import de.unipassau.testify.test_case.type.traits.std.cmp.Ord;
 import de.unipassau.testify.test_case.type.traits.std.cmp.PartialEq;
-import de.unipassau.testify.test_case.type.traits.std.cmp.PartialOrd;
 import de.unipassau.testify.test_case.type.traits.std.fmt.Debug;
 import de.unipassau.testify.test_case.type.traits.std.hash.Hash;
 import de.unipassau.testify.test_case.type.traits.std.iter.IntoIterator;
 import de.unipassau.testify.test_case.type.traits.std.marker.Copy;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public class Result extends AbstractEnum {
@@ -45,8 +46,12 @@ public class Result extends AbstractEnum {
   }
 
   @Override
-  public boolean wraps(Type type) {
-    return getGenerics().get(0).canBeSameAs(type);
+  public Optional<Integer> wraps(Type type) {
+    if (getGenerics().get(0).canBeSameAs(type)) {
+      return Optional.of(0);
+    } else {
+      return Optional.empty();
+    }
   }
 
   @Override
@@ -55,7 +60,7 @@ public class Result extends AbstractEnum {
   }
 
   @Override
-  public Method unwrapMethod() {
+  public Callable unwrapMethod(int at) {
     return new Method("unwrap", Collections.emptyList(), Collections.emptyList(), generics().get(0), this);
   }
 }

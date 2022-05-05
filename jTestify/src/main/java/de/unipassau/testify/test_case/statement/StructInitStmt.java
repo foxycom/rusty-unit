@@ -5,7 +5,7 @@ import static java.util.stream.Collectors.toCollection;
 import com.google.common.collect.Streams;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
-import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.var.VarReference;
 import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.StructInit;
 import de.unipassau.testify.test_case.type.Type;
@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.javatuples.Pair;
 
 public class StructInitStmt implements Statement {

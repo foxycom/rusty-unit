@@ -3,14 +3,11 @@ package de.unipassau.testify.hir;
 import static java.util.stream.Collectors.toCollection;
 
 import de.unipassau.testify.test_case.Param;
-import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.var.VarReference;
 import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.Method;
 import de.unipassau.testify.test_case.callable.rand.StepRngInit;
-import de.unipassau.testify.test_case.callable.std.option.OptionCallable.OptionNoneInit;
-import de.unipassau.testify.test_case.callable.std.option.OptionCallable.OptionSomeInit;
 import de.unipassau.testify.test_case.callable.std.StringInit;
-import de.unipassau.testify.test_case.callable.std.option.OptionCallable.OptionUnwrap;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.rand.rngs.mock.StepRng;
 import de.unipassau.testify.test_case.type.traits.Trait;
@@ -174,7 +171,7 @@ public class TyCtxt {
     var stream = callables.stream()
         .filter(subClass::isInstance)
         .filter(callable -> callable.returnsValue()
-            && (callable.getReturnType().canBeSameAs(type) || callable.getReturnType().wraps(type)));
+            && (callable.getReturnType().canBeSameAs(type) || callable.getReturnType().wraps(type).isPresent()));
     // Unless we want the type explicitly, exclude completely generic callables like
     // Option::unwrap(Option) -> T, which would generate a wrapper just to unwrap it later
 //        .filter(callable -> (callable.getReturnType().getName().equals(type.getName()))
@@ -211,7 +208,7 @@ public class TyCtxt {
     var stream = callables.stream()
         .filter(subClass::isInstance)
         .filter(callable -> callable.returnsValue()
-            && callable.getReturnType().wraps(type));
+            && callable.getReturnType().wraps(type).isPresent());
     if (filePath != null) {
       logger.debug("File path is not null, applying filtering");
       stream = stream.filter(callable -> callable.isPublic()

@@ -9,7 +9,7 @@ import de.unipassau.testify.metaheuristics.operators.Mutation;
 import de.unipassau.testify.mir.MirAnalysis;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
-import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.var.VarReference;
 import de.unipassau.testify.test_case.callable.Method;
 import de.unipassau.testify.test_case.callable.RefItem;
 import de.unipassau.testify.test_case.callable.StaticMethod;

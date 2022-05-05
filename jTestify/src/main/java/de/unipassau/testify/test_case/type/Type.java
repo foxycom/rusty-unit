@@ -2,10 +2,12 @@ package de.unipassau.testify.test_case.type;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.json.TypeDeserializer;
+import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.Method;
 import de.unipassau.testify.test_case.type.prim.Prim;
 import de.unipassau.testify.test_case.type.traits.Trait;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @JsonDeserialize(using = TypeDeserializer.class)
@@ -23,15 +25,15 @@ public interface Type {
 
   boolean canBeIndirectlySameAs(Type other);
 
-  default boolean wraps(Type type) {
-    return false;
+  default Optional<Integer> wraps(Type type) {
+    return Optional.empty();
   }
 
   default Type unwrapType() {
     throw new RuntimeException("Not with me");
   }
 
-  default Method unwrapMethod() {
+  default Callable unwrapMethod(int at) {
     throw new RuntimeException("Not with me");
   }
 

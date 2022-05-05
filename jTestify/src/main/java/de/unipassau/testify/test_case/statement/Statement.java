@@ -2,7 +2,7 @@ package de.unipassau.testify.test_case.statement;
 
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
-import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.var.VarReference;
 import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.statement.array.DirectArrayInitStmt;
 import de.unipassau.testify.test_case.type.Type;
@@ -77,6 +77,10 @@ public interface Statement {
     return false;
   }
 
+  default boolean isTupleAccessStmt() {
+    return false;
+  }
+
   default RefStmt asRefStmt() {
     throw new RuntimeException("Not with me");
   }
@@ -106,6 +110,10 @@ public interface Statement {
   }
 
   default TupleStmt asTupleStmt() {
+    throw new RuntimeException("Not with me");
+  }
+
+  default TupleAccessStmt asTupleAccessStmt() {
     throw new RuntimeException("Not with me");
   }
 

@@ -1,7 +1,7 @@
 package de.unipassau.testify.test_case.visitor;
 
 import de.unipassau.testify.test_case.TestCase;
-import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.var.VarReference;
 import de.unipassau.testify.test_case.statement.Statement;
 
 public interface Visitor {

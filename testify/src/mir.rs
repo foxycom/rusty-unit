@@ -671,6 +671,16 @@ impl<'tcx> MirVisitor<'tcx> {
           Rvalue::Discriminant(place) => {
             return Some(ValueDef::Discriminant(*place));
           }
+          Rvalue::Cast(_, operand, to_ty) => {
+            return Some(match operand {
+              Operand::Copy(place) => self.get_place_definition(place),
+              Operand::Move(place) => self.get_place_definition(place),
+              Operand::Constant(constant) => match &constant.literal {
+                ConstantKind::Ty(c) => todo!("{:?}", c),
+                ConstantKind::Val(const_value, ty) => ValueDef::Const(*ty, ConstKind::Value(*const_value))
+              }
+            });
+          }
           _ => todo!("Value is {:?}", value),
         }
       }

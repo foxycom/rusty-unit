@@ -2,13 +2,11 @@ package de.unipassau.testify.test_case.callable;
 
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
-import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.var.VarReference;
 import de.unipassau.testify.test_case.statement.Statement;
 import de.unipassau.testify.test_case.statement.TupleStmt;
-import de.unipassau.testify.test_case.type.Generic;
 import de.unipassau.testify.test_case.type.Tuple;
 import de.unipassau.testify.test_case.type.Type;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;

@@ -1,7 +1,8 @@
-package de.unipassau.testify.test_case;
+package de.unipassau.testify.test_case.var;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Streams;
+import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.statement.Statement;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.TypeBinding;

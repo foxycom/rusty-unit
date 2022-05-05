@@ -4,10 +4,9 @@ import static java.util.stream.Collectors.toCollection;
 
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
-import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.var.VarReference;
 import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.EnumInit;
-import de.unipassau.testify.test_case.type.AbstractEnum;
 import de.unipassau.testify.test_case.type.AbstractEnum.EnumVariant;
 import de.unipassau.testify.test_case.type.Enum;
 import de.unipassau.testify.test_case.type.Type;

@@ -95,11 +95,11 @@ const ROOT_BRANCH: &'static str = "{} root[{}, {}];";
 const BRANCH: &'static str = "{} branch[{}, {}, {}];";
 
 impl Monitor {
-  pub fn set_test_id(&mut self, test_id: u64) {
+  pub(crate) fn set_test_id(&mut self, test_id: u64) {
     self.test_id = test_id;
   }
 
-  pub fn trace_fn(&mut self, global_id: &str) {
+  pub(crate) fn trace_fn(&mut self, global_id: &str) {
     let msg = format!("{} ${}$ root", self.test_id, global_id);
     println!("Visited root {}", global_id);
 
@@ -109,7 +109,7 @@ impl Monitor {
         .query(&mut self.connection)
         .expect("Could not store trace to redis");
   }
-  pub fn trace_branch(&mut self, global_id: &str, block: u64, dist: f64) {
+  pub(crate) fn trace_branch(&mut self, global_id: &str, block: u64, dist: f64) {
     let msg = format!("{} ${}$ branch[{} {}]", self.test_id, global_id, block, dist);
     println!("Visited branch {}::{}", global_id, block);
     let _: () = redis::cmd("SADD")
@@ -143,22 +143,22 @@ impl Monitor {
   }
 }
 
-pub fn trace_entry(global_id: &str) {
+pub(crate) fn trace_entry(global_id: &str) {
   MONITOR.with(|m| m.borrow_mut().trace_fn(global_id));
 }
 
-pub fn trace_branch_enum(global_id: &str, block: u64, is_hit: bool) {
+pub(crate) fn trace_branch_enum(global_id: &str, block: u64, is_hit: bool) {
   let dist = if is_hit { 0.0 } else { 1.0 };
   MONITOR.with(|m| m.borrow_mut().trace_branch(global_id, block, dist));
 }
 
-pub fn trace_branch_hit(global_id: &str, block: u64) {
+pub(crate) fn trace_branch_hit(global_id: &str, block: u64) {
   MONITOR.with(|m| {
     m.borrow_mut().trace_branch(global_id, block, 0.0);
   })
 }
 
-pub fn trace_branch_bool(
+pub(crate) fn trace_branch_bool(
   global_id: &str,
   block: u64,
   left: f64,
@@ -239,6 +239,6 @@ pub fn trace_const() {
 
 }
 
-pub fn set_test_id(id: u64) {
+pub(crate) fn set_test_id(id: u64) {
   MONITOR.with(|m| m.borrow_mut().set_test_id(id));
 }

@@ -7,6 +7,7 @@ import de.unipassau.testify.test_case.type.prim.Prim;
 import de.unipassau.testify.util.Rnd;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Locale;
 
 public class FloatValue implements PrimitiveValue<Double> {
 
@@ -82,6 +83,6 @@ public class FloatValue implements PrimitiveValue<Double> {
 
     @Override
     public String toString() {
-        return String.format("%f%s", value, type.getName());
+        return String.format(Locale.US, "%f%s", value, type.getName());
     }
 }

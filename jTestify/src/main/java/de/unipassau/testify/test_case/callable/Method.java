@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
-import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.var.VarReference;
 import de.unipassau.testify.test_case.statement.MethodStmt;
 import de.unipassau.testify.test_case.statement.Statement;
 import de.unipassau.testify.test_case.type.Type;
@@ -19,6 +19,12 @@ public class Method implements Callable {
   @JsonProperty("return_type")
   private Type returnType;
   private Type parent;
+
+  @Override
+  public Method asMethod() {
+    return this;
+  }
+
   @JsonProperty("src_file_path")
   private String srcFilePath;
   private String name;

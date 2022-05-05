@@ -1,9 +1,9 @@
 package de.unipassau.testify.test_case.type.std;
 
 import de.unipassau.testify.test_case.Param;
+import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.callable.Method;
 import de.unipassau.testify.test_case.type.AbstractEnum;
-import de.unipassau.testify.test_case.type.Enum;
 import de.unipassau.testify.test_case.type.Generic;
 import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.traits.std.clone.Clone;
@@ -64,7 +64,7 @@ public class Option extends AbstractEnum {
   }
 
   @Override
-  public Method unwrapMethod() {
+  public Callable unwrapMethod(int at) {
     return new Method("unwrap", Collections.emptyList(), Collections.emptyList(), generics().get(0), this);
   }
 }

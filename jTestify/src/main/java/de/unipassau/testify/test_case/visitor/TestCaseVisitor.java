@@ -1,9 +1,8 @@
 package de.unipassau.testify.test_case.visitor;
 
 import com.google.common.collect.Streams;
-import de.unipassau.testify.Constants;
 import de.unipassau.testify.test_case.TestCase;
-import de.unipassau.testify.test_case.VarReference;
+import de.unipassau.testify.test_case.var.VarReference;
 import de.unipassau.testify.test_case.statement.Statement;
 import de.unipassau.testify.test_case.type.Type;
 import java.util.HashMap;
@@ -186,13 +185,27 @@ public class TestCaseVisitor implements Visitor {
       var returnValue = arrayStmt.returnValue().get();
       var returnType = returnValue.type();
       var args = arrayStmt.args().stream().map(this::getVariableName)
-          .collect(Collectors.joining(", "));
+            .collect(Collectors.joining(", "));
       sb.append("let mut ").append(getVariableName(returnValue))
-          .append(": ")
-          .append(getTypeString(returnType))
-          .append(" = [")
-          .append(args)
-          .append("];");
+            .append(": ")
+            .append(getTypeString(returnType))
+            .append(" = [")
+            .append(args)
+            .append("];");
+    } else if (stmt.isTupleAccessStmt()) {
+      var accessStmt = stmt.asTupleAccessStmt();
+      var returnValue = accessStmt.returnValue().get();
+      var returnType = returnValue.type();
+      var index = accessStmt.index();
+      var owner = accessStmt.owner();
+      sb.append("let mut ").append(getVariableName(returnValue))
+            .append(": ")
+            .append(getTypeString(returnType))
+            .append(" = ")
+            .append(getVariableName(owner))
+            .append(".")
+            .append(index.value())
+            .append(";");
     } else {
       throw new RuntimeException("Huh?");
     }

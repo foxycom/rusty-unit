@@ -419,7 +419,8 @@ pub fn qpath_to_name(qpath: &QPath<'_>, tcx: &TyCtxt<'_>) -> String {
 pub fn res_to_name(res: &Res, tcx: &TyCtxt<'_>) -> String {
   match res {
     Res::Def(_, def_id) => tcx.def_path_str(*def_id),
-    _ => todo!(),
+    Res::PrimTy(prim) => prim.name_str().to_string(),
+    _ => todo!("{:?}", res),
   }
 }
 
