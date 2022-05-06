@@ -1,0 +1,11 @@
+Crate,Algorithm,Coverage
+gamie,Random Search,0.67
+gamie,Random Search,0.65
+gamie,Random Search,0.72
+gamie,Random Search,0.63
+gamie,Random Search,0.65
+gamie,DynaMOSA,0.55
+gamie,DynaMOSA,0.58
+gamie,DynaMOSA,0.62
+gamie,DynaMOSA,0.53
+gamie,DynaMOSA,0.50

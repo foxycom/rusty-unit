@@ -1,0 +1,11 @@
+Crate,Algorithm,Coverage
+time,Random Search,0.45
+time,Random Search,0.52
+time,Random Search,0.34
+time,Random Search,0.48
+time,Random Search,0.55
+time,DynaMOSA,0.55
+time,DynaMOSA,0.65
+time,DynaMOSA,0.54
+time,DynaMOSA,0.48
+time,DynaMOSA,0.60

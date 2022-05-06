@@ -129,11 +129,13 @@ pub struct StructInitItem {
   pub params: Vec<Param>,
   pub return_type: T,
   pub src_file_path: String,
+  pub is_public: bool
 }
 
 impl StructInitItem {
-  pub fn new(src_file_path: &str, fields: Vec<Param>, return_type: T) -> Self {
+  pub fn new(is_public: bool, src_file_path: &str, fields: Vec<Param>, return_type: T) -> Self {
     StructInitItem {
+      is_public,
       params: fields,
       return_type,
       src_file_path: src_file_path.to_string(),
