@@ -303,4 +303,5 @@ output/**
 
 code-analysis/**
 **/*.bkp
-**/
+**/*.pyc
+**/*.log.gz
