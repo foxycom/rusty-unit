@@ -27,7 +27,7 @@ public class RandomSearch<C extends AbstractTestCaseChromosome<C>> implements Ge
         for (int gen = 0; gen < maxGenerations; gen++) {
             var population = populationGenerator.get();
             container.addAll(population);
-            container.executeWithInstrumentation();
+            container.execute();
             archive.update(population);
         }
 

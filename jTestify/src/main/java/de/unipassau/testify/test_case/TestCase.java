@@ -776,7 +776,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
               .map(innerType -> generateArg(innerType, extendedTypesToGenerate))
               .filter(Optional::isPresent)
               .map(Optional::get)
-              .toList();
+              .collect(Collectors.toList());
 
         if (args.size() == tuple.getTypes().size()) {
             var returnValue = createVariable(tuple.bindGenerics(typeBinding));
@@ -1072,6 +1072,11 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
     public Map<MinimizingFitnessFunction<TestCase>, Double> branchDistance() {
         return coverage;
+    }
+
+    public int codeLines() {
+        // Macros + method head + final curly brace + empty line
+        return statements.size() + 2 + 1 + 1 + 1;
     }
 
     public String getTypeBindingsString() {

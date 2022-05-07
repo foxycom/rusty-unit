@@ -126,15 +126,28 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
       throw new RuntimeException("Could not create a coverage report");
     }
 
-    var lineCoverage = JsonPath.read(coverageResult.getValue1(), "$.data[0].totals.lines.percent");
-    if (lineCoverage instanceof Double) {
-      return new LLVMCoverage((double) lineCoverage);
-    } else if (lineCoverage instanceof BigDecimal) {
-      var coverage = ((BigDecimal) lineCoverage).doubleValue();
-      return new LLVMCoverage(coverage);
+    var lineCoverageRaw = JsonPath.read(coverageResult.getValue1(), "$.data[0].totals.lines.percent");
+    var regionCoverageRaw = JsonPath.read(coverageResult.getValue1(), "$.data[0].totals.regions.percent");
+
+    double lineCoverage;
+    if (lineCoverageRaw instanceof Double) {
+      lineCoverage = (double) lineCoverageRaw;
+    } else if (lineCoverageRaw instanceof BigDecimal) {
+      lineCoverage = ((BigDecimal) lineCoverageRaw).doubleValue();
     } else {
-      throw new RuntimeException("Not implemented yet");
+      throw new RuntimeException("Not implemented");
     }
+
+    double regionCoverage;
+    if (regionCoverageRaw instanceof Double) {
+      regionCoverage = (double) regionCoverageRaw;
+    } else if (regionCoverageRaw instanceof BigDecimal) {
+      regionCoverage = ((BigDecimal) regionCoverageRaw).doubleValue();
+    } else {
+      throw new RuntimeException("Not implemented");
+    }
+
+    return new LLVMCoverage(lineCoverage, regionCoverage);
   }
 
   private Optional<List<Integer>> executeTestsWithInstrumentation(File directory, String crateName)
@@ -190,7 +203,7 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
   }
 
   @Override
-  public int runWithInstrumentation(ChromosomeContainer<TestCase> container)
+  public Status runWithInstrumentation(ChromosomeContainer<TestCase> container)
       throws IOException, InterruptedException {
     RedisStorage.clear();
 
@@ -200,7 +213,7 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
       failedTestIds = executeTestsWithInstrumentation(directory, container.getName());
     } catch (TestCaseDoesNotCompileException e) {
       logger.error("Tests did not compile", e);
-      return 1;
+      return Status.COMPILATION_ERROR;
     }
 
     failedTestIds.ifPresent(tests -> logger.info(tests.size() + " tests failed"));
@@ -219,7 +232,6 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
     }
 
     container.refresh();
-
-    return 0;
+    return Status.OK;
   }
 }

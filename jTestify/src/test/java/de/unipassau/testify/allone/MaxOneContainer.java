@@ -1,5 +1,6 @@
 package de.unipassau.testify.allone;
 
+import de.unipassau.testify.exec.ChromosomeExecutor.Status;
 import de.unipassau.testify.exec.LLVMCoverage;
 import de.unipassau.testify.source.ChromosomeContainer;
 import java.io.IOException;
@@ -22,8 +23,8 @@ public class MaxOneContainer implements ChromosomeContainer<MaxOne> {
     }
 
     @Override
-    public int executeWithInstrumentation() {
-        return 0;
+    public Status execute() {
+        return Status.OK;
     }
 
     @Override

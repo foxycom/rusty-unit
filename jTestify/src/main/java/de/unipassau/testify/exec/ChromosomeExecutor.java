@@ -5,7 +5,10 @@ import de.unipassau.testify.source.ChromosomeContainer;
 import java.io.IOException;
 
 public interface ChromosomeExecutor<C extends AbstractTestCaseChromosome<C>> {
-  int runWithInstrumentation(ChromosomeContainer<C> container)
+  enum Status {
+    COMPILATION_ERROR, OK;
+  }
+  Status runWithInstrumentation(ChromosomeContainer<C> container)
       throws IOException, InterruptedException;
 
   LLVMCoverage run(ChromosomeContainer<C> container)

@@ -149,6 +149,12 @@ public class Ref implements Type {
 
   @Override
   public String encode() {
+    // TODO: 08.05.22 this is not good designed
+    if (innerType.isRef()) {
+      // Prevents &&str
+      return innerType.encode();
+    }
+
     if (mutable) {
       return String.format("&mut %s", innerType);
     } else {

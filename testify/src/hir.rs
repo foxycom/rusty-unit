@@ -87,6 +87,7 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
           );
         }
       }
+      //ItemKind::Mod(e)
       _ => {}
     }
   }
@@ -125,7 +126,9 @@ fn analyze_fn(
   let hir_id = tcx.hir().local_def_id_to_hir_id(local_def_id);
   let is_public = is_public(vis);
   let fn_decl = &sig.decl;
-  let fn_name = tcx.hir().get(hir_id).ident().unwrap().to_string();
+
+  let fn_name = node_to_name(&tcx.hir().get(hir_id), tcx).unwrap();
+  //let fn_name = tcx.hir().get(hir_id).ident().unwrap().to_string();
 
   let generics = vec![];
 
@@ -245,7 +248,7 @@ fn analyze_struct(
   callables: &mut Vec<Callable>,
   tcx: &TyCtxt<'_>,
 ) {
-  let is_public = is_public(vis);
+  let mut struct_is_public = is_public(vis);
 
   let struct_generics = generics_to_ts(g, tcx);
   let struct_hir_id = tcx.hir().local_def_id_to_hir_id(struct_local_def_id);
@@ -254,6 +257,7 @@ fn analyze_struct(
       let def_id = tcx.hir().local_def_id(struct_hir_id).to_def_id();
       //let self_ty = def_id_to_t(def_id, tcx).unwrap();
       let self_name = node_to_name(&tcx.hir().get(struct_hir_id), tcx).unwrap();
+      info!("HIR: {} is public: {}", self_name, struct_is_public);
       let generics = generics_to_ts(g, tcx);
       let self_ty = T::Struct(StructT::new(&self_name, generics, is_local(def_id)));
       if self_name.contains("serde") {
@@ -278,6 +282,11 @@ fn analyze_struct(
             is_public,
           );*/
         }
+
+        let field_is_public = is_public(&field.vis);
+        if !field_is_public {
+          struct_is_public = false;
+        }
       }
 
       let mut params = Vec::with_capacity(fields.len());
@@ -295,6 +304,7 @@ fn analyze_struct(
 
       debug!("HIR: Extracted struct init {}: {:?}", self_ty, params);
       callables.push(Callable::StructInit(StructInitItem::new(
+        struct_is_public,
         file_path.to_str().unwrap(),
         params,
         self_ty,

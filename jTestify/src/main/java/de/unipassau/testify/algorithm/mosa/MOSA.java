@@ -49,7 +49,7 @@ public class MOSA<C extends AbstractTestCaseChromosome<C>> implements GeneticAlg
 
     // TODO: 10.02.22 run tests
     container.addAll(population);
-    container.executeWithInstrumentation();
+    container.execute();
 
     archive.update(population);
 
@@ -58,7 +58,7 @@ public class MOSA<C extends AbstractTestCaseChromosome<C>> implements GeneticAlg
       var offspring = offspringGenerator.get(population);
 
       container.addAll(offspring);
-      container.executeWithInstrumentation();
+      container.execute();
       // TODO: 10.02.22 run tests
 
       archive.update(offspring);

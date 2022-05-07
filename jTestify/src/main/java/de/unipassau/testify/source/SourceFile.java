@@ -18,6 +18,8 @@ public class SourceFile {
   private Path executionPath;
   private FileType type;
 
+  private int size;
+
   public enum FileType {
     MAIN, SOURCE_CODE;
   }
@@ -58,6 +60,8 @@ public class SourceFile {
       try (var out = new BufferedWriter(new FileWriter(executionPath.toFile()))) {
         out.write("#![feature(no_coverage)]\n");
         var content = Files.readString(originalPath);
+        var lines = content.split(System.lineSeparator());
+        size = lines.length;
         out.write(content);
       }
     }
@@ -75,7 +79,7 @@ public class SourceFile {
 
       out.write("#[cfg(test)]\n");
       out.write(String.format("mod %s {\n", Constants.TEST_MOD_NAME));
-      out.write("\tuse crate::*;\n");
+      out.write("\tuse crate::*;\n\n");
       //out.write("\tuse ntest::timeout;\n");
 
       var testCode = tests.stream()

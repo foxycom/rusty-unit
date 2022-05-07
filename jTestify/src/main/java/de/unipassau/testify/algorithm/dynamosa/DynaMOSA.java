@@ -3,7 +3,7 @@ package de.unipassau.testify.algorithm.dynamosa;
 import de.unipassau.testify.algorithm.Archive;
 import de.unipassau.testify.algorithm.PreferenceSorter;
 import de.unipassau.testify.algorithm.SVD;
-import de.unipassau.testify.exec.LLVMCoverage;
+import de.unipassau.testify.exec.ChromosomeExecutor.Status;
 import de.unipassau.testify.exec.Output;
 import de.unipassau.testify.generator.OffspringGenerator;
 import de.unipassau.testify.metaheuristics.algorithm.GeneticAlgorithm;
@@ -12,8 +12,6 @@ import de.unipassau.testify.metaheuristics.chromosome.FixedSizePopulationGenerat
 import de.unipassau.testify.mir.MirAnalysis;
 import de.unipassau.testify.source.ChromosomeContainer;
 import de.unipassau.testify.test_case.CallableSelector;
-import de.unipassau.testify.test_case.callable.Callable;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -61,15 +59,16 @@ public class DynaMOSA<C extends AbstractTestCaseChromosome<C>> implements Geneti
     var targets = mir.independentTargets();
 
     List<C> population;
-    int execCode;
+    Status status;
     do {
       population = populationGenerator.get();
       container.addAll(population);
-      execCode = container.executeWithInstrumentation();
-      if (execCode != 0) {
-        System.out.println("\t>> Broken tests found, regenerating...");
+      status = container.execute();
+      switch (status) {
+        case COMPILATION_ERROR -> System.out.println("\t>> Broken tests found, regenerating...");
+        default -> {}
       }
-    } while (execCode != 0);
+    } while (status != Status.OK);
 
     output.addPopulation(0, population);
     archive.update(population);
@@ -84,7 +83,10 @@ public class DynaMOSA<C extends AbstractTestCaseChromosome<C>> implements Geneti
 
       container.addAll(offspring);
       output.addPopulation(gen, offspring);
-      execCode = container.executeWithInstrumentation();
+      status = container.execute();
+      if (status == Status.COMPILATION_ERROR) {
+        throw new RuntimeException("Non-compilable tests");
+      }
 
       archive.update(offspring);
       CallableSelector.setCurrentPopulation(archive.get());
@@ -117,4 +119,5 @@ public class DynaMOSA<C extends AbstractTestCaseChromosome<C>> implements Geneti
 
     return archive.get();
   }
+
 }

@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.javatuples.Pair;
 
 public class StructInitStmt implements Statement {
@@ -152,7 +153,7 @@ public class StructInitStmt implements Statement {
       } else {
         return a;
       }
-    }).toList();
+    }).collect(Collectors.toList());
   }
 
   @Override

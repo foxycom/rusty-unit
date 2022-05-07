@@ -5,6 +5,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.io.FileWriteMode;
 import de.unipassau.testify.Main.CLI;
 import de.unipassau.testify.exec.ChromosomeExecutor;
+import de.unipassau.testify.exec.ChromosomeExecutor.Status;
 import de.unipassau.testify.exec.LLVMCoverage;
 import de.unipassau.testify.exec.TestCaseRunner;
 import de.unipassau.testify.source.SourceFile.FileType;
@@ -166,7 +167,7 @@ public class Crate implements ChromosomeContainer<TestCase> {
     }
 
     @Override
-    public int executeWithInstrumentation() {
+    public Status execute() {
         // Write tests into the source files
         try {
             return executor.runWithInstrumentation(this);
@@ -188,6 +189,12 @@ public class Crate implements ChromosomeContainer<TestCase> {
     @Override
     public String getName() {
         return crateName;
+    }
+
+    @Override
+    public TestCase chromosomeAt(String path, int line) {
+        var file = getFileByPath(path);
+        throw new RuntimeException("getChromosomeAt is not implemented");
     }
 
 }

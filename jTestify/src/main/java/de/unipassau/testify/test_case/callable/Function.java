@@ -31,7 +31,7 @@ public class Function implements Callable {
 
   @Override
   public String getName() {
-    return name;
+    return String.format("crate::%s", name);
   }
 
   @Override
