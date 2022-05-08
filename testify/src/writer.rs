@@ -12,6 +12,8 @@ pub struct MirObject {
   #[cfg(feature = "analysis")]
   cdg: String,
   #[cfg(feature = "analysis")]
+  cdg_dot: String,
+  #[cfg(feature = "analysis")]
   cfg: String,
   #[cfg(feature = "analysis")]
   truncated_cfg: String,

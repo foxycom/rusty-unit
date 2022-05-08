@@ -4,6 +4,7 @@ package de.unipassau.testify.mir;
 import static com.google.common.truth.Truth.assertThat;
 
 import de.unipassau.testify.test_case.TestCase;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -14,15 +15,46 @@ public class CDGTest {
   @BeforeEach
   public void setUp() throws Exception {
     cdg = CDG.parse("id",
-        "{\"nodes\":[42069,1,2,3,4,5,6,7,8,9,10],\"node_holes\":[],\"edge_property\":\"directed\",\"edges\":[[1,2,1],[1,3,1],[1,4,1],[1,5,1],[2,6,1],[2,7,1],[3,8,1],[4,9,1],[7,10,1],[1,1,1]]}");
+          "{\"nodes\":[42069,1,2,3,4,6,5,0,7],\"node_holes\":[],\"edge_property\":\"directed\",\"edges\":[[1,2,1],[1,3,1],[1,4,1],[4,5,1],[4,6,1],[0,7,1],[0,1,1],[0,8,1],[0,0,1]]}");
   }
 
   @Test
   public void testIndependentTargets() {
+    var independetTargets = cdg.independentTargets();
+
+    assertThat(independetTargets).containsExactly(new BasicBlock("id", 1),
+          new BasicBlock("id", 0),
+          new BasicBlock("id", 7));
   }
 
   @Test
   public void testDependentTargets() {
+    var dependentTargets = cdg.dependentTargets(new BasicBlock("id", 1));
+    assertThat(dependentTargets).containsExactly(new BasicBlock("id", 2), new BasicBlock("id", 3), new BasicBlock("id", 4));
+  }
+
+  @Test
+  public void testAllSubTargets() {
+    var subTargets = cdg.allSubTargets(new BasicBlock("id", 1));
+    assertThat(subTargets).containsExactly(
+          new BasicBlock("id", 2),
+          new BasicBlock("id", 3),
+          new BasicBlock("id", 4),
+          new BasicBlock("id", 5),
+          new BasicBlock("id", 6)
+    );
+  }
+
+  @Test
+  public void testApproachLevelIsTwo() {
+    var approachLevel = cdg.approachLevel(new BasicBlock("id", 6), Set.of(new BasicBlock("id", 1)));
+    assertThat(approachLevel).isEqualTo(2);
+  }
+
+  @Test
+  public void testApproachLevelIsZero() {
+    var approachLevel = cdg.approachLevel(new BasicBlock("id", 3), Set.of(new BasicBlock("id", 1), new BasicBlock("id", 3)));
+    assertThat(approachLevel).isEqualTo(0);
   }
 
   @Test

@@ -2,6 +2,7 @@ package de.unipassau.testify.allone;
 
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
+import de.unipassau.testify.test_case.callable.Callable;
 import de.unipassau.testify.test_case.var.VarReference;
 import de.unipassau.testify.test_case.statement.Statement;
 import de.unipassau.testify.test_case.type.Type;
@@ -83,6 +84,11 @@ public class One implements Statement {
     @Override
     public boolean isPublic() {
         throw new RuntimeException("isPublic is not implemented");
+    }
+
+    @Override
+    public Callable getCallable() {
+        throw new RuntimeException("getCallable is not implemented");
     }
 
     @Override

@@ -85,18 +85,21 @@ public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
   public Set<MinimizingFitnessFunction<C>> updateTargets(
       Set<MinimizingFitnessFunction<C>> targets, List<C> population) {
     Set<MinimizingFitnessFunction<C>> updatedTargets = new HashSet<>(targets);
+    int newTargets = 0;
     for (var target : targets) {
       if (covered(target, population)) {
         updatedTargets.remove(target);
-        visit(target, updatedTargets, population);
+        newTargets += visit(target, updatedTargets, population);
       }
     }
 
+    System.out.printf("\t>> Number of targets to cover next: %d (+%d)%n", updatedTargets.size(), newTargets);
     return updatedTargets;
   }
 
-  public void visit(MinimizingFitnessFunction<C> target,
+  public int visit(MinimizingFitnessFunction<C> target,
       Set<MinimizingFitnessFunction<C>> targets, List<C> population) {
+    int newTargets = 0;
     var cdg = cdgs.get(target.id());
     var dependentTargets = cdg.dependentTargets(target);
     for (MinimizingFitnessFunction<C> dependentTarget : dependentTargets) {
@@ -107,10 +110,12 @@ public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
       if (!covered(dependentTarget, population)) {
         targets.add(dependentTarget);
         visitedBlocks.add(dependentTarget);
+        newTargets++;
       } else {
-        visit(dependentTarget, targets, population);
+        newTargets += visit(dependentTarget, targets, population);
       }
     }
+    return newTargets;
   }
 
   public boolean covered(MinimizingFitnessFunction<C> target, List<C> population) {

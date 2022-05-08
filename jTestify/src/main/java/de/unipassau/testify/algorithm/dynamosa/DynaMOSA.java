@@ -57,6 +57,7 @@ public class DynaMOSA<C extends AbstractTestCaseChromosome<C>> implements Geneti
   public List<C> findSolution() {
     var nOfTargets = mir.targets().size();
     var targets = mir.independentTargets();
+    System.out.printf("\t>> Independent targets: %d%n", targets.size());
 
     List<C> population;
     Status status;

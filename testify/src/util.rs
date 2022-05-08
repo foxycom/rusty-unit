@@ -395,6 +395,7 @@ pub fn item_to_name(item: &Item<'_>, tcx: &TyCtxt<'_>) -> String {
     ItemKind::Impl(im) => ty_to_name(im.self_ty, tcx),
     ItemKind::Struct(_, _) => tcx.def_path_str(item.def_id.to_def_id()),
     ItemKind::Enum(_, _) => tcx.def_path_str(item.def_id.to_def_id()),
+    ItemKind::Fn(_, _, _) => tcx.def_path_str(item.def_id.to_def_id()),
     _ => item.ident.name.to_ident_string(),
   }
 }

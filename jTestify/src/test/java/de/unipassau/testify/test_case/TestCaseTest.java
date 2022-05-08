@@ -38,9 +38,12 @@ class TestCaseTest {
   @Mock
   private Crossover<TestCase> crossover;
 
+  @Mock
+  private CallableSelector callableSelector;
+
   @BeforeEach
   void setUp() {
-    testCase = new TestCase(2, hir, mutation, crossover, mir);
+    testCase = new TestCase(2, hir, mutation, crossover, mir, callableSelector);
   }
 
   @Test

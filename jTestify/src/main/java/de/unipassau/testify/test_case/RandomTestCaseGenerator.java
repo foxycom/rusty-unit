@@ -1,5 +1,6 @@
 package de.unipassau.testify.test_case;
 
+import de.unipassau.testify.Constants;
 import de.unipassau.testify.generators.TestIdGenerator;
 import de.unipassau.testify.hir.TyCtxt;
 import de.unipassau.testify.metaheuristics.chromosome.ChromosomeGenerator;
@@ -9,8 +10,8 @@ import de.unipassau.testify.mir.MirAnalysis;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TestCaseGenerator implements ChromosomeGenerator<TestCase> {
-  private static final Logger logger = LoggerFactory.getLogger(TestCaseGenerator.class);
+public class RandomTestCaseGenerator implements ChromosomeGenerator<TestCase> {
+  private static final Logger logger = LoggerFactory.getLogger(RandomTestCaseGenerator.class);
 
   private final MirAnalysis<TestCase> mir;
   private final TyCtxt hir;
@@ -18,7 +19,7 @@ public class TestCaseGenerator implements ChromosomeGenerator<TestCase> {
   private final Crossover<TestCase> crossover;
   private final CallableSelector callableSelector;
 
-  public TestCaseGenerator(TyCtxt hir, MirAnalysis<TestCase> mir, Mutation<TestCase> mutation, Crossover<TestCase> crossover, CallableSelector callableSelector) {
+  public RandomTestCaseGenerator(TyCtxt hir, MirAnalysis<TestCase> mir, Mutation<TestCase> mutation, Crossover<TestCase> crossover, CallableSelector callableSelector) {
     this.hir = hir;
     this.mir = mir;
     this.mutation = mutation;
@@ -29,7 +30,7 @@ public class TestCaseGenerator implements ChromosomeGenerator<TestCase> {
   @Override
   public TestCase get() {
     var testCase = new TestCase(TestIdGenerator.get(), hir, mutation, crossover, mir, callableSelector);
-    while (testCase.size() < 5) {
+    while (testCase.size() < Constants.INITIAL_CHROMOSOME_LENGTH) {
       testCase.insertRandomStmt();
     }
 

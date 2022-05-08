@@ -4,8 +4,10 @@ import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome
 import de.unipassau.testify.metaheuristics.fitness_functions.FitnessFunction;
 import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -14,14 +16,19 @@ public class DefaultArchive<C extends AbstractTestCaseChromosome<C>> implements 
   private final Set<C> archive;
   private final Set<MinimizingFitnessFunction<C>> objectives;
 
+  private final Map<MinimizingFitnessFunction<C>, Boolean> coveredObjectives;
+
   public DefaultArchive(Set<MinimizingFitnessFunction<C>> objectives) {
     this.archive = new HashSet<>();
     this.objectives = objectives;
+    this.coveredObjectives = new HashMap<>();
   }
 
   @Override
   public void update(List<C> population) {
+    int nCovered = 0;
     for (var u : objectives) {
+      boolean covered = false;
       C bestTestCase;
       var bestLength = Integer.MAX_VALUE;
       if ((bestTestCase = getCaseThatCovers(u)) != null) {
@@ -33,6 +40,11 @@ public class DefaultArchive<C extends AbstractTestCaseChromosome<C>> implements 
         var score = u.getFitness(testCase);
         var length = testCase.size();
         if (score == 0 && length <= bestLength && !testCase.metadata().fails()) {
+          if (!covered) {
+            coveredObjectives.put(u, true);
+            nCovered++;
+            covered = true;
+          }
           bestTestCase = testCase;
           bestLength = length;
         }
@@ -42,6 +54,11 @@ public class DefaultArchive<C extends AbstractTestCaseChromosome<C>> implements 
         archive.add(bestTestCase);
       }
     }
+
+    long coverage = coveredObjectives.values().stream().filter(v -> v).count();
+    double percent = ((double) coverage / objectives.size()) * 100;
+    System.out.printf("\t>> Covered %d targets out of %d (%.2f%%)%n", coverage, objectives.size(), percent);
+    System.out.printf("\t>> Archive contains %d tests%n", archive.size());
   }
 
   @Override

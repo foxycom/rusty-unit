@@ -41,4 +41,9 @@ public class MaxOneContainer implements ChromosomeContainer<MaxOne> {
     public String getName() {
         throw new RuntimeException("getName is not implemented");
     }
+
+    @Override
+    public MaxOne chromosomeAt(String path, int line) {
+        throw new RuntimeException("chromosomeAt is not implemented");
+    }
 }

@@ -543,6 +543,10 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     }
 
     public Optional<VarReference> insertCallable(Callable callable) {
+        if (!canBeInserted(callable)) {
+            return Optional.empty();
+        }
+
         logger.debug("({}) Inserting callable {}", id, callable);
 
         LinkedHashSet<Generic> generics = callable.getParams().stream()
@@ -599,17 +603,15 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         return Optional.ofNullable(returnValue);
     }
 
-    private List<Type> substituteGenerics(List<Type> generics, TypeBinding binding) {
-        return generics.stream()
-              .map(g -> {
-                  if (g.isGeneric()) {
-                      return binding.getBindingFor(g.asGeneric());
-                  } else {
-                      return g;
-                  }
-              })
-              .peek(Objects::requireNonNull)
-              .toList();
+    private boolean canBeInserted(Callable callable) {
+        if (callable.isPublic()) {
+            return true;
+        }
+
+        var path = callable.getSrcFilePath();
+        var testBoundTo = getFilePathBinding();
+        return testBoundTo.isEmpty() || testBoundTo.get().equals(path);
+
     }
 
     /**

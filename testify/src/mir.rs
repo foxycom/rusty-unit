@@ -85,6 +85,7 @@ pub const CUSTOM_OPT_MIR: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<
           .cdg(serde_json::to_string(&cdg).unwrap())
           .cfg(format!("{}", Dot::new(&cfg)))
           .truncated_cfg(format!("{}", Dot::new(&truncated_cfg)))
+          .cdg_dot(format!("{}", Dot::new(&cdg)))
           .locals(locals_str)
           .build()
           .unwrap();
@@ -122,6 +123,7 @@ pub const CUSTOM_OPT_MIR: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<
           .cdg(serde_json::to_string(&cdg).unwrap())
           .cfg("".to_string())
           .truncated_cfg("".to_string())
+          .cdg_dot("".to_string())
           .build()
           .unwrap();
       MirWriter::write_instrumented(&instrumented_mir_object);

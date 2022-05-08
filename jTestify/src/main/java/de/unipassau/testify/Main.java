@@ -34,6 +34,9 @@ public class Main {
 
     @Option(shortName = "i", longName = "instrumenter")
     String getInstrumenterPath();
+
+    @Option(longName = "seed-methods")
+    boolean seedMethods();
   }
 
   public static void main(String[] args) throws IOException, InterruptedException {

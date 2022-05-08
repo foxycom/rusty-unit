@@ -9,6 +9,7 @@ public class Constants {
   private static final Properties properties = loadProperties();
 
   public static final int CHROMOSOME_LENGTH = getInt("chromosome-length");
+  public static final int INITIAL_CHROMOSOME_LENGTH = getInt("initial-chromosome-length");
   public static final double P_TEST_CHANGE = getDouble("p-test-change");
   public static final double P_TEST_INSERT = getDouble("p-test-insert");
   public static final double P_TEST_DELETE = getDouble("p-test-delete");

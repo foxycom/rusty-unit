@@ -7,6 +7,7 @@ import com.google.common.collect.Lists;
 import de.unipassau.testify.hir.TyCtxt;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
 import de.unipassau.testify.mir.MirAnalysis;
+import de.unipassau.testify.test_case.CallableSelector;
 import de.unipassau.testify.test_case.Param;
 import de.unipassau.testify.test_case.TestCase;
 import de.unipassau.testify.test_case.var.VarReference;
@@ -45,6 +46,9 @@ class SinglePointFixedCrossoverTest {
 
   @Mock
   private MirAnalysis<TestCase> mir;
+
+  @Mock
+  private CallableSelector callableSelector;
 
   @BeforeEach
   void setUp() {
@@ -133,7 +137,7 @@ class SinglePointFixedCrossoverTest {
     var visitor = new TestCaseVisitor();
     var debugVisitor = new CrossoverDebugVisitor(2);
 
-    var parentA = new TestCase(1, hir, mutation, crossover, mir);
+    var parentA = new TestCase(1, hir, mutation, crossover, mir, callableSelector);
     parentA.setStatements(getStatementsA(parentA));
 
     System.out.println(parentA.visit(debugVisitor));
@@ -147,7 +151,7 @@ class SinglePointFixedCrossoverTest {
 
     when(hir.generatorsOf(vecType, "")).thenReturn(Lists.newArrayList(vecConstructor));
 
-    var parentB = new TestCase(2, hir, mutation, crossover, mir);
+    var parentB = new TestCase(2, hir, mutation, crossover, mir, callableSelector);
     parentB.setStatements(getStatementsB(parentB));
 
     System.out.println(parentB.visit(debugVisitor));
