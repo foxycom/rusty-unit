@@ -525,7 +525,6 @@ impl<'tcx> MirVisitor<'tcx> {
     switch_value: Option<Const>,
     is_hit: bool,
   ) -> (Vec<Statement<'tcx>>, Vec<Operand<'tcx>>) {
-    //debug!("MIR: mk_trace_statements_switch_int, {:?}", value_def);
     match value_def {
       ValueDef::BinaryOp(op, left, right) => {
         let is_true_branch = switch_value.is_none();
@@ -744,14 +743,12 @@ impl<'tcx> MirVisitor<'tcx> {
           .find_map(|stmt| self.get_place_definition_from_stmt(place, stmt));
 
       if let Some(value_def) = value_def {
-        //debug!("MIR: Place {:?} was defined by statement {:?}", place, value_def);
         return value_def;
       }
 
       if let Some(terminator) = &data.terminator {
         let value_def = self.get_place_definition_from_terminator(place, terminator);
         if let Some(value_def) = value_def {
-          //debug!("MIR: Place {:?} was defined by terminator {:?}", place, value_def);
           return value_def;
         }
       }
@@ -869,7 +866,6 @@ impl<'tcx> MirVisitor<'tcx> {
         switch_ty,
         targets,
       } => {
-        debug!("MIR: Instrumenting switch int");
         let switch_operand_place = self
             .get_place(discr)
             .expect("Place has been defined in a previous block");
@@ -889,8 +885,6 @@ impl<'tcx> MirVisitor<'tcx> {
             // Shift ids back because they are off by one due to root instrumentation
             .map(|t| t.as_u32() as u64)
             .collect::<Vec<u64>>();
-
-        //debug!("MIR: Branch ids are {:?}", branch_ids);
 
         let mut instrumentation = Vec::with_capacity(targets.all_targets().len());
         let mut all_targets = targets
@@ -949,8 +943,6 @@ impl<'tcx> MirVisitor<'tcx> {
         target_block
       };
 
-      //debug!("MIR: Next block in chain is {}", next_block.as_usize());
-
       if is_branch_hit {
         let args = self.mk_trace_branch_hit(target_block.as_usize());
         let trace_fn = find_trace_branch_hit_fn(&self.tcx);
@@ -1002,7 +994,6 @@ impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
       match &mut terminator.kind {
         // Instrument branching
         TerminatorKind::SwitchInt { .. } => {
-          debug!("MIR: (bb{}) switch int", block.as_usize());
           self.instrument_switch_int(terminator, block);
         }
         TerminatorKind::Call { destination, .. } => {
@@ -1041,25 +1032,6 @@ impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
   fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
     self.tcx.tcx()
   }
-
-  /*fn visit_const(&mut self, constant: &mut &'tcx Const<'tcx>, _: Location) {
-      info!("MIR: Visiting const");
-  }*/
-
-  /*fn visit_constant(&mut self, constant: &mut Constant<'tcx>, location: Location) {
-      let Constant {
-          span,
-          user_ty,
-          literal,
-      } = constant;
-
-      info!("MIR: Found constant {:?}", literal);
-      self.visit_span(span);
-      match literal {
-          ConstantKind::Ty(ct) => self.visit_const(ct, location),
-          ConstantKind::Val(_, t) => self.visit_ty(t, TyContext::Location(location)),
-      }
-  }*/
 }
 
 fn find_monitor_fn_by_name(tcx: &TyCtxt<'_>, name: &str) -> DefId {

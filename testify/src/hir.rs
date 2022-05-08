@@ -10,7 +10,7 @@ use rustc_span::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_span::Span;
 use crate::{HIR_LOG_PATH, LOG_DIR, RuConfig};
 use crate::types::{Callable, def_id_name, EnumInitItem, EnumT, EnumVariant, FieldAccessItem, FunctionItem, MethodItem, Param, StaticFnItem, StructInitItem, StructT, T, Trait};
-use crate::util::{def_id_to_t, def_id_to_enum, fn_ret_ty_to_t, generics_to_ts, impl_to_def_id, item_to_name, node_to_name, span_to_path, ty_to_param, ty_to_t, is_local};
+use crate::util::{def_id_to_t, def_id_to_enum, fn_ret_ty_to_t, generics_to_ts, impl_to_def_id, item_to_name, node_to_name, span_to_path, ty_to_param, ty_to_t, is_local, res_to_name, path_to_name};
 use crate::analysis::Analysis;
 #[cfg(feature = "analysis")]
 use crate::writer::{HirObject, HirWriter, HirObjectBuilder};
@@ -315,12 +315,20 @@ fn analyze_struct(
 }
 
 fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tcx: &TyCtxt<'_>) {
-  if let Some(_) = im.of_trait {
-    // Skip trait implementation for now
+  let parent_def_id_opt = impl_to_def_id(im);
+  
+  if let Some(parent_def_id) = parent_def_id_opt {
+    if parent_def_id.as_local().is_none() {
+      return;
+    }
+  } else {
     return;
   }
 
-  let parent_def_id = impl_to_def_id(im);
+  let trait_name = im.of_trait.as_ref().map(|trait_ref| path_to_name(&trait_ref.path, tcx));
+
+  let parent_def_id = parent_def_id_opt.unwrap();
+
   let parent_hir_id = tcx
       .hir()
       .local_def_id_to_hir_id(parent_def_id.expect_local());
@@ -384,6 +392,7 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                 self_ty.clone(),
                 fn_generics,
                 is_public,
+                trait_name.clone()
               );
               let static_method_callable =
                   Callable::StaticFunction(static_method_item);
@@ -399,6 +408,7 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                 self_ty.clone(),
                 fn_generics,
                 is_public,
+                trait_name.clone()
               );
               let method_callable = Callable::Method(method_item);
               callables.push(method_callable);

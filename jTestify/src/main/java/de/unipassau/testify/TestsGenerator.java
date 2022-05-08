@@ -107,9 +107,14 @@ public class TestsGenerator {
     var mutation = new DefaultMutation();
     var crossover = new SinglePointFixedCrossover();
     var selection = new RankSelection<>(objectives, svd, preferenceSorter);
+    ChromosomeGenerator<TestCase> chromosomeGenerator;
+    if (cli.seedMethods()) {
+      chromosomeGenerator = new SeededTestCaseGenerator(hir, mir, mutation, crossover, callableSelector);
+    } else {
+      chromosomeGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover, callableSelector);
+    }
     var populationGenerator = new FixedSizePopulationGenerator<>(
-        new RandomTestCaseGenerator(hir, mir, mutation, crossover, callableSelector),
-        POPULATION_SIZE);
+        chromosomeGenerator, POPULATION_SIZE);
 
     var uncoveredObjectives = new UncoveredObjectives<>(objectives);
     var offspringGenerator = new OffspringGeneratorImpl(selection, uncoveredObjectives);

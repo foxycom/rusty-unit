@@ -94,7 +94,7 @@ pub fn arg_value<'a>(
   args: impl IntoIterator<Item=&'a String>,
   find_arg: &str,
   pred: impl Fn(&str) -> bool,
-) -> Option<&'a str> {
+) -> Option<&'a str> { 
   let mut args = args.into_iter().map(String::as_str);
 
   while let Some(arg) = args.next() {

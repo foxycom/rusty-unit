@@ -18,6 +18,10 @@ public class Method implements Callable {
   private List<Param> params;
   @JsonProperty("return_type")
   private Type returnType;
+
+  @JsonProperty("of_trait")
+  private String ofTrait;
+
   private Type parent;
 
   @Override
@@ -43,6 +47,14 @@ public class Method implements Callable {
     this.parent = parent;
     this.name = name;
     this.generics = generics;
+  }
+
+  public void setOfTrait(String ofTrait) {
+    this.ofTrait = ofTrait;
+  }
+
+  public String ofTrait() {
+    return ofTrait;
   }
 
   public List<Type> generics() {

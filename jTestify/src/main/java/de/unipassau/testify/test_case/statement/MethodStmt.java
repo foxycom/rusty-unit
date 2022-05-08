@@ -22,6 +22,10 @@ public class MethodStmt extends CallableStmt {
     this.method = method;
   }
 
+  public Optional<String> ofTrait() {
+    return Optional.ofNullable(method.ofTrait());
+  }
+
   @Override
   public Optional<Type> returnType() {
     return Optional.ofNullable(method.getReturnType());

@@ -406,9 +406,7 @@ pub fn cdg(cfg: &Graph<usize, usize>) -> Graph<usize, usize> {
       .node_indices()
       .find(|i| cfg.neighbors(*i).peekable().peek().is_none())
       .unwrap();
-  // println!("Root is {}", cfg.node_weight(root).unwrap());
   let dominators = simple_fast(&reversed_cfg, root);
-  println!("Dominators: {:?}", &dominators);
   let cfg_edges = cfg
       .edge_indices()
       .filter(|edge| {
@@ -422,7 +420,6 @@ pub fn cdg(cfg: &Graph<usize, usize>) -> Graph<usize, usize> {
       })
       .collect::<Vec<_>>();
   let cfg_edges_debug = cfg_edges.iter().map(|e| cfg.edge_endpoints(*e).unwrap()).collect::<Vec<_>>();
-  println!("CFG edges: {:?}", &cfg_edges_debug);
 
   let mut cdg = Graph::new();
   let mut cdg_table = HashMap::new();
@@ -468,8 +465,6 @@ pub fn cdg(cfg: &Graph<usize, usize>) -> Graph<usize, usize> {
     }
   }
 
-  println!("{}", Dot::new(&cdg));
-
   cfg.node_indices()
       .filter_map(|n| {
         let name = cfg.node_weight(n).unwrap();
@@ -484,7 +479,6 @@ pub fn cdg(cfg: &Graph<usize, usize>) -> Graph<usize, usize> {
         cdg.add_edge(entry_index, index, 1usize);
       });
 
-  println!("{}", Dot::new(&cdg));
   cdg
 }
 

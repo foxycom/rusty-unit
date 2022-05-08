@@ -16,7 +16,6 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = "implementedTraits")
 @JsonDeserialize(as = AbstractStruct.class)
 public class AbstractStruct implements Struct {
 

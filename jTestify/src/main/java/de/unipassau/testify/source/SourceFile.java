@@ -10,10 +10,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class SourceFile {
+
   private Path originalPath;
   private Path executionPath;
   private FileType type;
@@ -70,16 +72,21 @@ public class SourceFile {
   public void addTests(List<TestCase> tests) throws IOException, InterruptedException {
     var visitor = new TestCaseVisitor();
 
+    var usedTraitNames = new HashSet<String>();
+    tests.forEach(t -> usedTraitNames.addAll(t.getUsedTraitNames()));
+    var imports = usedTraitNames.stream().map(tn -> String.format("\tuse %s;", tn))
+        .collect(Collectors.joining("\n"));
+
     try (var out = new BufferedWriter(new FileWriter(executionPath.toFile()))) {
-
-
       var content = Files.readString(originalPath);
       out.write(content);
       out.write("\n");
 
       out.write("#[cfg(test)]\n");
       out.write(String.format("mod %s {\n", Constants.TEST_MOD_NAME));
-      out.write("\tuse crate::*;\n\n");
+      out.write("\tuse crate::*;\n");
+      out.write(String.format("%s\n", imports));
+
       //out.write("\tuse ntest::timeout;\n");
 
       var testCode = tests.stream()

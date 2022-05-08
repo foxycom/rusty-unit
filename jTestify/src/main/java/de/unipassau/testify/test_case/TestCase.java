@@ -100,6 +100,24 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     this.callableSelector = other.callableSelector;
   }
 
+  public Set<String> getUsedTraitNames() {
+    return statements.stream()
+        .filter(s -> s.isMethodStmt() || s.isStaticMethodStmt())
+        .map(s -> {
+          if (s.isStaticMethodStmt()) {
+            return s.asStaticMethodStmt().ofTrait();
+          } else if (s.isMethodStmt()) {
+            return s.asMethodStmt().ofTrait();
+          } else {
+            throw new RuntimeException("No trait");
+          }
+        })
+        .filter(Optional::isPresent)
+        .map(Optional::get)
+        .collect(Collectors.toSet());
+
+  }
+
   public TyCtxt getHirAnalysis() {
     return tyCtxt;
   }

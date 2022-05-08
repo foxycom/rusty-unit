@@ -159,6 +159,7 @@ pub struct MethodItem {
   pub name: String,
   pub src_file_path: String,
   pub is_public: bool,
+  pub of_trait: Option<String>,
   generics: Vec<T>,
 }
 
@@ -171,6 +172,7 @@ impl MethodItem {
       parent: T,
       generics: Vec<T>,
       is_public: bool,
+      of_trait: Option<String>
   ) -> Self {
     MethodItem {
       is_public,
@@ -180,6 +182,7 @@ impl MethodItem {
       params,
       return_type,
       src_file_path: src_file_path.to_string(),
+      of_trait
     }
   }
 
@@ -245,6 +248,7 @@ pub struct StaticFnItem {
   pub params: Vec<Param>,
   pub return_type: Option<T>,
   pub src_file_path: String,
+  pub of_trait: Option<String>
 }
 
 impl StaticFnItem {
@@ -256,6 +260,7 @@ impl StaticFnItem {
     parent: T,
     generics: Vec<T>,
     is_public: bool,
+    of_trait: Option<String>
   ) -> Self {
     StaticFnItem {
       name: name.to_string(),
@@ -265,6 +270,7 @@ impl StaticFnItem {
       return_type,
       is_public,
       generics,
+      of_trait
     }
   }
 
@@ -319,6 +325,7 @@ pub enum T {
   Enum(EnumT),
   Array(Box<ArrayT>),
   Tuple(TupleT),
+  TraitObj(TraitObjT)
 }
 
 fn trait_def_to_trait(def_id: DefId, tcx: &TyCtxt<'_>) -> Trait {
@@ -452,7 +459,8 @@ impl Debug for T {
       T::Generic(generic_ty) => Debug::fmt(generic_ty, f),
       T::Enum(enum_ty) => Debug::fmt(enum_ty, f),
       T::Array(array_ty) => Debug::fmt(array_ty, f),
-      T::Tuple(types) => Debug::fmt(types, f)
+      T::Tuple(types) => Debug::fmt(types, f),
+      T::TraitObj(trait_obj) => Debug::fmt(trait_obj, f)
     }
   }
 }
@@ -486,6 +494,10 @@ impl PartialEq for T {
       },
       T::Tuple(types) => match other {
         T::Tuple(other_types) => types == other_types,
+        _ => false
+      },
+      T::TraitObj(trait_obj) => match other {
+        T::TraitObj(other_trait_obj) => trait_obj == other_trait_obj,
         _ => false
       }
     }
@@ -541,7 +553,8 @@ impl T {
       T::Ref(r, _) => r.name(),
       T::Enum(enum_ty) => enum_ty.name().to_owned(),
       T::Array(_) => String::from("array"),
-      T::Tuple(_) => String::from("tuple")
+      T::Tuple(_) => String::from("tuple"),
+      T::TraitObj(_) => String::from("trait object")
     }
   }
 
@@ -579,7 +592,7 @@ impl T {
     match self {
       T::Generic(generic) => generic,
       T::Ref(r, _) => r.expect_generic(),
-      _ => panic!("Is not generic"),
+      _ => panic!("Is not generic: {:?}", self),
     }
   }
 
@@ -587,7 +600,7 @@ impl T {
     match self {
       T::Generic(generic) => generic,
       T::Ref(r, _) => r.expect_generic_mut(),
-      _ => panic!("Is not a generic")
+      _ => panic!("Is not a generic: {:?}", self)
     }
   }
 
@@ -649,6 +662,7 @@ impl Display for T {
           Ok(())
         }
       }
+      T::TraitObj(trait_obj) => Display::fmt(trait_obj, f)
     }
   }
 }
@@ -713,6 +727,50 @@ impl TupleT {
       types
     }
   }
+}
+
+#[derive(Clone, Hash, Eq, Serialize, Deserialize)]
+pub struct TraitObjT {
+  name: String,
+  is_local: bool
+}
+
+impl Debug for TraitObjT {
+  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+      Display::fmt(&self, f)
+  }
+}
+
+impl Display for TraitObjT {
+  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+      write!(f, "dyn {}", self.name)
+  }
+}
+
+impl PartialEq for TraitObjT {
+  fn eq(&self, other: &Self) -> bool {
+      self.name == other.name && self.is_local == other.is_local
+  }
+}
+
+impl TraitObjT {
+  pub fn new(name: &str, is_local: bool) -> Self {
+    TraitObjT { name: name.to_string(), is_local }
+  }
+
+  pub fn name(&self) -> &str {
+    &self.name
+  }
+
+  pub fn full_name(&self) -> String {
+    if self.is_local {
+      format!("crate::{}", &self.name)
+    } else {
+      self.name.to_string()
+    }
+  }
+
+
 }
 
 #[derive(Clone, Hash, Eq, Serialize, Deserialize)]

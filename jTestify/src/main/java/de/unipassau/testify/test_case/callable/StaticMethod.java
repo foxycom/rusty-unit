@@ -27,6 +27,9 @@ public class StaticMethod implements Callable {
   @JsonProperty("is_public")
   private boolean isPublic;
 
+  @JsonProperty("of_trait")
+  private String ofTrait;
+
   public StaticMethod() {
   }
 
@@ -37,6 +40,14 @@ public class StaticMethod implements Callable {
     this.returnType = returnType;
     this.parent = parent;
     this.srcFilePath = srcFilePath;
+  }
+
+  public void setOfTrait(String ofTrait) {
+    this.ofTrait = ofTrait;
+  }
+
+  public String ofTrait() {
+    return ofTrait;
   }
 
   @Override
