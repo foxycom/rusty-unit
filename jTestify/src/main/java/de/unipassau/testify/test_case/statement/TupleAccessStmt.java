@@ -90,7 +90,7 @@ public class TupleAccessStmt implements Statement {
 
     @Override
     public List<Type> actualParamTypes() {
-        return Collections.emptyList();
+        return args().stream().peek(Objects::requireNonNull).map(VarReference::type).toList();
     }
 
     @Override
@@ -117,7 +117,7 @@ public class TupleAccessStmt implements Statement {
     public boolean consumes(VarReference var) {
         // Index is always usize or something which is copyable, so
         // we say it is not consumed from the test perspective
-        return false;
+        return var.equals(owner);
     }
 
     @Override

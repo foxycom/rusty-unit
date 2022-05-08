@@ -842,6 +842,22 @@ impl<'tcx> MirVisitor<'tcx> {
     basic_blocks.raw.insert(0, trace_block);
   }
 
+  fn instrument_block(&mut self, block: &mut BasicBlock) {
+    let new_target_block = BasicBlock::from_usize(self.basic_blocks_num);
+    self.basic_blocks_num += 1;
+
+    let args = self.mk_trace_branch_hit(block.as_usize());
+    let trace_fn = find_trace_branch_hit_fn(&self.tcx);
+    let terminator = self.mk_call_terminator(args, *block, trace_fn);
+    let trace_block = self.mk_basic_block(Vec::new(), terminator);
+
+    let trace_chain = vec![trace_block];
+
+    *block = new_target_block;
+    let mut instrumentation = vec![(new_target_block, trace_chain)];
+    self.instrumentation.append(&mut instrumentation);
+  }
+
   fn instrument_switch_int(
     &mut self,
     terminator: &mut Terminator<'tcx>,
@@ -885,10 +901,6 @@ impl<'tcx> MirVisitor<'tcx> {
 
         // Switch value is like false (0), or some numeric value, e.g., when comparing x == 2
         for (idx, (switch_value, target_block)) in all_targets.iter().enumerate() {
-          /*debug!(
-              "MIR: Creating a tracing chain which points to {}",
-              target_block.as_usize() as u64
-          );*/
           let switch_value_const =
               switch_value.map(|sv| self.switch_value_to_const(*switch_ty, sv));
           let (first_tracing_block, tracing_chain) = self
@@ -898,11 +910,6 @@ impl<'tcx> MirVisitor<'tcx> {
                 switch_value_const,
                 *target_block,
               );
-          /*debug!(
-              "MIR: First block (bb{})hain is: {:?}",
-              first_tracing_block.as_usize(),
-              tracing_chain
-          );*/
           instrumentation.push((first_tracing_block, tracing_chain));
         }
 
@@ -998,7 +1005,35 @@ impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
           debug!("MIR: (bb{}) switch int", block.as_usize());
           self.instrument_switch_int(terminator, block);
         }
-        _ => {}
+        TerminatorKind::Call { destination, .. } => {
+          if let Some((_, block)) = destination {
+            self.instrument_block(block);
+          }
+        }
+        TerminatorKind::Goto { target } => {
+          self.instrument_block(target);
+        }
+        TerminatorKind::Drop { target, .. } => {
+          self.instrument_block(target);
+        }
+        TerminatorKind::DropAndReplace { target, ..} => {
+          self.instrument_block(target);
+        }
+        TerminatorKind::Assert { target, .. } => {
+          self.instrument_block(target);
+        }
+        TerminatorKind::Yield { resume, .. } => {
+          self.instrument_block(resume);
+        }
+        TerminatorKind::FalseEdge { real_target, .. } => {
+          self.instrument_block(real_target);
+        }
+        TerminatorKind::FalseUnwind { real_target, .. } => {
+          self.instrument_block(real_target);
+        }
+        _ => {
+          // ignore the rest
+        }
       }
     }
   }
@@ -1058,6 +1093,10 @@ fn find_trace_enum_fn(tcx: &TyCtxt<'_>) -> DefId {
 
 fn find_trace_const(tcx: &TyCtxt<'_>) -> DefId {
   find_monitor_fn_by_name(tcx, "trace_const")
+}
+
+fn find_trace_block(tcx: &TyCtxt<'_>) -> DefId {
+  find_monitor_fn_by_name(tcx, "trace_branch_hit")
 }
 
 fn find_trace_fn_for(tcx: &TyCtxt<'_>, value_def: &ValueDef<'_>) -> DefId {

@@ -1,5 +1,6 @@
 package de.unipassau.testify.metaheuristics.chromosome;
 
+import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
 import de.unipassau.testify.metaheuristics.operators.Crossover;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
 import de.unipassau.testify.test_case.metadata.MetaData;
@@ -7,6 +8,7 @@ import de.unipassau.testify.test_case.metadata.TestCaseMetadata;
 import de.unipassau.testify.test_case.statement.Statement;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 public abstract class AbstractTestCaseChromosome<C extends AbstractTestCaseChromosome<C>>
     extends Chromosome<C>
@@ -46,4 +48,8 @@ public abstract class AbstractTestCaseChromosome<C extends AbstractTestCaseChrom
   }
 
   public abstract MetaData metadata();
+
+  public abstract Set<MinimizingFitnessFunction<C>> coveredObjectives();
+
+  public abstract Set<MinimizingFitnessFunction<C>> uncoveredObjectives();
 }

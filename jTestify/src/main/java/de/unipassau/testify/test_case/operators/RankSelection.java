@@ -8,15 +8,20 @@ import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFu
 import de.unipassau.testify.metaheuristics.operators.Selection;
 import de.unipassau.testify.util.Rnd;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.IntStream;
 
 public class RankSelection<C extends AbstractTestCaseChromosome<C>> implements Selection<C> {
+
   private final Set<MinimizingFitnessFunction<C>> objectives;
   private final SVD<C> svd;
   private final PreferenceSorter<C> preferenceSorter;
+
+  private final Map<Integer, List<C>> cache;
 
   public RankSelection(
       Set<MinimizingFitnessFunction<C>> objectives, SVD<C> svd,
@@ -24,6 +29,7 @@ public class RankSelection<C extends AbstractTestCaseChromosome<C>> implements S
     this.objectives = objectives;
     this.svd = svd;
     this.preferenceSorter = preferenceSorter;
+    this.cache = new HashMap<>();
   }
 
   private List<C> sort(final List<C> population) {
@@ -36,11 +42,17 @@ public class RankSelection<C extends AbstractTestCaseChromosome<C>> implements S
 
   @Override
   public C apply(List<C> pPopulation) {
-    if (pPopulation.isEmpty() || pPopulation.size() == 1 ) {
+    if (pPopulation.isEmpty() || pPopulation.size() == 1) {
       throw new RuntimeException("Huh?");
     }
 
-    final var population = new ArrayList<>(sort(pPopulation));
+    List<C> population;
+    if (cache.containsKey(pPopulation.hashCode())) {
+      population = cache.get(pPopulation.hashCode());
+    } else {
+      population = new ArrayList<>(sort(pPopulation));
+      cache.put(pPopulation.hashCode(), population);
+    }
     final var N = population.size();
 
     final var probabilities = new ArrayList<Double>(N);

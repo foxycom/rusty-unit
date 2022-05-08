@@ -8,6 +8,7 @@ import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFu
 import de.unipassau.testify.mir.BasicBlock;
 import de.unipassau.testify.test_case.TestCase;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,7 +33,7 @@ class FNDSImplTest {
 
   @Test
   void testSort() {
-    final List<MinimizingFitnessFunction<TestCase>> objectives = List.of(
+    final Set<MinimizingFitnessFunction<TestCase>> objectives = Set.of(
         BasicBlock.of("id", 1),
         BasicBlock.of("id", 2),
         BasicBlock.of("id", 3),

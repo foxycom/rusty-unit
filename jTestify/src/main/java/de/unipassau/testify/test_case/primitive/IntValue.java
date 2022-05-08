@@ -1,5 +1,6 @@
 package de.unipassau.testify.test_case.primitive;
 
+import com.google.common.base.Preconditions;
 import de.unipassau.testify.Constants;
 import de.unipassau.testify.test_case.type.prim.Int;
 import de.unipassau.testify.test_case.type.prim.Prim;
@@ -13,7 +14,7 @@ public class IntValue implements PrimitiveValue<Long> {
   public IntValue(long value, Int type) {
     if (value < type.minValue()) {
       value = (-value) % type.maxValue();
-    } else if (value < type.maxValue()) {
+    } else if (value > type.maxValue()) {
       value = -(value % type.maxValue());
     }
 

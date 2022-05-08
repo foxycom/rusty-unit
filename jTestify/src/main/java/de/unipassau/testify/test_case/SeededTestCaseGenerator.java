@@ -40,8 +40,9 @@ public class SeededTestCaseGenerator implements ChromosomeGenerator<TestCase> {
     public TestCase get() {
         var callable = hir.getCallables().get(current);
         var testCase = new TestCase(TestIdGenerator.get(), hir, mutation, crossover, mir, callableSelector);
+        testCase.insertCallable(callable);
         while (testCase.size() < Constants.INITIAL_CHROMOSOME_LENGTH) {
-            testCase.insertCallable(callable);
+            testCase.insertRandomStmt();
         }
 
         current = (current + 1) % hir.getCallables().size();

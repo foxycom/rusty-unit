@@ -14,6 +14,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.jgrapht.Graph;
 import org.jgrapht.Graphs;
+import org.jgrapht.alg.interfaces.KShortestPathAlgorithm;
+import org.jgrapht.alg.shortestpath.BellmanFordShortestPath;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
@@ -39,6 +41,9 @@ public class CDG<M extends MinimizingFitnessFunction<C>, C extends AbstractTestC
     this.distanceCache = new HashMap<>();
     this.dependenceCache = new HashMap<>();
     this.root = root(graph);
+
+    var pathAlgorithm = new BellmanFordShortestPath<>(graph);
+
 
     for (M object : graph.vertexSet()) {
       var path = DijkstraShortestPath.findPathBetween(graph, root, object).getVertexList();

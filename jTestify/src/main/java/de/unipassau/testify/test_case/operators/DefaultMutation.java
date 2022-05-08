@@ -24,10 +24,14 @@ public class DefaultMutation implements Mutation<TestCase> {
       mutationDelete(copy);
     }
 
+    logger.info("Test case IR:\n{}\n", testCase);
+
     if (Rnd.get().nextDouble() <= Constants.P_TEST_CHANGE) {
       // Change some statements
       mutationChange(copy);
     }
+
+    logger.info("Test case IR:\n{}\n", testCase);
 
     if (Rnd.get().nextDouble() <= Constants.P_TEST_INSERT) {
       // Insert some statements

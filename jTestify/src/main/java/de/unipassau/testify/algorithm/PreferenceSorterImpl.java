@@ -2,8 +2,10 @@ package de.unipassau.testify.algorithm;
 
 import de.unipassau.testify.metaheuristics.chromosome.AbstractTestCaseChromosome;
 import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
+import de.unipassau.testify.test_case.TestCase;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -32,7 +34,7 @@ public class PreferenceSorterImpl<C extends AbstractTestCaseChromosome<C>> imple
     var population = new LinkedList<>(pPopulation);
     var fronts = new HashMap<Integer, List<C>>();
     var f0 = new LinkedHashSet<C>();
-    var uncoveredBranches = new ArrayList<MinimizingFitnessFunction<C>>();
+    var uncoveredBranches = new HashSet<MinimizingFitnessFunction<C>>();
 
     for (var objective : targets) {
       double minDist = Double.MAX_VALUE;

@@ -8,6 +8,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.javatuples.Pair;
 
 public class FNDSImpl<C extends AbstractTestCaseChromosome<C>> implements FNDS<C> {
@@ -21,7 +22,7 @@ public class FNDSImpl<C extends AbstractTestCaseChromosome<C>> implements FNDS<C
 
   @Override
   public Map<Integer, List<C>> sort(List<C> population,
-      List<MinimizingFitnessFunction<C>> objectives) {
+      Set<MinimizingFitnessFunction<C>> objectives) {
     final Map<Integer, List<C>> front = new HashMap<>();
     final Map<C, List<C>> S = new HashMap<>();
     final Map<C, Integer> n = new HashMap<>();
