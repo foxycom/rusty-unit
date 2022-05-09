@@ -297,6 +297,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         .map(this::stmtAt)
         .map(Optional::orElseThrow)
         .collect(toCollection(ArrayList::new));
+    Preconditions.checkState(!usingStmts.contains(stmt));
     Collections.reverse(usingStmts);
     usingStmts.forEach(this::removeStmt);
 

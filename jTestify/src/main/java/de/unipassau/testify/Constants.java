@@ -14,6 +14,7 @@ public class Constants {
   public static final double P_TEST_INSERT = getDouble("p-test-insert");
   public static final double P_TEST_DELETE = getDouble("p-test-delete");
   public static final double P_STMT_INSERT = getDouble("p-statement-insert");
+  public static final double P_CONSTANT_POOL = getDouble("p-constant-pool");
   public static final double P_CHANGE_PARAMETER = getDouble("p-change-parameter");
   public static final double P_CROSSOVER = getDouble("p-crossover");
   public static final double P_RANDOM_PERTURBATION = getDouble("p-random-perturbation");

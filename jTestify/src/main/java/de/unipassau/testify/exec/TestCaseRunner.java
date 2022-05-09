@@ -38,11 +38,14 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
   private final Path coverageDir;
   private final Path instrumenter;
 
+  private final String features;
+
   public TestCaseRunner(CLI cli, String executionRoot) {
     this.coverageDir = Paths.get(executionRoot, "coverage");
     this.logPath = Paths.get(cli.getCrateRoot(), "tests.log");
     this.errorPath = Paths.get(cli.getCrateRoot(), "tests.error");
     this.instrumenter = Paths.get(cli.getInstrumenterPath());
+    this.features = cli.features();
   }
 
   private void clear() {
@@ -52,10 +55,10 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
 
   private int collectCoverageFiles(File directory) throws IOException, InterruptedException {
     var processBuilder = new ProcessBuilder("cargo", Constants.RUST_TOOLCHAIN, "test",
-        Constants.TEST_MOD_NAME).directory(directory).redirectOutput(logPath.toFile())
+        Constants.TEST_MOD_NAME, "--features", features).directory(directory).redirectOutput(logPath.toFile())
         .redirectError(errorPath.toFile());
     var env = processBuilder.environment();
-    env.put("RUSTFLAGS", "-Z instrument-coverage");
+    env.put("RUSTFLAGS", "-C instrument-coverage");
 
     var profRawFileName = String.format("%s-%%m.profraw", Constants.TEST_PREFIX.replace("_", "-"));
     env.put("LLVM_PROFILE_FILE", Paths.get(coverageDir.toString(), profRawFileName).toString());
@@ -157,7 +160,7 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
     var timer = new Timer();
     timer.start();
     var processBuilder = new ProcessBuilder("cargo", Constants.RUST_TOOLCHAIN, "test",
-        Constants.TEST_MOD_NAME)
+        Constants.TEST_MOD_NAME, "--features", features)
         .directory(directory)
         .redirectError(errorPath.toFile());
 

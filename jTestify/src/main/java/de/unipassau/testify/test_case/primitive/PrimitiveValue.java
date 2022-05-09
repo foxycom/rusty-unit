@@ -1,8 +1,11 @@
 package de.unipassau.testify.test_case.primitive;
 
-import de.unipassau.testify.test_case.type.Type;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import de.unipassau.testify.json.ConstantDeserializer;
 import de.unipassau.testify.test_case.type.prim.Prim;
+import java.math.BigInteger;
 
+@JsonDeserialize(using = ConstantDeserializer.class)
 public interface PrimitiveValue<T> {
 
   default boolean isChar() {

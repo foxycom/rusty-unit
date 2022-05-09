@@ -1,21 +1,22 @@
 package de.unipassau.testify.test_case.primitive;
 
 import de.unipassau.testify.Constants;
-import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.prim.Float;
 import de.unipassau.testify.test_case.type.prim.Prim;
 import de.unipassau.testify.util.Rnd;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.util.Locale;
+import java.util.Objects;
 
-public class FloatValue implements PrimitiveValue<Double> {
+public class FloatValue implements PrimitiveValue<BigDecimal> {
 
     private final Float type;
-    private double value;
+    private BigDecimal value;
 
-    public FloatValue(double value, Float type) {
-        if (value < type.minValue() || value > type.maxValue()) {
+    public FloatValue(BigDecimal value, Float type) {
+        if (value.compareTo(type.minValue()) < 0 || value.compareTo(type.maxValue()) > 0) {
             throw new RuntimeException(
                   String.format("Out of bounds (%f, %f): %f", type.minValue(), type.maxValue(),
                         value));
@@ -30,14 +31,14 @@ public class FloatValue implements PrimitiveValue<Double> {
         this.value = other.value;
     }
 
-    public PrimitiveValue<Double> negate() {
+    public PrimitiveValue<BigDecimal> negate() {
         var copy = new FloatValue(this);
-        copy.value = -value;
+        copy.value = copy.value.negate();
         return copy;
     }
 
     @Override
-    public Double get() {
+    public BigDecimal get() {
         return value;
     }
 
@@ -47,13 +48,14 @@ public class FloatValue implements PrimitiveValue<Double> {
     }
 
     @Override
-    public PrimitiveValue<Double> delta() {
+    public PrimitiveValue<BigDecimal> delta() {
         var p = Rnd.get().nextDouble();
         if (p < 1d / 3d) {
-            var newValue = value + Rnd.get().nextGaussian() * Constants.MAX_DELTA;
+            var newValue = value.add(
+                BigDecimal.valueOf(Rnd.get().nextGaussian() * Constants.MAX_DELTA));
             return new FloatValue(newValue, type);
         } else if (p < 2d / 3d) {
-            var newValue = value + Rnd.get().nextGaussian();
+            var newValue = value.add(BigDecimal.valueOf(Rnd.get().nextGaussian()));
             return new FloatValue(newValue, type);
         } else {
             int precision = Rnd.get().nextInt(15);
@@ -61,9 +63,9 @@ public class FloatValue implements PrimitiveValue<Double> {
         }
     }
 
-    public PrimitiveValue<Double> chopPrecision(int precision) {
-        var bd = new BigDecimal(value).setScale(precision, RoundingMode.HALF_EVEN);
-        return new FloatValue(bd.doubleValue(), type);
+    public PrimitiveValue<BigDecimal> chopPrecision(int precision) {
+        var bd = value.setScale(precision, RoundingMode.HALF_EVEN);
+        return new FloatValue(bd, type);
     }
 
     @Override
@@ -84,5 +86,22 @@ public class FloatValue implements PrimitiveValue<Double> {
     @Override
     public String toString() {
         return String.format(Locale.US, "%f%s", value, type.getName());
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof FloatValue)) {
+            return false;
+        }
+        FloatValue that = (FloatValue) o;
+        return type.equals(that.type) && value.equals(that.value);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(type, value);
     }
 }

@@ -544,6 +544,31 @@ impl From<PrimTy> for T {
   }
 }
 
+impl From<String> for T {
+  fn from(s: String) -> Self {
+    let ty = match s.as_str() {
+      "i8" => PrimT::Int(IntT::I8),
+      "i16" => PrimT::Int(IntT::I16),
+      "i32" => PrimT::Int(IntT::I32),
+      "i64" => PrimT::Int(IntT::I64),
+      "i128" => PrimT::Int(IntT::I128),
+      "isize" => PrimT::Int(IntT::Isize),
+      "u8" => PrimT::Uint(UintT::U8),
+      "u16" => PrimT::Uint(UintT::U16),
+      "u32" => PrimT::Uint(UintT::U32),
+      "u64" => PrimT::Uint(UintT::U64),
+      "u128" => PrimT::Uint(UintT::U128),
+      "usize" => PrimT::Uint(UintT::Usize),
+      "f32" => PrimT::Float(FloatT::F32),
+      "f64" => PrimT::Float(FloatT::F64),
+      "bool" => PrimT::Bool,
+      _ => todo!("{}", s)
+    };
+
+    T::Prim(ty)
+  }
+}
+
 impl T {
   pub fn name(&self) -> String {
     match self {
@@ -1211,5 +1236,17 @@ impl FloatT {
       FloatT::F32 => "f32",
       FloatT::F64 => "f64",
     }
+  }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConstVal {
+  val: String,
+  ty: T
+}
+
+impl ConstVal {
+  pub fn new(val: String, ty: T) -> Self {
+    Self { val, ty }
   }
 }

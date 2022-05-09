@@ -99,6 +99,8 @@ public interface Prim extends Type {
     return this;
   }
 
+  PrimitiveValue<?> from(String value);
+
   PrimitiveValue<?> random();
 
   static List<Prim> implementorsOf(Trait trait) {

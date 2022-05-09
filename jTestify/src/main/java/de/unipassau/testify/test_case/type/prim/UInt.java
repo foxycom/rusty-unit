@@ -1,7 +1,10 @@
 package de.unipassau.testify.test_case.type.prim;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.google.common.base.Preconditions;
 import de.unipassau.testify.Constants;
+import de.unipassau.testify.mir.MirAnalysis;
+import de.unipassau.testify.test_case.primitive.IntValue;
 import de.unipassau.testify.test_case.primitive.PrimitiveValue;
 import de.unipassau.testify.test_case.primitive.UIntValue;
 import de.unipassau.testify.test_case.type.traits.Trait;
@@ -14,10 +17,24 @@ import de.unipassau.testify.test_case.type.traits.std.default_.Default;
 import de.unipassau.testify.test_case.type.traits.std.hash.Hash;
 import de.unipassau.testify.test_case.type.traits.std.marker.Copy;
 import de.unipassau.testify.util.Rnd;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @JsonDeserialize(as = UInt.class)
 public interface UInt extends Prim {
+
+  @Override
+  default PrimitiveValue<?> from(String value) {
+    var val = new BigInteger(value);
+    if (val.compareTo(minValue()) < 0) {
+      val = minValue();
+    } else if (val.compareTo(maxValue()) > 0) {
+      val = maxValue();
+    }
+    return new UIntValue(val, this);
+  }
 
   Set<Trait> implementedTraits = Set.of(
       Copy.getInstance(),
@@ -32,10 +49,10 @@ public interface UInt extends Prim {
 
   int bits();
 
-  long maxValue();
+  BigInteger maxValue();
 
-  default long minValue() {
-    return 0;
+  default BigInteger minValue() {
+    return new BigInteger("0");
   }
 
   @Override
@@ -44,9 +61,16 @@ public interface UInt extends Prim {
   }
 
   @Override
-  default PrimitiveValue<Long> random() {
-    // TODO get contsant pool
-    var value = (long) (Rnd.get().nextDouble() * Constants.MAX_INT);
+  default PrimitiveValue<BigInteger> random() {
+    if (Rnd.get().nextDouble() < Constants.P_CONSTANT_POOL) {
+      var possibleConstants = MirAnalysis.constantPool().stream().filter(c -> c.type().equals(this))
+          .map(c -> (PrimitiveValue<BigInteger>) c).collect(Collectors.toSet());
+      if (possibleConstants.size() >= 2) {
+        return Rnd.choice(possibleConstants);
+      }
+    }
+
+    var value = BigInteger.valueOf((long) (Rnd.get().nextDouble() * Constants.MAX_INT));
     return new UIntValue(value, this);
   }
 
@@ -90,8 +114,8 @@ public interface UInt extends Prim {
     }
 
     @Override
-    public long maxValue() {
-      return Byte.MAX_VALUE;
+    public BigInteger maxValue() {
+      return BigInteger.valueOf(Byte.MAX_VALUE);
     }
   }
 
@@ -130,8 +154,8 @@ public interface UInt extends Prim {
     }
 
     @Override
-    public long maxValue() {
-      return Short.MAX_VALUE;
+    public BigInteger maxValue() {
+      return BigInteger.valueOf(Short.MAX_VALUE);
     }
   }
 
@@ -170,8 +194,8 @@ public interface UInt extends Prim {
     }
 
     @Override
-    public long maxValue() {
-      return Integer.MAX_VALUE;
+    public BigInteger maxValue() {
+      return BigInteger.valueOf(Integer.MAX_VALUE);
     }
   }
 
@@ -210,8 +234,8 @@ public interface UInt extends Prim {
     }
 
     @Override
-    public long maxValue() {
-      return Long.MAX_VALUE;
+    public BigInteger maxValue() {
+      return BigInteger.valueOf(Long.MAX_VALUE);
     }
   }
 
@@ -250,8 +274,8 @@ public interface UInt extends Prim {
     }
 
     @Override
-    public long maxValue() {
-      return Long.MAX_VALUE;
+    public BigInteger maxValue() {
+      return BigInteger.valueOf(Long.MAX_VALUE);
     }
   }
 
@@ -290,8 +314,8 @@ public interface UInt extends Prim {
     }
 
     @Override
-    public long maxValue() {
-      return Long.MAX_VALUE;
+    public BigInteger maxValue() {
+      return BigInteger.valueOf(Long.MAX_VALUE);
     }
   }
 }

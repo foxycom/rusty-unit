@@ -1,33 +1,33 @@
 package de.unipassau.testify.test_case.primitive;
 
 import de.unipassau.testify.Constants;
-import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.prim.Prim;
-import de.unipassau.testify.test_case.type.prim.Str;
 import de.unipassau.testify.test_case.type.prim.UInt;
 import de.unipassau.testify.util.Rnd;
+import java.math.BigInteger;
+import java.util.Objects;
 
-public class UIntValue implements PrimitiveValue<Long> {
+public class UIntValue implements PrimitiveValue<BigInteger> {
   private final UInt type;
-  private long value;
+  private BigInteger value;
 
-  public UIntValue(long value, UInt type) {
-    if (value < type.minValue()) {
-      value = (-value) % type.maxValue();
-    } else if (value > type.maxValue()) {
-      value = value % type.maxValue();
+  public UIntValue(BigInteger value, UInt type) {
+    if (value.compareTo(type.minValue()) < 0) {
+      value = value.negate().mod(type.maxValue());
+    } else if (value.compareTo(type.maxValue()) > 0) {
+      value = value.mod(type.maxValue());
     }
 
     this.type = type;
     this.value = value;
   }
 
-  public PrimitiveValue<Long> negate() {
+  public PrimitiveValue<BigInteger> negate() {
     throw new RuntimeException("Not with me");
   }
 
   @Override
-  public Long get() {
+  public BigInteger get() {
     return value;
   }
 
@@ -37,9 +37,9 @@ public class UIntValue implements PrimitiveValue<Long> {
   }
 
   @Override
-  public PrimitiveValue<Long> delta() {
+  public PrimitiveValue<BigInteger> delta() {
     // TODO use constants from source code
-    var newValue = (long) (Rnd.get().nextGaussian() * Constants.MAX_DELTA);
+    var newValue = BigInteger.valueOf((long) (Rnd.get().nextGaussian() * Constants.MAX_DELTA));
     return new UIntValue(newValue, type);
   }
 
@@ -61,5 +61,22 @@ public class UIntValue implements PrimitiveValue<Long> {
   @Override
   public String toString() {
     return String.format("%d%s", value, type.getName());
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof UIntValue)) {
+      return false;
+    }
+    UIntValue uIntValue = (UIntValue) o;
+    return type.equals(uIntValue.type) && value.equals(uIntValue.value);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(type, value);
   }
 }

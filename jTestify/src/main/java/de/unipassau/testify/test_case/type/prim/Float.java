@@ -1,8 +1,11 @@
 package de.unipassau.testify.test_case.type.prim;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.google.common.base.Preconditions;
 import de.unipassau.testify.Constants;
+import de.unipassau.testify.mir.MirAnalysis;
 import de.unipassau.testify.test_case.primitive.FloatValue;
+import de.unipassau.testify.test_case.primitive.IntValue;
 import de.unipassau.testify.test_case.primitive.PrimitiveValue;
 import de.unipassau.testify.test_case.type.traits.Trait;
 import de.unipassau.testify.test_case.type.traits.std.clone.Clone;
@@ -14,10 +17,20 @@ import de.unipassau.testify.test_case.type.traits.std.default_.Default;
 import de.unipassau.testify.test_case.type.traits.std.hash.Hash;
 import de.unipassau.testify.test_case.type.traits.std.marker.Copy;
 import de.unipassau.testify.util.Rnd;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @JsonDeserialize(as = Float.class)
 public interface Float extends Prim {
+
+  @Override
+  default PrimitiveValue<?> from(String value) {
+    var val = new BigDecimal(value);
+    Preconditions.checkState(val.compareTo(minValue()) >= 0 && val.compareTo(maxValue()) <= 0);
+    return new FloatValue(val, this);
+  }
 
   Set<Trait> implementedTraits = Set.of(
       Copy.getInstance(),
@@ -32,9 +45,9 @@ public interface Float extends Prim {
 
   int bits();
 
-  double maxValue();
+  BigDecimal maxValue();
 
-  double minValue();
+  BigDecimal minValue();
 
   @Override
   default Set<Trait> implementedTraits() {
@@ -43,8 +56,15 @@ public interface Float extends Prim {
 
   @Override
   default PrimitiveValue<?> random() {
-    // TODO take value from constant pool
-    var newValue = Rnd.get().nextGaussian() * Constants.MAX_INT;
+    if (Rnd.get().nextDouble() < Constants.P_CONSTANT_POOL) {
+      var possibleConstants = MirAnalysis.constantPool().stream().filter(c -> c.type().equals(this))
+          .map(c -> (PrimitiveValue<BigDecimal>) c).collect(Collectors.toSet());
+      if (possibleConstants.size() >= 2) {
+        return Rnd.choice(possibleConstants);
+      }
+    }
+
+    var newValue = new BigDecimal(Rnd.get().nextGaussian() * Constants.MAX_INT);
     return new FloatValue(newValue, this);
   }
 
@@ -88,13 +108,13 @@ public interface Float extends Prim {
     }
 
     @Override
-    public double maxValue() {
-      return java.lang.Float.MAX_VALUE;
+    public BigDecimal maxValue() {
+      return BigDecimal.valueOf(java.lang.Float.MAX_VALUE);
     }
 
     @Override
-    public double minValue() {
-      return -java.lang.Float.MAX_VALUE;
+    public BigDecimal minValue() {
+      return BigDecimal.valueOf(-java.lang.Float.MAX_VALUE);
     }
   }
 
@@ -134,13 +154,13 @@ public interface Float extends Prim {
     }
 
     @Override
-    public double maxValue() {
-      return Double.MAX_VALUE;
+    public BigDecimal maxValue() {
+      return BigDecimal.valueOf(Double.MAX_VALUE);
     }
 
     @Override
-    public double minValue() {
-      return -Double.MAX_VALUE;
+    public BigDecimal minValue() {
+      return BigDecimal.valueOf(-Double.MAX_VALUE);
     }
   }
 }

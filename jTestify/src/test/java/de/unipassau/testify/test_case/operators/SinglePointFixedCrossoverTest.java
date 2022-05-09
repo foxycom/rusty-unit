@@ -25,6 +25,7 @@ import de.unipassau.testify.test_case.type.Ref;
 import de.unipassau.testify.test_case.type.prim.UInt.USize;
 import de.unipassau.testify.test_case.visitor.CrossoverDebugVisitor;
 import de.unipassau.testify.test_case.visitor.TestCaseVisitor;
+import java.math.BigInteger;
 import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,7 +64,7 @@ class SinglePointFixedCrossoverTest {
    */
   List<Statement> getStatementsA(TestCase testCase) {
     var age = new VarReference(testCase, USize.INSTANCE);
-    var ageStmt = new PrimitiveStmt(testCase, age, new UIntValue(34, USize.INSTANCE));
+    var ageStmt = new PrimitiveStmt(testCase, age, new UIntValue(BigInteger.valueOf(34), USize.INSTANCE));
 
     var addressType = new AbstractStruct("Address", Collections.emptyList(), true);
     var addressVar = new VarReference(testCase, addressType);
@@ -73,7 +74,7 @@ class SinglePointFixedCrossoverTest {
         addressConstructor);
 
     var phone = new VarReference(testCase, USize.INSTANCE);
-    var phoneStmt = new PrimitiveStmt(testCase, phone, new UIntValue(1234566, USize.INSTANCE));
+    var phoneStmt = new PrimitiveStmt(testCase, phone, new UIntValue(BigInteger.valueOf(1234566), USize.INSTANCE));
 
     var personType = new AbstractStruct("Person",
         Collections.emptyList(),
@@ -111,7 +112,7 @@ class SinglePointFixedCrossoverTest {
     var vecRefStmt = new RefStmt(testCase, vec, vecRef, RefItem.MUTABLE);
 
     var grade = new VarReference(testCase, USize.INSTANCE);
-    var gradeStmt = new PrimitiveStmt(testCase, grade, new UIntValue(45, USize.INSTANCE));
+    var gradeStmt = new PrimitiveStmt(testCase, grade, new UIntValue(BigInteger.valueOf(45), USize.INSTANCE));
 
     var pushMethod = new Method("push", Collections.emptyList(),
         List.of(new Param(new Ref(vecType, true), false, null),

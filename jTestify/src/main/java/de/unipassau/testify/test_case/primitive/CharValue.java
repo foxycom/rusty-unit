@@ -1,11 +1,11 @@
 package de.unipassau.testify.test_case.primitive;
 
 import de.unipassau.testify.Constants;
-import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.prim.Char;
 import de.unipassau.testify.test_case.type.prim.Prim;
-import de.unipassau.testify.test_case.type.prim.Str;
 import de.unipassau.testify.util.Rnd;
+import java.math.BigInteger;
+import java.util.Objects;
 
 public class CharValue implements PrimitiveValue<Character> {
   private final Prim type = Char.INSTANCE;
@@ -49,5 +49,22 @@ public class CharValue implements PrimitiveValue<Character> {
   @Override
   public String toString() {
     return String.format("'%s'", value);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof CharValue)) {
+      return false;
+    }
+    CharValue charValue = (CharValue) o;
+    return value == charValue.value && type.equals(charValue.type);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(type, value);
   }
 }

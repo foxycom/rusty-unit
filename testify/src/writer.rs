@@ -4,7 +4,7 @@ use std::io::Write;
 use std::path::{PathBuf, Path};
 use crate::{HIR_LOG_PATH, INSTRUMENTED_MIR_LOG_NAME, LOG_DIR, LOG_EXT, MIR_LOG_NAME, RuConfig};
 use serde::Serialize;
-use crate::types::{Callable, Trait};
+use crate::types::{Callable, ConstVal, Trait};
 
 #[derive(Builder, Serialize)]
 pub struct MirObject {
@@ -14,9 +14,14 @@ pub struct MirObject {
   #[cfg(feature = "analysis")]
   cdg_dot: String,
   #[cfg(feature = "analysis")]
+  #[builder(default)]
   cfg: String,
+  #[builder(default)]
   #[cfg(feature = "analysis")]
   truncated_cfg: String,
+  #[builder(default)]
+  #[cfg(feature = "analysis")]
+  constant_pool: Vec<ConstVal>,
   locals: Vec<String>,
   basic_blocks: Vec<String>,
 }
@@ -25,7 +30,7 @@ pub struct MirObject {
 pub struct HirObject {
   callables: Vec<Callable>,
   // Types that implement traits
-  impls: std::collections::HashMap<String, Vec<String>>
+  impls: HashMap<String, Vec<String>>
 }
 
 #[cfg(feature = "analysis")]

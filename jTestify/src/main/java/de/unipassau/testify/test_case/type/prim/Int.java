@@ -1,7 +1,9 @@
 package de.unipassau.testify.test_case.type.prim;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.google.common.base.Preconditions;
 import de.unipassau.testify.Constants;
+import de.unipassau.testify.mir.MirAnalysis;
 import de.unipassau.testify.test_case.primitive.PrimitiveValue;
 import de.unipassau.testify.test_case.primitive.IntValue;
 import de.unipassau.testify.test_case.type.traits.Trait;
@@ -14,7 +16,9 @@ import de.unipassau.testify.test_case.type.traits.std.default_.Default;
 import de.unipassau.testify.test_case.type.traits.std.hash.Hash;
 import de.unipassau.testify.test_case.type.traits.std.marker.Copy;
 import de.unipassau.testify.util.Rnd;
+import java.math.BigInteger;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @JsonDeserialize(as = Int.class)
 public interface Int extends Prim {
@@ -30,11 +34,23 @@ public interface Int extends Prim {
       Default.getInstance()
   );
 
+  @Override
+  default PrimitiveValue<?> from(String value) {
+    var val = new BigInteger(value);
+
+    if (val.compareTo(minValue()) < 0) {
+      val = minValue();
+    } else if (val.compareTo(maxValue()) > 0) {
+      val = maxValue();
+    }
+    return new IntValue(val, this);
+  }
+
   int bits();
 
-  long maxValue();
+  BigInteger maxValue();
 
-  long minValue();
+  BigInteger minValue();
 
   @Override
   default Set<Trait> implementedTraits() {
@@ -43,7 +59,15 @@ public interface Int extends Prim {
 
   @Override
   default PrimitiveValue<?> random() {
-    var newValue = (long) (Rnd.get().nextGaussian() * Constants.MAX_INT);
+    if (Rnd.get().nextDouble() < Constants.P_CONSTANT_POOL) {
+      var possibleConstants = MirAnalysis.constantPool().stream().filter(c -> c.type().equals(this))
+          .map(c -> (PrimitiveValue<BigInteger>) c).collect(Collectors.toSet());
+      if (possibleConstants.size() >= 2) {
+        return Rnd.choice(possibleConstants);
+      }
+    }
+
+    var newValue = BigInteger.valueOf((long) (Rnd.get().nextGaussian() * Constants.MAX_INT));
     return new IntValue(newValue, this);
   }
 
@@ -87,13 +111,13 @@ public interface Int extends Prim {
     }
 
     @Override
-    public long maxValue() {
-      return Byte.MAX_VALUE;
+    public BigInteger maxValue() {
+      return BigInteger.valueOf(Byte.MAX_VALUE);
     }
 
     @Override
-    public long minValue() {
-      return Byte.MIN_VALUE;
+    public BigInteger minValue() {
+      return BigInteger.valueOf(Byte.MIN_VALUE);
     }
   }
 
@@ -132,13 +156,13 @@ public interface Int extends Prim {
     }
 
     @Override
-    public long maxValue() {
-      return Short.MAX_VALUE;
+    public BigInteger maxValue() {
+      return BigInteger.valueOf(Short.MAX_VALUE);
     }
 
     @Override
-    public long minValue() {
-      return Short.MIN_VALUE;
+    public BigInteger minValue() {
+      return BigInteger.valueOf(Short.MIN_VALUE);
     }
   }
 
@@ -177,13 +201,13 @@ public interface Int extends Prim {
     }
 
     @Override
-    public long maxValue() {
-      return Integer.MAX_VALUE;
+    public BigInteger maxValue() {
+      return BigInteger.valueOf(Integer.MAX_VALUE);
     }
 
     @Override
-    public long minValue() {
-      return Integer.MIN_VALUE;
+    public BigInteger minValue() {
+      return BigInteger.valueOf(Integer.MIN_VALUE);
     }
   }
 
@@ -222,13 +246,13 @@ public interface Int extends Prim {
     }
 
     @Override
-    public long maxValue() {
-      return Long.MAX_VALUE;
+    public BigInteger maxValue() {
+      return BigInteger.valueOf(Long.MAX_VALUE);
     }
 
     @Override
-    public long minValue() {
-      return Long.MIN_VALUE;
+    public BigInteger minValue() {
+      return BigInteger.valueOf(Long.MIN_VALUE);
     }
   }
 
@@ -267,13 +291,13 @@ public interface Int extends Prim {
     }
 
     @Override
-    public long maxValue() {
-      return Long.MAX_VALUE;
+    public BigInteger maxValue() {
+      return BigInteger.valueOf(Long.MAX_VALUE);
     }
 
     @Override
-    public long minValue() {
-      return Long.MIN_VALUE;
+    public BigInteger minValue() {
+      return BigInteger.valueOf(Long.MIN_VALUE);
     }
   }
 
@@ -312,13 +336,13 @@ public interface Int extends Prim {
     }
 
     @Override
-    public long maxValue() {
-      return Long.MAX_VALUE;
+    public BigInteger maxValue() {
+      return BigInteger.valueOf(Long.MAX_VALUE);
     }
 
     @Override
-    public long minValue() {
-      return Long.MIN_VALUE;
+    public BigInteger minValue() {
+      return BigInteger.valueOf(Long.MIN_VALUE);
     }
   }
 }

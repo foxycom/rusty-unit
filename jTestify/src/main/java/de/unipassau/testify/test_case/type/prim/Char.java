@@ -28,6 +28,11 @@ public enum Char implements Prim {
   }
 
   @Override
+  public PrimitiveValue<?> from(String value) {
+    throw new RuntimeException("from is not implemented");
+  }
+
+  @Override
   public void setName(String name) {
 
   }

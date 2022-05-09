@@ -54,6 +54,15 @@ public enum Bool implements Prim {
   }
 
   @Override
+  public PrimitiveValue<?> from(String value) {
+    if (value.equals("0")) {
+      return new BoolValue(false);
+    } else {
+      return new BoolValue(true);
+    }
+  }
+
+  @Override
   public PrimitiveValue<?> random() {
     var r = Rnd.get().nextDouble();
     if (r < 0.5) {

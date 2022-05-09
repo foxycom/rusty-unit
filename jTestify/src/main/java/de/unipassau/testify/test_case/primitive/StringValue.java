@@ -1,12 +1,12 @@
 package de.unipassau.testify.test_case.primitive;
 
 import de.unipassau.testify.Constants;
-import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.prim.Prim;
 import de.unipassau.testify.test_case.type.prim.Str;
 import de.unipassau.testify.util.Rnd;
+import java.math.BigInteger;
+import java.util.Objects;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.commons.text.RandomStringGenerator;
 
 public class StringValue implements PrimitiveValue<String> {
 
@@ -78,5 +78,22 @@ public class StringValue implements PrimitiveValue<String> {
   @Override
   public String toString() {
     return String.format("\"%s\"", value);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof StringValue)) {
+      return false;
+    }
+    StringValue that = (StringValue) o;
+    return type.equals(that.type) && value.equals(that.value);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(type, value);
   }
 }

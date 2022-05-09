@@ -8,6 +8,7 @@ import de.unipassau.testify.metaheuristics.chromosome.ChromosomeGenerator;
 import de.unipassau.testify.metaheuristics.operators.Crossover;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
 import de.unipassau.testify.mir.MirAnalysis;
+import de.unipassau.testify.util.Rnd;
 
 public class SeededTestCaseGenerator implements ChromosomeGenerator<TestCase> {
 

@@ -57,7 +57,7 @@ public class TestsGenerator {
     var selection = new RankSelection<>(objectives, svd, preferenceSorter);
 
     ChromosomeGenerator<TestCase> chromosomeGenerator;
-    if (cli.seedMethods()) {
+    if (cli.seed()) {
       chromosomeGenerator = new SeededTestCaseGenerator(hir, mir, mutation, crossover,
           callableSelector);
     } else {
@@ -108,7 +108,7 @@ public class TestsGenerator {
     var crossover = new SinglePointFixedCrossover();
     var selection = new RankSelection<>(objectives, svd, preferenceSorter);
     ChromosomeGenerator<TestCase> chromosomeGenerator;
-    if (cli.seedMethods()) {
+    if (cli.seed()) {
       chromosomeGenerator = new SeededTestCaseGenerator(hir, mir, mutation, crossover, callableSelector);
     } else {
       chromosomeGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover, callableSelector);

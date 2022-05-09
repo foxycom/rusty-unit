@@ -2,6 +2,8 @@ package de.unipassau.testify.test_case.primitive;
 
 import de.unipassau.testify.test_case.type.prim.Bool;
 import de.unipassau.testify.test_case.type.prim.Prim;
+import java.math.BigInteger;
+import java.util.Objects;
 
 public class BoolValue implements PrimitiveValue<Boolean> {
   private final Prim type = Bool.INSTANCE;
@@ -45,5 +47,22 @@ public class BoolValue implements PrimitiveValue<Boolean> {
   @Override
   public String toString() {
     return String.format("%s", value);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof BoolValue)) {
+      return false;
+    }
+    BoolValue boolValue = (BoolValue) o;
+    return value == boolValue.value && type.equals(boolValue.type);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(type, value);
   }
 }
