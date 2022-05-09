@@ -1,11 +1,61 @@
 Crate,Algorithm,Coverage
-gamie,Random Search,0.67
-gamie,Random Search,0.65
-gamie,Random Search,0.72
+gamie,Random Search,0.53
+gamie,Random Search,0.55
+gamie,Random Search,0.61
+gamie,Random Search,0.6
+gamie,Random Search,0.62
+gamie,Random Search,0.53
+gamie,Random Search,0.58
 gamie,Random Search,0.63
+gamie,Random Search,0.54
+gamie,Random Search,0.6
 gamie,Random Search,0.65
+gamie,Random Search,0.59
+gamie,Random Search,0.61
+gamie,Random Search,0.62
+gamie,Random Search,0.64
+gamie,Random Search,0.54
+gamie,Random Search,0.57
+gamie,Random Search,0.61
+gamie,Random Search,0.62
+gamie,Random Search,0.6
+gamie,Random Search,0.53
+gamie,Random Search,0.64
+gamie,Random Search,0.62
+gamie,Random Search,0.52
+gamie,Random Search,0.62
+gamie,Random Search,0.59
+gamie,Random Search,0.62
+gamie,Random Search,0.52
+gamie,Random Search,0.62
+gamie,Random Search,0.54
+gamie,DynaMOSA,0.49
+gamie,DynaMOSA,0.52
+gamie,DynaMOSA,0.5
+gamie,DynaMOSA,0.44
+gamie,DynaMOSA,0.49
 gamie,DynaMOSA,0.55
-gamie,DynaMOSA,0.58
-gamie,DynaMOSA,0.62
+gamie,DynaMOSA,0.48
+gamie,DynaMOSA,0.48
+gamie,DynaMOSA,0.55
+gamie,DynaMOSA,0.49
+gamie,DynaMOSA,0.5
+gamie,DynaMOSA,0.51
+gamie,DynaMOSA,0.44
+gamie,DynaMOSA,0.46
 gamie,DynaMOSA,0.53
-gamie,DynaMOSA,0.50
+gamie,DynaMOSA,0.49
+gamie,DynaMOSA,0.48
+gamie,DynaMOSA,0.45
+gamie,DynaMOSA,0.52
+gamie,DynaMOSA,0.49
+gamie,DynaMOSA,0.53
+gamie,DynaMOSA,0.54
+gamie,DynaMOSA,0.46
+gamie,DynaMOSA,0.51
+gamie,DynaMOSA,0.44
+gamie,DynaMOSA,0.48
+gamie,DynaMOSA,0.49
+gamie,DynaMOSA,0.49
+gamie,DynaMOSA,0.5
+gamie,DynaMOSA,0.53

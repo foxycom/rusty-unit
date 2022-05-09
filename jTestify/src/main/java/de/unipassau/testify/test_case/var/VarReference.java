@@ -76,11 +76,6 @@ public class VarReference {
   }
 
   public boolean isConsumableAt(int pos) {
-    if (type.isPrim()) {
-      // TODO: 27.12.21 strings??
-      return true;
-    }
-
     if (isConsumed()) {
       return false;
     }

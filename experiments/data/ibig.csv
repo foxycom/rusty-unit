@@ -1,61 +1,61 @@
 Crate,Algorithm,Coverage
-ibig,Random Search,0.65
-ibig,Random Search,0.52
-ibig,Random Search,0.59
-ibig,Random Search,0.56
-ibig,Random Search,0.51
-ibig,Random Search,0.41
+ibig,Random Search,0.42
+ibig,Random Search,0.35
+ibig,Random Search,0.42
+ibig,Random Search,0.4
+ibig,Random Search,0.35
 ibig,Random Search,0.43
+ibig,Random Search,0.44
+ibig,Random Search,0.44
+ibig,Random Search,0.4
+ibig,Random Search,0.43
+ibig,Random Search,0.38
 ibig,Random Search,0.45
-ibig,Random Search,0.65
-ibig,Random Search,0.65
-ibig,Random Search,0.62
-ibig,Random Search,0.62
-ibig,Random Search,0.47
-ibig,Random Search,0.64
-ibig,Random Search,0.52
-ibig,Random Search,0.51
-ibig,Random Search,0.61
-ibig,Random Search,0.43
-ibig,Random Search,0.42
-ibig,Random Search,0.43
+ibig,Random Search,0.45
+ibig,Random Search,0.39
+ibig,Random Search,0.4
+ibig,Random Search,0.45
+ibig,Random Search,0.44
+ibig,Random Search,0.35
+ibig,Random Search,0.38
+ibig,Random Search,0.44
+ibig,Random Search,0.37
 ibig,Random Search,0.41
-ibig,Random Search,0.42
-ibig,Random Search,0.56
-ibig,Random Search,0.59
-ibig,Random Search,0.57
-ibig,Random Search,0.65
-ibig,Random Search,0.57
-ibig,Random Search,0.5
-ibig,Random Search,0.58
-ibig,Random Search,0.57
-ibig,DynaMOSA,0.54
-ibig,DynaMOSA,0.49
-ibig,DynaMOSA,0.68
-ibig,DynaMOSA,0.68
-ibig,DynaMOSA,0.61
-ibig,DynaMOSA,0.6
-ibig,DynaMOSA,0.68
-ibig,DynaMOSA,0.62
-ibig,DynaMOSA,0.66
-ibig,DynaMOSA,0.54
-ibig,DynaMOSA,0.62
-ibig,DynaMOSA,0.57
-ibig,DynaMOSA,0.59
-ibig,DynaMOSA,0.66
-ibig,DynaMOSA,0.57
-ibig,DynaMOSA,0.69
-ibig,DynaMOSA,0.54
-ibig,DynaMOSA,0.65
-ibig,DynaMOSA,0.54
-ibig,DynaMOSA,0.7
-ibig,DynaMOSA,0.52
-ibig,DynaMOSA,0.56
-ibig,DynaMOSA,0.47
-ibig,DynaMOSA,0.55
-ibig,DynaMOSA,0.65
-ibig,DynaMOSA,0.48
-ibig,DynaMOSA,0.47
-ibig,DynaMOSA,0.47
-ibig,DynaMOSA,0.63
-ibig,DynaMOSA,0.66
+ibig,Random Search,0.41
+ibig,Random Search,0.37
+ibig,Random Search,0.39
+ibig,Random Search,0.37
+ibig,Random Search,0.41
+ibig,Random Search,0.44
+ibig,Random Search,0.43
+ibig,Random Search,0.4
+ibig,DynaMOSA,0.41
+ibig,DynaMOSA,0.44
+ibig,DynaMOSA,0.45
+ibig,DynaMOSA,0.44
+ibig,DynaMOSA,0.43
+ibig,DynaMOSA,0.4
+ibig,DynaMOSA,0.46
+ibig,DynaMOSA,0.44
+ibig,DynaMOSA,0.41
+ibig,DynaMOSA,0.46
+ibig,DynaMOSA,0.41
+ibig,DynaMOSA,0.38
+ibig,DynaMOSA,0.4
+ibig,DynaMOSA,0.44
+ibig,DynaMOSA,0.45
+ibig,DynaMOSA,0.45
+ibig,DynaMOSA,0.38
+ibig,DynaMOSA,0.41
+ibig,DynaMOSA,0.39
+ibig,DynaMOSA,0.43
+ibig,DynaMOSA,0.42
+ibig,DynaMOSA,0.44
+ibig,DynaMOSA,0.4
+ibig,DynaMOSA,0.4
+ibig,DynaMOSA,0.39
+ibig,DynaMOSA,0.42
+ibig,DynaMOSA,0.4
+ibig,DynaMOSA,0.38
+ibig,DynaMOSA,0.38
+ibig,DynaMOSA,0.42

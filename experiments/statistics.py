@@ -21,7 +21,18 @@ df = get_data()
 rs = df[df["Algorithm"] == "Random Search"]
 dynamosa = df[df["Algorithm"] == "DynaMOSA"]
 
+a12_sum = 0
 for crate in rs["Crate"].unique():
     rs_values = rs[rs["Crate"] == crate]["Coverage"]
     dynamosa_values = dynamosa[dynamosa["Crate"] == crate]["Coverage"]
+    mw = mannwhitneyu(dynamosa_values, rs_values)
+    a12_sum += a12(dynamosa_values, rs_values)
+
     print(f"{crate}: DynaMOSA is better in {a12(dynamosa_values, rs_values) * 100}% of cases")
+    print(f"MWU Test p-value = {mw.pvalue} => {'Reject H0' if mw.pvalue < 0.05 else 'Accept H0'}")
+    print(f"RS average: {rs_values.mean()}")
+    print(f"RustyUnit average: {dynamosa_values.mean()}\n")
+
+print(f"RS average: {rs['Coverage'].mean()}")
+print(f"RustyUnit average: {dynamosa['Coverage'].mean()}")
+print(f"A12 average: {a12_sum / 10}")

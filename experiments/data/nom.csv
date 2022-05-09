@@ -1,61 +1,61 @@
 Crate,Algorithm,Coverage
-nom,Random Search,0.45
-nom,Random Search,0.4
-nom,Random Search,0.57
-nom,Random Search,0.49
-nom,Random Search,0.53
-nom,Random Search,0.54
-nom,Random Search,0.46
-nom,Random Search,0.43
-nom,Random Search,0.62
-nom,Random Search,0.53
-nom,Random Search,0.56
-nom,Random Search,0.53
-nom,Random Search,0.58
-nom,Random Search,0.53
-nom,Random Search,0.41
-nom,Random Search,0.5
-nom,Random Search,0.52
-nom,Random Search,0.47
-nom,Random Search,0.62
-nom,Random Search,0.43
-nom,Random Search,0.56
-nom,Random Search,0.65
-nom,Random Search,0.62
-nom,Random Search,0.49
-nom,Random Search,0.53
-nom,Random Search,0.58
-nom,Random Search,0.47
-nom,Random Search,0.64
-nom,Random Search,0.56
-nom,Random Search,0.41
-nom,DynaMOSA,0.6
-nom,DynaMOSA,0.5
-nom,DynaMOSA,0.54
-nom,DynaMOSA,0.58
-nom,DynaMOSA,0.48
-nom,DynaMOSA,0.52
-nom,DynaMOSA,0.49
-nom,DynaMOSA,0.59
-nom,DynaMOSA,0.62
-nom,DynaMOSA,0.49
-nom,DynaMOSA,0.47
-nom,DynaMOSA,0.46
-nom,DynaMOSA,0.55
-nom,DynaMOSA,0.57
-nom,DynaMOSA,0.52
-nom,DynaMOSA,0.52
-nom,DynaMOSA,0.57
-nom,DynaMOSA,0.54
-nom,DynaMOSA,0.46
-nom,DynaMOSA,0.47
-nom,DynaMOSA,0.51
-nom,DynaMOSA,0.68
-nom,DynaMOSA,0.56
-nom,DynaMOSA,0.64
-nom,DynaMOSA,0.62
-nom,DynaMOSA,0.69
-nom,DynaMOSA,0.46
-nom,DynaMOSA,0.7
-nom,DynaMOSA,0.57
-nom,DynaMOSA,0.53
+nom,Random Search,0.35
+nom,Random Search,0.36
+nom,Random Search,0.37
+nom,Random Search,0.39
+nom,Random Search,0.35
+nom,Random Search,0.33
+nom,Random Search,0.37
+nom,Random Search,0.38
+nom,Random Search,0.39
+nom,Random Search,0.34
+nom,Random Search,0.33
+nom,Random Search,0.38
+nom,Random Search,0.38
+nom,Random Search,0.39
+nom,Random Search,0.38
+nom,Random Search,0.35
+nom,Random Search,0.33
+nom,Random Search,0.33
+nom,Random Search,0.35
+nom,Random Search,0.34
+nom,Random Search,0.33
+nom,Random Search,0.34
+nom,Random Search,0.35
+nom,Random Search,0.35
+nom,Random Search,0.37
+nom,Random Search,0.33
+nom,Random Search,0.35
+nom,Random Search,0.37
+nom,Random Search,0.33
+nom,Random Search,0.36
+nom,DynaMOSA,0.32
+nom,DynaMOSA,0.27
+nom,DynaMOSA,0.31
+nom,DynaMOSA,0.32
+nom,DynaMOSA,0.32
+nom,DynaMOSA,0.28
+nom,DynaMOSA,0.26
+nom,DynaMOSA,0.27
+nom,DynaMOSA,0.26
+nom,DynaMOSA,0.33
+nom,DynaMOSA,0.29
+nom,DynaMOSA,0.34
+nom,DynaMOSA,0.3
+nom,DynaMOSA,0.35
+nom,DynaMOSA,0.3
+nom,DynaMOSA,0.28
+nom,DynaMOSA,0.32
+nom,DynaMOSA,0.3
+nom,DynaMOSA,0.29
+nom,DynaMOSA,0.35
+nom,DynaMOSA,0.35
+nom,DynaMOSA,0.29
+nom,DynaMOSA,0.32
+nom,DynaMOSA,0.29
+nom,DynaMOSA,0.32
+nom,DynaMOSA,0.33
+nom,DynaMOSA,0.3
+nom,DynaMOSA,0.33
+nom,DynaMOSA,0.34
+nom,DynaMOSA,0.28

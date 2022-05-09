@@ -1,61 +1,61 @@
 Crate,Algorithm,Coverage
-rstar,Random Search,0.47
-rstar,Random Search,0.44
-rstar,Random Search,0.56
-rstar,Random Search,0.51
-rstar,Random Search,0.63
-rstar,Random Search,0.46
+rstar,Random Search,0.41
 rstar,Random Search,0.43
-rstar,Random Search,0.52
-rstar,Random Search,0.42
-rstar,Random Search,0.59
-rstar,Random Search,0.6
-rstar,Random Search,0.63
-rstar,Random Search,0.48
-rstar,Random Search,0.46
-rstar,Random Search,0.52
-rstar,Random Search,0.56
-rstar,Random Search,0.55
-rstar,Random Search,0.48
-rstar,Random Search,0.45
-rstar,Random Search,0.42
+rstar,Random Search,0.38
+rstar,Random Search,0.36
+rstar,Random Search,0.38
+rstar,Random Search,0.39
 rstar,Random Search,0.41
+rstar,Random Search,0.38
+rstar,Random Search,0.36
+rstar,Random Search,0.36
+rstar,Random Search,0.39
+rstar,Random Search,0.37
+rstar,Random Search,0.36
+rstar,Random Search,0.39
 rstar,Random Search,0.42
-rstar,Random Search,0.55
-rstar,Random Search,0.48
-rstar,Random Search,0.41
-rstar,Random Search,0.46
 rstar,Random Search,0.44
-rstar,Random Search,0.61
-rstar,Random Search,0.47
-rstar,Random Search,0.63
-rstar,DynaMOSA,0.58
-rstar,DynaMOSA,0.64
-rstar,DynaMOSA,0.61
-rstar,DynaMOSA,0.65
-rstar,DynaMOSA,0.49
-rstar,DynaMOSA,0.46
-rstar,DynaMOSA,0.62
-rstar,DynaMOSA,0.53
-rstar,DynaMOSA,0.52
-rstar,DynaMOSA,0.55
-rstar,DynaMOSA,0.7
-rstar,DynaMOSA,0.48
-rstar,DynaMOSA,0.51
-rstar,DynaMOSA,0.57
-rstar,DynaMOSA,0.66
-rstar,DynaMOSA,0.58
-rstar,DynaMOSA,0.49
-rstar,DynaMOSA,0.54
-rstar,DynaMOSA,0.63
-rstar,DynaMOSA,0.66
-rstar,DynaMOSA,0.56
-rstar,DynaMOSA,0.54
-rstar,DynaMOSA,0.69
-rstar,DynaMOSA,0.65
-rstar,DynaMOSA,0.63
-rstar,DynaMOSA,0.7
-rstar,DynaMOSA,0.65
-rstar,DynaMOSA,0.62
-rstar,DynaMOSA,0.58
-rstar,DynaMOSA,0.68
+rstar,Random Search,0.42
+rstar,Random Search,0.38
+rstar,Random Search,0.36
+rstar,Random Search,0.39
+rstar,Random Search,0.36
+rstar,Random Search,0.37
+rstar,Random Search,0.39
+rstar,Random Search,0.37
+rstar,Random Search,0.43
+rstar,Random Search,0.38
+rstar,Random Search,0.39
+rstar,Random Search,0.4
+rstar,Random Search,0.36
+rstar,Random Search,0.36
+rstar,DynaMOSA,0.4
+rstar,DynaMOSA,0.39
+rstar,DynaMOSA,0.4
+rstar,DynaMOSA,0.39
+rstar,DynaMOSA,0.35
+rstar,DynaMOSA,0.33
+rstar,DynaMOSA,0.31
+rstar,DynaMOSA,0.3
+rstar,DynaMOSA,0.33
+rstar,DynaMOSA,0.33
+rstar,DynaMOSA,0.3
+rstar,DynaMOSA,0.38
+rstar,DynaMOSA,0.33
+rstar,DynaMOSA,0.36
+rstar,DynaMOSA,0.31
+rstar,DynaMOSA,0.36
+rstar,DynaMOSA,0.29
+rstar,DynaMOSA,0.27
+rstar,DynaMOSA,0.32
+rstar,DynaMOSA,0.38
+rstar,DynaMOSA,0.32
+rstar,DynaMOSA,0.32
+rstar,DynaMOSA,0.27
+rstar,DynaMOSA,0.34
+rstar,DynaMOSA,0.32
+rstar,DynaMOSA,0.39
+rstar,DynaMOSA,0.39
+rstar,DynaMOSA,0.32
+rstar,DynaMOSA,0.34
+rstar,DynaMOSA,0.39
