@@ -161,6 +161,7 @@ pub struct MethodItem {
   pub is_public: bool,
   pub of_trait: Option<String>,
   generics: Vec<T>,
+  pub global_id: String
 }
 
 impl MethodItem {
@@ -172,7 +173,8 @@ impl MethodItem {
       parent: T,
       generics: Vec<T>,
       is_public: bool,
-      of_trait: Option<String>
+      of_trait: Option<String>,
+    global_id: String
   ) -> Self {
     MethodItem {
       is_public,
@@ -182,7 +184,8 @@ impl MethodItem {
       params,
       return_type,
       src_file_path: src_file_path.to_string(),
-      of_trait
+      of_trait,
+      global_id
     }
   }
 
@@ -213,6 +216,7 @@ pub struct FunctionItem {
   pub src_file_path: String,
   pub is_public: bool,
   pub generics: Vec<T>,
+  pub global_id: String
 }
 
 impl FunctionItem {
@@ -223,6 +227,7 @@ impl FunctionItem {
     params: Vec<Param>,
     return_type: Option<T>,
     src_file_path: &str,
+    global_id: String
   ) -> Self {
     FunctionItem {
       name: name.to_string(),
@@ -231,6 +236,7 @@ impl FunctionItem {
       return_type,
       is_public,
       generics,
+      global_id
     }
   }
 
@@ -248,7 +254,8 @@ pub struct StaticFnItem {
   pub params: Vec<Param>,
   pub return_type: Option<T>,
   pub src_file_path: String,
-  pub of_trait: Option<String>
+  pub of_trait: Option<String>,
+  pub global_id: String
 }
 
 impl StaticFnItem {
@@ -260,7 +267,8 @@ impl StaticFnItem {
     parent: T,
     generics: Vec<T>,
     is_public: bool,
-    of_trait: Option<String>
+    of_trait: Option<String>,
+    global_id: String
   ) -> Self {
     StaticFnItem {
       name: name.to_string(),
@@ -270,7 +278,8 @@ impl StaticFnItem {
       return_type,
       is_public,
       generics,
-      of_trait
+      of_trait,
+      global_id
     }
   }
 

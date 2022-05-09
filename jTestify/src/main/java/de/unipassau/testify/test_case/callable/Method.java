@@ -15,6 +15,10 @@ import java.util.stream.Collectors;
 @JsonDeserialize(as = Method.class)
 public class Method implements Callable {
 
+  @JsonProperty("global_id")
+  private String globalId;
+
+
   private List<Param> params;
   @JsonProperty("return_type")
   private Type returnType;
@@ -34,6 +38,7 @@ public class Method implements Callable {
   private String name;
   private List<Type> generics;
 
+
   @JsonProperty("is_public")
   private boolean isPublic;
 
@@ -47,6 +52,14 @@ public class Method implements Callable {
     this.parent = parent;
     this.name = name;
     this.generics = generics;
+  }
+
+  public String globalId() {
+    return globalId;
+  }
+
+  public void setGlobalId(String globalId) {
+    this.globalId = globalId;
   }
 
   public void setOfTrait(String ofTrait) {

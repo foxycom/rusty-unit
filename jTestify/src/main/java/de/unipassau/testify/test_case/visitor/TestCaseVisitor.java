@@ -62,6 +62,7 @@ public class TestCaseVisitor implements Visitor {
     }
     var sb = new StringBuilder("#[no_coverage]\n");
     sb.append("#[test]\n");
+    sb.append("#[should_panic]\n");
     //sb.append("#[timeout(").append(Constants.TEST_TIMEOUT).append(")]\n");
     sb.append("fn ").append(testCase.getName()).append("() {\n");
 
@@ -70,6 +71,8 @@ public class TestCaseVisitor implements Visitor {
     for (Statement statement : testCase) {
       sb.append("    ").append(visitStatement(statement)).append("\n");
     }
+
+    sb.append("    panic!(\"From RustyUnit with love\");\n");
 
     sb.append("}");
 

@@ -144,7 +144,7 @@ pub const CUSTOM_OPT_MIR: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<
         return tcx.arena.alloc(instrumented_body);
     };
 
-fn def_id_to_str(def_id: DefId, tcx: &TyCtxt<'_>) -> String {
+pub fn def_id_to_str(def_id: DefId, tcx: &TyCtxt<'_>) -> String {
     tcx.def_path_str(def_id)
 }
 

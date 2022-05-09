@@ -25,17 +25,19 @@ public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
   private final Set<MinimizingFitnessFunction<C>> visitedBlocks = new HashSet<>();
   private final String mirPath;
 
-  private static final Set<PrimitiveValue<?>> CONSTANT_POOL = new HashSet<>();
+  private static Set<PrimitiveValue<?>> CONSTANT_POOL = new HashSet<>();
+  private static Map<String, Set<PrimitiveValue<?>>> CONSTANT_POOL_BY_ID;
 
   public MirAnalysis(String mirPath) {
     this.mirPath = mirPath;
     cdgs = parseCDGs();
-    MirAnalysis.CONSTANT_POOL.addAll(parseConstants());
+    CONSTANT_POOL_BY_ID = parseConstants();
+    CONSTANT_POOL = CONSTANT_POOL_BY_ID.values().stream().collect(HashSet::new, HashSet::addAll, HashSet::addAll);
   }
 
-  private Set<PrimitiveValue<?>> parseConstants() {
+  private Map<String, Set<PrimitiveValue<?>>> parseConstants() {
     System.out.println("-- Constant pool analysis");
-    Set<PrimitiveValue<?>> constants = new HashSet<>();
+    Map<String, Set<PrimitiveValue<?>>> constants = new HashMap();
     var objectMapper = new ObjectMapper();
     var path = Paths.get(mirPath);
     try (var stream = Files.walk(path, Integer.MAX_VALUE)) {
@@ -47,9 +49,12 @@ public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
               var content = Files.readString(file);
               var jsonRoot = new JSONObject(content);
               var jsonConstants = jsonRoot.getJSONArray("constant_pool");
+              var globalId = jsonRoot.getString("global_id");
+              Set<PrimitiveValue<?>> localConstants = new HashSet<>();
               for (var c : jsonConstants) {
-                constants.add(objectMapper.readValue(c.toString(), PrimitiveValue.class));
+                localConstants.add(objectMapper.readValue(c.toString(), PrimitiveValue.class));
               }
+              constants.put(globalId, localConstants);
             } catch (IOException e) {
               throw new RuntimeException(e);
             }
@@ -94,6 +99,10 @@ public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
 
   public static Set<PrimitiveValue<?>> constantPool() {
     return CONSTANT_POOL;
+  }
+
+  public static Set<PrimitiveValue<?>> constantsPool(String globalId) {
+    return Objects.requireNonNull(CONSTANT_POOL_BY_ID.get(globalId));
   }
 
   public CDG<MinimizingFitnessFunction<C>, C> getCdgFor(String globalId) {

@@ -1,5 +1,6 @@
 package de.unipassau.testify.algorithm.dynamosa;
 
+import de.unipassau.testify.Main.CLI;
 import de.unipassau.testify.algorithm.Archive;
 import de.unipassau.testify.algorithm.PreferenceSorter;
 import de.unipassau.testify.algorithm.SVD;
@@ -14,9 +15,11 @@ import de.unipassau.testify.source.ChromosomeContainer;
 import de.unipassau.testify.test_case.CallableSelector;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Builder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Builder
 public class DynaMOSA<C extends AbstractTestCaseChromosome<C>> implements GeneticAlgorithm<C> {
 
   private static final Logger logger = LoggerFactory.getLogger(DynaMOSA.class);
@@ -32,26 +35,7 @@ public class DynaMOSA<C extends AbstractTestCaseChromosome<C>> implements Geneti
   private final MirAnalysis<C> mir;
   private final Output<C> output;
 
-  public DynaMOSA(int maxGenerations, int populationSize,
-      FixedSizePopulationGenerator<C> populationGenerator,
-      OffspringGenerator<C> offspringGenerator,
-      PreferenceSorter<C> preferenceSorter,
-      Archive<C> archive,
-      SVD<C> svd,
-      ChromosomeContainer<C> container,
-      MirAnalysis<C> mir,
-      Output<C> output) {
-    this.maxGenerations = maxGenerations;
-    this.populationSize = populationSize;
-    this.populationGenerator = populationGenerator;
-    this.offspringGenerator = offspringGenerator;
-    this.archive = archive;
-    this.preferenceSorter = preferenceSorter;
-    this.svd = svd;
-    this.container = container;
-    this.mir = mir;
-    this.output = output;
-  }
+  private final List<C> initialPopulation;
 
   @Override
   public List<C> findSolution() {
@@ -59,10 +43,10 @@ public class DynaMOSA<C extends AbstractTestCaseChromosome<C>> implements Geneti
     var targets = mir.independentTargets();
     System.out.printf("\t>> Independent targets: %d%n", targets.size());
 
-    List<C> population;
+    List<C> population = initialPopulation;
+
     Status status;
     do {
-      population = populationGenerator.get();
       container.addAll(population);
       status = container.execute();
       switch (status) {

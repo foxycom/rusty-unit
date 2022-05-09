@@ -15,6 +15,9 @@ import java.util.stream.Collectors;
 @JsonDeserialize(as = Function.class)
 public class Function implements Callable {
 
+  @JsonProperty("global_id")
+  private String globalId;
+
   private String name;
   private List<Param> params;
 
@@ -28,6 +31,14 @@ public class Function implements Callable {
   private String srcFilePath;
 
   private List<Type> generics;
+
+  public String globalId() {
+    return globalId;
+  }
+
+  public void setGlobalId(String globalId) {
+    this.globalId = globalId;
+  }
 
   @Override
   public String getName() {

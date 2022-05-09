@@ -1177,13 +1177,13 @@ Fraser and Zeller~\cite{Fraser2012} describe in their work on the mutation-based
 
 
 \For{$p \in parameters(s)$}
-  \State{$t \gets GenObject(p, \{\}, M, t)$}
+  \State{$t \gets GenObject(p,~\{\},~M,~t)$}
 \EndFor
 \State{$t \gets t.s$}
 
 \While{$\left|t\right| < l$}
   \State{$c \gets$ randomly select datatype in $classes(t)$}
-  \State{$M' \gets \{m | m \in M \wedge c \in parameters(m)\}$}
+  \State{$M' \gets \{m~|~m \in M \wedge c \in parameters(m)\}$}
   \State{$s \gets$ randomly select method or function from $M'$}
   \For{$p \in parameters(s)$}
     \If{$\neg(p \in classes(t))$}
@@ -1256,8 +1256,6 @@ The simplest type of crossover is the one-point crossover, as described in~\Cref
     \item Missing dependencies of statements can be added by generating, as with the mutation operator. If certain definitions become redundant because their later use has been pushed into another choromosome by recombination, they can be deleted.
     \item Dependencies from a part of a chromosome shifted by recombination are also shifted to another chromosome regardless of the crossover point, provided they are no longer needed in the original chromosome, otherwise they could be copied.
 \end{itemize}
-
-% Bei der Rekombination setzen wir auf die erste Option: Im Fall, dass Argumente eines rekombinierten Test Cases außenvor bleiben, generieren wir diese nachträglich mittels des \texttt{GenObject} Algorithmus, sodass der Test Case wieder kompilierbar wird. In \Cref{fig:crossover-example} wird ein solcher Fall veranschaulicht. Es wird ein zufälliger Schnittpunkt in den beiden Test Cases blau und grün bestimmt. Durch Rekombination der Statements entstehen zwei neue Test Cases, die beide jedoch in der Form nicht kompilierbar sind, da sowohl im linken (\texttt{hashmap_0}) als auch im rechten Test Case (\texttt{f64_0}) Instanzen verwendet werden, die in den jeweiligen Tests gar nicht definiert sind. Aus diesem Grund müssen wir einen Repair-Schritt durchführen und fehlende Abhängigkeit generieren (in rot).
 
 For recombination, \tech exploits the first option: in the case when arguments of a recombined test case are missing, we regenerate them afterwards using the \texttt{GenObject} algorithm, so that the test case becomes compilable again. In \Cref{fig:crossover-example} such a case is illustrated. A random intersection in the two test cases blue and green is determined. By recombining the statements, two new test cases are created, both of which, however, cannot be compiled in the form, since both the left (\texttt{hashmap\string_0}) and the right test case (\texttt{f64\string_0}) use instances that are not defined in the respective tests at all. For this reason, we need to perform a repair step and generate missing dependency (in red).
 

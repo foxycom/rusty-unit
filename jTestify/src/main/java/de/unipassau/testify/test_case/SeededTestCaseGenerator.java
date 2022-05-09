@@ -8,7 +8,6 @@ import de.unipassau.testify.metaheuristics.chromosome.ChromosomeGenerator;
 import de.unipassau.testify.metaheuristics.operators.Crossover;
 import de.unipassau.testify.metaheuristics.operators.Mutation;
 import de.unipassau.testify.mir.MirAnalysis;
-import de.unipassau.testify.util.Rnd;
 
 public class SeededTestCaseGenerator implements ChromosomeGenerator<TestCase> {
 
@@ -39,15 +38,7 @@ public class SeededTestCaseGenerator implements ChromosomeGenerator<TestCase> {
 
     @Override
     public TestCase get() {
-        var callable = hir.getCallables().get(current);
-        var testCase = new TestCase(TestIdGenerator.get(), hir, mutation, crossover, mir, callableSelector);
-        testCase.insertCallable(callable);
-
-        while (testCase.size() < Constants.INITIAL_CHROMOSOME_LENGTH) {
-            testCase.insertRandomStmt();
-        }
-
-        current = (current + 1) % hir.getCallables().size();
-        return testCase;
+        var callable = hir.getCallables();
+        throw new RuntimeException("Not implemented");
     }
 }

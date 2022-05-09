@@ -32,7 +32,10 @@ import de.unipassau.testify.test_case.operators.SinglePointFixedCrossover;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.IntStream;
 
 public class TestsGenerator {
 
@@ -57,7 +60,7 @@ public class TestsGenerator {
     var selection = new RankSelection<>(objectives, svd, preferenceSorter);
 
     ChromosomeGenerator<TestCase> chromosomeGenerator;
-    if (cli.seed()) {
+    if (cli.seedRandomPopulation()) {
       chromosomeGenerator = new SeededTestCaseGenerator(hir, mir, mutation, crossover,
           callableSelector);
     } else {
@@ -108,7 +111,7 @@ public class TestsGenerator {
     var crossover = new SinglePointFixedCrossover();
     var selection = new RankSelection<>(objectives, svd, preferenceSorter);
     ChromosomeGenerator<TestCase> chromosomeGenerator;
-    if (cli.seed()) {
+    if (cli.seedRandomPopulation()) {
       chromosomeGenerator = new SeededTestCaseGenerator(hir, mir, mutation, crossover, callableSelector);
     } else {
       chromosomeGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover, callableSelector);
@@ -120,21 +123,29 @@ public class TestsGenerator {
     var offspringGenerator = new OffspringGeneratorImpl(selection, uncoveredObjectives);
 
     var archive = new DefaultArchive<>(objectives);
-
     var output = new Output<TestCase>(cli.getCrateName(), cli.getCrateRoot());
 
-    var mosa = new DynaMOSA<>(
-        GENERATIONS,
-        POPULATION_SIZE,
-        populationGenerator,
-        offspringGenerator,
-        preferenceSorter,
-        archive,
-        svd,
-        crate,
-        mir,
-        output
-    );
+    List<TestCase> initialPopulation;
+    if (cli.seedRandomPopulation()) {
+      initialPopulation = new ArrayList<>();
+      int randomGenerations = Math.max((int) (GENERATIONS * 0.2), 2);
+      var randomTestCaseGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover, callableSelector);
+      IntStream.range(0, randomGenerations).mapToObj(i -> randomTestCaseGenerator.get()).forEach(initialPopulation::add);
+    } else {
+      initialPopulation = populationGenerator.get();
+    }
+
+    var mosa = DynaMOSA.<TestCase>builder().maxGenerations(GENERATIONS)
+        .populationSize(POPULATION_SIZE)
+        .populationGenerator(populationGenerator)
+        .offspringGenerator(offspringGenerator)
+        .preferenceSorter(preferenceSorter)
+        .archive(archive)
+        .svd(svd)
+        .container(crate)
+        .mir(mir)
+        .initialPopulation(initialPopulation)
+        .output(output).build();
 
     var solutions = mosa.findSolution();
 

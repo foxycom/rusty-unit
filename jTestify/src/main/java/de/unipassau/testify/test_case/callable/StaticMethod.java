@@ -15,6 +15,9 @@ import java.util.stream.Collectors;
 @JsonDeserialize(as = StaticMethod.class)
 public class StaticMethod implements Callable {
 
+  @JsonProperty("global_id")
+  private String globalId;
+
   private String name;
   private List<Param> params;
   @JsonProperty("return_type")
@@ -40,6 +43,14 @@ public class StaticMethod implements Callable {
     this.returnType = returnType;
     this.parent = parent;
     this.srcFilePath = srcFilePath;
+  }
+
+  public String globalId() {
+    return globalId;
+  }
+
+  public void setGlobalId(String globalId) {
+    this.globalId = globalId;
   }
 
   public void setOfTrait(String ofTrait) {

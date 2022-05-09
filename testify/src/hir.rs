@@ -12,6 +12,7 @@ use crate::{HIR_LOG_PATH, LOG_DIR, RuConfig};
 use crate::types::{Callable, def_id_name, EnumInitItem, EnumT, EnumVariant, FieldAccessItem, FunctionItem, MethodItem, Param, StaticFnItem, StructInitItem, StructT, T, Trait};
 use crate::util::{def_id_to_t, def_id_to_enum, fn_ret_ty_to_t, generics_to_ts, impl_to_def_id, item_to_name, node_to_name, span_to_path, ty_to_param, ty_to_t, is_local, res_to_name, path_to_name};
 use crate::analysis::Analysis;
+use crate::mir::def_id_to_str;
 #[cfg(feature = "analysis")]
 use crate::writer::{HirObject, HirWriter, HirObjectBuilder};
 
@@ -124,6 +125,7 @@ fn analyze_fn(
   tcx: &TyCtxt<'_>,
 ) {
   let hir_id = tcx.hir().local_def_id_to_hir_id(local_def_id);
+  let global_id = def_id_to_str(local_def_id.to_def_id(), &tcx).replace("::", "__");
   let is_public = is_public(vis);
   let fn_decl = &sig.decl;
 
@@ -155,6 +157,7 @@ fn analyze_fn(
     params,
     return_type,
     file_path.to_str().unwrap(),
+    global_id
   );
   let fn_callable = Callable::Function(function_item);
   callables.push(fn_callable);
@@ -343,6 +346,7 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
   let items = im.items;
   for item in items {
     let item_def_id = item.id.def_id;
+    let global_id = def_id_to_str(item_def_id.to_def_id(), tcx).replace("::", "__");
 
     match &item.kind {
       AssocItemKind::Fn { .. } => {
@@ -395,7 +399,8 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                 self_ty.clone(),
                 fn_generics,
                 is_public,
-                trait_name.clone()
+                trait_name.clone(),
+                global_id
               );
               let static_method_callable =
                   Callable::StaticFunction(static_method_item);
@@ -411,7 +416,8 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                 self_ty.clone(),
                 fn_generics,
                 is_public,
-                trait_name.clone()
+                trait_name.clone(),
+                global_id
               );
               let method_callable = Callable::Method(method_item);
               callables.push(method_callable);
