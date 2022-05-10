@@ -21,8 +21,14 @@ public interface Callable {
   void setParent(Type parent);
   boolean returnsValue();
   boolean isPublic();
+
   void setPublic(boolean isPublic);
   Statement toStmt(TestCase testCase, List<VarReference> args, VarReference returnValue);
+
+  default String globalId() {
+    return null;
+  }
+
 
   default boolean isMethod() {
     return false;

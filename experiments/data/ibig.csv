@@ -1,61 +1,61 @@
-Crate,Algorithm,Coverage
-ibig,Random Search,0.42
-ibig,Random Search,0.35
-ibig,Random Search,0.42
-ibig,Random Search,0.4
-ibig,Random Search,0.35
-ibig,Random Search,0.43
-ibig,Random Search,0.44
-ibig,Random Search,0.44
-ibig,Random Search,0.4
-ibig,Random Search,0.43
-ibig,Random Search,0.38
-ibig,Random Search,0.45
-ibig,Random Search,0.45
-ibig,Random Search,0.39
-ibig,Random Search,0.4
-ibig,Random Search,0.45
-ibig,Random Search,0.44
-ibig,Random Search,0.35
-ibig,Random Search,0.38
-ibig,Random Search,0.44
-ibig,Random Search,0.37
-ibig,Random Search,0.41
-ibig,Random Search,0.41
-ibig,Random Search,0.37
-ibig,Random Search,0.39
-ibig,Random Search,0.37
-ibig,Random Search,0.41
-ibig,Random Search,0.44
-ibig,Random Search,0.43
-ibig,Random Search,0.4
-ibig,DynaMOSA,0.41
-ibig,DynaMOSA,0.44
-ibig,DynaMOSA,0.45
-ibig,DynaMOSA,0.44
-ibig,DynaMOSA,0.43
-ibig,DynaMOSA,0.4
-ibig,DynaMOSA,0.46
-ibig,DynaMOSA,0.44
-ibig,DynaMOSA,0.41
-ibig,DynaMOSA,0.46
-ibig,DynaMOSA,0.41
-ibig,DynaMOSA,0.38
-ibig,DynaMOSA,0.4
-ibig,DynaMOSA,0.44
-ibig,DynaMOSA,0.45
-ibig,DynaMOSA,0.45
-ibig,DynaMOSA,0.38
-ibig,DynaMOSA,0.41
-ibig,DynaMOSA,0.39
-ibig,DynaMOSA,0.43
-ibig,DynaMOSA,0.42
-ibig,DynaMOSA,0.44
-ibig,DynaMOSA,0.4
-ibig,DynaMOSA,0.4
-ibig,DynaMOSA,0.39
-ibig,DynaMOSA,0.42
-ibig,DynaMOSA,0.4
-ibig,DynaMOSA,0.38
-ibig,DynaMOSA,0.38
-ibig,DynaMOSA,0.42
+Crate,Algorithm,Length
+ibig,Random Search,63
+ibig,Random Search,54
+ibig,Random Search,56
+ibig,Random Search,68
+ibig,Random Search,58
+ibig,Random Search,62
+ibig,Random Search,60
+ibig,Random Search,66
+ibig,Random Search,60
+ibig,Random Search,65
+ibig,Random Search,63
+ibig,Random Search,63
+ibig,Random Search,58
+ibig,Random Search,59
+ibig,Random Search,55
+ibig,Random Search,62
+ibig,Random Search,61
+ibig,Random Search,63
+ibig,Random Search,58
+ibig,Random Search,60
+ibig,Random Search,55
+ibig,Random Search,57
+ibig,Random Search,63
+ibig,Random Search,69
+ibig,Random Search,63
+ibig,Random Search,67
+ibig,Random Search,64
+ibig,Random Search,59
+ibig,Random Search,54
+ibig,Random Search,67
+ibig,DynaMOSA,55
+ibig,DynaMOSA,49
+ibig,DynaMOSA,52
+ibig,DynaMOSA,49
+ibig,DynaMOSA,54
+ibig,DynaMOSA,51
+ibig,DynaMOSA,49
+ibig,DynaMOSA,49
+ibig,DynaMOSA,48
+ibig,DynaMOSA,48
+ibig,DynaMOSA,52
+ibig,DynaMOSA,44
+ibig,DynaMOSA,54
+ibig,DynaMOSA,50
+ibig,DynaMOSA,44
+ibig,DynaMOSA,46
+ibig,DynaMOSA,51
+ibig,DynaMOSA,46
+ibig,DynaMOSA,49
+ibig,DynaMOSA,54
+ibig,DynaMOSA,51
+ibig,DynaMOSA,50
+ibig,DynaMOSA,54
+ibig,DynaMOSA,46
+ibig,DynaMOSA,45
+ibig,DynaMOSA,47
+ibig,DynaMOSA,52
+ibig,DynaMOSA,52
+ibig,DynaMOSA,46
+ibig,DynaMOSA,48

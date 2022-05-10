@@ -8,6 +8,12 @@ sns.set_theme()
 sns.set_style("white")
 sns.color_palette("deep")
 
-sns.boxplot(x="Crate", y="Coverage", hue="Algorithm",
+fig = plt.figure(1)
+ax = sns.boxplot(x="Crate", y="Coverage", hue="Algorithm",
             data=df)
+ax.set_xticks(ax.get_xticks())
+ax.set_xticklabels(ax.get_xticklabels(), rotation=90, )
 plt.show()
+
+
+fig.savefig('coverage.png', dpi=300, format='png', bbox_inches='tight')

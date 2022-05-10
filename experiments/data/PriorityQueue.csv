@@ -1,61 +1,61 @@
-Crate,Algorithm,Coverage
-PriorityQueue,Random Search,0.24
-PriorityQueue,Random Search,0.27
-PriorityQueue,Random Search,0.29
-PriorityQueue,Random Search,0.25
-PriorityQueue,Random Search,0.25
-PriorityQueue,Random Search,0.29
-PriorityQueue,Random Search,0.28
-PriorityQueue,Random Search,0.24
-PriorityQueue,Random Search,0.25
-PriorityQueue,Random Search,0.27
-PriorityQueue,Random Search,0.25
-PriorityQueue,Random Search,0.29
-PriorityQueue,Random Search,0.26
-PriorityQueue,Random Search,0.25
-PriorityQueue,Random Search,0.29
-PriorityQueue,Random Search,0.28
-PriorityQueue,Random Search,0.28
-PriorityQueue,Random Search,0.28
-PriorityQueue,Random Search,0.29
-PriorityQueue,Random Search,0.26
-PriorityQueue,Random Search,0.25
-PriorityQueue,Random Search,0.24
-PriorityQueue,Random Search,0.26
-PriorityQueue,Random Search,0.25
-PriorityQueue,Random Search,0.24
-PriorityQueue,Random Search,0.26
-PriorityQueue,Random Search,0.27
-PriorityQueue,Random Search,0.28
-PriorityQueue,Random Search,0.28
-PriorityQueue,Random Search,0.27
-PriorityQueue,DynaMOSA,0.24
-PriorityQueue,DynaMOSA,0.2
-PriorityQueue,DynaMOSA,0.23
-PriorityQueue,DynaMOSA,0.35
-PriorityQueue,DynaMOSA,0.28
-PriorityQueue,DynaMOSA,0.29
-PriorityQueue,DynaMOSA,0.33
-PriorityQueue,DynaMOSA,0.33
-PriorityQueue,DynaMOSA,0.23
-PriorityQueue,DynaMOSA,0.29
-PriorityQueue,DynaMOSA,0.27
-PriorityQueue,DynaMOSA,0.29
-PriorityQueue,DynaMOSA,0.3
-PriorityQueue,DynaMOSA,0.23
-PriorityQueue,DynaMOSA,0.21
-PriorityQueue,DynaMOSA,0.26
-PriorityQueue,DynaMOSA,0.29
-PriorityQueue,DynaMOSA,0.2
-PriorityQueue,DynaMOSA,0.3
-PriorityQueue,DynaMOSA,0.33
-PriorityQueue,DynaMOSA,0.23
-PriorityQueue,DynaMOSA,0.22
-PriorityQueue,DynaMOSA,0.35
-PriorityQueue,DynaMOSA,0.31
-PriorityQueue,DynaMOSA,0.32
-PriorityQueue,DynaMOSA,0.35
-PriorityQueue,DynaMOSA,0.28
-PriorityQueue,DynaMOSA,0.2
-PriorityQueue,DynaMOSA,0.2
-PriorityQueue,DynaMOSA,0.28
+Crate,Algorithm,Length
+PriorityQueue,Random Search,48
+PriorityQueue,Random Search,50
+PriorityQueue,Random Search,52
+PriorityQueue,Random Search,49
+PriorityQueue,Random Search,50
+PriorityQueue,Random Search,52
+PriorityQueue,Random Search,47
+PriorityQueue,Random Search,54
+PriorityQueue,Random Search,51
+PriorityQueue,Random Search,49
+PriorityQueue,Random Search,50
+PriorityQueue,Random Search,54
+PriorityQueue,Random Search,48
+PriorityQueue,Random Search,48
+PriorityQueue,Random Search,52
+PriorityQueue,Random Search,47
+PriorityQueue,Random Search,51
+PriorityQueue,Random Search,53
+PriorityQueue,Random Search,47
+PriorityQueue,Random Search,48
+PriorityQueue,Random Search,53
+PriorityQueue,Random Search,48
+PriorityQueue,Random Search,54
+PriorityQueue,Random Search,54
+PriorityQueue,Random Search,49
+PriorityQueue,Random Search,51
+PriorityQueue,Random Search,51
+PriorityQueue,Random Search,53
+PriorityQueue,Random Search,51
+PriorityQueue,Random Search,47
+PriorityQueue,DynaMOSA,48
+PriorityQueue,DynaMOSA,42
+PriorityQueue,DynaMOSA,40
+PriorityQueue,DynaMOSA,41
+PriorityQueue,DynaMOSA,48
+PriorityQueue,DynaMOSA,48
+PriorityQueue,DynaMOSA,48
+PriorityQueue,DynaMOSA,40
+PriorityQueue,DynaMOSA,40
+PriorityQueue,DynaMOSA,48
+PriorityQueue,DynaMOSA,47
+PriorityQueue,DynaMOSA,44
+PriorityQueue,DynaMOSA,52
+PriorityQueue,DynaMOSA,41
+PriorityQueue,DynaMOSA,47
+PriorityQueue,DynaMOSA,45
+PriorityQueue,DynaMOSA,50
+PriorityQueue,DynaMOSA,46
+PriorityQueue,DynaMOSA,46
+PriorityQueue,DynaMOSA,51
+PriorityQueue,DynaMOSA,41
+PriorityQueue,DynaMOSA,45
+PriorityQueue,DynaMOSA,40
+PriorityQueue,DynaMOSA,46
+PriorityQueue,DynaMOSA,41
+PriorityQueue,DynaMOSA,45
+PriorityQueue,DynaMOSA,40
+PriorityQueue,DynaMOSA,45
+PriorityQueue,DynaMOSA,50
+PriorityQueue,DynaMOSA,42

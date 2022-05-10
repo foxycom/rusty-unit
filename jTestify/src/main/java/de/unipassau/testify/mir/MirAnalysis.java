@@ -37,6 +37,8 @@ public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
 
   private Map<String, Set<PrimitiveValue<?>>> parseConstants() {
     System.out.println("-- Constant pool analysis");
+    var timer = new Timer();
+    timer.start();
     Map<String, Set<PrimitiveValue<?>>> constants = new HashMap();
     var objectMapper = new ObjectMapper();
     var path = Paths.get(mirPath);
@@ -63,6 +65,8 @@ public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
       throw new RuntimeException("Could not parse constant pool", e);
     }
 
+    System.out.printf("-- Finished. Took %ds%n", TimeUnit.MILLISECONDS.toSeconds(timer.end()));
+
     return constants;
   }
 
@@ -71,6 +75,7 @@ public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
     var timer = new Timer();
     timer.start();
     Map<String, CDG<MinimizingFitnessFunction<C>, C>> cdgs = new HashMap<>();
+
     var path = Paths.get(mirPath);
     try (var stream = Files.walk(path, Integer.MAX_VALUE)) {
       stream
@@ -92,6 +97,8 @@ public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
       throw new RuntimeException("Could not parse CDGs from mir logs", e);
     }
 
+    double averageDepthOverCdgs = cdgs.values().stream().map(CDG::averageDepth).reduce(Double::sum).get() / cdgs.size();
+    System.out.printf("\t>> Number of CDGs: %d, average depth: %.2f%n", cdgs.size(), averageDepthOverCdgs);
     var elapsedTime = timer.end();
     System.out.printf("-- Finished. Took %ds%n", TimeUnit.MILLISECONDS.toSeconds(elapsedTime));
     return cdgs;
@@ -101,7 +108,7 @@ public class MirAnalysis<C extends AbstractTestCaseChromosome<C>> {
     return CONSTANT_POOL;
   }
 
-  public static Set<PrimitiveValue<?>> constantsPool(String globalId) {
+  public static Set<PrimitiveValue<?>> constantPool(String globalId) {
     return Objects.requireNonNull(CONSTANT_POOL_BY_ID.get(globalId));
   }
 

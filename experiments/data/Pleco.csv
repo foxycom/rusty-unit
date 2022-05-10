@@ -1,61 +1,61 @@
-Crate,Algorithm,Coverage
-Pleco,Random Search,0.26
-Pleco,Random Search,0.29
-Pleco,Random Search,0.25
-Pleco,Random Search,0.3
-Pleco,Random Search,0.3
-Pleco,Random Search,0.3
-Pleco,Random Search,0.25
-Pleco,Random Search,0.28
-Pleco,Random Search,0.27
-Pleco,Random Search,0.29
-Pleco,Random Search,0.26
-Pleco,Random Search,0.29
-Pleco,Random Search,0.26
-Pleco,Random Search,0.27
-Pleco,Random Search,0.25
-Pleco,Random Search,0.26
-Pleco,Random Search,0.3
-Pleco,Random Search,0.3
-Pleco,Random Search,0.28
-Pleco,Random Search,0.27
-Pleco,Random Search,0.25
-Pleco,Random Search,0.25
-Pleco,Random Search,0.3
-Pleco,Random Search,0.3
-Pleco,Random Search,0.26
-Pleco,Random Search,0.28
-Pleco,Random Search,0.29
-Pleco,Random Search,0.26
-Pleco,Random Search,0.27
-Pleco,Random Search,0.29
-Pleco,DynaMOSA,0.32
-Pleco,DynaMOSA,0.32
-Pleco,DynaMOSA,0.26
-Pleco,DynaMOSA,0.3
-Pleco,DynaMOSA,0.36
-Pleco,DynaMOSA,0.29
-Pleco,DynaMOSA,0.39
-Pleco,DynaMOSA,0.33
-Pleco,DynaMOSA,0.33
-Pleco,DynaMOSA,0.33
-Pleco,DynaMOSA,0.32
-Pleco,DynaMOSA,0.33
-Pleco,DynaMOSA,0.39
-Pleco,DynaMOSA,0.33
-Pleco,DynaMOSA,0.35
-Pleco,DynaMOSA,0.29
-Pleco,DynaMOSA,0.32
-Pleco,DynaMOSA,0.25
-Pleco,DynaMOSA,0.39
-Pleco,DynaMOSA,0.26
-Pleco,DynaMOSA,0.39
-Pleco,DynaMOSA,0.26
-Pleco,DynaMOSA,0.3
-Pleco,DynaMOSA,0.29
-Pleco,DynaMOSA,0.27
-Pleco,DynaMOSA,0.39
-Pleco,DynaMOSA,0.27
-Pleco,DynaMOSA,0.26
-Pleco,DynaMOSA,0.24
-Pleco,DynaMOSA,0.34
+Crate,Algorithm,Length
+Pleco,Random Search,60
+Pleco,Random Search,49
+Pleco,Random Search,56
+Pleco,Random Search,48
+Pleco,Random Search,58
+Pleco,Random Search,58
+Pleco,Random Search,58
+Pleco,Random Search,49
+Pleco,Random Search,55
+Pleco,Random Search,52
+Pleco,Random Search,54
+Pleco,Random Search,60
+Pleco,Random Search,59
+Pleco,Random Search,49
+Pleco,Random Search,60
+Pleco,Random Search,51
+Pleco,Random Search,53
+Pleco,Random Search,49
+Pleco,Random Search,57
+Pleco,Random Search,49
+Pleco,Random Search,58
+Pleco,Random Search,57
+Pleco,Random Search,60
+Pleco,Random Search,58
+Pleco,Random Search,56
+Pleco,Random Search,58
+Pleco,Random Search,57
+Pleco,Random Search,50
+Pleco,Random Search,49
+Pleco,Random Search,54
+Pleco,DynaMOSA,51
+Pleco,DynaMOSA,60
+Pleco,DynaMOSA,50
+Pleco,DynaMOSA,47
+Pleco,DynaMOSA,48
+Pleco,DynaMOSA,65
+Pleco,DynaMOSA,66
+Pleco,DynaMOSA,62
+Pleco,DynaMOSA,59
+Pleco,DynaMOSA,51
+Pleco,DynaMOSA,55
+Pleco,DynaMOSA,65
+Pleco,DynaMOSA,63
+Pleco,DynaMOSA,48
+Pleco,DynaMOSA,58
+Pleco,DynaMOSA,45
+Pleco,DynaMOSA,63
+Pleco,DynaMOSA,55
+Pleco,DynaMOSA,65
+Pleco,DynaMOSA,66
+Pleco,DynaMOSA,60
+Pleco,DynaMOSA,64
+Pleco,DynaMOSA,45
+Pleco,DynaMOSA,60
+Pleco,DynaMOSA,56
+Pleco,DynaMOSA,46
+Pleco,DynaMOSA,52
+Pleco,DynaMOSA,68
+Pleco,DynaMOSA,46
+Pleco,DynaMOSA,45

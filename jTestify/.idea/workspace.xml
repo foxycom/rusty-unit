@@ -4,23 +4,35 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b12c22c4-b5f7-4f70-8970-848dd736b280" name="Changes" comment="Update">
+    <list default="true" id="b12c22c4-b5f7-4f70-8970-848dd736b280" name="Changes" comment="Before big TestCase update">
+      <change afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/gen/AllMethodTestCaseGenerator.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/gen/SeededTestCaseGenerator.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/seed/SeedOptions.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/test/java/de/unipassau/testify/test_case/type/RefTest.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/Main.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/TestsGenerator.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/TestsGenerator.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/dynamosa/DynaMOSA.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/dynamosa/DynaMOSA.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/random/RandomSearch.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/random/RandomSearch.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/hir/TyCtxt.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/hir/TyCtxt.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/CDG.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/CDG.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/MirAnalysis.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/MirAnalysis.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/SeededTestCaseGenerator.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/SeededTestCaseGenerator.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/RandomTestCaseGenerator.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/gen/RandomTestCaseGenerator.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/SeededTestCaseGenerator.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/callable/Callable.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/callable/Callable.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/callable/Function.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/callable/Function.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/callable/Method.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/callable/Method.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/callable/StaticMethod.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/callable/StaticMethod.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/visitor/TestCaseVisitor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/visitor/TestCaseVisitor.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/resources/config.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/config.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../latex/document.tex" beforeDir="false" afterPath="$PROJECT_DIR$/../latex/document.tex" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../testify/src/hir.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/src/hir.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../testify/src/mir.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/src/mir.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../testify/src/types.rs" beforeDir="false" afterPath="$PROJECT_DIR$/../testify/src/types.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/de/unipassau/testify/algorithm/random/RandomSearchAllOneTest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/de/unipassau/testify/allone/MaxOne.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/de/unipassau/testify/allone/MaxOneContainer.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/de/unipassau/testify/allone/MaxOneCrossover.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/de/unipassau/testify/allone/MaxOneFitness.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/de/unipassau/testify/allone/MaxOneGenerator.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/de/unipassau/testify/allone/MaxOneMutation.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/de/unipassau/testify/allone/MaxOneOffspringGenerator.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/de/unipassau/testify/allone/One.java" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -57,8 +69,8 @@
       <list>
         <option value="Enum" />
         <option value="JUnit3 Test Class" />
-        <option value="JUnit5 Test Class" />
         <option value="Interface" />
+        <option value="JUnit5 Test Class" />
         <option value="Class" />
       </list>
     </option>
@@ -85,7 +97,7 @@
     <setting file="file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/CDG.java" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/mir/MirAnalysis.java" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/source/Crate.java" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/RandomTestCaseGenerator.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/gen/RandomTestCaseGenerator.java" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/AbstractEnum.java" root0="FORCE_HIGHLIGHTING" />
   </component>
   <component name="MacroExpansionManager">
@@ -103,6 +115,8 @@
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
     &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;com.intellij.testIntegration.createTest.CreateTestDialog.defaultLibrary&quot;: &quot;JUnit5&quot;,
+    &quot;com.intellij.testIntegration.createTest.CreateTestDialog.defaultLibrarySuperClass.JUnit5&quot;: &quot;&quot;,
     &quot;settings.editor.selected.configurable&quot;: &quot;preferences.sourceCode.Java&quot;
   }
 }</component>
@@ -115,6 +129,7 @@
       <recent name="de.unipassau.testify.test_case.type.traits" />
     </key>
     <key name="CreateTestDialog.RecentsKey">
+      <recent name="de.unipassau.testify.test_case.type" />
       <recent name="de.unipassau.testify.algorithm.random" />
       <recent name="de.unipassau.testify.algorithm" />
       <recent name="de.unipassau.testify.mir" />
@@ -125,7 +140,7 @@
     <configuration name="DynaMOSA" type="Application" factoryName="Application">
       <option name="MAIN_CLASS_NAME" value="de.unipassau.testify.Main" />
       <module name="jTestify.main" />
-      <option name="PROGRAM_PARAMETERS" value="-a dynamosa -c $PROJECT_DIR$/../evaluation/time -m src/lib.rs -n time --hir $PROJECT_DIR$/../evaluation/time/analysis/hir/hir.json --mir $PROJECT_DIR$/../evaluation/time/analysis/mir/original -i $PROJECT_DIR$/../testify/target/release/instrumentation --features std,quickcheck,large-dates,formatting --seed-random-population" />
+      <option name="PROGRAM_PARAMETERS" value="-a dynamosa -c $PROJECT_DIR$/../evaluation/time -m src/lib.rs -n time --hir $PROJECT_DIR$/../evaluation/time/analysis/hir/hir.json --mir $PROJECT_DIR$/../evaluation/time/analysis/mir/original -i $PROJECT_DIR$/../testify/target/release/instrumentation --features std,quickcheck,large-dates,formatting --seed-by-class --seed-constant-pool --seed-all-methods" />
       <extension name="coverage">
         <pattern>
           <option name="PATTERN" value="de.unipassau.testify.var.*" />
@@ -242,7 +257,7 @@
       <DebugAllEnabled>false</DebugAllEnabled>
       <method v="2" />
     </configuration>
-    <configuration name="CDGTest.testIndependentTargets" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+    <configuration name="RefTest.testRefCanBeSameAsItsInnerValue" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
       <ExternalSystemSettings>
         <option name="executionName" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
@@ -255,7 +270,7 @@
           <list>
             <option value=":test" />
             <option value="--tests" />
-            <option value="&quot;de.unipassau.testify.mir.CDGTest.testIndependentTargets&quot;" />
+            <option value="&quot;de.unipassau.testify.test_case.type.RefTest.testRefCanBeSameAsItsInnerValue&quot;" />
           </list>
         </option>
         <option name="vmOptions" />
@@ -268,19 +283,19 @@
     <list>
       <item itemvalue="Application.DynaMOSA" />
       <item itemvalue="Application.Random Search" />
+      <item itemvalue="Gradle.RefTest.testRefCanBeSameAsItsInnerValue" />
       <item itemvalue="Gradle.CDGTest.testAllSubTargets" />
       <item itemvalue="Gradle.CDGTest.testApproachLevel" />
       <item itemvalue="Gradle.CDGTest.testApproachLevelIsZero" />
       <item itemvalue="Gradle.CDGTest.testDependentTargets" />
-      <item itemvalue="Gradle.CDGTest.testIndependentTargets" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Gradle.RefTest.testRefCanBeSameAsItsInnerValue" />
         <item itemvalue="Gradle.CDGTest.testApproachLevelIsZero" />
         <item itemvalue="Gradle.CDGTest.testApproachLevel" />
         <item itemvalue="Gradle.CDGTest.testAllSubTargets" />
         <item itemvalue="Gradle.CDGTest.testDependentTargets" />
-        <item itemvalue="Gradle.CDGTest.testIndependentTargets" />
       </list>
     </recent_temporary>
   </component>
@@ -322,7 +337,9 @@
       <workItem from="1652031994809" duration="2889000" />
       <workItem from="1652041143359" duration="12211000" />
       <workItem from="1652072206514" duration="3833000" />
-      <workItem from="1652115072070" duration="962000" />
+      <workItem from="1652115072070" duration="7448000" />
+      <workItem from="1652122558444" duration="1781000" />
+      <workItem from="1652124501219" duration="4253000" />
     </task>
     <task id="LOCAL-00001" summary="Update">
       <created>1644703983025</created>
@@ -541,7 +558,14 @@
       <option name="project" value="LOCAL" />
       <updated>1652057185029</updated>
     </task>
-    <option name="localTasksCounter" value="32" />
+    <task id="LOCAL-00032" summary="Before big TestCase update">
+      <created>1652116233655</created>
+      <option name="number" value="00032" />
+      <option name="presentableId" value="LOCAL-00032" />
+      <option name="project" value="LOCAL" />
+      <updated>1652116233656</updated>
+    </task>
+    <option name="localTasksCounter" value="33" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -571,7 +595,8 @@
     <MESSAGE value="It runs!" />
     <MESSAGE value="Different algorithms" />
     <MESSAGE value="Update" />
-    <option name="LAST_COMMIT_MESSAGE" value="Update" />
+    <MESSAGE value="Before big TestCase update" />
+    <option name="LAST_COMMIT_MESSAGE" value="Before big TestCase update" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -593,17 +618,17 @@
         </line-breakpoint>
         <line-breakpoint type="java-line">
           <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java</url>
-          <line>766</line>
+          <line>731</line>
           <option name="timeStamp" value="141" />
         </line-breakpoint>
         <line-breakpoint type="java-line">
           <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java</url>
-          <line>798</line>
+          <line>763</line>
           <option name="timeStamp" value="142" />
         </line-breakpoint>
         <line-breakpoint type="java-line">
           <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/TestCase.java</url>
-          <line>843</line>
+          <line>808</line>
           <option name="timeStamp" value="143" />
         </line-breakpoint>
         <line-breakpoint type="java-line">
@@ -630,6 +655,11 @@
           <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/test_case/type/TraitObj.java</url>
           <line>60</line>
           <option name="timeStamp" value="207" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/de/unipassau/testify/algorithm/dynamosa/DynaMOSA.java</url>
+          <line>57</line>
+          <option name="timeStamp" value="211" />
         </line-breakpoint>
         <breakpoint enabled="true" type="java-exception">
           <properties class="java.lang.IllegalStateException" package="java.lang" />

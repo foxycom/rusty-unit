@@ -22,7 +22,7 @@ import de.unipassau.testify.test_case.callable.TupleInit;
 import de.unipassau.testify.test_case.metadata.MetaData;
 import de.unipassau.testify.test_case.metadata.TestCaseMetadata;
 import de.unipassau.testify.test_case.primitive.PrimitiveValue;
-import de.unipassau.testify.test_case.primitive.UIntValue;
+import de.unipassau.testify.test_case.seed.SeedOptions;
 import de.unipassau.testify.test_case.statement.PrimitiveStmt;
 import de.unipassau.testify.test_case.statement.Statement;
 import de.unipassau.testify.test_case.type.Array;
@@ -33,7 +33,6 @@ import de.unipassau.testify.test_case.type.Type;
 import de.unipassau.testify.test_case.type.TypeBinding;
 import de.unipassau.testify.test_case.type.prim.Int.ISize;
 import de.unipassau.testify.test_case.type.prim.Prim;
-import de.unipassau.testify.test_case.type.prim.UInt.USize;
 import de.unipassau.testify.test_case.type.traits.Trait;
 import de.unipassau.testify.test_case.type.traits.std.default_.Default;
 import de.unipassau.testify.test_case.type.traits.std.marker.Copy;
@@ -69,14 +68,14 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   private int id;
   private List<Statement> statements;
   private Map<MinimizingFitnessFunction<TestCase>, Double> coverage;
-  private MirAnalysis<TestCase> mir;
-  private TestCaseMetadata metadata;
+  private final MirAnalysis<TestCase> mir;
+  private final TestCaseMetadata metadata;
 
-  private final CallableSelector callableSelector;
+  private final SeedOptions seedOptions;
 
   public TestCase(int id, TyCtxt tyCtxt, Mutation<TestCase> mutation,
       Crossover<TestCase> crossover, MirAnalysis<TestCase> mir,
-      CallableSelector callableSelector) {
+      SeedOptions seedOptions) {
     super(mutation, crossover);
 
     this.id = id;
@@ -85,7 +84,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     this.coverage = new HashMap<>();
     this.mir = mir;
     this.metadata = new TestCaseMetadata(id);
-    this.callableSelector = callableSelector;
+    this.seedOptions = seedOptions;
   }
 
   public TestCase(TestCase other) {
@@ -97,7 +96,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     this.coverage = new HashMap<>();
     this.mir = other.mir;
     this.metadata = new TestCaseMetadata(id);
-    this.callableSelector = other.callableSelector;
+    this.seedOptions = other.seedOptions;
   }
 
   public Set<String> getUsedTraitNames() {
@@ -230,7 +229,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     if (!usableVariables.isEmpty()) {
       var = Rnd.choice(usableVariables);
     } else {
-      var generatedArg = generateArg(parameter);
+      var generatedArg = generateArg(parameter, null);
       if (generatedArg.isPresent()) {
         var = generatedArg.get();
       } else {
@@ -553,7 +552,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     for (int i = 1; i < method.getParams().size(); i++) {
       var param = method.getParams().get(i);
       var boundParam = param.bindGenerics(typeBinding);
-      var arg = generateArg(boundParam);
+      var arg = generateArg(boundParam.getType(), method.globalId());
       arg.ifPresent(args::add);
     }
 
@@ -611,7 +610,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
           Type typeToGenerate = p.getType().bindGenerics(typeBinding);
           logger.debug("({}) Bounded param {} to {}", id, p, typeToGenerate);
 
-          return generateArg(typeToGenerate);
+          return generateArg(typeToGenerate, callable.globalId());
         })
         .filter(Optional::isPresent)
         .map(Optional::get)
@@ -677,57 +676,23 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     if (arg.isPresent()) {
       return arg;
     } else {
-      return generateArg(type);
+      return generateArg(type, null);
     }
   }
 
   /**
-   * Creates a new variable as argument for the given parameter.
-   *
-   * @param param The parameter to create an argument for.
-   * @return Generated argument if successful.
-   */
-  public Optional<VarReference> generateArg(Param param) {
-    return generateArg(Objects.requireNonNull(param), new HashSet<>());
-  }
-
-  /**
-   * Creates a new variable as argument for the given parameter. Also considers types that are being
-   * initialized recursively, such that we avoid infinite loops while creating dependencies.
-   *
-   * @param param The parameter to create an argument for.
-   * @param typesToGenerate Types that are already being generated.
-   * @return Generated argument if possible.
-   */
-  private Optional<VarReference> generateArg(Param param,
-      Set<Type> typesToGenerate) {
-    logger.debug("({}) Starting to generate an argument for param {}", id, param);
-
-    if (param.isPrimitive()) {
-      var type = param.getType().asPrimitive();
-      return Optional.of(generatePrimitive(type));
-    } else if (param.isGeneric()) {
-      throw new RuntimeException("Not allowed");
-    } else {
-      var generators = tyCtxt.generatorsOf(param.getType(),
-          getFilePathBinding().orElse(null));
-      return generateArgFromGenerators(param.getType(), generators, typesToGenerate);
-    }
-  }
-
-  /*
    * A convenience method, when we need to generate an arg for a type directly instead of a generic
    * param
    */
-  public Optional<VarReference> generateArg(Type type) {
-    return generateArg(Objects.requireNonNull(type), new HashSet<>());
+  public Optional<VarReference> generateArg(Type type, String globalId) {
+    return generateArg(Objects.requireNonNull(type), new HashSet<>(), globalId);
   }
 
   private Optional<VarReference> generateArg(Type type,
-      Set<Type> typesToGenerate) {
+      Set<Type> typesToGenerate, String globalId) {
     logger.debug("({}) Starting to generate an argument for type {}", id, type);
     if (type.isPrim()) {
-      return Optional.of(generatePrimitive(type.asPrimitive()));
+      return Optional.of(generatePrimitive(type.asPrimitive(), globalId));
     } else if (type.isStruct() || type.isEnum()) {
       var generators = tyCtxt.generatorsOf(type, getFilePathBinding().orElse(null));
       logger.debug("({}) Found " + generators.size() + " generators", id);
@@ -772,7 +737,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     var refType = ref.getInnerType().bindGenerics(typeBinding);
     var extendedTypesToGenerate = new HashSet<>(typesToGenerate);
     extendedTypesToGenerate.add(ref);
-    var arg = generateArg(refType, extendedTypesToGenerate);
+    var arg = generateArg(refType, extendedTypesToGenerate, null);
     if (arg.isEmpty()) {
       return Optional.empty();
     }
@@ -805,7 +770,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     extendedTypesToGenerate.add(tuple);
     var tupleTypes = tuple.getTypes().stream().map(t -> t.bindGenerics(typeBinding)).toList();
     var args = tupleTypes.stream()
-        .map(innerType -> generateArg(innerType, extendedTypesToGenerate))
+        .map(innerType -> generateArg(innerType, extendedTypesToGenerate, null))
         .filter(Optional::isPresent)
         .map(Optional::get)
         .collect(Collectors.toList());
@@ -850,7 +815,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       extendedTypesToGenerate.add(array);
       var actualElementsType = array.type().bindGenerics(typeBinding);
       var elements = IntStream.range(0, array.length())
-          .mapToObj(i -> generateArg(actualElementsType, extendedTypesToGenerate))
+          .mapToObj(i -> generateArg(actualElementsType, extendedTypesToGenerate, null))
           .filter(Optional::isPresent)
           .map(Optional::get)
           .collect(toCollection(ArrayList::new));
@@ -941,12 +906,28 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     return Optional.of(type);
   }
 
-  private VarReference generatePrimitive(Prim prim) {
+  private VarReference generatePrimitive(Prim prim, String globalId) {
     logger.debug("({}) Starting to generate a primitive", id);
+    if (globalId != null && seedOptions.useConstantPool()
+        && Rnd.get().nextDouble() < Constants.P_CONSTANT_POOL) {
+      var constants = MirAnalysis.constantPool(globalId)
+          .stream().filter(val -> val.type().equals(prim)).collect(Collectors.toSet());
+      if (!constants.isEmpty()) {
+        var val = Rnd.choice(constants);
+        var var = createVariable(val.type());
+        var stmt = new PrimitiveStmt(this, var, val);
+        statements.add(0, stmt);
+
+        logger.debug("({}) Selected a constant from constant pool: {}", id, val);
+        return var;
+      }
+    }
+
     var val = prim.random();
     var var = createVariable(prim);
     var stmt = new PrimitiveStmt(this, var, val);
     statements.add(0, stmt);
+    logger.debug("({}) Generated a primitive: {}", id, val);
     return var;
   }
 
@@ -1056,12 +1037,13 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       // return Optional.empty();
     }
 
+    var globalId = generator.globalId();
     var args = generator.getParams().stream()
         .map(p -> {
           var extendedTypesToGenerate = new HashSet<>(typesToGenerate);
           extendedTypesToGenerate.add(type);
           return generateArg(p.getType().bindGenerics(typeBinding),
-              extendedTypesToGenerate);
+              extendedTypesToGenerate, globalId);
         })
         .filter(Optional::isPresent)
         .map(Optional::get)

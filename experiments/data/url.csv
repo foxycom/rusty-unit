@@ -1,61 +1,61 @@
-Crate,Algorithm,Coverage
-url,Random Search,0.31
-url,Random Search,0.34
-url,Random Search,0.34
-url,Random Search,0.36
-url,Random Search,0.36
-url,Random Search,0.32
-url,Random Search,0.3
-url,Random Search,0.3
-url,Random Search,0.37
-url,Random Search,0.36
-url,Random Search,0.32
-url,Random Search,0.35
-url,Random Search,0.32
-url,Random Search,0.36
-url,Random Search,0.35
-url,Random Search,0.31
-url,Random Search,0.37
-url,Random Search,0.33
-url,Random Search,0.32
-url,Random Search,0.38
-url,Random Search,0.38
-url,Random Search,0.38
-url,Random Search,0.34
-url,Random Search,0.33
-url,Random Search,0.34
-url,Random Search,0.3
-url,Random Search,0.32
-url,Random Search,0.36
-url,Random Search,0.33
-url,Random Search,0.31
-url,DynaMOSA,0.45
-url,DynaMOSA,0.35
-url,DynaMOSA,0.35
-url,DynaMOSA,0.47
-url,DynaMOSA,0.35
-url,DynaMOSA,0.38
-url,DynaMOSA,0.45
-url,DynaMOSA,0.47
-url,DynaMOSA,0.37
-url,DynaMOSA,0.46
-url,DynaMOSA,0.44
-url,DynaMOSA,0.43
-url,DynaMOSA,0.45
-url,DynaMOSA,0.47
-url,DynaMOSA,0.35
-url,DynaMOSA,0.37
-url,DynaMOSA,0.35
-url,DynaMOSA,0.45
-url,DynaMOSA,0.37
-url,DynaMOSA,0.36
-url,DynaMOSA,0.38
-url,DynaMOSA,0.41
-url,DynaMOSA,0.47
-url,DynaMOSA,0.35
-url,DynaMOSA,0.45
-url,DynaMOSA,0.42
-url,DynaMOSA,0.39
-url,DynaMOSA,0.45
-url,DynaMOSA,0.43
-url,DynaMOSA,0.45
+Crate,Algorithm,Length
+url,Random Search,64
+url,Random Search,60
+url,Random Search,61
+url,Random Search,68
+url,Random Search,62
+url,Random Search,60
+url,Random Search,65
+url,Random Search,61
+url,Random Search,64
+url,Random Search,63
+url,Random Search,64
+url,Random Search,56
+url,Random Search,55
+url,Random Search,55
+url,Random Search,69
+url,Random Search,56
+url,Random Search,67
+url,Random Search,63
+url,Random Search,67
+url,Random Search,65
+url,Random Search,56
+url,Random Search,59
+url,Random Search,69
+url,Random Search,58
+url,Random Search,59
+url,Random Search,60
+url,Random Search,69
+url,Random Search,62
+url,Random Search,68
+url,Random Search,70
+url,DynaMOSA,46
+url,DynaMOSA,45
+url,DynaMOSA,43
+url,DynaMOSA,48
+url,DynaMOSA,42
+url,DynaMOSA,47
+url,DynaMOSA,48
+url,DynaMOSA,48
+url,DynaMOSA,44
+url,DynaMOSA,43
+url,DynaMOSA,48
+url,DynaMOSA,49
+url,DynaMOSA,48
+url,DynaMOSA,46
+url,DynaMOSA,47
+url,DynaMOSA,42
+url,DynaMOSA,46
+url,DynaMOSA,43
+url,DynaMOSA,42
+url,DynaMOSA,42
+url,DynaMOSA,43
+url,DynaMOSA,48
+url,DynaMOSA,43
+url,DynaMOSA,42
+url,DynaMOSA,43
+url,DynaMOSA,43
+url,DynaMOSA,48
+url,DynaMOSA,42
+url,DynaMOSA,42
+url,DynaMOSA,44

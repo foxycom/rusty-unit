@@ -13,6 +13,7 @@ import de.unipassau.testify.algorithm.dynamosa.DynaMOSA;
 import de.unipassau.testify.algorithm.mosa.MOSA;
 import de.unipassau.testify.algorithm.random.RandomSearch;
 import de.unipassau.testify.exec.Output;
+import de.unipassau.testify.exec.Timer;
 import de.unipassau.testify.generator.OffspringGeneratorImpl;
 import de.unipassau.testify.hir.TyCtxt;
 import de.unipassau.testify.json.JSONParser;
@@ -21,21 +22,25 @@ import de.unipassau.testify.metaheuristics.chromosome.FixedSizePopulationGenerat
 import de.unipassau.testify.metaheuristics.fitness_functions.MinimizingFitnessFunction;
 import de.unipassau.testify.mir.MirAnalysis;
 import de.unipassau.testify.source.Crate;
-import de.unipassau.testify.test_case.CallableSelector;
-import de.unipassau.testify.test_case.SeededTestCaseGenerator;
+import de.unipassau.testify.test_case.gen.AllMethodTestCaseGenerator;
+import de.unipassau.testify.test_case.gen.SeededTestCaseGenerator;
 import de.unipassau.testify.test_case.TestCase;
-import de.unipassau.testify.test_case.RandomTestCaseGenerator;
+import de.unipassau.testify.test_case.gen.RandomTestCaseGenerator;
 import de.unipassau.testify.test_case.UncoveredObjectives;
 import de.unipassau.testify.test_case.operators.DefaultMutation;
 import de.unipassau.testify.test_case.operators.RankSelection;
 import de.unipassau.testify.test_case.operators.SinglePointFixedCrossover;
+import de.unipassau.testify.test_case.seed.SeedOptions;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 public class TestsGenerator {
 
@@ -49,23 +54,26 @@ public class TestsGenerator {
 
     Set<MinimizingFitnessFunction<TestCase>> objectives = mir.targets();
 
+    var seedOptions = SeedOptions.builder()
+        .useConstantPool(cli.seedConstantPool())
+        .initialRandomPopulation(cli.seedRandomPopulation())
+        .useAllMethods(cli.seedMethods())
+        .build();
     var svd = new SVDImpl<>(objectives);
     var pareto = new Pareto<TestCase>();
     var fnds = new FNDSImpl<>(pareto);
     var preferenceSorter = new PreferenceSorterImpl<>(objectives, fnds);
 
-    var callableSelector = new CallableSelector();
     var mutation = new DefaultMutation();
     var crossover = new SinglePointFixedCrossover();
     var selection = new RankSelection<>(objectives, svd, preferenceSorter);
 
     ChromosomeGenerator<TestCase> chromosomeGenerator;
-    if (cli.seedRandomPopulation()) {
+    if (seedOptions.useAllMethods()) {
       chromosomeGenerator = new SeededTestCaseGenerator(hir, mir, mutation, crossover,
-          callableSelector);
+          seedOptions);
     } else {
-      chromosomeGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover,
-          callableSelector);
+      chromosomeGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover);
     }
     var populationGenerator = new FixedSizePopulationGenerator<>(chromosomeGenerator,
         POPULATION_SIZE);
@@ -101,7 +109,11 @@ public class TestsGenerator {
 
     Set<MinimizingFitnessFunction<TestCase>> objectives = mir.targets();
 
-    var callableSelector = new CallableSelector();
+    var seedOptions = SeedOptions.builder()
+        .useConstantPool(cli.seedConstantPool())
+        .initialRandomPopulation(cli.seedRandomPopulation())
+        .useAllMethods(cli.seedMethods())
+        .build();
     var svd = new SVDImpl<>(objectives);
     var pareto = new Pareto<TestCase>();
     var fnds = new FNDSImpl<>(pareto);
@@ -110,12 +122,9 @@ public class TestsGenerator {
     var mutation = new DefaultMutation();
     var crossover = new SinglePointFixedCrossover();
     var selection = new RankSelection<>(objectives, svd, preferenceSorter);
-    ChromosomeGenerator<TestCase> chromosomeGenerator;
-    if (cli.seedRandomPopulation()) {
-      chromosomeGenerator = new SeededTestCaseGenerator(hir, mir, mutation, crossover, callableSelector);
-    } else {
-      chromosomeGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover, callableSelector);
-    }
+//    ChromosomeGenerator<TestCase> chromosomeGenerator = new SeededTestCaseGenerator(hir, mir,
+//        mutation, crossover, seedOptions);
+    var chromosomeGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover);
     var populationGenerator = new FixedSizePopulationGenerator<>(
         chromosomeGenerator, POPULATION_SIZE);
 
@@ -125,15 +134,24 @@ public class TestsGenerator {
     var archive = new DefaultArchive<>(objectives);
     var output = new Output<TestCase>(cli.getCrateName(), cli.getCrateRoot());
 
-    List<TestCase> initialPopulation;
-    if (cli.seedRandomPopulation()) {
+    var timer = new Timer();
+    timer.start();
+    List<TestCase> initialPopulation = populationGenerator.get();
+    if (seedOptions.initialRandomPopulation()) {
       initialPopulation = new ArrayList<>();
       int randomGenerations = Math.max((int) (GENERATIONS * 0.2), 2);
-      var randomTestCaseGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover, callableSelector);
-      IntStream.range(0, randomGenerations).mapToObj(i -> randomTestCaseGenerator.get()).forEach(initialPopulation::add);
-    } else {
-      initialPopulation = populationGenerator.get();
+      var randomTestCaseGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover);
+      IntStream.range(0, randomGenerations).mapToObj(i -> randomTestCaseGenerator.get())
+          .forEach(initialPopulation::add);
     }
+
+    if (seedOptions.useAllMethods()) {
+      var methodsGenerator = new AllMethodTestCaseGenerator(hir, mir, mutation, crossover, seedOptions);
+      var additionalPopulation = Stream.generate(methodsGenerator).limit(hir.getCallables().size()).collect(Collectors.toList());
+      initialPopulation.addAll(additionalPopulation);
+    }
+
+    System.out.printf("-- Initial population has been generated. Took %ds%n", TimeUnit.MILLISECONDS.toSeconds(timer.end()));
 
     var mosa = DynaMOSA.<TestCase>builder().maxGenerations(GENERATIONS)
         .populationSize(POPULATION_SIZE)
@@ -160,21 +178,15 @@ public class TestsGenerator {
     var hir = new TyCtxt(JSONParser.parse(hirJson));
     var mir = new MirAnalysis<TestCase>(cli.getMirPath());
 
-    var callableSelector = new CallableSelector();
     var mutation = new DefaultMutation();
     var crossover = new SinglePointFixedCrossover();
-    var chromosomeGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover,
-        callableSelector);
-    var populationGenerator = new FixedSizePopulationGenerator<>(chromosomeGenerator,
-        POPULATION_SIZE);
+    var chromosomeGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover);
 
     Set<MinimizingFitnessFunction<TestCase>> objectives = mir.targets();
 
     var archive = new DefaultArchive<>(objectives);
-    var rs = new RandomSearch<>(GENERATIONS, populationGenerator, archive, crate);
-
+    var rs = new RandomSearch<>(GENERATIONS * POPULATION_SIZE, chromosomeGenerator, archive, crate);
     var solutions = rs.findSolution();
-
     crate.addAll(solutions);
   }
 }

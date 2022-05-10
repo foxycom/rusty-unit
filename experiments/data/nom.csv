@@ -1,61 +1,61 @@
-Crate,Algorithm,Coverage
-nom,Random Search,0.35
-nom,Random Search,0.36
-nom,Random Search,0.37
-nom,Random Search,0.39
-nom,Random Search,0.35
-nom,Random Search,0.33
-nom,Random Search,0.37
-nom,Random Search,0.38
-nom,Random Search,0.39
-nom,Random Search,0.34
-nom,Random Search,0.33
-nom,Random Search,0.38
-nom,Random Search,0.38
-nom,Random Search,0.39
-nom,Random Search,0.38
-nom,Random Search,0.35
-nom,Random Search,0.33
-nom,Random Search,0.33
-nom,Random Search,0.35
-nom,Random Search,0.34
-nom,Random Search,0.33
-nom,Random Search,0.34
-nom,Random Search,0.35
-nom,Random Search,0.35
-nom,Random Search,0.37
-nom,Random Search,0.33
-nom,Random Search,0.35
-nom,Random Search,0.37
-nom,Random Search,0.33
-nom,Random Search,0.36
-nom,DynaMOSA,0.32
-nom,DynaMOSA,0.27
-nom,DynaMOSA,0.31
-nom,DynaMOSA,0.32
-nom,DynaMOSA,0.32
-nom,DynaMOSA,0.28
-nom,DynaMOSA,0.26
-nom,DynaMOSA,0.27
-nom,DynaMOSA,0.26
-nom,DynaMOSA,0.33
-nom,DynaMOSA,0.29
-nom,DynaMOSA,0.34
-nom,DynaMOSA,0.3
-nom,DynaMOSA,0.35
-nom,DynaMOSA,0.3
-nom,DynaMOSA,0.28
-nom,DynaMOSA,0.32
-nom,DynaMOSA,0.3
-nom,DynaMOSA,0.29
-nom,DynaMOSA,0.35
-nom,DynaMOSA,0.35
-nom,DynaMOSA,0.29
-nom,DynaMOSA,0.32
-nom,DynaMOSA,0.29
-nom,DynaMOSA,0.32
-nom,DynaMOSA,0.33
-nom,DynaMOSA,0.3
-nom,DynaMOSA,0.33
-nom,DynaMOSA,0.34
-nom,DynaMOSA,0.28
+Crate,Algorithm,Length
+nom,Random Search,54
+nom,Random Search,60
+nom,Random Search,57
+nom,Random Search,62
+nom,Random Search,57
+nom,Random Search,57
+nom,Random Search,58
+nom,Random Search,59
+nom,Random Search,59
+nom,Random Search,57
+nom,Random Search,56
+nom,Random Search,56
+nom,Random Search,58
+nom,Random Search,55
+nom,Random Search,54
+nom,Random Search,62
+nom,Random Search,62
+nom,Random Search,57
+nom,Random Search,62
+nom,Random Search,57
+nom,Random Search,59
+nom,Random Search,57
+nom,Random Search,45
+nom,Random Search,61
+nom,Random Search,60
+nom,Random Search,56
+nom,Random Search,54
+nom,Random Search,57
+nom,Random Search,61
+nom,Random Search,59
+nom,DynaMOSA,50
+nom,DynaMOSA,53
+nom,DynaMOSA,51
+nom,DynaMOSA,54
+nom,DynaMOSA,50
+nom,DynaMOSA,54
+nom,DynaMOSA,49
+nom,DynaMOSA,54
+nom,DynaMOSA,54
+nom,DynaMOSA,52
+nom,DynaMOSA,52
+nom,DynaMOSA,53
+nom,DynaMOSA,51
+nom,DynaMOSA,50
+nom,DynaMOSA,49
+nom,DynaMOSA,48
+nom,DynaMOSA,53
+nom,DynaMOSA,50
+nom,DynaMOSA,51
+nom,DynaMOSA,49
+nom,DynaMOSA,54
+nom,DynaMOSA,50
+nom,DynaMOSA,52
+nom,DynaMOSA,51
+nom,DynaMOSA,48
+nom,DynaMOSA,52
+nom,DynaMOSA,48
+nom,DynaMOSA,49
+nom,DynaMOSA,48
+nom,DynaMOSA,48

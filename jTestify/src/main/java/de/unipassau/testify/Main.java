@@ -35,7 +35,7 @@ public class Main {
     @Option(shortName = "i", longName = "instrumenter")
     String getInstrumenterPath();
 
-    @Option(longName = "seed-methods")
+    @Option(longName = "seed-all-methods")
     boolean seedMethods();
 
     @Option(longName = "seed-constant-pool")
@@ -43,6 +43,9 @@ public class Main {
 
     @Option(longName = "seed-random-population")
     boolean seedRandomPopulation();
+
+    @Option(longName = "seed-by-class")
+    boolean seedByClass();
 
     @Option(longName = "features")
     String features();

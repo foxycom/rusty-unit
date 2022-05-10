@@ -35,6 +35,8 @@ public class CDG<M extends MinimizingFitnessFunction<C>, C extends AbstractTestC
   private final Map<M, Set<M>> dependenceCache;
   private final M root;
 
+  private double averageDepth;
+
   public CDG(Graph<M, DefaultEdge> graph) {
     this.graph = graph;
     this.pathCache = new HashMap<>();
@@ -42,15 +44,16 @@ public class CDG<M extends MinimizingFitnessFunction<C>, C extends AbstractTestC
     this.dependenceCache = new HashMap<>();
     this.root = root(graph);
 
-    var pathAlgorithm = new BellmanFordShortestPath<>(graph);
-
-
+    int allLength = 0;
     for (M object : graph.vertexSet()) {
       var path = DijkstraShortestPath.findPathBetween(graph, root, object).getVertexList();
+      allLength += path.size();
       pathCache.put(object, path);
       distanceCache.put(object, path.size() - 1);
       dependenceCache.put(object, allSubTargets(object));
     }
+
+    averageDepth = ((double) allLength) / graph.vertexSet().size();
   }
 
   // {"nodes":[18446744073709551615,0,1,2],"node_holes":[],"edge_property":"directed","edges":[[0,1,1],[0,2,1],[0,3,1],[0,0,1]]}
@@ -170,10 +173,8 @@ public class CDG<M extends MinimizingFitnessFunction<C>, C extends AbstractTestC
     return edges.stream().map(graph::getEdgeSource).filter(s -> !s.equals(target)).collect(Collectors.toSet());
   }
 
-  public static void main(String[] args) {
-    var cdg = parse("hello",
-        "{\"nodes\":[42069,1,3,4,5,6,7,8,9,10,11,12,13,14,15,2,0,16],\"node_holes\":[],\"edge_property\":\"directed\",\"edges\":[[1,2,1],[1,3,1],[1,4,1],[1,5,1],[1,6,1],[1,7,1],[1,8,1],[1,9,1],[1,10,1],[1,11,1],[1,12,1],[1,13,1],[1,14,1],[1,15,1],[0,16,1],[0,1,1],[0,17,1],[0,0,1]]}");
-    System.out.println(cdg.independentTargets());
+  public double averageDepth() {
+    return averageDepth;
   }
 
   @Override

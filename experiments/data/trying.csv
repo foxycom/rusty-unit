@@ -1,61 +1,61 @@
-Crate,Algorithm,Coverage
-trying,Random Search,0.51
-trying,Random Search,0.5
-trying,Random Search,0.5
-trying,Random Search,0.49
-trying,Random Search,0.52
-trying,Random Search,0.46
-trying,Random Search,0.48
-trying,Random Search,0.49
-trying,Random Search,0.51
-trying,Random Search,0.51
-trying,Random Search,0.47
-trying,Random Search,0.52
-trying,Random Search,0.48
-trying,Random Search,0.48
-trying,Random Search,0.47
-trying,Random Search,0.46
-trying,Random Search,0.51
-trying,Random Search,0.52
-trying,Random Search,0.51
-trying,Random Search,0.52
-trying,Random Search,0.49
-trying,Random Search,0.5
-trying,Random Search,0.51
-trying,Random Search,0.53
-trying,Random Search,0.54
-trying,Random Search,0.51
-trying,Random Search,0.47
-trying,Random Search,0.49
-trying,Random Search,0.51
-trying,Random Search,0.54
-trying,DynaMOSA,0.48
-trying,DynaMOSA,0.58
-trying,DynaMOSA,0.56
-trying,DynaMOSA,0.52
-trying,DynaMOSA,0.53
-trying,DynaMOSA,0.52
-trying,DynaMOSA,0.56
-trying,DynaMOSA,0.56
-trying,DynaMOSA,0.54
-trying,DynaMOSA,0.58
-trying,DynaMOSA,0.48
-trying,DynaMOSA,0.52
-trying,DynaMOSA,0.56
-trying,DynaMOSA,0.54
-trying,DynaMOSA,0.48
-trying,DynaMOSA,0.52
-trying,DynaMOSA,0.46
-trying,DynaMOSA,0.48
-trying,DynaMOSA,0.53
-trying,DynaMOSA,0.52
-trying,DynaMOSA,0.6
-trying,DynaMOSA,0.47
-trying,DynaMOSA,0.47
-trying,DynaMOSA,0.6
-trying,DynaMOSA,0.44
-trying,DynaMOSA,0.49
-trying,DynaMOSA,0.48
-trying,DynaMOSA,0.46
-trying,DynaMOSA,0.47
-trying,DynaMOSA,0.5
+Crate,Algorithm,Length
+trying,Random Search,50
+trying,Random Search,49
+trying,Random Search,53
+trying,Random Search,50
+trying,Random Search,48
+trying,Random Search,46
+trying,Random Search,55
+trying,Random Search,54
+trying,Random Search,48
+trying,Random Search,46
+trying,Random Search,48
+trying,Random Search,44
+trying,Random Search,50
+trying,Random Search,47
+trying,Random Search,54
+trying,Random Search,48
+trying,Random Search,48
+trying,Random Search,46
+trying,Random Search,55
+trying,Random Search,53
+trying,Random Search,50
+trying,Random Search,53
+trying,Random Search,55
+trying,Random Search,53
+trying,Random Search,51
+trying,Random Search,46
+trying,Random Search,48
+trying,Random Search,45
+trying,Random Search,48
+trying,Random Search,48
+trying,DynaMOSA,53
+trying,DynaMOSA,55
+trying,DynaMOSA,56
+trying,DynaMOSA,56
+trying,DynaMOSA,53
+trying,DynaMOSA,53
+trying,DynaMOSA,56
+trying,DynaMOSA,52
+trying,DynaMOSA,52
+trying,DynaMOSA,50
+trying,DynaMOSA,53
+trying,DynaMOSA,55
+trying,DynaMOSA,52
+trying,DynaMOSA,49
+trying,DynaMOSA,57
+trying,DynaMOSA,55
+trying,DynaMOSA,49
+trying,DynaMOSA,55
+trying,DynaMOSA,53
+trying,DynaMOSA,58
+trying,DynaMOSA,51
+trying,DynaMOSA,59
+trying,DynaMOSA,49
+trying,DynaMOSA,56
+trying,DynaMOSA,58
+trying,DynaMOSA,51
+trying,DynaMOSA,59
+trying,DynaMOSA,54
+trying,DynaMOSA,53
+trying,DynaMOSA,59

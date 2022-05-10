@@ -45,6 +45,7 @@ public class StaticMethod implements Callable {
     this.srcFilePath = srcFilePath;
   }
 
+  @Override
   public String globalId() {
     return globalId;
   }

@@ -1,61 +1,61 @@
-Crate,Algorithm,Coverage
-fixed,Random Search,0.33
-fixed,Random Search,0.32
-fixed,Random Search,0.31
-fixed,Random Search,0.33
-fixed,Random Search,0.34
-fixed,Random Search,0.31
-fixed,Random Search,0.34
-fixed,Random Search,0.33
-fixed,Random Search,0.33
-fixed,Random Search,0.3
-fixed,Random Search,0.32
-fixed,Random Search,0.35
-fixed,Random Search,0.33
-fixed,Random Search,0.33
-fixed,Random Search,0.3
-fixed,Random Search,0.34
-fixed,Random Search,0.32
-fixed,Random Search,0.33
-fixed,Random Search,0.35
-fixed,Random Search,0.32
-fixed,Random Search,0.33
-fixed,Random Search,0.33
-fixed,Random Search,0.35
-fixed,Random Search,0.34
-fixed,Random Search,0.32
-fixed,Random Search,0.34
-fixed,Random Search,0.33
-fixed,Random Search,0.32
-fixed,Random Search,0.35
-fixed,Random Search,0.3
-fixed,DynaMOSA,0.36
-fixed,DynaMOSA,0.3
-fixed,DynaMOSA,0.39
-fixed,DynaMOSA,0.38
-fixed,DynaMOSA,0.39
-fixed,DynaMOSA,0.39
-fixed,DynaMOSA,0.28
-fixed,DynaMOSA,0.36
-fixed,DynaMOSA,0.33
-fixed,DynaMOSA,0.3
-fixed,DynaMOSA,0.31
-fixed,DynaMOSA,0.36
-fixed,DynaMOSA,0.34
-fixed,DynaMOSA,0.32
-fixed,DynaMOSA,0.38
-fixed,DynaMOSA,0.35
-fixed,DynaMOSA,0.33
-fixed,DynaMOSA,0.38
-fixed,DynaMOSA,0.31
-fixed,DynaMOSA,0.33
-fixed,DynaMOSA,0.38
-fixed,DynaMOSA,0.37
-fixed,DynaMOSA,0.28
-fixed,DynaMOSA,0.34
-fixed,DynaMOSA,0.32
-fixed,DynaMOSA,0.31
-fixed,DynaMOSA,0.31
-fixed,DynaMOSA,0.39
-fixed,DynaMOSA,0.33
-fixed,DynaMOSA,0.34
+Crate,Algorithm,Length
+fixed,Random Search,65
+fixed,Random Search,58
+fixed,Random Search,65
+fixed,Random Search,73
+fixed,Random Search,64
+fixed,Random Search,64
+fixed,Random Search,72
+fixed,Random Search,60
+fixed,Random Search,66
+fixed,Random Search,58
+fixed,Random Search,70
+fixed,Random Search,71
+fixed,Random Search,69
+fixed,Random Search,71
+fixed,Random Search,69
+fixed,Random Search,69
+fixed,Random Search,71
+fixed,Random Search,73
+fixed,Random Search,58
+fixed,Random Search,66
+fixed,Random Search,65
+fixed,Random Search,64
+fixed,Random Search,70
+fixed,Random Search,60
+fixed,Random Search,64
+fixed,Random Search,65
+fixed,Random Search,66
+fixed,Random Search,72
+fixed,Random Search,65
+fixed,Random Search,65
+fixed,DynaMOSA,55
+fixed,DynaMOSA,58
+fixed,DynaMOSA,61
+fixed,DynaMOSA,60
+fixed,DynaMOSA,62
+fixed,DynaMOSA,55
+fixed,DynaMOSA,66
+fixed,DynaMOSA,54
+fixed,DynaMOSA,64
+fixed,DynaMOSA,53
+fixed,DynaMOSA,62
+fixed,DynaMOSA,52
+fixed,DynaMOSA,63
+fixed,DynaMOSA,66
+fixed,DynaMOSA,59
+fixed,DynaMOSA,66
+fixed,DynaMOSA,55
+fixed,DynaMOSA,53
+fixed,DynaMOSA,52
+fixed,DynaMOSA,65
+fixed,DynaMOSA,66
+fixed,DynaMOSA,54
+fixed,DynaMOSA,59
+fixed,DynaMOSA,61
+fixed,DynaMOSA,66
+fixed,DynaMOSA,63
+fixed,DynaMOSA,66
+fixed,DynaMOSA,66
+fixed,DynaMOSA,57
+fixed,DynaMOSA,66
