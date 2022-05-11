@@ -2,9 +2,9 @@ package de.unipassau.rustyunit.test_case.callable.std;
 
 import de.unipassau.rustyunit.test_case.Param;
 import de.unipassau.rustyunit.test_case.callable.StaticMethod;
-import de.unipassau.rustyunit.test_case.type.Type;
-import de.unipassau.rustyunit.test_case.type.prim.Str;
-import de.unipassau.rustyunit.test_case.type.std.String;
+import de.unipassau.rustyunit.type.Type;
+import de.unipassau.rustyunit.type.prim.Str;
+import de.unipassau.rustyunit.type.std.string.String;
 import java.util.List;
 
 public class StringInit extends StaticMethod {

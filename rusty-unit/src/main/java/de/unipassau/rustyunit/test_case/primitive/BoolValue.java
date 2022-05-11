@@ -1,7 +1,7 @@
 package de.unipassau.rustyunit.test_case.primitive;
 
-import de.unipassau.rustyunit.test_case.type.prim.Bool;
-import de.unipassau.rustyunit.test_case.type.prim.Prim;
+import de.unipassau.rustyunit.type.prim.Bool;
+import de.unipassau.rustyunit.type.prim.Prim;
 import java.util.Objects;
 
 public class BoolValue implements PrimitiveValue<Boolean> {

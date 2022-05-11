@@ -6,7 +6,7 @@ import de.unipassau.rustyunit.test_case.Param;
 import de.unipassau.rustyunit.test_case.TestCase;
 import de.unipassau.rustyunit.test_case.var.VarReference;
 import de.unipassau.rustyunit.test_case.statement.Statement;
-import de.unipassau.rustyunit.test_case.type.Type;
+import de.unipassau.rustyunit.type.Type;
 import java.util.List;
 
 @JsonDeserialize(using = CallableDeserializer.class)

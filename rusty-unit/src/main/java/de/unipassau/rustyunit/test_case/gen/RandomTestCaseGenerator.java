@@ -37,6 +37,8 @@ public class RandomTestCaseGenerator implements ChromosomeGenerator<TestCase> {
       testCase.insertRandomStmt();
     }
 
+    logger.info("Generated test:\n{}", testCase);
+
     return testCase;
   }
 }

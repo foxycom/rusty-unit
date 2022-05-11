@@ -3,8 +3,8 @@ package de.unipassau.rustyunit.test_case.visitor;
 import de.unipassau.rustyunit.test_case.TestCase;
 import de.unipassau.rustyunit.test_case.var.VarReference;
 import de.unipassau.rustyunit.test_case.statement.Statement;
-import de.unipassau.rustyunit.test_case.type.Type;
-import de.unipassau.rustyunit.test_case.type.TypeBinding;
+import de.unipassau.rustyunit.type.Type;
+import de.unipassau.rustyunit.type.TypeBinding;
 import java.util.HashMap;
 import java.util.Map;
 

@@ -107,7 +107,7 @@ public class CDG<M extends MinimizingFitnessFunction<C>, C extends AbstractTestC
   }
 
   public Set<M> targets() {
-    return graph.vertexSet();
+    return graph.vertexSet().stream().filter(v -> !v.isDummy()).collect(Collectors.toSet());
   }
 
   public Set<M> independentTargets() {

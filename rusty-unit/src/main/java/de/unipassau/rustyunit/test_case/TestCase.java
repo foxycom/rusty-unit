@@ -25,17 +25,17 @@ import de.unipassau.rustyunit.test_case.primitive.PrimitiveValue;
 import de.unipassau.rustyunit.test_case.seed.SeedOptions;
 import de.unipassau.rustyunit.test_case.statement.PrimitiveStmt;
 import de.unipassau.rustyunit.test_case.statement.Statement;
-import de.unipassau.rustyunit.test_case.type.Array;
-import de.unipassau.rustyunit.test_case.type.Generic;
-import de.unipassau.rustyunit.test_case.type.Ref;
-import de.unipassau.rustyunit.test_case.type.Tuple;
-import de.unipassau.rustyunit.test_case.type.Type;
-import de.unipassau.rustyunit.test_case.type.TypeBinding;
-import de.unipassau.rustyunit.test_case.type.prim.Int.ISize;
-import de.unipassau.rustyunit.test_case.type.prim.Prim;
-import de.unipassau.rustyunit.test_case.type.traits.Trait;
-import de.unipassau.rustyunit.test_case.type.traits.std.default_.Default;
-import de.unipassau.rustyunit.test_case.type.traits.std.marker.Copy;
+import de.unipassau.rustyunit.type.Array;
+import de.unipassau.rustyunit.type.Generic;
+import de.unipassau.rustyunit.type.Ref;
+import de.unipassau.rustyunit.type.Tuple;
+import de.unipassau.rustyunit.type.Type;
+import de.unipassau.rustyunit.type.TypeBinding;
+import de.unipassau.rustyunit.type.prim.Int.ISize;
+import de.unipassau.rustyunit.type.prim.Prim;
+import de.unipassau.rustyunit.type.traits.Trait;
+import de.unipassau.rustyunit.type.traits.std.default_.Default;
+import de.unipassau.rustyunit.type.traits.std.marker.Copy;
 import de.unipassau.rustyunit.test_case.var.Index;
 import de.unipassau.rustyunit.test_case.var.VarReference;
 import de.unipassau.rustyunit.test_case.visitor.LineNumberDebugVisitor;
@@ -505,9 +505,9 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     if (method.returnsValue()) {
       generics.addAll(TypeUtil.getDeepGenerics(method.getReturnType()));
     }
-
-    TypeBinding ownerTypeBinding = TypeBinding.fromTypes(method.getSelfParam().getType(),
-        owner.type());
+    TypeBinding ownerTypeBinding = owner.getBinding();
+//    TypeBinding ownerTypeBinding = TypeBinding.fromTypes(method.getSelfParam().getType(),
+//        owner.type());
 
     var genericsTypeBinding = new TypeBinding(generics);
     var typeBinding = ownerTypeBinding.leftOuterMerge(genericsTypeBinding);
@@ -573,12 +573,15 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   }
 
   public Optional<VarReference> insertCallable(Callable callable) {
+    return insertCallable(callable, new TypeBinding());
+  }
+
+  private Optional<VarReference> insertCallable(Callable callable, TypeBinding typeBinding) {
     if (!canBeInserted(callable)) {
       return Optional.empty();
     }
 
     logger.debug("({}) Inserting callable {}", id, callable);
-
     LinkedHashSet<Generic> generics = callable.getParams().stream()
         .map(Param::getType)
         .map(TypeUtil::getDeepGenerics)
@@ -594,7 +597,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
     logger.debug("({}) It's generics are: {}", id, generics);
 
-    var typeBinding = new TypeBinding(generics);
+    typeBinding.addGenerics(generics);
 
     generics.stream().map(g -> Pair.with(g, getTypeFor(g)))
         .filter(p -> p.getValue1().isPresent())
@@ -992,12 +995,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     }
 
     logger.debug("({}) Selected generator: {} (Total: {})", id, generator, generators.size());
-    var wraps = generator.getReturnType().wraps(type);
-    if (wraps.isPresent()) {
-      var wrappedValue = insertCallable(generator);
-      return wrappedValue.flatMap(
-          varReference -> unwrapVariable(varReference, wraps.get(), type));
-    }
+
 
     TypeBinding typeBinding = TypeUtil.getNecessaryBindings(generator.getReturnType(), type);
     generator.getParams().stream()

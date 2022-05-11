@@ -4,7 +4,7 @@ import com.google.common.collect.Streams;
 import de.unipassau.rustyunit.test_case.TestCase;
 import de.unipassau.rustyunit.test_case.var.VarReference;
 import de.unipassau.rustyunit.test_case.statement.Statement;
-import de.unipassau.rustyunit.test_case.type.Type;
+import de.unipassau.rustyunit.type.Type;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;

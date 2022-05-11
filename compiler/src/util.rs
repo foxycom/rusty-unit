@@ -49,6 +49,7 @@ pub fn ty_to_param(
     name: Option<&str>,
     ty: &Ty,
     self_ty: Option<&T>,
+    associated_types: Option<&HashMap<String, T>>,
     parent_generics: &Vec<T>,
     tcx: &TyCtxt<'_>,
 ) -> Option<Param> {
@@ -57,19 +58,19 @@ pub fn ty_to_param(
         _ => false,
     };
 
-    let real_ty = ty_to_t(ty, self_ty, parent_generics, tcx)?;
+    let real_ty = ty_to_t(ty, self_ty, associated_types, parent_generics, tcx)?;
     Some(Param::new(name, real_ty, mutability))
 }
 
 pub fn ty_to_t(
     ty: &Ty,
     self_ty: Option<&T>,
+    associated_types: Option<&HashMap<String, T>>,
     defined_generics: &Vec<T>,
     tcx: &TyCtxt<'_>,
 ) -> Option<T> {
-    info!("Returns {:?}", ty);
     match &ty.kind {
-        TyKind::Rptr(_, mut_ty) => ty_to_t(mut_ty.ty, self_ty, defined_generics, tcx).map(|t| {
+        TyKind::Rptr(_, mut_ty) => ty_to_t(mut_ty.ty, self_ty, associated_types, defined_generics, tcx).map(|t| {
             let mutable = match mut_ty.mutbl {
                 Mutability::Mut => true,
                 Mutability::Not => false,
@@ -79,17 +80,24 @@ pub fn ty_to_t(
         TyKind::Path(q_path) => {
             match q_path {
                 QPath::Resolved(_, path) => {
-                    path_to_t(path, self_ty, defined_generics, tcx)
+                    path_to_t(path, self_ty, associated_types, defined_generics, tcx)
                     // TODO parse generic args of the type
                 }
                 QPath::TypeRelative(ty, segment) => {
-                    let as_type = ty_to_t(ty, self_ty, defined_generics, tcx);
+                    if let Some(associated_types) = associated_types {
+                        if let Some(mapped_t) = associated_types.get(segment.ident.name.as_str()) {
+                            return Some(mapped_t.clone());
+                        }
+                    }
+
+                    info!("Did not find any mapping for {:?}", segment );
+                    let as_type = ty_to_t(ty, self_ty, associated_types, defined_generics, tcx);
                     as_type.map(|as_type| T::Relative(Box::new(as_type), segment.ident.to_string()))
-                },
+                }
                 _ => unimplemented!("{:?}", q_path),
             }
         }
-        TyKind::Slice(ty) => ty_to_t(ty, self_ty, defined_generics, tcx).map(|t| {
+        TyKind::Slice(ty) => ty_to_t(ty, self_ty, associated_types, defined_generics, tcx).map(|t| {
             T::Slice(Box::new(t))
         }),
         TyKind::OpaqueDef(item, generic_args) => {
@@ -102,7 +110,7 @@ pub fn ty_to_t(
         TyKind::Tup(tys) => {
             let ts = tys
                 .iter()
-                .filter_map(|ty| ty_to_t(ty, self_ty, defined_generics, tcx))
+                .filter_map(|ty| ty_to_t(ty, self_ty, associated_types, defined_generics, tcx))
                 .map(Box::new)
                 .collect::<Vec<_>>();
             if ts.len() != tys.len() {
@@ -113,7 +121,7 @@ pub fn ty_to_t(
         TyKind::Array(ty, array_len) => {
             let array_len = eval_array_len(array_len, tcx);
             if let Some(array_len) = array_len {
-                return ty_to_t(ty, self_ty, defined_generics, tcx)
+                return ty_to_t(ty, self_ty, associated_types, defined_generics, tcx)
                     .map(|ty| T::Array(Box::new(ArrayT::new(ty, array_len))));
             }
 
@@ -127,7 +135,7 @@ pub fn ty_to_t(
             Some(T::TraitObj(trait_obj))
         }
         TyKind::Ptr(ptr) => {
-            let t = ty_to_t(ptr.ty, self_ty, defined_generics, tcx);
+            let t = ty_to_t(ptr.ty, self_ty, associated_types, defined_generics, tcx);
             t.map(|t| T::RawPointer(Box::new(t), ptr.mutbl == Mutability::Mut)).or_else(|| todo!("{:?}", ptr))
         }
         TyKind::BareFn(bare_fn) => {
@@ -140,6 +148,7 @@ pub fn ty_to_t(
 pub fn path_to_generics(
     path: &rustc_hir::Path<'_>,
     self_: Option<&T>,
+    associated_types: Option<&HashMap<String, T>>,
     defined_generics: &Vec<T>,
     tcx: &TyCtxt<'_>,
 ) -> Vec<T> {
@@ -151,7 +160,7 @@ pub fn path_to_generics(
                 Some(
                     args.args
                         .iter()
-                        .filter_map(|a| generic_arg_to_t(a, self_, defined_generics, tcx))
+                        .filter_map(|a| generic_arg_to_t(a, self_, associated_types, defined_generics, tcx))
                         .collect::<Vec<_>>(),
                 )
             } else {
@@ -167,15 +176,16 @@ pub fn path_to_generics(
 pub fn path_to_t(
     path: &Path,
     self_ty: Option<&T>,
+    associated_types: Option<&HashMap<String, T>>,
     defined_generics: &Vec<T>,
     tcx: &TyCtxt<'_>,
 ) -> Option<T> {
     match &path.res {
         Res::Def(def_kind, def_id) => match def_kind {
             DefKind::Struct | DefKind::Enum | DefKind::Union => {
-                let generics = path_to_generics(path, self_ty, defined_generics, tcx);
+                let generics = path_to_generics(path, self_ty, associated_types, defined_generics, tcx);
                 debug!("Generics are: {:?}", generics);
-                def_kind_to_t(def_kind, *def_id, self_ty, path, &generics, tcx)
+                def_kind_to_t(def_kind, *def_id, self_ty, path, associated_types, &generics, tcx)
             }
             DefKind::TyParam => {
                 let name = path
@@ -201,14 +211,15 @@ pub fn path_to_t(
         },
         Res::PrimTy(prim_ty) => Some(T::from(*prim_ty)),
         Res::SelfTy { trait_, .. } => {
-            if let Some(trait_) = trait_ {
-                let trait_name = tcx.def_path_str(*trait_);
-                let trait_instance = Trait::new(&trait_name, vec![], vec![]);
-                self_ty.map(|self_ty| T::AsTrait(Box::new(self_ty.clone()), trait_instance))
-            } else {
-                self_ty.map(|self_ty| self_ty.clone())
-            }
-        },
+            self_ty.map(|self_ty| self_ty.clone())
+            // if let Some(trait_) = trait_ {
+            //     let trait_name = tcx.def_path_str(*trait_);
+            //     let trait_instance = Trait::new(&trait_name, vec![], vec![]);
+            //     self_ty.map(|self_ty| T::AsTrait(Box::new(self_ty.clone()), trait_instance))
+            // } else {
+            //
+            // }
+        }
         _ => {
             unimplemented!("{:?}", &path.res)
         }
@@ -219,12 +230,13 @@ pub fn def_kind_to_t(
     def_kind: &DefKind,
     def_id: DefId,
     self_ty: Option<&T>,
-    path: &rustc_hir::Path<'_>,
+    path: &Path<'_>,
+    associated_types: Option<&HashMap<String, T>>,
     defined_generics: &Vec<T>,
     tcx: &TyCtxt<'_>,
 ) -> Option<T> {
     let name = tcx.def_path_str(def_id);
-    let generics = path_to_generics(path, self_ty, defined_generics, tcx);
+    let generics = path_to_generics(path, self_ty, associated_types, defined_generics, tcx);
 
     match def_kind {
         DefKind::Enum => Some(T::Enum(EnumT::new(
@@ -242,11 +254,12 @@ pub fn def_kind_to_t(
 pub fn generic_arg_to_t(
     generic_arg: &GenericArg,
     self_: Option<&T>,
+    associated_types: Option<&HashMap<String, T>>,
     defined_generics: &Vec<T>,
     tcx: &TyCtxt<'_>,
 ) -> Option<T> {
     match generic_arg {
-        GenericArg::Type(ty) => ty_to_t(ty, self_, defined_generics, tcx),
+        GenericArg::Type(ty) => ty_to_t(ty, self_, associated_types, defined_generics, tcx),
         _ => None,
     }
 }
@@ -342,7 +355,7 @@ pub fn tys_to_t(ty: rustc_middle::ty::Ty, tcx: &TyCtxt<'_>) -> Option<T> {
     }
 }
 
-pub fn generics_to_ts(generics: &Generics, tcx: &TyCtxt<'_>) -> Vec<T> {
+pub fn generics_to_ts(generics: &Generics, associated_types: Option<&HashMap<String, T>>, tcx: &TyCtxt<'_>) -> Vec<T> {
     let mut where_generics = if !generics.where_clause.predicates.is_empty() {
         let predicates = generics.where_clause.predicates;
         let where_generics = predicates
@@ -350,7 +363,7 @@ pub fn generics_to_ts(generics: &Generics, tcx: &TyCtxt<'_>) -> Vec<T> {
             .filter_map(|p| match p {
                 WherePredicate::BoundPredicate(p) => {
                     info!("{:?}", p);
-                    let ty = ty_to_t(p.bounded_ty, None, &vec![], tcx);
+                    let ty = ty_to_t(p.bounded_ty, None, associated_types, &vec![], tcx);
                     if let Some(ty) = &ty {
                         if !ty.is_generic() {
                             return None;
@@ -445,12 +458,13 @@ pub fn generic_bound_to_trait(bound: &GenericBound<'_>, tcx: &TyCtxt<'_>) -> Opt
 pub fn fn_ret_ty_to_t(
     ret_ty: &FnRetTy,
     self_ty: Option<&T>,
+    associated_types: Option<&HashMap<String, T>>,
     defined_generics: &Vec<T>,
     tcx: &TyCtxt<'_>,
 ) -> Option<T> {
     match ret_ty {
         FnRetTy::DefaultReturn(_) => None,
-        FnRetTy::Return(ty) => ty_to_t(ty, self_ty, defined_generics, tcx),
+        FnRetTy::Return(ty) => ty_to_t(ty, self_ty, associated_types, defined_generics, tcx),
     }
 }
 

@@ -2,7 +2,7 @@ package de.unipassau.rustyunit.test_case.primitive;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.rustyunit.json.ConstantDeserializer;
-import de.unipassau.rustyunit.test_case.type.prim.Prim;
+import de.unipassau.rustyunit.type.prim.Prim;
 
 @JsonDeserialize(using = ConstantDeserializer.class)
 public interface PrimitiveValue<T> {

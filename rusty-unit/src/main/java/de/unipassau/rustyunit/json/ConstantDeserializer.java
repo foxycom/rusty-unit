@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import de.unipassau.rustyunit.test_case.primitive.PrimitiveValue;
-import de.unipassau.rustyunit.test_case.type.Type;
+import de.unipassau.rustyunit.type.Type;
 import java.io.IOException;
 
 public class ConstantDeserializer extends StdDeserializer<PrimitiveValue<?>> {

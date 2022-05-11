@@ -3,28 +3,32 @@ package de.unipassau.rustyunit.hir;
 import static java.util.stream.Collectors.toCollection;
 
 import de.unipassau.rustyunit.test_case.Param;
-import de.unipassau.rustyunit.test_case.type.std.hash.Hasher;
+import de.unipassau.rustyunit.type.std.hash.Hasher;
 import de.unipassau.rustyunit.test_case.var.VarReference;
 import de.unipassau.rustyunit.test_case.callable.Callable;
 import de.unipassau.rustyunit.test_case.callable.Method;
 import de.unipassau.rustyunit.test_case.callable.rand.StepRngInit;
 import de.unipassau.rustyunit.test_case.callable.std.StringInit;
-import de.unipassau.rustyunit.test_case.type.Type;
-import de.unipassau.rustyunit.test_case.type.rand.rngs.mock.StepRng;
-import de.unipassau.rustyunit.test_case.type.traits.Trait;
+import de.unipassau.rustyunit.type.Type;
+import de.unipassau.rustyunit.type.rand.rngs.mock.StepRng;
+import de.unipassau.rustyunit.type.traits.Trait;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.javatuples.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TyCtxt {
+
   private static final Logger logger = LoggerFactory.getLogger(TyCtxt.class);
   private static final Set<Type> types = new HashSet<>();
+
   static {
     types.add(StepRng.INSTANCE);
     types.add(Hasher.INSTANCE);
@@ -134,8 +138,11 @@ public class TyCtxt {
   }
 
   public List<Pair<VarReference, Method>> methodsOf(List<VarReference> variables) {
-    return callables.stream()
-        .filter(Callable::isMethod)
+
+    var methodsOfVariables = variables.stream().map(v -> v.type().methods()).flatMap(
+        Collection::stream);
+    var callables = this.callables.stream().filter(Callable::isMethod);
+    return Stream.concat(methodsOfVariables, callables)
         .map(callable -> (Method) callable)
         .map(method -> variables.stream()
             .filter(v -> method.getParent().canBeSameAs(v.type()))
@@ -191,10 +198,14 @@ public class TyCtxt {
   public <S extends Callable> List<Callable> generatorsOf(Type type, String filePath,
       Class<S> subClass) {
     logger.debug("Looking for generators of " + type);
-    var stream = callables.stream()
+
+    var typeMethodsStream = type.methods().stream();
+    var callablesStream = callables.stream().filter(subClass::isInstance);
+
+    var stream = Stream.concat(typeMethodsStream, callablesStream)
         .filter(subClass::isInstance)
         .filter(callable -> callable.returnsValue()
-            && (callable.getReturnType().canBeSameAs(type) || callable.getReturnType().wraps(type).isPresent()));
+            && (callable.getReturnType().canBeSameAs(type)));
     // Unless we want the type explicitly, exclude completely generic callables like
     // Option::unwrap(Option) -> T, which would generate a wrapper just to unwrap it later
 //        .filter(callable -> (callable.getReturnType().getName().equals(type.getName()))

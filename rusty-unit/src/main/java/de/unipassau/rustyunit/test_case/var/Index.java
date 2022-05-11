@@ -1,7 +1,7 @@
 package de.unipassau.rustyunit.test_case.var;
 
 import de.unipassau.rustyunit.test_case.TestCase;
-import de.unipassau.rustyunit.test_case.type.prim.UInt.USize;
+import de.unipassau.rustyunit.type.prim.UInt.USize;
 
 public class Index extends VarReference {
 

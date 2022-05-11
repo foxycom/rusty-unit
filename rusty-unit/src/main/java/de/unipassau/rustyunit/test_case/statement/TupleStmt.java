@@ -7,7 +7,7 @@ import de.unipassau.rustyunit.test_case.TestCase;
 import de.unipassau.rustyunit.test_case.var.VarReference;
 import de.unipassau.rustyunit.test_case.callable.Callable;
 import de.unipassau.rustyunit.test_case.callable.TupleInit;
-import de.unipassau.rustyunit.test_case.type.Type;
+import de.unipassau.rustyunit.type.Type;
 import de.unipassau.rustyunit.util.Rnd;
 import java.util.ArrayList;
 import java.util.List;

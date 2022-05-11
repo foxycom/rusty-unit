@@ -4,7 +4,7 @@ package de.unipassau.rustyunit.test_case.callable.std.option;
 import de.unipassau.rustyunit.test_case.Param;
 import de.unipassau.rustyunit.test_case.callable.EnumInit;
 import de.unipassau.rustyunit.test_case.callable.Method;
-import de.unipassau.rustyunit.test_case.type.std.Option;
+import de.unipassau.rustyunit.type.std.option.Option;
 import java.util.Collections;
 import java.util.List;
 
@@ -13,7 +13,7 @@ public class OptionCallable {
   public static class OptionSomeInit extends EnumInit {
 
     public OptionSomeInit() {
-      super(Option.getInstance(),
+      super(new Option(),
           Option.SOME,
           true
       );
@@ -23,7 +23,7 @@ public class OptionCallable {
   public static class OptionNoneInit extends EnumInit {
 
     public OptionNoneInit() {
-      super(Option.getInstance(),
+      super(new Option(),
           Option.NONE,
           true
       );
@@ -36,10 +36,10 @@ public class OptionCallable {
       super("unwrap",
           Collections.emptyList(),
           List.of(
-              new Param(Option.getInstance(), false, null)
+              new Param(new Option(), false, null)
           ),
           Option.T,
-          Option.getInstance());
+          new Option());
     }
   }
 }

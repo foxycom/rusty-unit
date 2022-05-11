@@ -1,8 +1,8 @@
 package de.unipassau.rustyunit.util;
 
-import de.unipassau.rustyunit.test_case.type.Generic;
-import de.unipassau.rustyunit.test_case.type.Type;
-import de.unipassau.rustyunit.test_case.type.TypeBinding;
+import de.unipassau.rustyunit.type.Generic;
+import de.unipassau.rustyunit.type.Type;
+import de.unipassau.rustyunit.type.TypeBinding;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.stream.IntStream;

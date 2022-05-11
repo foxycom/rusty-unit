@@ -1,8 +1,8 @@
 package de.unipassau.rustyunit.test_case.primitive;
 
 import de.unipassau.rustyunit.Constants;
-import de.unipassau.rustyunit.test_case.type.prim.Char;
-import de.unipassau.rustyunit.test_case.type.prim.Prim;
+import de.unipassau.rustyunit.type.prim.Char;
+import de.unipassau.rustyunit.type.prim.Prim;
 import de.unipassau.rustyunit.util.Rnd;
 import java.util.Objects;
 

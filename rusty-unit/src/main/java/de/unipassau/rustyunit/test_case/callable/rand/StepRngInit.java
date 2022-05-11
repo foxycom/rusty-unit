@@ -2,8 +2,8 @@ package de.unipassau.rustyunit.test_case.callable.rand;
 
 import de.unipassau.rustyunit.test_case.Param;
 import de.unipassau.rustyunit.test_case.callable.StaticMethod;
-import de.unipassau.rustyunit.test_case.type.prim.UInt.UInt64;
-import de.unipassau.rustyunit.test_case.type.rand.rngs.mock.StepRng;
+import de.unipassau.rustyunit.type.prim.UInt.UInt64;
+import de.unipassau.rustyunit.type.rand.rngs.mock.StepRng;
 import java.util.List;
 
 public class StepRngInit extends StaticMethod {

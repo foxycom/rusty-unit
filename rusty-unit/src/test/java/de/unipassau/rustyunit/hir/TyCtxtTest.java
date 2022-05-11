@@ -2,7 +2,7 @@ package de.unipassau.rustyunit.hir;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import de.unipassau.rustyunit.test_case.type.traits.std.default_.Default;
+import de.unipassau.rustyunit.type.traits.std.default_.Default;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;

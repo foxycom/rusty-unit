@@ -2,6 +2,9 @@ package de.unipassau.rustyunit.test_case.type;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import de.unipassau.rustyunit.type.AbstractStruct;
+import de.unipassau.rustyunit.type.Ref;
+import de.unipassau.rustyunit.type.Type;
 import java.util.Collections;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

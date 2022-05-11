@@ -7,7 +7,7 @@ import de.unipassau.rustyunit.test_case.TestCase;
 import de.unipassau.rustyunit.test_case.var.VarReference;
 import de.unipassau.rustyunit.test_case.callable.Callable;
 import de.unipassau.rustyunit.test_case.callable.TupleAccess;
-import de.unipassau.rustyunit.test_case.type.Type;
+import de.unipassau.rustyunit.type.Type;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;

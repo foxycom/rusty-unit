@@ -58,6 +58,9 @@ public class DefaultArchive<C extends AbstractTestCaseChromosome<C>> implements 
     long coverage = coveredObjectives.values().stream().filter(v -> v).count();
     double percent = ((double) coverage / objectives.size()) * 100;
     System.out.printf("\t>> Covered %d targets out of %d (%.2f%%)%n", coverage, objectives.size(), percent);
+    for (var objective : objectives) {
+      System.out.printf("%s is %s%n", objective, coveredObjectives.containsKey(objective));
+    }
     System.out.printf("\t>> Archive contains %d tests%n", archive.size());
   }
 

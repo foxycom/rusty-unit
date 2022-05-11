@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
-import de.unipassau.rustyunit.test_case.type.prim.UInt;
+import de.unipassau.rustyunit.type.prim.UInt;
 import java.io.IOException;
 
 public class UIntDeserializer extends StdDeserializer<UInt> {

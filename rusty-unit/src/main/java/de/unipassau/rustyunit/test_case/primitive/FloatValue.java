@@ -1,8 +1,8 @@
 package de.unipassau.rustyunit.test_case.primitive;
 
 import de.unipassau.rustyunit.Constants;
-import de.unipassau.rustyunit.test_case.type.prim.Float;
-import de.unipassau.rustyunit.test_case.type.prim.Prim;
+import de.unipassau.rustyunit.type.prim.Float;
+import de.unipassau.rustyunit.type.prim.Prim;
 import de.unipassau.rustyunit.util.Rnd;
 import java.math.BigDecimal;
 import java.math.RoundingMode;

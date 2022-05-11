@@ -8,9 +8,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import de.unipassau.rustyunit.test_case.Param;
-import de.unipassau.rustyunit.test_case.type.AbstractEnum.EnumVariant;
-import de.unipassau.rustyunit.test_case.type.AbstractEnum.TupleEnumVariant;
-import de.unipassau.rustyunit.test_case.type.AbstractEnum.UnitEnumVariant;
+import de.unipassau.rustyunit.type.AbstractEnum.EnumVariant;
+import de.unipassau.rustyunit.type.AbstractEnum.TupleEnumVariant;
+import de.unipassau.rustyunit.type.AbstractEnum.UnitEnumVariant;
 import java.io.IOException;
 import java.util.List;
 

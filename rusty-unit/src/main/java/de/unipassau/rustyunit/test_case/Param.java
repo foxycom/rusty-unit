@@ -2,8 +2,8 @@ package de.unipassau.rustyunit.test_case;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import de.unipassau.rustyunit.test_case.type.Type;
-import de.unipassau.rustyunit.test_case.type.TypeBinding;
+import de.unipassau.rustyunit.type.Type;
+import de.unipassau.rustyunit.type.TypeBinding;
 import java.util.Objects;
 
 @JsonDeserialize(as = Param.class)
