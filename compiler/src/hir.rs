@@ -318,9 +318,6 @@ fn analyze_struct(
 }
 
 fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tcx: &TyCtxt<'_>) {
-  if let Some(_) = &im.of_trait {
-    return;
-  }
   let parent_def_id_opt = impl_to_def_id(im);
   
   if let Some(parent_def_id) = parent_def_id_opt {

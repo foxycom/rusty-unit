@@ -36,7 +36,7 @@ dependencies {
 jar {
     manifest {
         attributes(
-                'Main-Class': 'de.unipassau.testify.Main'
+                'Main-Class': 'de.unipassau.rustyunit.Main'
         )
     }
 }
