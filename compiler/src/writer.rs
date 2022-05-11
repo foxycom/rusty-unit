@@ -28,6 +28,7 @@ pub struct MirObject {
 
 #[derive(Builder, Serialize)]
 pub struct HirObject {
+  name: String,
   callables: Vec<Callable>,
   // Types that implement traits
   impls: HashMap<String, Vec<String>>

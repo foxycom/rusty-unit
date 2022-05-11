@@ -3,6 +3,7 @@ package de.unipassau.rustyunit.hir;
 import static java.util.stream.Collectors.toCollection;
 
 import de.unipassau.rustyunit.test_case.Param;
+import de.unipassau.rustyunit.test_case.type.std.hash.Hasher;
 import de.unipassau.rustyunit.test_case.var.VarReference;
 import de.unipassau.rustyunit.test_case.callable.Callable;
 import de.unipassau.rustyunit.test_case.callable.Method;
@@ -24,9 +25,9 @@ import org.slf4j.LoggerFactory;
 public class TyCtxt {
   private static final Logger logger = LoggerFactory.getLogger(TyCtxt.class);
   private static final Set<Type> types = new HashSet<>();
-
   static {
     types.add(StepRng.INSTANCE);
+    types.add(Hasher.INSTANCE);
   }
 
   private final List<Callable> callables = loadBaseCallables();

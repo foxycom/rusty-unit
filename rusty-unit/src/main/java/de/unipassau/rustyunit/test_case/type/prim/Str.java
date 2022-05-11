@@ -75,8 +75,9 @@ public enum Str implements Prim {
     if (Rnd.get().nextDouble() < Constants.P_CONSTANT_POOL) {
       var possibleConstants = MirAnalysis.constantPool().stream().filter(c -> c.type().equals(this))
           .map(c -> (PrimitiveValue<String>) c).collect(Collectors.toSet());
-      Preconditions.checkState(possibleConstants.size() >= 5);
-      return Rnd.choice(possibleConstants);
+      if (possibleConstants.size() > 3) {
+        return Rnd.choice(possibleConstants);
+      }
     }
 
     var string = RandomStringUtils.randomAlphanumeric(0, Constants.MAX_STRING_LENGTH);

@@ -3,6 +3,7 @@ package de.unipassau.rustyunit.test_case.type;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import de.unipassau.rustyunit.test_case.type.traits.Trait;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -68,7 +69,7 @@ public class TraitObj implements Type {
 
   @Override
   public List<Type> generics() {
-    throw new RuntimeException("generics is not implemented");
+    return Collections.emptyList();
   }
 
   @Override
@@ -88,7 +89,7 @@ public class TraitObj implements Type {
 
   @Override
   public Type bindGenerics(TypeBinding binding) {
-    throw new RuntimeException("bindGenerics is not implemented");
+    return this;
   }
 
   @Override

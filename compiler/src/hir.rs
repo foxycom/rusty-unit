@@ -19,9 +19,10 @@ use crate::writer::{HirObject, HirWriter, HirObjectBuilder};
 #[cfg(feature = "analysis")]
 pub fn hir_analysis(tcx: TyCtxt<'_>) {
   let current_crate_name = tcx.crate_name(LOCAL_CRATE);
-  if current_crate_name.as_str() != RuConfig::env_crate_name() {
-    return;
-  }
+  println!("Looking at {}", current_crate_name.to_ident_string());
+  // if current_crate_name.as_str() != RuConfig::env_crate_name() {
+  //   return;
+  // }
 
 
   let mut callables = vec![];
@@ -103,6 +104,7 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
   // todo!()
 
   let hir_object: HirObject = HirObjectBuilder::default()
+      .name(current_crate_name.to_ident_string())
       .callables(callables)
       .impls(HashMap::new())
       .build()
@@ -111,8 +113,9 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
 }
 
 fn allowed_item(item: &Item<'_>, tcx: &TyCtxt<'_>) -> bool {
-  let item_name = item_to_name(item, &tcx).to_lowercase();
-  !item_name.contains("serde") && !item_name.contains("test") && !item_name.contains("snafu")
+  //let item_name = item_to_name(item, &tcx).to_lowercase();
+  //item_name.contains("serde") && !item_name.contains("test") && !item_name.contains("snafu")
+  true
 }
 
 fn analyze_fn(
@@ -318,8 +321,7 @@ fn analyze_struct(
 }
 
 fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tcx: &TyCtxt<'_>) {
-  let parent_def_id_opt = impl_to_def_id(im);
-  
+  let parent_def_id_opt = impl_to_def_id(im, tcx);
   if let Some(parent_def_id) = parent_def_id_opt {
     if parent_def_id.as_local().is_none() {
       return;
@@ -335,93 +337,95 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
   let parent_hir_id = tcx
       .hir()
       .local_def_id_to_hir_id(parent_def_id.expect_local());
-  //let parent = def_id_to_t(parent_def_id, tcx).unwrap();
 
   let impl_generics = generics_to_ts(&im.generics, tcx);
-  let self_ty = ty_to_t(im.self_ty, None, &impl_generics, tcx).unwrap();
+  let self_ty_opt = ty_to_t(im.self_ty, None, &impl_generics, tcx);
+  if self_ty_opt.is_none() {
+    return;
+  }
+  let self_ty = self_ty_opt.unwrap();
 
   let items = im.items;
   for item in items {
     let item_def_id = item.id.def_id;
     let global_id = def_id_to_str(item_def_id.to_def_id(), tcx).replace("::", "__");
 
-    match &item.kind {
-      AssocItemKind::Fn { .. } => {
-        let hir_id = tcx.hir().local_def_id_to_hir_id(item_def_id);
-        let impl_item = tcx.hir().impl_item(item.id);
-        match &impl_item.kind {
-          ImplItemKind::Fn(sig, body_id) => {
-            debug!("HIR: Found method {}, parent: {}", &impl_item.ident, parent_hir_id);
-            let fn_name = tcx.hir().get(item.id.hir_id()).ident().unwrap().to_string();
-            let fn_generics = generics_to_ts(&impl_item.generics, tcx);
 
-            let mut overall_generics = impl_generics.clone();
-            overall_generics.append(&mut fn_generics.clone());
+    let hir_id = tcx.hir().local_def_id_to_hir_id(item_def_id);
+    let impl_item = tcx.hir().impl_item(item.id);
+    match &impl_item.kind {
+      ImplItemKind::Fn(sig, body_id) => {
+        debug!("HIR: Found method {}, parent: {}", &impl_item.ident, parent_hir_id);
+        let fn_name = tcx.hir().get(item.id.hir_id()).ident().unwrap().to_string();
+        let fn_generics = generics_to_ts(&impl_item.generics, tcx);
 
-            let return_type = fn_ret_ty_to_t(&sig.decl.output, Some(&self_ty), &overall_generics, tcx);
-            if let Some(return_type) = return_type.as_ref() {
-              debug!("HIR: Return type is {:?}", &return_type);
-            }
+        let mut overall_generics = impl_generics.clone();
+        overall_generics.append(&mut fn_generics.clone());
 
-            let is_public = is_public(&impl_item.vis);
-            let parent_name = node_to_name(&tcx.hir().get(parent_hir_id), tcx).unwrap();
-            if parent_name.contains("serde") {
-              // Skip too hard stuff
-              warn!("HIR: Skipping serde method");
-              continue;
-            }
-
-            let mut params = Vec::with_capacity(sig.decl.inputs.len());
-            for input in sig.decl.inputs.iter() {
-              let param =
-                  ty_to_param(None, input, Some(&self_ty), &overall_generics, tcx);
-              if let Some(param) = param {
-                debug!("HIR: Extracting parameter {:?}", param);
-                params.push(param);
-              } else {
-                // An unknown type, ignore function
-                warn!("HIR: Unknown parameter, skipping method.");
-                return;
-              }
-            }
-
-            if !sig.decl.implicit_self.has_implicit_self() {
-              // Static method
-              debug!("HIR: Method is static");
-              let static_method_item = StaticFnItem::new(
-                &fn_name,
-                file_path.to_str().unwrap(),
-                params,
-                return_type,
-                self_ty.clone(),
-                fn_generics,
-                is_public,
-                trait_name.clone(),
-                global_id
-              );
-              let static_method_callable =
-                  Callable::StaticFunction(static_method_item);
-              callables.push(static_method_callable);
-            } else {
-              // Dynamic method
-              debug!("HIR: Method is associative");
-              let method_item = MethodItem::new(
-                &fn_name,
-                file_path.to_str().unwrap(),
-                params,
-                return_type,
-                self_ty.clone(),
-                fn_generics,
-                is_public,
-                trait_name.clone(),
-                global_id
-              );
-              let method_callable = Callable::Method(method_item);
-              callables.push(method_callable);
-            }
-          }
-          _ => {}
+        let return_type = fn_ret_ty_to_t(&sig.decl.output, Some(&self_ty), &overall_generics, tcx);
+        if let Some(return_type) = return_type.as_ref() {
+          debug!("HIR: Return type is {:?}", &return_type);
         }
+
+        let is_public = is_public(&impl_item.vis);
+        let parent_name = node_to_name(&tcx.hir().get(parent_hir_id), tcx).unwrap();
+        if parent_name.contains("serde") {
+          // Skip too hard stuff
+          warn!("HIR: Skipping serde method");
+          continue;
+        }
+
+        let mut params = Vec::with_capacity(sig.decl.inputs.len());
+        for input in sig.decl.inputs.iter() {
+          let param =
+              ty_to_param(None, input, Some(&self_ty), &overall_generics, tcx);
+          if let Some(param) = param {
+            debug!("HIR: Extracting parameter {:?}", param);
+            params.push(param);
+          } else {
+            // An unknown type, ignore function
+            warn!("HIR: Unknown parameter, skipping method.");
+            return;
+          }
+        }
+
+        if !sig.decl.implicit_self.has_implicit_self() {
+          // Static method
+          debug!("HIR: Method is static");
+          let static_method_item = StaticFnItem::new(
+            &fn_name,
+            file_path.to_str().unwrap(),
+            params,
+            return_type,
+            self_ty.clone(),
+            fn_generics,
+            is_public,
+            trait_name.clone(),
+            global_id
+          );
+          let static_method_callable =
+              Callable::StaticFunction(static_method_item);
+          callables.push(static_method_callable);
+        } else {
+          // Dynamic method
+          debug!("HIR: Method is associative");
+          let method_item = MethodItem::new(
+            &fn_name,
+            file_path.to_str().unwrap(),
+            params,
+            return_type,
+            self_ty.clone(),
+            fn_generics,
+            is_public,
+            trait_name.clone(),
+            global_id
+          );
+          let method_callable = Callable::Method(method_item);
+          callables.push(method_callable);
+        }
+      }
+      ImplItemKind::TyAlias(ty) => {
+        info!("Impl ty alias: {:?}", ty);
       }
       _ => {}
     }

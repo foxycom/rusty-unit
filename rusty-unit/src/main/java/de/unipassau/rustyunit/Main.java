@@ -47,7 +47,7 @@ public class Main {
     @Option(longName = "seed-by-class")
     boolean seedByClass();
 
-    @Option(longName = "features")
+    @Option(longName = "features", defaultValue = "")
     String features();
   }
 

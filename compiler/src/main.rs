@@ -168,9 +168,6 @@ fn run_rustc() -> Result<(), i32> {
   #[cfg(feature = "analysis")]
   {
     if let Ok(_) = fs::remove_dir_all(LOG_DIR) {
-      debug!("MAIN: Cleared the log directory");
-    } else {
-      debug!("MAIN: There was no log directory");
     }
     fs::create_dir_all(LOG_DIR).expect("Could not create the log directory");
   }
@@ -196,10 +193,12 @@ pub fn pass_to_rustc(rustc_args: &[String], instrumentation: bool) {
     let mut callbacks = EmptyCallbacks {};
     rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
   };
+  //let mut callbacks = CompilerCallbacks::new();
+  //let err = rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run();
 
   if err.is_err() {
     eprintln!("Error while compiling dependency");
-    std::process::exit(-1);
+    exit(-1);
   }
 }
 

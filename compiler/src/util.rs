@@ -1,6 +1,6 @@
 use crate::extractor::hir_ty_to_t;
 use crate::traits::analyze_trait;
-use crate::types::{mir_ty_to_t, ArrayT, EnumT, Generic, Param, StructT, Trait, TupleT, T, TraitObjT};
+use crate::types::{mir_ty_to_t, ArrayT, EnumT, Generic, Param, StructT, Trait, TupleT, T, TraitObjT, UnionT};
 use log::{debug, error, info, warn};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def::{DefKind, Res};
@@ -67,6 +67,7 @@ pub fn ty_to_t(
     defined_generics: &Vec<T>,
     tcx: &TyCtxt<'_>,
 ) -> Option<T> {
+    info!("Returns {:?}", ty);
     match &ty.kind {
         TyKind::Rptr(_, mut_ty) => ty_to_t(mut_ty.ty, self_ty, defined_generics, tcx).map(|t| {
             let mutable = match mut_ty.mutbl {
@@ -81,11 +82,16 @@ pub fn ty_to_t(
                     path_to_t(path, self_ty, defined_generics, tcx)
                     // TODO parse generic args of the type
                 }
-                QPath::TypeRelative(ty, _) => ty_to_t(ty, self_ty, defined_generics, tcx),
+                QPath::TypeRelative(ty, segment) => {
+                    let as_type = ty_to_t(ty, self_ty, defined_generics, tcx);
+                    as_type.map(|as_type| T::Relative(Box::new(as_type), segment.ident.to_string()))
+                },
                 _ => unimplemented!("{:?}", q_path),
             }
         }
-        TyKind::Slice(ty) => None,
+        TyKind::Slice(ty) => ty_to_t(ty, self_ty, defined_generics, tcx).map(|t| {
+            T::Slice(Box::new(t))
+        }),
         TyKind::OpaqueDef(item, generic_args) => {
             warn!(
                 "HIR: Skipping opaquedef of {:?} with generic args {:?}",
@@ -100,8 +106,7 @@ pub fn ty_to_t(
                 .map(Box::new)
                 .collect::<Vec<_>>();
             if ts.len() != tys.len() {
-                warn!("HIR: Could not extract tuple of ({:?})", tys);
-                return None;
+                todo!("HIR: Could not extract tuple of ({:?})", tys)
             }
             Some(T::Tuple(TupleT::new(ts)))
         }
@@ -112,7 +117,7 @@ pub fn ty_to_t(
                     .map(|ty| T::Array(Box::new(ArrayT::new(ty, array_len))));
             }
 
-            None
+            todo!("Unknown array length")
         }
         TyKind::TraitObject(trait_refs, _, _) => {
             assert!(trait_refs.len() == 1);
@@ -120,6 +125,13 @@ pub fn ty_to_t(
             let name = res_to_name(&poly_trait_ref.trait_ref.path.res, tcx);
             let trait_obj = TraitObjT::new(&name, false);
             Some(T::TraitObj(trait_obj))
+        }
+        TyKind::Ptr(ptr) => {
+            let t = ty_to_t(ptr.ty, self_ty, defined_generics, tcx);
+            t.map(|t| T::RawPointer(Box::new(t), ptr.mutbl == Mutability::Mut)).or_else(|| todo!("{:?}", ptr))
+        }
+        TyKind::BareFn(bare_fn) => {
+            None
         }
         _ => todo!("Ty kind is: {:?}", &ty.kind),
     }
@@ -160,7 +172,7 @@ pub fn path_to_t(
 ) -> Option<T> {
     match &path.res {
         Res::Def(def_kind, def_id) => match def_kind {
-            DefKind::Struct | DefKind::Enum => {
+            DefKind::Struct | DefKind::Enum | DefKind::Union => {
                 let generics = path_to_generics(path, self_ty, defined_generics, tcx);
                 debug!("Generics are: {:?}", generics);
                 def_kind_to_t(def_kind, *def_id, self_ty, path, &generics, tcx)
@@ -181,7 +193,6 @@ pub fn path_to_t(
 
                 return Some(T::Generic(Generic::new(&name, bounds)));
             }
-
             DefKind::Impl => {
                 warn!("HIR: impl is being returned");
                 None
@@ -189,7 +200,15 @@ pub fn path_to_t(
             _ => None,
         },
         Res::PrimTy(prim_ty) => Some(T::from(*prim_ty)),
-        Res::SelfTy { .. } => self_ty.map(|self_ty| self_ty.clone()),
+        Res::SelfTy { trait_, .. } => {
+            if let Some(trait_) = trait_ {
+                let trait_name = tcx.def_path_str(*trait_);
+                let trait_instance = Trait::new(&trait_name, vec![], vec![]);
+                self_ty.map(|self_ty| T::AsTrait(Box::new(self_ty.clone()), trait_instance))
+            } else {
+                self_ty.map(|self_ty| self_ty.clone())
+            }
+        },
         _ => {
             unimplemented!("{:?}", &path.res)
         }
@@ -215,6 +234,7 @@ pub fn def_kind_to_t(
             is_local(def_id),
         ))),
         DefKind::Struct => Some(T::Struct(StructT::new(&name, generics, is_local(def_id)))),
+        DefKind::Union => Some(T::Union(UnionT::new(&name, is_local(def_id)))),
         _ => unimplemented!(),
     }
 }
@@ -332,9 +352,9 @@ pub fn generics_to_ts(generics: &Generics, tcx: &TyCtxt<'_>) -> Vec<T> {
                     info!("{:?}", p);
                     let ty = ty_to_t(p.bounded_ty, None, &vec![], tcx);
                     if let Some(ty) = &ty {
-                      if !ty.is_generic() {
-                        return None;
-                      }
+                        if !ty.is_generic() {
+                            return None;
+                        }
                     }
                     let bounds = p
                         .bounds
@@ -471,6 +491,7 @@ pub fn ty_to_name(ty: &Ty<'_>, tcx: &TyCtxt<'_>) -> String {
     match &ty.kind {
         TyKind::Path(path) => qpath_to_name(path, tcx),
         TyKind::Rptr(_, mut_ty) => ty_to_name(mut_ty.ty, tcx),
+        TyKind::Array(ty, len) => format!("[{}; {}]", ty_to_name(ty, tcx), eval_array_len(len, tcx).unwrap()),
         _ => todo!("Trying to convert ty to name: {:?}", ty),
     }
 }
@@ -494,22 +515,23 @@ pub fn res_to_name(res: &Res, tcx: &TyCtxt<'_>) -> String {
     }
 }
 
-pub fn impl_to_def_id(im: &Impl) -> Option<DefId> {
+pub fn impl_to_def_id(im: &Impl, tcx: &TyCtxt<'_>) -> Option<DefId> {
     let self_ty = im.self_ty;
-    ty_kind_to_def_id(&self_ty.kind)
+    ty_to_def_id(self_ty, tcx)
 }
 
-pub fn ty_kind_to_def_id(kind: &TyKind<'_>) -> Option<DefId> {
-    match kind {
+pub fn ty_to_def_id(ty: &Ty<'_>, tcx: &TyCtxt<'_>) -> Option<DefId> {
+    match &ty.kind {
         TyKind::Path(qpath) => match qpath {
             QPath::Resolved(_, path) => path.res.opt_def_id(),
             _ => todo!(),
         },
         TyKind::Rptr(lifetime, mut_ty) => {
             let ty = mut_ty.ty;
-            ty_kind_to_def_id(&ty.kind)
+            ty_to_def_id(ty, tcx)
         }
-        _ => todo!("Trying to convert to struct: {:?}", kind),
+        TyKind::Array(ty, _) => None,
+        _ => todo!("Trying to convert to struct: {:?}", &ty.kind),
     }
 }
 

@@ -59,7 +59,7 @@ public class SourceFile {
   public void onCopied() throws IOException {
     if (type == FileType.MAIN) {
       try (var out = new BufferedWriter(new FileWriter(executionPath.toFile()))) {
-        out.write("#![feature(no_coverage)]\n");
+        //out.write("#![feature(no_coverage)]\n");
         var content = Files.readString(originalPath);
         var lines = content.split(System.lineSeparator());
         size = lines.length;
