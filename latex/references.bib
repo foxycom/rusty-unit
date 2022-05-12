@@ -1,1098 +1,847 @@
-@Article{Balasubramanian2017,
-  author  = {Balasubramanian, Abhiram and Baranowski, Marek S. and Burtsev, Anton and Panda, Aurojit and Rakamari, Zvonimir and Ryzhyk, Leonid},
-  title   = {System Programming in Rust: Beyond Safety},
-  doi     = {10.1145/3139645.3139660},
-  issn    = {0163-5980},
-  issue   = {August 2017},
-  number  = {1},
-  url     = {https://doi.org/10.1145/3139645.3139660},
-  volume  = {51},
-  comment = {Die Autoren schlagen Beispielimplementierungen für},
-  ranking = {rank4},
-  year    = {2017},
+@inproceedings{Balasubramanian2017,
+  author    = {Balasubramanian, Abhiram and Baranowski, Marek S. and Burtsev, Anton and Panda, Aurojit and Rakamari, Zvonimir and Ryzhyk, Leonid},
+  title     = {System Programming in Rust: Beyond Safety},
+  publisher = {Association for Computing Machinery},
+  pages     = {156–161},
+  address   = {New York, NY, USA},
+  booktitle = {Proceedings of the 16th Workshop on Hot Topics in Operating Systems},
+  year      = {2017}
 }
 
-@InProceedings{Levy2017,
+@inproceedings{Levy2017,
   author    = {Levy, Amit and Campbell, Bradford and Ghena, Branden and Giffin, Daniel B. and Pannuto, Pat and Dutta, Prabal and Levis, Philip},
   booktitle = {Proceedings of the 26th Symposium on Operating Systems Principles},
   title     = {Multiprogramming a 64kB Computer Safely and Efficiently},
-  doi       = {10.1145/3132747.3132786},
-  isbn      = {9781450350853},
   pages     = {234-251},
-  url       = {https://doi.org/10.1145/3132747.3132786},
-  ranking   = {rank2},
   year      = {2017},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA}
 }
 
-@InProceedings{Evans2020,
+@inproceedings{Evans2020,
   author    = {Evans, Ana Nora and Campbell, Bradford and Soffa, Mary Lou},
   booktitle = {2020 IEEE/ACM 42nd International Conference on Software Engineering (ICSE)},
   title     = {Is Rust Used Safely by Software Developers?},
   pages     = {246-257},
-  abstract  = {Rust, an emerging programming language with explosive growth,
-provides a robust type system that enables programmers to write
-memory-safe and data-race free code. To allow access to a machine’s
-hardware and to support low-level performance optimizations, a
-second language, Unsafe Rust, is embedded in Rust. It contains
-support for operations that are difficult to statically check, such
-as C-style pointers for access to arbitrary memory locations and
-mutable global variables. When a program uses these features, the
-compiler is unable to statically guarantee the safety properties
-Rust promotes. In this work, we perform a large-scale empirical
-study to explore how software developers are using Unsafe Rust in
-real-world Rust libraries and applications. Our results indicate that
-software engineers use the keyword unsafe in less than 30% of Rust
-libraries, but more than half cannot be entirely statically checked
-by the Rust compiler because of Unsafe Rust hidden somewhere
-in a library’s call chain. We conclude that although the use of the
-keyword unsafe is limited, the propagation of unsafeness offers
-a challenge to the claim of Rust as a memory-safe language. Furthermore, we recommend changes to the Rust compiler and to the
-central Rust repository’s interface to help Rust software developers
-be aware of when their Rust code is unsafe.},
   comment   = {Die Autoren untersuchen Open-Source Projekte, die in Rust geschrieben wurden und analysieren inwieweit die Entwickler der Projekte die unsicheren Features von Rust verwenden und die Sicherheiten des Compilers umgeben (unsafe code).
-Das Paper zitiert auch mehrere andere Artikel, die auf die Sicherheiten von Rust eingehen und die Sprache mit C und C++ vergleichen.},
-  ranking   = {rank5},
+               Das Paper zitiert auch mehrere andere Artikel, die auf die Sicherheiten von Rust eingehen und die Sprache mit C und C++ vergleichen.},
   year      = {2020},
+  publisher = {IEEE Computer Society}
 }
 
-@InProceedings{Anderson2016,
+@inproceedings{Anderson2016,
   author    = {Anderson, Brian and Bergstrom, Lars and Goregaokar, Manish and Matthews, Josh and McAllister, Keegan and Moffitt, Jack and Sapin, Simon},
   booktitle = {Proceedings of the 38th International Conference on Software Engineering Companion},
   title     = {Engineering the Servo Web Browser Engine Using Rust},
-  doi       = {10.1145/2889160.2889229},
-  isbn      = {9781450342056},
   pages     = {81-89},
-  abstract  = {All modern web browsers --- Internet Explorer, Firefox, Chrome, Opera, and Safari --- have a core rendering engine written in C++. This language choice was made because it affords the systems programmer complete control of the underlying hardware features and memory in use, and it provides a transparent compilation model. Unfortunately, this language is complex (especially to new contributors!), challenging to write correct parallel code in, and highly susceptible to memory safety issues that potentially lead to security holes.Servo is a project started at Mozilla Research to build a new web browser engine that preserves the capabilities of these other browser engines but also both takes advantage of the recent trends in parallel hardware and is more memory-safe. We use a new language, Rust, that provides us a similar level of control of the underlying system to C++ but which statically prevents many memory safety issues and provides direct support for parallelism and concurrency.In this paper, we show how a language with an advanced type system can address many of the most common security issues and software engineering challenges in other browser engines, while still producing code that has the same performance and memory profile. This language is also quite accessible to new open source contributors and employees, even those without a background in C++ or systems programming. We also outline several pitfalls encountered along the way and describe some potential areas for future improvement.},
-  ranking   = {rank5},
   year      = {2016},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA}
 }
 
-@InProceedings{Boos2017,
+@inproceedings{Boos2017,
   author    = {Boos, Kevin and Zhong, Lin},
   booktitle = {Proceedings of the 9th Workshop on Programming Languages and Operating Systems},
   title     = {Theseus: A State Spill-Free Operating System},
-  doi       = {10.1145/3144555.3144560},
-  isbn      = {9781450351539},
   pages     = {29-35},
-  abstract  = {In prior work, we have shown that the underdiagnosed problem of state spill remains a barrier to realizing complex systems that are easy to maintain, evolve, and run reliably. This paper shares our early experience building Theseus from scratch, an OS with the guiding principle of eliminating state spill. Theseus takes inspiration from distributed systems to rethink state management, and leverages Rust language features for maximum safety, code reuse, and efficient isolation. We intend to demonstrate Theseus as a runtime composable OS, in which entities are easily interchangeable and can evolve independently without reconfiguring or rebooting.},
   year      = {2017},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA}
 }
 
-@Article{Lin2016,
-  author   = {Lin, Yi and Blackburn, Stephen M. and Hosking, Antony L. and Norrish, Michael},
-  title    = {Rust as a Language for High Performance GC Implementation},
-  doi      = {10.1145/3241624.2926707},
-  issn     = {0362-1340},
-  pages    = {89-98},
-  abstract = {High performance garbage collectors build upon performance-critical low-level code, typically exhibit multiple levels of concurrency, and are prone to subtle bugs. Implementing, debugging and maintaining such collectors can therefore be extremely challenging. The choice of implementation language is a crucial consideration when building a collector. Typically, the drive for performance and the need for efficient support of low-level memory operations leads to the use of low-level languages like C or C++, which offer little by way of safety and software engineering benefits. This risks undermining the robustness and flexibility of the collector design. Rust's ownership model, lifetime specification, and reference borrowing deliver safety guarantees through a powerful static checker with little runtime overhead. These features make Rust a compelling candidate for a collector implementation language, but they come with restrictions that threaten expressiveness and efficiency. We describe our experience implementing an Immix garbage collector in Rust and C. We discuss the benefits of Rust, the obstacles encountered, and how we overcame them. We show that our Immix implementation has almost identical performance on micro benchmarks, compared to its implementation in C, and outperforms the popular BDW collector on the gcbench micro benchmark. We find that Rust's safety features do not create significant barriers to implementing a high performance collector. Though memory managers are usually considered low-level, our high performance implementation relies on very little unsafe code, with the vast majority of the implementation benefiting from Rust's safety. We see our experience as a compelling proof-of-concept of Rust as an implementation language for high performance garbage collection.},
-  comment  = {Der Artikel beschreibt die Vorteile und Nachteile von Rust gegenüber C.},
-  journal  = {SIGPLAN Not.},
-  ranking  = {rank5},
-  year     = {2016},
+@article{Lin2016,
+  author  = {Lin, Yi and Blackburn, Stephen M. and Hosking, Antony L. and Norrish, Michael},
+  title   = {Rust as a Language for High Performance GC Implementation},
+  pages   = {89-98},
+  comment = {Der Artikel beschreibt die Vorteile und Nachteile von Rust gegenüber C.},
+  journal = {SIGPLAN Not.},
+  year    = {2016},
+  number  = {11},
+  volume  = {51}
 }
 
-@Article{Gens2018,
-  author = {Gens, David and Schmitt, Simon and Davi, Lucas and Sadeghi, Ahmad-Reza},
-  title  = {K-Miner: Uncovering Memory Corruption in Linux},
-  doi    = {10.14722/ndss.2018.23326},
-  year   = {2018},
+@inproceedings{Gens2018,
+  author    = {Gens, David and Schmitt, Simon and Davi, Lucas and Sadeghi, Ahmad-Reza},
+  title     = {K-Miner: Uncovering Memory Corruption in Linux},
+  booktitle = {NDSS},
+  year      = {2018}
 }
 
-@InProceedings{Szekeres2013,
+@inproceedings{Szekeres2013,
   author    = {Szekeres, László and Payer, Mathias and Wei, Tao and Song, Dawn},
   booktitle = {2013 IEEE Symposium on Security and Privacy},
   title     = {SoK: Eternal War in Memory},
-  doi       = {10.1109/SP.2013.13},
   pages     = {48-26},
   year      = {2013},
+  publisher = {IEEE Computer Society}
 }
 
-@InProceedings{Qin2020,
+@inproceedings{Qin2020,
   author    = {Qin, Boqin and Chen, Yilun and Yu, Zeming and Song, Linhai and Zhang, Yiying},
   booktitle = {Proceedings of the 41st ACM SIGPLAN Conference on Programming Language Design and Implementation},
   title     = {Understanding Memory and Thread Safety Practices and Issues in Real-World Rust Programs},
-  doi       = {10.1145/3385412.3386036},
   pages     = {763–779},
-  abstract  = {Rust is a young programming language designed for systems software development. It aims to provide safety guarantees like high-level languages and performance efficiency like low-level languages. The core design of Rust is a set of strict safety rules enforced by compile-time checking. To support more low-level controls, Rust allows programmers to bypass these compiler checks to write unsafe code. It is important to understand what safety issues exist in real Rust programs and how Rust safety mechanisms impact programming practices. We performed the first empirical study of Rust by close, manual inspection of 850 unsafe code usages and 170 bugs in five open-source Rust projects, five widely-used Rust libraries, two online security databases, and the Rust standard library. Our study answers three important questions: how and why do programmers write unsafe code, what memory-safety issues real Rust programs have, and what concurrency bugs Rust programmers make. Our study reveals interesting real-world Rust program behaviors and new issues Rust programmers make. Based on our study results, we propose several directions of building Rust bug detectors and built two static bug detectors, both of which revealed previously unknown bugs.},
-  ranking   = {rank5},
   year      = {2020},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA}
 }
 
-@Unpublished{Jiang2021,
-  author  = {Jiang, Jianfeng and Xu, Hui and Zhou, Yangfan},
-  title   = {RULF: Rust Library Fuzzing via API Dependency Graph Traversal},
-  ranking = {rank2},
-  year    = {2021},
+@inproceedings{Jiang2021,
+  author    = {Jiang, Jianfeng and Xu, Hui and Zhou, Yangfan},
+  title     = {RULF: Rust Library Fuzzing via API Dependency Graph Traversal},
+  ranking   = {rank2},
+  year      = {2021},
+  booktitle = {2021 36th IEEE/ACM International Conference on Automated Software Engineering (ASE)},
+  pages     = {581-592},
+  publisher = {IEEE Computer Society}
 }
 
-@InProceedings{8471992,
+@inproceedings{8471992,
   author    = {Lindner, Marcus and Aparicius, Jorge and Lindgren, Per},
   booktitle = {2018 IEEE 16th International Conference on Industrial Informatics (INDIN)},
   title     = {No Panic! Verification of Rust Programs by Symbolic Execution},
-  doi       = {10.1109/INDIN.2018.8471992},
   pages     = {108-114},
-  comment   = {TODO symbolic execution
-symbolische ausführung},
+  comment   = {TODO symbolic execution for RUST},
   file      = {:papers/No_Panic_Verification_of_Rust_Programs_by_Symbolic_Execution.pdf:PDF},
   year      = {2018},
+  publisher = {IEEE Computer Society}
 }
 
-@InProceedings{10.1145/2818302.2818306,
+@inproceedings{10.1145/2818302.2818306,
   author    = {Levy, Amit and Andersen, Michael P. and Campbell, Bradford and Culler, David and Dutta, Prabal and Ghena, Branden and Levis, Philip and Pannuto, Pat},
   title     = {Ownership is Theft: Experiences Building an Embedded OS in Rust},
   booktitle = {Proceedings of the 8th Workshop on Programming Languages and Operating Systems},
   year      = {2015},
-  series    = {PLOS '15},
   publisher = {Association for Computing Machinery},
-  location  = {Monterey, California},
-  isbn      = {9781450339421},
   pages     = {21–26},
-  doi       = {10.1145/2818302.2818306},
-  url       = {https://doi.org/10.1145/2818302.2818306},
-  abstract  = {Rust, a new systems programming language, provides compile-time memory safety checks to help eliminate runtime bugs that manifest from improper memory management. This feature is advantageous for operating system development, and especially for embedded OS development, where recovery and debugging are particularly challenging. However, embedded platforms are highly event-based, and Rust's memory safety mechanisms largely presume threads. In our experience developing an operating system for embedded systems in Rust, we have found that Rust's ownership model prevents otherwise safe resource sharing common in the embedded domain, conflicts with the reality of hardware resources, and hinders using closures for programming asynchronously. We describe these experiences and how they relate to memory safety as well as illustrate our workarounds that preserve the safety guarantees to the largest extent possible. In addition, we draw from our experience to propose a new language extension to Rust that would enable it to provide better memory safety tools for event-driven platforms.},
-  address   = {New York, NY, USA},
-  keywords  = {linear types, rust, embedded operating systems, ownership},
-  numpages  = {6},
+  address   = {New York, NY, USA}
 }
 
-@InProceedings{732680,
+@inproceedings{732680,
   author    = {Tracey, N. and Clark, J. and Mander, K. and McDermid, J.},
   booktitle = {Proceedings 13th IEEE International Conference on Automated Software Engineering (Cat. No.98EX239)},
   title     = {An automated framework for structural test-data generation},
-  doi       = {10.1109/ASE.1998.732680},
   pages     = {285-288},
   comment   = {Das Paper erklärt verschiedene Branch Distance Funktionen für SBST.},
   file      = {:papers/An_automated_framework_for_structural_test-data_generation.pdf:PDF},
-  groups    = {a72186:1},
   year      = {1998},
+  publisher = {IEEE Computer Society}
 }
 
-@InProceedings{6100119,
+@inproceedings{6100119,
   author    = {Baars, Arthur and Harman, Mark and Hassoun, Youssef and Lakhotia, Kiran and McMinn, Phil and Tonella, Paolo and Vos, Tanja},
   booktitle = {2011 26th IEEE/ACM International Conference on Automated Software Engineering (ASE 2011)},
   title     = {Symbolic search-based testing},
-  doi       = {10.1109/ASE.2011.6100119},
   pages     = {53-62},
   comment   = {TODO Das Paper erklärt, wie die Branch Distance Funktion effizienter gestaltet werden kann, um komplizierte verschachtelte If-Konditionen zu erfüllen mit Hilfe von Dynamic Symbolic Execution.
-
-symbolic execution},
+               symbolic execution},
   file      = {:papers/Symbolic_search-based_testing.pdf:PDF},
-  groups    = {a72186:1},
   year      = {2011},
+  publisher = {IEEE Computer Society}
 }
 
-@Article{Khari2019,
-  author   = {Khari, Manju and Kumar, Prabhat},
-  title    = {An extensive evaluation of search-based software testing: a review},
-  doi      = {10.1007/s00500-017-2906-y},
-  issn     = {1433-7479},
-  number   = {6},
-  pages    = {1933-1946},
-  url      = {https://doi.org/10.1007/s00500-017-2906-y},
-  volume   = {23},
-  abstract = {In recent years, search-based software testing (SBST) is the active research topic in software testing. SBST is the process of generating test cases that use metaheuristics for optimization of a task in the framework of software testing to solve difficult NP-hard problems. The best fitness results must be found with the heuristic search among many possibilities for a more cost-effective testing process and automate the process of generating test cases. Although search-based test data generation is a field of interest, some challenges remain unknown. The main objective of this survey is to find the main topics and trends in this emerging field of search-based software testing by examining the methods and the literature of software testing. A review of earlier studies of search-based software testing from the year 1996 to 2016 is discussed with the application of metaheuristics for the optimization of software testing.},
-  comment  = {Eine systematische Übersicht über das SBST, die Hierarchie der Algorithmen usw.},
-  day      = {01},
-  file     = {:papers/Khari-Kumar2019_Article_AnExtensiveEvaluationOfSearch-.pdf:PDF},
-  groups   = {a72186:1},
-  journal  = {Soft Computing},
-  month    = {3},
-  year     = {2019},
+@article{Khari2019,
+  author  = {Khari, Manju and Kumar, Prabhat},
+  title   = {An extensive evaluation of search-based software testing: a review},
+  number  = {6},
+  pages   = {1933-1946},
+  volume  = {23},
+  comment = {Eine systematische Übersicht über das SBST, die Hierarchie der Algorithmen usw.},
+  file    = {:papers/Khari-Kumar2019_Article_AnExtensiveEvaluationOfSearch-.pdf:PDF},
+  journal = {Soft Computing},
+  year    = {2019}
 }
 
-@InProceedings{Sen2006,
+@inproceedings{Sen2006,
   author    = {Sen, Koushik and Agha, Gul},
   booktitle = {Computer Aided Verification},
   title     = {CUTE and jCUTE: Concolic Unit Testing and Explicit Path Model-Checking Tools},
-  editor    = {Ball, Thomas and Jones, Robert B.},
-  isbn      = {978-3-540-37411-4},
   pages     = {419--423},
   publisher = {Springer Berlin Heidelberg},
-  abstract  = {CUTE, a Concolic Unit Testing Engine for C and Java, is a tool to systematically and automatically test sequential C programs (including pointers) and concurrent Java programs. CUTE combines concrete and symbolic execution in a way that avoids redundant test cases as well as false warnings. The tool also introduces a race-flipping technique to efficiently test and model check concurrent programs with data inputs.},
   address   = {Berlin, Heidelberg},
   comment   = {jCUTE SBST Tool für Java und C, welches automatisch jUnit tests generieren und außerdem Probleme bei concurrent Programmen erkennen kann.},
   file      = {:papers/2006_Book_ComputerAidedVerification.pdf:PDF},
-  groups    = {a72186:1},
-  year      = {2006},
+  year      = {2006}
 }
 
-@InProceedings{10.1145/800175.809889,
+@inproceedings{10.1145/800175.809889,
   author    = {Davis, Martin D. and Weyuker, Elaine J.},
   booktitle = {Proceedings of the ACM '81 Conference},
   title     = {Pseudo-Oracles for Non-Testable Programs},
-  doi       = {10.1145/800175.809889},
-  isbn      = {0897910494},
   pages     = {254–257},
   publisher = {Association for Computing Machinery},
-  series    = {ACM '81},
-  url       = {https://doi.org/10.1145/800175.809889},
-  abstract  = {The most commonly used method of validating a program is by testing. The programmer typically runs the program on some test cases, and if and when they run correctly, the program is considered to be correct.We know that many difficult problems are associated with testing. One such problem is that it is a fundamental part of the testing process to require the ability to infer properties of a program by observing the program's behavior on selected inputs. The most common property that one hopes to infer through testing is correctness. But unless the program is run on the entire input domain, there are infinitely many programs which produce the correct output on the selected inputs, but produce incorrect output for some other element of the domain.},
   address   = {New York, NY, USA},
   comment   = {Das Paper beschreibt die Pseudo-Orakel für non-testable Programme. Diese werden dadurch realisiert, dass ein SUT von zwei Teams unabhängig implementiert wird (mittels zwei verschiedenen Sprachen) und die Ausgaben dieser beiden Programmen, die nach Spezifikation äquivalent sein sollten, werden verglichen.},
   file      = {:papers/800175.809889.pdf:PDF},
-  groups    = {a72186:1},
-  numpages  = {4},
-  year      = {1981},
+  year      = {1981}
 }
 
-@InProceedings{McMinn2009,
+@inproceedings{McMinn2009,
   author    = {McMinn, Phil},
   booktitle = {Proceedings of the 11th Annual Conference on Genetic and Evolutionary Computation},
   title     = {Search-Based Failure Discovery Using Testability Transformations to Generate Pseudo-Oracles},
-  doi       = {10.1145/1569901.1570127},
-  isbn      = {9781605583259},
-  location  = {Montreal, Qu\'{e}bec, Canada},
   pages     = {1689–1696},
   publisher = {Association for Computing Machinery},
-  series    = {GECCO '09},
-  url       = {https://doi.org/10.1145/1569901.1570127},
-  abstract  = {Testability transformations are source-to-source program transformations that are designed to improve the testability of a program. This paper introduces a novel approach in which transformations are used to improve testability of a program by generating a pseudo-oracle. A pseudo-oracle is an alternative version of a program under test whose output can be compared with the original. Differences in output between the two programs may indicate a fault in the original program. Two transformations are presented. The first can highlight numerical inaccuracies in programs and cumulative roundoff errors, whilst the second may detect the presence of race conditions in multi-threaded code.Once a pseudo-oracle is generated, techniques are applied from the field of search-based testing to automatically find differences in output between the two versions of the program. The results of an experimental study presented in the paper show that both random testing and genetic algorithms are capable of utilizing the pseudo-oracles to automatically find program failures.Using genetic algorithms it is possible to explicitly maximize the discrepancies between the original programs and their pseudo-oracles. This allows for the production of test cases where the observable failure is highly pronounced, enabling the tester to establish the seriousness of the underlying fault.},
   address   = {New York, NY, USA},
   comment   = {Das Paper baut auf dem Originalpaper von Davis und Weyuker über Pseudo-Orakel und versucht, solche Pseudo-Orakel automatisch zu generieren, um ein zweites Program zu erstellen, welches die gleichen Outputs haben sollte.},
   file      = {:papers/1569901.1570127.pdf:PDF},
-  groups    = {a72186:1},
-  keywords  = {search-based software testing, testability transformation, non-testable program, oracle, program transformation, pseudo-oracle},
-  numpages  = {8},
-  year      = {2009},
+  year      = {2009}
 }
 
-@InProceedings{528535,
+@inproceedings{528535,
   author    = {Offutt, A.J.},
   booktitle = {Proceedings., International Test Conference},
   title     = {A practical system for mutation testing: help for the common programmer},
-  doi       = {10.1109/TEST.1994.528535},
   pages     = {824-830},
   comment   = {Grundlagen von Mutation Testing in Unit-Tests.},
   file      = {:papers/A_practical_system_for_mutation_testing_help_for_the_common_programmer.pdf:PDF},
-  groups    = {a72186:1},
   year      = {1994},
+  publisher = {IEEE Computer Society}
 }
 
-@Article{Harman2004,
+@article{Harman2004,
   author  = {Harman, M. and Hu, L. and Hierons, R. and Wegener, J. and Sthamer, H. and Baresel, A. and Roper, M.},
   title   = {Testability transformation},
-  doi     = {10.1109/TSE.2004.1265732},
   number  = {1},
   pages   = {3-16},
   volume  = {30},
   comment = {Quellcode-zu-Quellcode Transformationen, um bessere Performanz für Testgenerierung zu kriegen. Dabei wird ein SUT unter bestimmten Transformationen zu einem ähnlichen Programm umgewandelt.},
   file    = {:papers/01265732.pdf:PDF},
-  groups  = {a72186:1},
   journal = {IEEE Transactions on Software Engineering},
-  year    = {2004},
+  year    = {2004}
 }
 
-@InProceedings{10.1145/1450058.1450087,
+@inproceedings{10.1145/1450058.1450087,
   author    = {Godefroid, Patrice and Levin, Michael Y. and Molnar, David A.},
   booktitle = {Proceedings of the 8th ACM International Conference on Embedded Software},
   title     = {Active Property Checking},
-  doi       = {10.1145/1450058.1450087},
-  isbn      = {9781605584683},
-  location  = {Atlanta, GA, USA},
   pages     = {207–216},
   publisher = {Association for Computing Machinery},
-  series    = {EMSOFT '08},
-  url       = {https://doi.org/10.1145/1450058.1450087},
-  abstract  = {Runtime property checking (as implemented in tools like Purify or Valgrind) checks whether a program execution satisfies a property. Active property checking extends runtime checking by checking whether the property is satisfied by all program executions that follow the same program path. This check is performed on a symbolic execution of the given program path using a constraint solver. If the check fails, the constraint solver generates an alternative program input triggering a new program execution that follows the same program path but exhibits a property violation. Combined with systematic dynamic test generation, which attempts to exercise all feasible paths in a program, active property checking defines a new form of dynamic software model checking (program verification). In this paper, we formalize and study active property checking. We show how static and dynamic type checking can be extended with active type checking. Then, we discuss how to implement active property checking efficiently. Finally, we discuss results of experiments with media playing applications on Windows, where active property checking was able to detect several new security-related bugs.},
   address   = {New York, NY, USA},
   comment   = {Testability Transformation, um für bestimmte Fehler wie DivisionByZero oder IndexOutOfBounds einen eigenen Branch zu erstellen, wodurch die Suche in bestimmte Richtung gelenkt werden kann.},
   file      = {:papers/1450058.1450087.pdf:PDF},
-  groups    = {a72186:1},
-  keywords  = {symbolic execution, security, software testing},
-  numpages  = {10},
-  year      = {2008},
+  year      = {2008}
 }
 
-@Article{GUO2016204,
-  author   = {Hai-Feng Guo},
-  title    = {A semantic approach for automated test oracle generation},
-  doi      = {https://doi.org/10.1016/j.cl.2016.01.006},
-  issn     = {1477-8424},
-  pages    = {204-219},
-  url      = {https://www.sciencedirect.com/science/article/pii/S147784241530021X},
-  volume   = {45},
-  abstract = {This paper presents the design, implementation, and applications of a software testing tool, TAO, which allows users to specify and generate test cases and oracles in a declarative way. Extended from its previous grammar-based test generation tool, TAO provides a declarative notation for defining denotational semantics on each productive grammar rule, such that when a test case is generated, its expected semantics will be evaluated automatically as well, serving as its test oracle. TAO further provides a simple tagging mechanism to embed oracles into test cases for bridging the automation between test case generation and software testing. Two practical case studies are used to illustrate how automated oracle generation can be effectively integrated with grammar-based test generation in different testing scenarios: locating fault-inducing input patterns on Java applications; and Selenium-based automated web testing.},
-  comment  = {TODO Explizite Tags als Orakel für Testgenerierung
-test oracle},
-  groups   = {a72186:1},
-  journal  = {Computer Languages, Systems \& Structures},
-  keywords = {Software testing, Test case generation, Test oracle, Denotational semantics},
-  year     = {2016},
+@article{GUO2016204,
+  author  = {Hai-Feng Guo},
+  title   = {A semantic approach for automated test oracle generation},
+  pages   = {204-219},
+  volume  = {45},
+  comment = {TODO Explizite Tags als Orakel für Testgenerierung
+             test oracle},
+  journal = {Computer Languages, Systems \& Structures},
+  year    = {2016}
 }
 
-@Article{10.1145/3293455,
-  author     = {Arcuri, Andrea},
-  title      = {RESTful API Automated Test Case Generation with EvoMaster},
-  doi        = {10.1145/3293455},
-  issn       = {1049-331X},
-  number     = {1},
-  url        = {https://doi.org/10.1145/3293455},
-  volume     = {28},
-  abstract   = {RESTful APIs are widespread in industry, especially in enterprise applications developed with a microservice architecture. A RESTful web service will provide data via an API over the network using HTTP, possibly interacting with databases and other web services. Testing a RESTful API poses challenges, because inputs/outputs are sequences of HTTP requests/responses to a remote server. Many approaches in the literature do black-box testing, because often the tested API is a remote service whose code is not available. In this article, we consider testing from the point of view of the developers, who have full access to the code that they are writing. Therefore, we propose a fully automated white-box testing approach, where test cases are automatically generated using an evolutionary algorithm. Tests are rewarded based on code coverage and fault-finding metrics. However, REST is not a protocol but rather a set of guidelines on how to design resources accessed over HTTP endpoints. For example, there are guidelines on how related resources should be structured with hierarchical URIs and how the different HTTP verbs should be used to represent well-defined actions on those resources. Test-case generation for RESTful APIs that only rely on white-box information of the source code might not be able to identify how to create prerequisite resources needed before being able to test some of the REST endpoints. Smart sampling techniques that exploit the knowledge of best practices in RESTful API design are needed to generate tests with predefined structures to speed up the search. We implemented our technique in a tool called EvoMaster, which is open source. Experiments on five open-source, yet non-trivial, RESTful services show that our novel technique automatically found 80 real bugs in those applications. However, obtained code coverage is lower than the one achieved by the manually written test suites already existing in those services. Research directions on how to further improve such an approach are therefore discussed, such as the handling of SQL databases.},
-  address    = {New York, NY, USA},
-  articleno  = {3},
-  comment    = {SBST für REST APIs mit Orakel Generierung.},
-  file       = {:papers/3293455.pdf:PDF},
-  groups     = {a72186:1},
-  issue_date = {February 2019},
-  journal    = {ACM Trans. Softw. Eng. Methodol.},
-  keywords   = {REST, testing, web service, Software engineering},
-  month      = jan,
-  numpages   = {37},
-  publisher  = {Association for Computing Machinery},
-  year       = {2019},
+@article{10.1145/3293455,
+  author    = {Arcuri, Andrea},
+  title     = {RESTful API Automated Test Case Generation with EvoMaster},
+  volume    = {28},
+  address   = {New York, NY, USA},
+  number    = {3},
+  comment   = {SBST für REST APIs mit Orakel Generierung.},
+  file      = {:papers/3293455.pdf:PDF},
+  journal   = {ACM Trans. Softw. Eng. Methodol.},
+  publisher = {Association for Computing Machinery},
+  year      = {2019}
 }
 
-@Article{6963470,
+@article{6963470,
   author  = {Barr, Earl T. and Harman, Mark and McMinn, Phil and Shahbaz, Muzammil and Yoo, Shin},
   title   = {The Oracle Problem in Software Testing: A Survey},
-  doi     = {10.1109/TSE.2014.2372785},
   number  = {5},
   pages   = {507-525},
   volume  = {41},
   comment = {Beschreibt Arten von Orakel (automatische und manuelle) und wie sie zusammenhängen.},
   file    = {:6963470 - The Oracle Problem in Software Testing_ a Survey.pdf:PDF},
-  groups  = {a72186:1},
   journal = {IEEE Transactions on Software Engineering},
-  year    = {2015},
+  year    = {2015}
 }
 
-@InProceedings{McMinn2011,
+@inproceedings{McMinn2011,
   author    = {McMinn, Phil},
   booktitle = {2011 IEEE Fourth International Conference on Software Testing, Verification and Validation Workshops},
   title     = {Search-Based Software Testing: Past, Present and Future},
-  doi       = {10.1109/ICSTW.2011.100},
   pages     = {153-163},
   comment   = {Eine gute Übersicht was SBST überhaupt ist und welche Arten von SBST momentan verbreitet sind: temporal testing, structural testing, functional testing, mit realen Anwendungsbeispielen.},
   file      = {:papers/Search-Based_Software_Testing_Past_Present_and_Future.pdf:PDF},
-  groups    = {a72186:1},
-  ranking   = {rank5},
-  year      = {2011},
+  publisher = {IEEE Computer Society},
+  year      = {2011}
 }
 
-@InProceedings{10.1145/1062455.1062530,
+@inproceedings{10.1145/1062455.1062530,
   author    = {Andrews, J. H. and Briand, L. C. and Labiche, Y.},
   booktitle = {Proceedings of the 27th International Conference on Software Engineering},
   title     = {Is Mutation an Appropriate Tool for Testing Experiments?},
-  doi       = {10.1145/1062455.1062530},
-  isbn      = {1581139632},
-  location  = {St. Louis, MO, USA},
   pages     = {402–411},
   publisher = {Association for Computing Machinery},
-  series    = {ICSE '05},
-  url       = {https://doi.org/10.1145/1062455.1062530},
-  abstract  = {The empirical assessment of test techniques plays an important role in software testing research. One common practice is to instrument faults, either manually or by using mutation operators. The latter allows the systematic, repeatable seeding of large numbers of faults; however, we do not know whether empirical results obtained this way lead to valid, representative conclusions. This paper investigates this important question based on a number of programs with comprehensive pools of test cases and known faults. It is concluded that, based on the data available thus far, the use of mutation operators is yielding trustworthy results (generated mutants are similar to real faults). Mutants appear however to be different from hand-seeded faults that seem to be harder to detect than real faults.},
   address   = {New York, NY, USA},
   comment   = {Eine empirische Forschung, die zeigt, dass Test Suites, die gut im Finden von Mutanten sind, sind auch gut im Finden von echten Bugs.},
   file      = {:papers/1062455.1062530.pdf:PDF},
-  groups    = {a72186:1},
-  keywords  = {hand-seeded faults, real faults, mutants},
-  numpages  = {10},
-  year      = {2005},
+  year      = {2005}
 }
 
-@InProceedings{Fraser2011,
+@inproceedings{Fraser2011,
   author    = {Fraser, Gordon and Arcuri, Andrea},
   booktitle = {2011 Fourth IEEE International Conference on Software Testing, Verification and Validation},
   title     = {It is Not the Length That Matters, It is How You Control It},
-  doi       = {10.1109/ICST.2011.54},
   pages     = {150-159},
-  abstract  = {The length of test cases is a little investigated topic in search-based test generation for object oriented software, where test cases are sequences of method calls. While intuitively longer tests can achieve higher overall code coverage, there is always the threat of bloat - a complex phenomenon in evolutionary computation, where the length abnormally grows over time. In this paper, we show that bloat indeed also occurs in the context of test generation for object oriented software. We present different techniques to overcome the problem of length bloat, and evaluate all possible combinations of these techniques using different search lengths. Experiments on a set of difficult search targets selected from several open source and industrial projects show that the important choice in search-based testing is not the length of test cases, but how to make sure that this length does not become bloated.},
+  publisher = {IEEE Computer Society},
   comment   = {Es werden Techniken vorgestellt, um generierte Tests so klein wie möglich zu halten und Bloating zu vermeiden. Außerdem wird die Berechnung und Normalisierung der Branch und Approach Distance erklärt. Zudem werden die Crossover, Selection und Mutation Operatoren anhand von Beispielen erklärt.
-Insgesamt wird im Paper jeder Schritt der Generierung und Evolution relativ genau erklärt.},
+               Insgesamt wird im Paper jeder Schritt der Generierung und Evolution relativ genau erklärt.},
   file      = {:papers/05770604.pdf:PDF},
-  groups    = {a72186:1},
-  issn      = {2159-4848},
-  month     = {3},
-  ranking   = {rank5},
-  year      = {2011},
+  year      = {2011}
 }
 
-@InProceedings{5477052,
+@inproceedings{5477052,
   author    = {Arcuri, Andrea},
   booktitle = {2010 Third International Conference on Software Testing, Verification and Validation},
   title     = {Longer is Better: On the Role of Test Sequence Length in Software Testing},
-  doi       = {10.1109/ICST.2010.16},
   pages     = {469-478},
-  abstract  = {In the presence of an internal state, often it is required a sequence of function calls to test software. In fact, to cover a particular branch of the code, a sequence of previous function calls might be required to put the internal state in the appropriate configuration. Internal states are not only present in object-oriented software, but also in procedural software(e.g., static variables in C programs). In the literature, there are many techniques to test this type of software. However, to our best knowledge, the properties related to choosing the length of these sequences have received only little attention in the literature. In this paper, we analyse the role that the length plays in software testing, in particular branch coverage. We show that on “difficult” software testing benchmarks longer test sequences make their testing trivial. Hence, we argue that the choice of the length of the test sequences is very important in software testing.},
   comment   = {TODO Arcuri untersucht, dass die Länge der Tests direkt mit der Coverage der Tests korreliert.},
   file      = {:papers/Longer_is_Better_On_the_Role_of_Test_Sequence_Length_in_Software_Testing.pdf:PDF},
-  groups    = {a72186:1},
-  issn      = {2159-4848},
-  month     = {April},
-  ranking   = {rank4},
-  year      = {2010},
+  publisher = {IEEE Computer Society},
+  year      = {2010}
 }
 
-@Article{whitley1994genetic,
+@article{whitley1994genetic,
   author    = {Whitley, Darrell},
   title     = {A genetic algorithm tutorial},
   number    = {2},
   pages     = {65--85},
   volume    = {4},
   comment   = {Einführung in genetische Algorithmen},
-  groups    = {a72186:1},
   journal   = {Statistics and computing},
   publisher = {Springer},
-  year      = {1994},
+  year      = {1994}
 }
 
-@Article{WHITLEY2001817,
-  author   = {Darrell Whitley},
-  title    = {An overview of evolutionary algorithms: practical issues and common pitfalls},
-  doi      = {https://doi.org/10.1016/S0950-5849(01)00188-4},
-  issn     = {0950-5849},
-  number   = {14},
-  pages    = {817-831},
-  url      = {https://www.sciencedirect.com/science/article/pii/S0950584901001884},
-  volume   = {43},
-  abstract = {An overview of evolutionary algorithms is presented covering genetic algorithms, evolution strategies, genetic programming and evolutionary programming. The schema theorem is reviewed and critiqued. Gray codes, bit representations and real-valued representations are discussed for parameter optimization problems. Parallel Island models are also reviewed, and the evaluation of evolutionary algorithms is discussed.},
-  comment  = {TODO Eine weiterführende Einführung in die genetischen Algorithmen},
-  file     = {:papers/WHITLEY2001817.pdf:PDF},
-  groups   = {a72186:1},
-  journal  = {Information and Software Technology},
-  keywords = {Genetic algorithms, Evolution strategies, Genetic programming, Evolutionary programming, Search, Automated programming, Parallel algorithms},
-  year     = {2001},
+@article{WHITLEY2001817,
+  author  = {Darrell Whitley},
+  title   = {An overview of evolutionary algorithms: practical issues and common pitfalls},
+  number  = {14},
+  pages   = {817-831},
+  volume  = {43},
+  comment = {TODO Eine weiterführende Einführung in die genetischen Algorithmen},
+  file    = {:papers/WHITLEY2001817.pdf:PDF},
+  journal = {Information and Software Technology},
+  year    = {2001}
 }
 
-@Article{BUHLER20083144,
-  author   = {Oliver Bühler and Joachim Wegener},
-  title    = {Evolutionary functional testing},
-  doi      = {https://doi.org/10.1016/j.cor.2007.01.015},
-  issn     = {0305-0548},
-  note     = {Part Special Issue: Search-based Software Engineering},
-  number   = {10},
-  pages    = {3144-3160},
-  url      = {https://www.sciencedirect.com/science/article/pii/S0305054807000329},
-  volume   = {35},
-  abstract = {The development and testing of software-based systems is an essential activity for the automotive industry. The 50–70 software-based systems with different complexities and developed by various suppliers are installed in today's premium vehicles, communicating with each other via different bus systems. The integration and testing of systems of this complexity is a very challenging task. The aim of testing is to detect faults in the systems under test and to convey confidence in the correct functioning of the systems if no faults are found during comprehensive testing. Faults not found in the different testing phases could have significant consequences that range from customer dissatisfaction to damage of physical property or, in safety-relevant areas, even to the endangering of human lives. Therefore, the thorough testing of developed systems is essential. Evolutionary testing tries to improve the effectiveness and efficiency of the testing process by transforming testing objectives into search problems, and applying evolutionary computation in order to solve them. The most important class of testing methods is functional testing. However, functional testing is difficult to automate by evolutionary testing. This work will describe how evolutionary testing could be applied to automate functional testing in general and the testing of complex automotive systems in particular. It presents two case studies and shows how evolutionary testing is effective at finding faults in the functional behaviour of these systems. In addition, a quantitative comparison with manual and random test case selection is done for one application.},
-  comment  = {DaimlerChrysler SBST für funktionales Testen der automatischen Einparkhilfe},
-  groups   = {a72186:1},
-  journal  = {Computers \& Operations Research},
-  keywords = {Software testing, Functional testing, Evolutionary testing, Evolutionary functional testing, Testing process, Automotive systems},
-  year     = {2008},
+@article{BUHLER20083144,
+  author  = {Oliver Bühler and Joachim Wegener},
+  title   = {Evolutionary functional testing},
+  number  = {10},
+  pages   = {3144-3160},
+  volume  = {35},
+  comment = {DaimlerChrysler SBST für funktionales Testen der automatischen Einparkhilfe},
+  journal = {Computers \& Operations Research},
+  year    = {2008}
 }
 
-@InProceedings{Shamshiri2015,
+@inproceedings{Shamshiri2015,
   author    = {Shamshiri, Sina and Just, Rene and Rojas, Jos\'{e} Miguel and Fraser, Gordon and McMinn, Phil and Arcuri, Andrea},
   booktitle = {International Conference on Automated Software Engineering (ASE 2015)},
   title     = {Do Automatically Generated Unit Tests Find Real Faults? An Empirical Study of Effectiveness and Challenges},
   pages     = {201--211},
-  publisher = {ACM},
+  publisher = {Association for Computing Machinery},
   comment   = {Noch zu lesen},
   file      = {:papers/Do_Automatically_Generated_Unit_Tests_Find_Real_Faults_An_Empirical_Study_of_Effectiveness_and_Challenges_T.pdf:PDF},
-  groups    = {a72186:1},
-  year      = {2015},
+  year      = {2015}
 }
 
-@Article{Fraser2015,
+@article{Fraser2015,
   author  = {Fraser, Gordon and Arcuri, Andrea and McMinn, Phil},
   title   = {A Memetic Algorithm for Whole Test Suite Generation},
   pages   = {311--327},
   volume  = {103},
   comment = {Feingranulare Erweiterung der genetischen Algorithme, noch zu lesen},
   file    = {:papers/A-Memetic-Algorithm-for-whole-test-suite-gen_2015_Journal-of-Systems-and-Sof.pdf:PDF},
-  groups  = {a72186:1},
   journal = {Journal of Systems and Software},
-  ranking = {rank4},
-  year    = {2015},
+  year    = {2015}
 }
 
-@InProceedings{6200103,
+@inproceedings{6200103,
   author    = {Fraser, Gordon and Arcuri, Andrea},
   booktitle = {2012 IEEE Fifth International Conference on Software Testing, Verification and Validation},
   title     = {The Seed is Strong: Seeding Strategies in Search-Based Software Testing},
-  doi       = {10.1109/ICST.2012.92},
   pages     = {121-130},
   comment   = {Das Paper erklärt, wie SBST mit bestimmten Seedingstechniken anstatt von Random Initial Population bessere erzielen könnte.},
   file      = {:papers/The_Seed_is_Strong_Seeding_Strategies_in_Search-Based_Software_Testing.pdf:PDF},
-  groups    = {a72186:1},
   year      = {2012},
+  publisher = {IEEE Computer Society},
+  address   = {Los Alamitos, CA, USA}
 }
 
-@InProceedings{10.1145/1143997.1144316,
+@inproceedings{10.1145/1143997.1144316,
   author    = {Tlili, Marouane and Wappler, Stefan and Sthamer, Harmen},
   booktitle = {Proceedings of the 8th Annual Conference on Genetic and Evolutionary Computation},
   title     = {Improving Evolutionary Real-Time Testing},
-  doi       = {10.1145/1143997.1144316},
-  isbn      = {1595931864},
-  location  = {Seattle, Washington, USA},
   pages     = {1917–1924},
   publisher = {Association for Computing Machinery},
-  series    = {GECCO '06},
-  url       = {https://doi.org/10.1145/1143997.1144316},
-  abstract  = {Embedded systems are often used in a safety-critical context, e.g. in airborne or vehicle systems. Typically, timing constraints must be satisfied so that real-time embedded systems work properly and safely. Execution time testing involves finding the best and worst case execution times to determine if timing constraints are respected. Evolutionary real-time testing (ERTT) is used to dynamically search for the extreme execution times. It can be shown that ERTT outperforms the traditional methods based on static analysis. However, during the evolutionary search, some parts of the source code are never accessed. Moreover, it turns out that ERTT delivers different extreme execution times in a high number of generations for the same test object, the results are neither reliable nor efficient. We propose a new approach to ERTT which makes use of seeding the evolutionary algorithm with test data achieving a high structural coverage. Using such test data ensures a comprehensive exploration of the search space and leads to rise the confidence in the results. We present also another improvement method based on restricting the range of the input variables in the initial population in order to reduce the search space. Experiments with these approaches demonstrate an increase of reliability in terms of constant extreme execution times and a gain in efficiency in terms of number of generations needed.},
   address   = {New York, NY, USA},
   comment   = {DaimlerChrysler versucht in dem Paper, die kritischen Echtzeitsysteme mit Hilfe von SBST zu testen, indem die möglichst schlechte Ausführungszeit gesucht wird.},
   file      = {:papers/1143997.1144316.pdf:PDF},
-  groups    = {a72186:1},
-  keywords  = {software tools, software engineering},
-  numpages  = {8},
-  year      = {2006},
+  year      = {2006}
 }
 
-@Misc{StackOverflow2020,
+@misc{StackOverflow2020,
   author  = {{Stack Overflow}},
   title   = {{Stack Overflow Developer Survey 2020}},
   url     = {https://insights.stackoverflow.com/survey/2020#technology-most-loved-dreaded-and-wanted-languages-loved},
-  urldate = {2021-05-02},
-  groups  = {a72186:1},
-  year    = {2020},
+  urldate = {2021-05-02}
 }
 
-@Misc{Rust10,
+@misc{Rust10,
   author  = {{The Rust Core Team}},
-  date    = {2015-05-15},
   title   = {Announcing Rust 1.0},
   url     = {https://blog.rust-lang.org/2015/05/15/Rust-1.0.html},
+  urldate = {2021-06-28}
+}
+
+@inproceedings{cadar2008klee,
+  author    = {Cadar, Cristian and Dunbar, Daniel and Engler, Dawson},
+  booktitle = {OSDI},
+  title     = {KLEE: unassisted and automatic generation of high-coverage tests for complex systems programs.},
+  pages     = {209--224},
+  volume    = {8},
+  file      = {:papers/cadar.pdf:PDF},
+  year      = {2008}
+}
+
+@misc{Microsoft2019MemoryBugs,
+  author  = {Matt Miller},
+  title   = {Trends, challenges, and strategic shifts in the software vulnerability mitigation landscape},
+  url     = {https://github.com/Microsoft/MSRC-Security-Research/blob/master/presentations/2019_02_BlueHatIL/2019_01%20-%20BlueHatIL%20-%20Trends%2C%20challenge%2C%20and%20shifts%20in%20software%20vulnerability%20mitigation.pdf},
   urldate = {2021-06-28},
-  groups  = {a72186:1},
-  year    = {2015},
+  comment = {Microfosft's Präsentation über die Anzahl von Speicher-spezifischen Bugs in ihrer Software.}
 }
 
-@InProceedings{cadar2008klee,
-  author     = {Cadar, Cristian and Dunbar, Daniel and Engler, Dawson},
-  booktitle  = {OSDI},
-  title      = {KLEE: unassisted and automatic generation of high-coverage tests for complex systems programs.},
-  pages      = {209--224},
-  volume     = {8},
-  file       = {:papers/cadar.pdf:PDF},
-  groups     = {State of the Art Tools, a72186:1},
-  readstatus = {skimmed},
-  year       = {2008},
-}
-
-@Misc{Microsoft2019MemoryBugs,
-  author   = {Matt Miller},
-  title    = {Trends, challenges, and strategic shifts in the software vulnerability mitigation landscape},
-  year     = {2019},
-  date     = {2019-02-07},
-  url      = {https://github.com/Microsoft/MSRC-Security-Research/blob/master/presentations/2019_02_BlueHatIL/2019_01%20-%20BlueHatIL%20-%20Trends%2C%20challenge%2C%20and%20shifts%20in%20software%20vulnerability%20mitigation.pdf},
-  urldate  = {2021-06-28},
-  comment  = {Microfosft's Präsentation über die Anzahl von Speicher-spezifischen Bugs in ihrer Software.},
-  keywords = {microsoft, memory},
-}
-
-@Misc{MicrosoftJoinsRust,
+@misc{MicrosoftJoinsRust,
   author  = {Nell Shamrell-Harrington},
   title   = {Microsoft joins Rust Foundation},
-  year    = {2021},
-  date    = {2021-02-08},
   url     = {https://cloudblogs.microsoft.com/opensource/2021/02/08/microsoft-joins-rust-foundation/},
   urldate = {2021-06-28},
-  comment = {Microsoft Blog erzählt, dass Microsoft in OSS Rust Foundation eingestiegen ist.},
+  comment = {Microsoft Blog erzählt, dass Microsoft in OSS Rust Foundation eingestiegen ist.}
 }
 
-@Misc{FutureOfRust,
+@misc{FutureOfRust,
   author  = {Cameron Manavian},
   title   = {Post-Mozilla Rust: The Future of the Rust Language},
-  year    = {2020},
-  date    = {2020-08-19},
+  urldate = {2021-10-19},
   url     = {https://medium.com/the-innovation/post-mozilla-rust-the-future-of-the-rust-language-61a5cfb1f615},
-  comment = {The companies that love Rust.},
+  comment = {The companies that love Rust.}
 }
 
-@Misc{AmazonLovesRust,
+@misc{AmazonLovesRust,
   author  = {Matt Asay},
   title   = {Why AWS loves Rust, and how we'd like to help},
-  year    = {2020},
-  date    = {2020-11-24},
   url     = {https://aws.amazon.com/de/blogs/opensource/why-aws-loves-rust-and-how-wed-like-to-help/},
-  urldate = {2021-06-28},
+  urldate = {2021-06-28}
 }
 
-@Misc{RustInAndroid,
-  author = {Stoep, Jeff Vander and Hines, Stephen},
-  title  = {Rust in the Android platform},
-  year   = {2021},
-  date   = {2021-04-06},
-  url    = {https://security.googleblog.com/2021/04/rust-in-android-platform.html},
+@misc{RustInAndroid,
+  author  = {Stoep, Jeff Vander and Hines, Stephen},
+  title   = {Rust in the Android platform},
+  urldate = {2021-10-06},
+  url     = {https://security.googleblog.com/2021/04/rust-in-android-platform.html}
 }
 
-@Misc{GoogleRustFoundation,
+@misc{GoogleRustFoundation,
   author  = {Lars Bergstrom},
   title   = {Google joins the Rust Foundation},
-  year    = {2021},
-  date    = {2021-02-08},
+  urldate = {2021-11-08},
   url     = {https://opensource.googleblog.com/2021/02/google-joins-rust-foundation.html},
-  comment = {Google über ihre Systeme, die mit Rust geschrieben wurden.},
+  comment = {Google über ihre Systeme, die mit Rust geschrieben wurden.}
 }
 
-@Misc{Disselkoen,
-  author = {Disselkoen, Craig and Ayers, Hudson},
-  title  = {haybale: Symbolic execution of LLVM IR},
-  groups = {State of the Art Tools},
+@inproceedings{Disselkoen,
+  author       = {Disselkoen, Craig and Ayers, Hudson},
+  title        = {haybale: Symbolic execution of LLVM IR},
+  groups       = {State of the Art Tools},
+  year         = {2020},
+  organization = {TECHCON}
 }
 
-@Article{Panichella_2015,
+@article{Panichella_2015,
   author    = {Annibale Panichella and Fitsum Meshesha Kifetew and Paolo Tonella},
   title     = {Reformulating Branch Coverage as a Many-Objective Optimization Problem},
-  doi       = {10.1109/ICST.2015.7102604},
   booktitle = {2015 {IEEE} 8th International Conference on Software Testing, Verification and Validation ({ICST})},
   comment   = {Der MOSA Algorithmus.},
   file      = {:papers/07102604.pdf:PDF},
-  groups    = {a72186:1},
-  month     = {4},
-  publisher = {{IEEE}},
-  year      = {2015},
+  publisher = {IEEE Computer Society},
+  year      = {2015}
 }
 
-@Article{Fraser_2013,
+@article{Fraser_2013,
   author    = {Gordon Fraser and Andrea Arcuri},
   title     = {Whole Test Suite Generation},
-  doi       = {10.1109/TSE.2012.14},
   number    = {2},
   pages     = {276--291},
   volume    = {39},
   file      = {:papers/06152257.pdf:PDF;:Fraser_2013 - Whole Test Suite Generation.pdf:PDF},
-  groups    = {a72186:1},
   journal   = {{IEEE} Transactions on Software Engineering},
-  month     = {2},
-  publisher = {Institute of Electrical and Electronics Engineers ({IEEE})},
-  year      = {2013},
+  publisher = {IEEE Computer Society},
+  year      = {2013}
 }
 
-@Article{10.1145/103162.103163,
-  author     = {Goldberg, David},
-  title      = {What Every Computer Scientist Should Know about Floating-Point Arithmetic},
-  doi        = {10.1145/103162.103163},
-  issn       = {0360-0300},
-  number     = {1},
-  pages      = {5–48},
-  url        = {https://doi.org/10.1145/103162.103163},
-  volume     = {23},
-  abstract   = {Floating-point arithmetic is considered as esoteric subject by many people. This is
-rather surprising, because floating-point is ubiquitous in computer systems: Almost
-every language has a floating-point datatype; computers from PCs to supercomputers
-have floating-point accelerators; most compilers will be called upon to compile floating-point
-algorithms from time to time; and virtually every operating system must respond to
-floating-point exceptions such as overflow. This paper presents a tutorial on the
-aspects of floating-point that have a direct impact on designers of computer systems.
-It begins with background on floating-point representation and rounding error, continues
-with a discussion of the IEEE floating point standard, and concludes with examples
-of how computer system builders can better support floating point.},
-  address    = {New York, NY, USA},
-  file       = {:papers/103162.103163.pdf:PDF},
-  issue_date = {March 1991},
-  journal    = {ACM Comput. Surv.},
-  keywords   = {ulp, rounding error, guard digit, floating-point, NaN, gradual underflow, rounding mode, overflow, denormalized number, relative error, underflow, floating-point standard, exception},
-  month      = mar,
-  numpages   = {44},
-  publisher  = {Association for Computing Machinery},
-  year       = {1991},
+@article{10.1145/103162.103163,
+  author    = {Goldberg, David},
+  title     = {What Every Computer Scientist Should Know about Floating-Point Arithmetic},
+  number    = {1},
+  pages     = {5–48},
+  volume    = {23},
+  address   = {New York, NY, USA},
+  file      = {:papers/103162.103163.pdf:PDF},
+  journal   = {ACM Comput. Surv.},
+  publisher = {Association for Computing Machinery},
+  year      = {1991}
 }
 
 @book{Holland1992,
-  author = {Holland, John H.},
-  title = {Adaptation in Natural and Artificial Systems: An Introductory Analysis with Applications to Biology, Control and Artificial Intelligence},
-  year = {1992},
-  isbn = {0262082136},
+  author    = {Holland, John H.},
+  title     = {Adaptation in Natural and Artificial Systems: An Introductory Analysis with Applications to Biology, Control and Artificial Intelligence},
+  year      = {1992},
   publisher = {MIT Press},
-  address = {Cambridge, MA, USA},
-  abstract = {From the Publisher:Genetic algorithms are playing an increasingly important role in studies of complex adaptive systems, ranging from adaptive agents in economic theory to the use of machine learning techniques in the design of complex devices such as aircraft turbines and integrated circuits.  Adaptation in Natural and Artificial Systems  is the book that initiated this field of study, presenting the theoretical foundations and exploring applications.  In its most familiar form, adaptation is a biological process, whereby organisms evolve by rearranging genetic material to survive in environments confronting them. In this now classic work, Holland presents a mathematical model that allows for the nonlinearity of such complex interactions. He demonstrates the model's universality by applying it to economics, physiological psychology, game theory, and artificial intelligence and then outlines the way in which this approach modifies the traditional views of mathematical genetics. Initially applying his concepts to simply defined artificial systems with limited numbers of parameters, Holland goes on to explore their use in the study of a wide range of complex, naturally occuring processes, concentrating on systems having multiple factors that interact in nonlinear ways. Along the way he accounts for major effects of coadaptation and coevolution: the emergence of building blocks, or schemata, that are recombined and passed on to succeeding generations to provide, innovations and improvements. John H. Holland is Professor of Psychology and Professor of Electrical Engineering and Computer Science at the University of Michigan. He is also Maxwell Professor at the Santa Fe Institute and isDirector of the University of Michigan/Santa Fe Institute Advanced Research Program.}
+  address   = {Cambridge, MA, USA}
 }
 
-@Article{Fraser2013,
+@article{Fraser2013,
   author    = {Gordon Fraser and Andrea Arcuri},
   title     = {1600 faults in 100 projects: automatically finding faults while achieving high coverage with {EvoSuite}},
-  doi       = {10.1007/s10664-013-9288-2},
   number    = {3},
-  pages     = {611--639},
+  pages     = {611-639},
   volume    = {20},
   file      = {:papers/Fraser-Arcuri2015_Article_1600FaultsIn100ProjectsAutomat.pdf:PDF},
   journal   = {Empirical Software Engineering},
-  month     = {nov},
   publisher = {Springer Science and Business Media {LLC}},
-  year      = {2013},
+  year      = {2013}
 }
 
-@Article{Fraser_2011,
+@inproceedings{Fraser_2011,
   author    = {Gordon Fraser and Andrea Arcuri},
   title     = {{EvoSuite}},
-  doi       = {10.1145/2025113.2025179},
   booktitle = {Proceedings of the 19th {ACM} {SIGSOFT} symposium and the 13th European conference on Foundations of software engineering - {SIGSOFT}/{FSE} {\textquotesingle}11},
   file      = {:papers/2025113.2025179.pdf:PDF},
   publisher = {{ACM} Press},
   year      = {2011},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
+  pages     = {416–419}
 }
 
-@Article{Fraser_2011a,
+@inproceedings{Fraser_2011a,
   author    = {Gordon Fraser and Andrea Arcuri},
   title     = {Evolutionary Generation of Whole Test Suites},
-  doi       = {10.1109/QSIC.2011.19},
   booktitle = {2011 11th International Conference on Quality Software},
+  pages     = {31-40},
   file      = {:papers/06004309.pdf:PDF},
-  month     = {7},
-  publisher = {{IEEE}},
+  publisher = {IEEE Computer Society},
   year      = {2011},
+  address   = {Los Alamitos, CA, USA}
 }
 
-@Article{Goldberg_1994,
+@inproceedings{Goldberg_1994,
   author    = {Allen Goldberg and T. C. Wang and David Zimmerman},
   title     = {Applications of feasible path analysis to program testing},
-  doi       = {10.1145/186258.186523},
-  booktitle = {Proceedings of the 1994 international symposium on Software testing and analysis - {ISSTA} {\textquotesingle}94},
+  booktitle = {Proceedings of the 1994 ACM SIGSOFT International Symposium on Software Testing and Analysis},
   file      = {:papers/186258.186523.pdf:PDF},
-  publisher = {{ACM} Press},
+  publisher = {Association for Computing Machinery},
   year      = {1994},
+  pages     = {80–94},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA}
 }
 
-@Article{Pacheco_2007,
+@inproceedings{Pacheco_2007,
   author    = {Carlos Pacheco and Michael D. Ernst},
   title     = {Randoop: feedback-directed random testing for Java},
-  doi       = {10.1145/1297846.1297902},
-  booktitle = {Companion to the 22nd {ACM} {SIGPLAN} conference on Object oriented programming systems and applications companion - {OOPSLA} {\textquotesingle}07},
+  booktitle = {Companion to the 22nd ACM SIGPLAN Conference on Object-Oriented Programming Systems and Applications Companion},
   comment   = {TODO branch distance},
   file      = {:papers/1297846.1297902.pdf:PDF},
-  publisher = {{ACM} Press},
+  publisher = {Association for Computing Machinery},
   year      = {2007},
+  pages     = {815–816},
+  address   = {New York, NY, USA}
 }
 
-@Article{Godefroid_2005,
-  author    = {Patrice Godefroid and Nils Klarlund and Koushik Sen},
-  title     = {DART: directed automated random testing},
-  doi       = {10.1145/1065010.1065036},
-  booktitle = {Proceedings of the 2005 {ACM} {SIGPLAN} conference on Programming language design and implementation - {PLDI} {\textquotesingle}05},
+@inproceedings{Godefroid_2005,
+  author    = {Godefroid, Patrice and Klarlund, Nils and Sen, Koushik},
+  title     = {DART: Directed Automated Random Testing},
+  booktitle = {Proceedings of the 2005 ACM SIGPLAN Conference on Programming Language Design and Implementation},
   file      = {:papers/1064978.1065036.pdf:PDF},
-  publisher = {{ACM} Press},
+  publisher = {Association for Computing Machinery},
   year      = {2005},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
+  pages     = {213–223}
 }
 
-@Article{McMinn_2004,
+@article{McMinn_2004,
   author    = {Phil McMinn},
   title     = {Search-based software test data generation: a survey},
-  doi       = {10.1002/stvr.294},
   number    = {2},
-  pages     = {105--156},
+  pages     = {105-156},
   volume    = {14},
   comment   = {Es wird auch die rekursive Berechnung der Branch Distance erklärt.},
   file      = {:papers/stvr.294.pdf:PDF},
   journal   = {Software Testing, Verification and Reliability},
   month     = {5},
   publisher = {Wiley},
-  year      = {2004},
+  year      = {2004}
 }
 
-@Article{Arcuri_2011,
+@article{Arcuri_2011,
   author    = {Andrea Arcuri},
   title     = {It really does matter how you normalize the branch distance in search-based software testing},
-  doi       = {10.1002/stvr.457},
   number    = {2},
-  pages     = {119--147},
+  pages     = {119-147},
   volume    = {23},
   comment   = {TODO branch distance},
   file      = {:papers/stvr.457.pdf:PDF},
   journal   = {Software Testing, Verification and Reliability},
-  month     = {3},
   publisher = {Wiley},
-  year      = {2011},
+  year      = {2013}
 }
 
-@InProceedings{Harman2002,
+@inproceedings{Harman2002,
   author    = {Harman, M. and Fox, C. and Hierons, R. and Lin Hu and Danicic, S. and Wegener, J.},
   booktitle = {Proceedings. Second IEEE International Workshop on Source Code Analysis and Manipulation},
   title     = {VADA: a transformation-based system for variable dependence analysis},
-  doi       = {10.1109/SCAM.2002.1134105},
   pages     = {55-64},
   file      = {:papers/VADA_a_transformation-based_system_for_variable_dependence_analysis.pdf:PDF},
   year      = {2002},
+  publisher = {IEEE Computer Society}
 }
 
-@Article{Arcuri_2013,
+@article{Arcuri_2013,
   author    = {Andrea Arcuri and Gordon Fraser},
   title     = {Parameter tuning or default values? An empirical investigation in search-based software engineering},
-  doi       = {10.1007/s10664-013-9249-9},
   number    = {3},
-  pages     = {594--623},
+  pages     = {594-623},
   volume    = {18},
   comment   = {TODO seeding parameters tuning},
   file      = {:papers/Arcuri-Fraser2013_Article_ParameterTuningOrDefaultValues.pdf:PDF},
   journal   = {Empirical Software Engineering},
-  month     = {2},
   publisher = {Springer Science and Business Media {LLC}},
-  year      = {2013},
+  year      = {2013}
 }
 
-@Article{Arcuri_2014,
+@article{Arcuri_2014,
   author    = {Andrea Arcuri and Gordon Fraser},
   title     = {On the Effectiveness of Whole Test Suite Generation},
-  doi       = {10.1007/978-3-319-09940-8_1},
-  pages     = {1--15},
+  pages     = {1-15},
   booktitle = {Search-Based Software Engineering},
   comment   = {TODO Whose Suite},
   file      = {:papers/2014_Book_Search-BasedSoftwareEngineerin.pdf:PDF},
   publisher = {Springer International Publishing},
   year      = {2014},
+  address   = {Cham}
 }
 
-@Article{Deb_2000,
+@article{Deb_2000,
   author    = {Kalyanmoy Deb and Samir Agrawal and Amrit Pratap and T Meyarivan},
   title     = {A Fast Elitist Non-dominated Sorting Genetic Algorithm for Multi-objective Optimization: {NSGA}-{II}},
-  doi       = {10.1007/3-540-45356-3_83},
-  pages     = {849--858},
+  pages     = {849-858},
   booktitle = {Parallel Problem Solving from Nature {PPSN} {VI}},
   comment   = {Der NSGA II Algorithmus.},
   file      = {:papers/nsga2.pdf:PDF},
   publisher = {Springer Berlin Heidelberg},
-  year      = {2000},
+  address   = {Berlin, Heidelberg},
+  year      = {2000}
 }
 
-@Article{Babi__2011,
-  author    = {Domagoj Babi{\'{c}} and Lorenzo Martignoni and Stephen McCamant and Dawn Song},
+@inproceedings{Babi__2011,
+  author    = {Babi\'{c}, Domagoj and Martignoni, Lorenzo and McCamant, Stephen and Song, Dawn},
   title     = {Statically-directed dynamic automated test generation},
-  doi       = {10.1145/2001420.2001423},
-  booktitle = {Proceedings of the 2011 International Symposium on Software Testing and Analysis - {ISSTA} {\textquotesingle}11},
+  booktitle = {Proceedings of the 2011 International Symposium on Software Testing and Analysis},
   comment   = {Der Autor beschreibt vor allem Probleme einer Testgenerierung, die auf Binaries und nicht auf Souce Code Level statt findet. Das könnte man als einen Gegenpunkt bei KLEE und anderen Testgeneratoren für Rust verwenden.},
   file      = {:papers/2001420.2001423.pdf:PDF},
-  publisher = {{ACM} Press},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
   year      = {2011},
+  pages     = {12–22}
 }
 
-@Article{Myers2012,
-  title     = {The Art of Software Testing},
-  doi       = {10.1002/9781119202486},
-  editor    = {Glenford J. Myers and Tom Badgett and Corey Sandler},
-  file      = {:papers/9781119202486.pdf:PDF},
-  month     = {1},
-  publisher = {Wiley},
-  year      = {2012},
+@article{Myers2012,
+  title     = {The art of software testing},
+  author    = {Myers, Glenford J and Sandler, Corey and Badgett, Tom},
+  year      = {2011},
+  publisher = {John Wiley \& Sons},
+  file      = {:papers/9781119202486.pdf:PDF}
 }
 
-@InProceedings{Harman2015,
+@inproceedings{Harman2015,
   author    = {Harman, Mark and Jia, Yue and Zhang, Yuanyuan},
   booktitle = {2015 IEEE 8th International Conference on Software Testing, Verification and Validation (ICST)},
   title     = {Achievements, Open Problems and Challenges for Search Based Software Testing},
-  doi       = {10.1109/ICST.2015.7102580},
   pages     = {1-12},
   comment   = {TODO},
   file      = {:papers/Achievements_Open_Problems_and_Challenges_for_Search_Based_Software_Testing.pdf:PDF},
   year      = {2015},
+  publisher = {IEEE Computer Society}
 }
 
-@InProceedings{Campos2017,
+@inproceedings{Campos2017,
   author    = {Campos, Jos{\'e} and Ge, Yan and Fraser, Gordon and Eler, Marcelo and Arcuri, Andrea},
   booktitle = {Search Based Software Engineering},
   title     = {An Empirical Evaluation of Evolutionary Algorithms for Test Suite Generation},
-  editor    = {Menzies, Tim and Petke, Justyna},
-  isbn      = {978-3-319-66299-2},
-  pages     = {33--48},
+  pages     = {33-48},
   publisher = {Springer International Publishing},
   abstract  = {Evolutionary algorithms have been shown to be effective at generating unit test suites optimised for code coverage. While many aspects of these algorithms have been evaluated in detail (e.g., test length and different kinds of techniques aimed at improving performance, like seeding), the influence of the specific algorithms has to date seen less attention in the literature. As it is theoretically impossible to design an algorithm that is best on all possible problems, a common approach in software engineering problems is to first try a Genetic Algorithm, and only afterwards try to refine it or compare it with other algorithms to see if any of them is more suited for the addressed problem. This is particularly important in test generation, since recent work suggests that random search may in practice be equally effective, whereas the reformulation as a many-objective problem seems to be more effective. To shed light on the influence of the search algorithms, we empirically evaluate six different algorithms on a selection of non-trivial open source classes. Our study shows that the use of a test archive makes evolutionary algorithms clearly better than random testing, and it confirms that the many-objective search is the most effective.},
   address   = {Cham},
   comment   = {TODO},
   file      = {:papers/CR.pdf:PDF},
-  year      = {2017},
+  year      = {2017}
 }
 
-@Article{Tonella2004,
-  author     = {Tonella, Paolo},
-  title      = {Evolutionary Testing of Classes},
-  doi        = {10.1145/1013886.1007528},
-  issn       = {0163-5948},
-  number     = {4},
-  pages      = {119–128},
-  url        = {https://doi.org/10.1145/1013886.1007528},
-  volume     = {29},
-  abstract   = {Object oriented programming promotes reuse of classes in multiple contexts. Thus,
-a class is designed and implemented with several usage scenarios in mind, some of
-which possibly open and generic. Correspondingly, the unit testing of classes cannot
-make too strict assumptions on the actual method invocation sequences, since these
-vary from application to application.In this paper, a genetic algorithm is exploited
-to automatically produce test cases for the unit testing of classes in a generic usage
-scenario. Test cases are described by chromosomes, which include information on which
-objects to create, which methods to invoke and which values to use as inputs. The
-proposed algorithm mutates them with the aim of maximizing a given coverage measure.
-The implementation of the algorithm and its application to classes from the Java standard
-library are described.},
-  address    = {New York, NY, USA},
-  comment    = {TODO, Single Objectiva at a time approach.
-Objekt-orientierte Programmierung und Klassen werden bei der genetischen Suche berücksichtigt.},
-  file       = {:papers/1013886.1007528.pdf:PDF},
-  issue_date = {July 2004},
-  journal    = {SIGSOFT Softw. Eng. Notes},
-  keywords   = {genetic algorithms, object-oriented testing, automated test case generation},
-  month      = jul,
-  numpages   = {10},
-  publisher  = {Association for Computing Machinery},
-  year       = {2004},
+@article{Tonella2004,
+  author    = {Tonella, Paolo},
+  title     = {Evolutionary Testing of Classes},
+  number    = {4},
+  pages     = {119–128},
+  volume    = {29},
+  address   = {New York, NY, USA},
+  comment   = {TODO, Single Objectiva at a time approach.
+               Objekt-orientierte Programmierung und Klassen werden bei der genetischen Suche berücksichtigt.},
+  file      = {:papers/1013886.1007528.pdf:PDF},
+  journal   = {SIGSOFT Softw. Eng. Notes},
+  publisher = {Association for Computing Machinery},
+  year      = {2004}
 }
 
-@InProceedings{Harman2010,
+@inproceedings{Harman2010,
   author    = {Harman, Mark and Kim, Sung Gon and Lakhotia, Kiran and McMinn, Phil and Yoo, Shin},
   booktitle = {2010 Third International Conference on Software Testing, Verification, and Validation Workshops},
   title     = {Optimizing for the Number of Tests Generated in Search Based Test Data Generation with an Application to the Oracle Cost Problem},
-  doi       = {10.1109/ICSTW.2010.31},
   pages     = {182-191},
   comment   = {TODO number of tests},
   file      = {:papers/Optimizing_for_the_Number_of_Tests_Generated_in_Search_Based_Test_Data_Generation_with_an_Application_to_the_Oracle_Cost_Problem.pdf:PDF},
   year      = {2010},
+  publisher = {IEEE Computer Society}
 }
 
-@Article{Korel1990,
+@article{Korel1990,
   author  = {Korel, B.},
   title   = {Automated software test data generation},
-  doi     = {10.1109/32.57624},
   number  = {8},
   pages   = {870-879},
   volume  = {16},
   comment = {TODO Original Paper über Branch Distance.},
   file    = {:papers/Automated_software_test_data_generation.pdf:PDF},
   journal = {IEEE Transactions on Software Engineering},
-  year    = {1990},
+  year    = {1990}
 }
 
-@Article{Wegener2001,
-  author   = {Joachim Wegener and Andre Baresel and Harmen Sthamer},
-  title    = {Evolutionary test environment for automatic structural testing},
-  doi      = {https://doi.org/10.1016/S0950-5849(01)00190-2},
-  issn     = {0950-5849},
-  number   = {14},
-  pages    = {841-854},
-  url      = {https://www.sciencedirect.com/science/article/pii/S0950584901001902},
-  volume   = {43},
-  abstract = {Testing is the most significant analytic quality assurance measure for software. Systematic design of test cases is crucial for the test quality. Structure-oriented test methods, which define test cases on the basis of the internal program structures, are widely used. A promising approach for the automation of structural test case design is evolutionary testing. Evolutionary testing searches test data that fulfil a given structural test criteria by means of evolutionary computation. In this work, an evolutionary test environment has been developed that performs fully automatic test data generation for most structural test methods. The introduction of an approximation level for fitness evaluation of generated test data and the definition of an efficient test strategy for processing test goals, increases the performance of evolutionary testing considerably.},
-  comment  = {TODO Originales paper über Approach Level und Branch Distance},
-  file     = {:papers/evolutionarytest-structural-testing-2.pdf:PDF},
-  journal  = {Information and Software Technology},
-  keywords = {Test automation, Structural test, Evolutionary test, Evolutionary computation},
-  year     = {2001},
+@article{Wegener2001,
+  author  = {Joachim Wegener and Andre Baresel and Harmen Sthamer},
+  title   = {Evolutionary test environment for automatic structural testing},
+  number  = {14},
+  pages   = {841-854},
+  volume  = {43},
+  comment = {TODO Originales paper über Approach Level und Branch Distance},
+  file    = {:papers/evolutionarytest-structural-testing-2.pdf:PDF},
+  journal = {Information and Software Technology},
+  year    = {2001}
 }
 
-@Article{Harman2010a,
+@article{Harman2010a,
   author  = {Harman, Mark and McMinn, Phil},
   title   = {A Theoretical and Empirical Study of Search-Based Testing: Local, Global, and Hybrid Search},
-  doi     = {10.1109/TSE.2009.71},
   number  = {2},
   pages   = {226-247},
   volume  = {36},
   comment = {TODO},
   file    = {:papers/A_Theoretical_and_Empirical_Study_of_Search-Based_Testing_Local_Global_and_Hybrid_Search.pdf:PDF},
   journal = {IEEE Transactions on Software Engineering},
-  year    = {2010},
+  year    = {2010}
 }
 
-@Article{Sampson_1976,
-  author    = {Jeffrey R. Sampson},
-  title     = {Adaptation in Natural and Artificial Systems (John H. Holland)},
-  doi       = {10.1137/1018105},
-  number    = {3},
-  pages     = {529--530},
-  volume    = {18},
-  journal   = {{SIAM} Review},
-  month     = {jul},
-  publisher = {Society for Industrial {\&} Applied Mathematics ({SIAM})},
-  year      = {1976},
+@book{Sampson_1976,
+  title     = {Adaptation in natural and artificial systems: an introductory analysis with applications to biology, control, and artificial intelligence},
+  author    = {Holland, John H},
+  year      = {1992},
+  publisher = {MIT press}
 }
 
-@Book{whitley1989genitor,
-  author    = {Whitley, L Darrell and others},
+@book{whitley1989genitor,
+  author    = {Whitley, L. Darrell},
   title     = {The GENITOR algorithm and selection pressure: why rank-based allocation of reproductive trials is best.},
   publisher = {Citeseer},
   comment   = {TODO Erklärt den linearen Selektionsalgorithmus.
-Lineare Selektion},
+               Lineare Selektion},
   file      = {:papers/10.1.1.18.8195.pdf:PDF},
-  year      = {1989},
+  year      = {1989}
 }
 
-@Book{Davis1991,
+@book{Davis1991,
   author    = {Davis, L.},
   date      = {1991},
   title     = {Handbook of genetic algorithms},
-  editor    = {Davis, L.},
-  publisher = {Van Nostrand Reinhold, New York},
+  publisher = {Van Nostrand Reinhold, New York}
 }
 
-@Article{Ramamoorthy1976,
-  author  = {Ramamoorthy, C.V. and Ho, S.-B.F. and Chen, W.T.},
+@article{Ramamoorthy1976,
+  author  = {Ramamoorthy, C. V. and Ho, S.-B. F. and Chen, W. T.},
   title   = {On the Automated Generation of Program Test Data},
-  doi     = {10.1109/TSE.1976.233835},
   number  = {4},
   pages   = {293-300},
   volume  = {SE-2},
   file    = {:papers/On_the_Automated_Generation_of_Program_Test_Data.pdf:PDF},
   journal = {IEEE Transactions on Software Engineering},
-  year    = {1976},
+  year    = {1976}
 }
 
-@Article{Lewis1983,
+@article{Lewis1983,
   author    = {Lewis, Harry R.},
   title     = {Michael R. Garey and David S. Johnson. Computers and intractability. A guide to the theory of NP-completeness. W. H. Freeman and Company, San Francisco1979, x 338 pp.},
-  doi       = {10.2307/2273574},
   number    = {2},
   pages     = {498–500},
   volume    = {48},
   journal   = {Journal of Symbolic Logic},
   publisher = {Cambridge University Press},
-  year      = {1983},
+  year      = {1983}
 }
 
-@InBook{Tracey2002,
+
+@inbook{Tracey2002,
   author    = {Tracey, Nigel and Clark, John and McDermid, John and Mander, Keith},
   booktitle = {Systems Engineering for Business Process Change: New Directions: Collected Papers from the EPSRC Research Programme},
   title     = {A Search-Based Automated Test-Data Generation Framework for Safety-Critical Systems},
-  doi       = {10.1007/978-1-4471-0135-2_12},
-  editor    = {Henderson, Peter},
-  isbn      = {978-1-4471-0135-2},
-  pages     = {174--213},
+  pages     = {174-213},
   publisher = {Springer London},
-  url       = {https://doi.org/10.1007/978-1-4471-0135-2_12},
-  abstract  = {This paper presents the results of a three year research program to develop an automated test-data generation framework to support the testing of safety-critical software systems. The generality of the framework comes from the exploitation of domain independent search techniques, allowing new test criteria to be addressed by constructing functions that quantify the suitability of test-data against the test-criteria. The paper presents four applications of the framework --- specification falsification testing, structural testing, exception condition testing and worst-case execution time testing. The results of three industrial scale case-studies are also presented to show that the framework offers useful support in the development safety-critical software systems.},
   address   = {London},
   comment   = {TODO Branch Distance auch für UNDs und ODERs},
-  year      = {2002},
+  year      = {2002}
 }
 
-@InProceedings{Shamshiri2015a,
+@inproceedings{Shamshiri2015a,
   author    = {Shamshiri, Sina and Rojas, Jos\'{e} Miguel and Fraser, Gordon and McMinn, Phil},
   booktitle = {Proceedings of the 2015 Annual Conference on Genetic and Evolutionary Computation},
   title     = {Random or Genetic Algorithm Search for Object-Oriented Test Suite Generation?},
-  doi       = {10.1145/2739480.2754696},
-  isbn      = {9781450334723},
-  location  = {Madrid, Spain},
   pages     = {1367–1374},
   publisher = {Association for Computing Machinery},
-  series    = {GECCO '15},
-  url       = {https://doi.org/10.1145/2739480.2754696},
-  abstract  = {Achieving high structural coverage is an important aim in software testing. Several
-search-based techniques have proved successful at automatically generating tests that
-achieve high coverage. However, despite the well- established arguments behind using
-evolutionary search algorithms (e.g., genetic algorithms) in preference to random
-search, it remains an open question whether the benefits can actually be observed
-in practice when generating unit test suites for object-oriented classes. In this
-paper, we report an empirical study on the effects of using a genetic algorithm (GA)
-to generate test suites over generating test suites incrementally with random search,
-by applying the EvoSuite unit test suite generator to 1,000 classes randomly selected
-from the SF110 corpus of open source projects. Surprisingly, the results show little
-difference between the coverage achieved by test suites generated with evolutionary
-search compared to those generated using random search. A detailed analysis reveals
-that the genetic algorithm covers more branches of the type where standard fitness
-functions provide guidance. In practice, however, we observed that the vast majority
-of branches in the analyzed projects provide no such guidance.},
   address   = {New York, NY, USA},
   comment   = {TODO Random Search kann manchmal sogar effektiver sein, als genetische Algorithmen. Objekt-orientiert
-Object-oriented},
+               Object-oriented},
   file      = {:papers/2739480.2754696.pdf:PDF},
-  keywords  = {automated test generation, search based software engineering, genetic algorithms, search based testing, random testing, object oriented unit testing},
-  numpages  = {8},
-  year      = {2015},
+  year      = {2015}
 }
 
-@InProceedings{Rojas2015,
+@inproceedings{Rojas2015,
   author    = {Rojas, Jos{\'e} Miguel and Campos, Jos{\'e} and Vivanti, Mattia and Fraser, Gordon and Arcuri, Andrea},
   booktitle = {Search-Based Software Engineering},
   title     = {Combining Multiple Coverage Criteria in Search-Based Unit Test Generation},
-  editor    = {Barros, M{\'a}rcio and Labiche, Yvan},
-  isbn      = {978-3-319-22183-0},
-  pages     = {93--108},
+  pages     = {93-108},
   publisher = {Springer International Publishing},
-  abstract  = {Automated test generation techniques typically aim at maximising coverage of well-established structural criteria such as statement or branch coverage. In practice, generating tests only for one specific criterion may not be sufficient when testing object oriented classes, as standard structural coverage criteria do not fully capture the properties developers may desire of their unit test suites. For example, covering a large number of statements could be easily achieved by just calling the main method of a class; yet, a good unit test suite would consist of smaller unit tests invoking individual methods, and checking return values and states with test assertions. There are several different properties that test suites should exhibit, and a search-based test generator could easily be extended with additional fitness functions to capture these properties.},
   address   = {Cham},
   comment   = {TODO Mehrere Coverage Kriterien in einer linearen Kombination},
   file      = {:papers/ssbse15_multi.pdf:PDF},
-  year      = {2015},
+  year      = {2015}
 }
 
-@Article{Rojas2017,
+@article{Rojas2017,
   author    = {Rojas, Jos{\'e} Miguel and Vivanti, Mattia and Arcuri, Andrea and Fraser, Gordon},
   title     = {A detailed investigation of the effectiveness of whole test suite generation},
   number    = {2},
@@ -1102,656 +851,483 @@ Object-oriented},
   file      = {:papers/Rojas2017_Article_ADetailedInvestigationOfTheEff.pdf:PDF},
   journal   = {Empirical Software Engineering},
   publisher = {Springer},
-  year      = {2017},
+  year      = {2017}
 }
 
-@Article{Panichella2018,
+@article{Panichella2018,
   author  = {Panichella, Annibale and Kifetew, Fitsum Meshesha and Tonella, Paolo},
   title   = {Automated Test Case Generation as a Many-Objective Optimisation Problem with Dynamic Selection of the Targets},
-  doi     = {10.1109/TSE.2017.2663435},
   number  = {2},
   pages   = {122-158},
   volume  = {44},
   comment = {TODO DynaMOSA},
   file    = {:papers/Automated_Test_Case_Generation_as_a_Many-Objective_Optimisation_Problem_with_Dynamic_Selection_of_the_Targets.pdf:PDF},
   journal = {IEEE Transactions on Software Engineering},
-  year    = {2018},
+  year    = {2018}
 }
 
-@Article{Doerr2015,
-  author   = {Benjamin Doerr and Carola Doerr and Franziska Ebel},
-  title    = {From black-box complexity to designing new genetic algorithms},
-  doi      = {https://doi.org/10.1016/j.tcs.2014.11.028},
-  issn     = {0304-3975},
-  pages    = {87-104},
-  url      = {https://www.sciencedirect.com/science/article/pii/S0304397514009451},
-  volume   = {567},
-  abstract = {Black-box complexity theory recently produced several surprisingly fast black-box optimization algorithms. In this work, we exhibit one possible reason: These black-box algorithms often profit from solutions inferior to the previous-best. In contrast, evolutionary approaches guided by the “survival of the fittest” paradigm often ignore such solutions. We use this insight to design a new crossover-based genetic algorithm. It uses mutation with a higher-than-usual mutation probability to increase the exploration speed and crossover with the parent to repair losses incurred by the more aggressive mutation. A rigorous runtime analysis proves that our algorithm for many parameter settings is asymptotically faster on the OneMax test function class than all what is known for classic evolutionary algorithms. A fitness-dependent choice of the offspring population size provably reduces the expected runtime further to linear in the dimension. Our experimental analysis on several test function classes shows advantages already for small problem sizes and broad parameter ranges. Also, a simple self-adaptive choice of these parameters gives surprisingly good results.},
-  comment  = {TODO  1 + (λ, λ) GA},
-  file     = {:papers/From-black-box-complexity-to-designing-new-genet_2015_Theoretical-Computer-S.pdf:PDF},
-  journal  = {Theoretical Computer Science},
-  keywords = {Heuristic search, Theory of randomized search heuristics, Genetic algorithms, Runtime analysis, Black-box complexity},
-  year     = {2015},
+@article{Doerr2015,
+  author  = {Benjamin Doerr and Carola Doerr and Franziska Ebel},
+  title   = {From black-box complexity to designing new genetic algorithms},
+  pages   = {87-104},
+  volume  = {567},
+  comment = {TODO  1 + (λ, λ) GA},
+  file    = {:papers/From-black-box-complexity-to-designing-new-genet_2015_Theoretical-Computer-S.pdf:PDF},
+  journal = {Theoretical Computer Science},
+  year    = {2015}
 }
 
-@Article{TerSarkisov2011,
-  author       = {Ter-Sarkisov, Aram and Marsland, Stephen},
-  title        = {Convergence Properties of ($\mu$ + $\lambda$) Evolutionary Algorithms},
-  number       = {1},
-  url          = {https://ojs.aaai.org/index.php/AAAI/article/view/8037},
-  volume       = {25},
-  abstractnote = {&lt;p&gt; We present a number of convergence properties of population-based Evolutionary Algorithms (EAs) on a set of test functions. Focus is on EA using k-Bit-Swap (kBS) operator. We compare our findings to past research. &amp;nbsp; &lt;/p&gt;},
-  comment      = {TODO μ + λ Evolutionary Algorithm},
-  file         = {:papers/8037-Article Text-11565-1-2-20201228.pdf:PDF},
-  journal      = {Proceedings of the AAAI Conference on Artificial Intelligence},
-  month        = {8},
-  year         = {2011},
+@inproceedings{TerSarkisov2011,
+  author  = {Ter-Sarkisov, Aram and Marsland, Stephen},
+  title   = {Convergence Properties of ($\mu$ + $\lambda$) Evolutionary Algorithms},
+  number  = {1},
+  volume  = {25},
+  comment = {TODO μ + λ Evolutionary Algorithm},
+  file    = {:papers/8037-Article Text-11565-1-2-20201228.pdf:PDF},
+  journal = {Proceedings of the AAAI Conference on Artificial Intelligence},
+  year    = {2011}
 }
 
-@InBook{Deb2014,
+@inbook{Deb2014,
   author    = {Deb, Kalyanmoy and Deb, Kalyanmoy},
   booktitle = {Search Methodologies: Introductory Tutorials in Optimization and Decision Support Techniques},
   title     = {Multi-objective Optimization},
-  doi       = {10.1007/978-1-4614-6940-7_15},
-  editor    = {Burke, Edmund K. and Kendall, Graham},
-  isbn      = {978-1-4614-6940-7},
   pages     = {403--449},
   publisher = {Springer US},
-  url       = {https://doi.org/10.1007/978-1-4614-6940-7_15},
-  abstract  = {Multi-objective optimization is an integral part of optimization activities and has a tremendous practical importance, since almost all real-world optimization problems are ideally suited to be modeled using multiple conflicting objectives. The classical means of solving such problems were primarily focused on scalarizing multiple objectives into a single objective, whereas the evolutionary means have been to solve a multi-objective optimization problem as it is. In this chapter, we discuss the fundamental principles of multi-objective optimization, the differences between multi-objective optimization and single-objective optimization, and describe a few well-known classical and evolutionary algorithms for multi-objective optimization. Two application case studies reveal the importance of multi-objective optimization in practice. A number of research challenges are then highlighted. The chapter concludes by suggesting a few tricks of the trade and mentioning some key resources to the field of multi-objective optimization.},
   address   = {Boston, MA},
   comment   = {TODO Whole Suite Optimisierung von Fraser verwendet die Ideen aus diesem Buch. Außerdem werden Nachteile und Schwächen von diesem Ansatz beschrieben},
   file      = {:papers/2014_Book_SearchMethodologies.pdf:PDF},
+  year      = {2014}
+}
+
+@article{Fraser2014,
+  author    = {Fraser, Gordon and Arcuri, Andrea},
+  title     = {A Large-Scale Evaluation of Automated Unit Test Generation Using EvoSuite},
+  number    = {2},
+  volume    = {24},
+  address   = {New York, NY, USA},
+  comment   = {TODO Branch coverage},
+  file      = {:papers/2685612.pdf:PDF},
+  journal   = {ACM Trans. Softw. Eng. Methodol.},
+  publisher = {Association for Computing Machinery},
   year      = {2014},
+  address   = {New York, NY, USA}
 }
 
-@Article{Fraser2014,
-  author     = {Fraser, Gordon and Arcuri, Andrea},
-  title      = {A Large-Scale Evaluation of Automated Unit Test Generation Using EvoSuite},
-  doi        = {10.1145/2685612},
-  issn       = {1049-331X},
-  number     = {2},
-  url        = {https://doi.org/10.1145/2685612},
-  volume     = {24},
-  address    = {New York, NY, USA},
-  articleno  = {8},
-  comment    = {TODO Branch coverage},
-  file       = {:papers/2685612.pdf:PDF},
-  issue_date = {December 2014},
-  journal    = {ACM Trans. Softw. Eng. Methodol.},
-  keywords   = {Unit testing, empirical software engineering, branch coverage, Java, JUnit, benchmark, automated test generation},
-  month      = {12},
-  numpages   = {42},
-  publisher  = {Association for Computing Machinery},
-  year       = {2014},
-}
-
-@InProceedings{Pachauri2015,
+@inproceedings{Pachauri2015,
   author    = {Pachauri, Ankur and Gursaran and Mishra, Gaurav},
   booktitle = {2015 International Conference on Futuristic Trends on Computational Analysis and Knowledge Management (ABLAZE)},
   title     = {A path and branch based approach to fitness computation for program test data generation using genetic algorithm},
-  doi       = {10.1109/ABLAZE.2015.7154969},
   pages     = {49-55},
   comment   = {TODO},
   file      = {:papers/A_path_and_branch_based_approach_to_fitness_computation_for_program_test_data_generation_using_genetic_algorithm.pdf:PDF},
-  year      = {2015},
+  year      = {2015}
 }
 
-@Article{Fraser2012,
+@article{Fraser2012,
   author  = {Fraser, Gordon and Zeller, Andreas},
   title   = {Mutation-Driven Generation of Unit Tests and Oracles},
-  doi     = {10.1109/TSE.2011.93},
   number  = {2},
   pages   = {278-292},
   volume  = {38},
   comment = {EVOLVE},
   file    = {:papers/Mutation-Driven_Generation_of_Unit_Tests_and_Oracles.pdf:PDF},
   journal = {IEEE Transactions on Software Engineering},
-  year    = {2012},
+  year    = {2012}
 }
 
-@InProceedings{Dharsana2007,
+@inproceedings{Dharsana2007,
   author    = {Dharsana, C.S. Siva and Jennifer, D. Nithila and Askarunisha, A. and Ramaraj, N.},
   booktitle = {International Conference on Computational Intelligence and Multimedia Applications (ICCIMA 2007)},
   title     = {Java Based Test Case Generation and Optimization Using Evolutionary Testing},
-  doi       = {10.1109/ICCIMA.2007.445},
   pages     = {44-49},
   volume    = {1},
   comment   = {EVOLVE},
   file      = {:papers/Java_Based_Test_Case_Generation_and_Optimization_Using_Evolutionary_Testing.pdf:PDF},
-  year      = {2007},
+  year      = {2007}
 }
 
-@InProceedings{Baresi2010,
+@inproceedings{Baresi2010,
   author    = {Baresi, Luciano and Lanzi, Pier Luca and Miraz, Matteo},
   booktitle = {2010 Third International Conference on Software Testing, Verification and Validation},
   title     = {TestFul: An Evolutionary Test Approach for Java},
-  doi       = {10.1109/ICST.2010.54},
   pages     = {185-194},
   comment   = {EVOLVE},
   file      = {:papers/TestFul_An_Evolutionary_Test_Approach_for_Java.pdf:PDF},
-  year      = {2010},
+  year      = {2010}
 }
 
-@InProceedings{Inkumsah2008,
+@inproceedings{Inkumsah2008,
   author    = {Inkumsah, Kobi and Xie, Tao},
   booktitle = {2008 23rd IEEE/ACM International Conference on Automated Software Engineering},
   title     = {Improving Structural Testing of Object-Oriented Programs via Integrating Evolutionary Testing and Symbolic Execution},
-  doi       = {10.1109/ASE.2008.40},
   pages     = {297-306},
   comment   = {EVOLVE},
   file      = {:papers/Improving_Structural_Testing_of_Object-Oriented_Programs_via_Integrating_Evolutionary_Testing_and_Symbolic_Execution.pdf:PDF},
   year      = {2008},
+  publisher = {IEEE Computer Society}
 }
 
-@Article{Arcuri2008,
-  author   = {Andrea Arcuri and Xin Yao},
-  title    = {Search based software testing of object-oriented containers},
-  doi      = {https://doi.org/10.1016/j.ins.2007.11.024},
-  issn     = {0020-0255},
-  note     = {Nature Inspired Problem-Solving},
-  number   = {15},
-  pages    = {3075-3095},
-  url      = {https://www.sciencedirect.com/science/article/pii/S0020025507005609},
-  volume   = {178},
-  abstract = {Automatic software testing tools are still far from ideal for real world object-oriented (OO) software. The use of nature inspired search algorithms for this problem has been investigated recently. Testing complex data structures (e.g., containers) is very challenging since testing software with simple states is already hard. Because containers are used in almost every type of software, their reliability is of utmost importance. Hence, this paper focuses on the difficulties of testing container classes with nature inspired search algorithms. We will first describe how input data can be automatically generated for testing Java containers. Input space reductions and a novel testability transformation are presented to aid the search algorithms. Different search algorithms are then considered and studied in order to understand when and why a search algorithm is effective for a testing problem. In our experiments, these nature inspired search algorithms seem to give better results than the traditional techniques described in literature. Besides, the problem of minimising the length of the test sequences is also addressed. Finally, some open research questions are given.},
-  comment  = {TODO Object-oriented testing},
-  file     = {:papers/20140.pdf:PDF},
-  journal  = {Information Sciences},
-  keywords = {Software testing, Object-oriented software, Containers, Search algorithms, Nature inspired algorithms, Search based software engineering, Testability transformations, White box testing},
-  year     = {2008},
+@article{Arcuri2008,
+  author  = {Andrea Arcuri and Xin Yao},
+  title   = {Search based software testing of object-oriented containers},
+  number  = {15},
+  pages   = {3075-3095},
+  volume  = {178},
+  comment = {TODO Object-oriented testing},
+  file    = {:papers/20140.pdf:PDF},
+  journal = {Information Sciences},
+  year    = {2008}
 }
 
-@Book{Beizer2003,
+@book{Beizer2003,
   author    = {Beizer, Boris},
   title     = {Software testing techniques},
   publisher = {Dreamtech Press},
-  year      = {2003},
+  year      = {2003}
 }
 
-@Article{Clarke1976,
+@article{Clarke1976,
   author  = {Clarke, L.A.},
   title   = {A System to Generate Test Data and Symbolically Execute Programs},
-  doi     = {10.1109/TSE.1976.233817},
   number  = {3},
   pages   = {215-222},
   volume  = {SE-2},
   file    = {:papers/A_System_to_Generate_Test_Data_and_Symbolically_Execute_Programs.pdf:PDF},
   journal = {IEEE Transactions on Software Engineering},
-  year    = {1976},
+  year    = {1976}
 }
 
-@InProceedings{Murphy2007,
+@inproceedings{Murphy2007,
   author    = {Murphy, Christian and Kaiser, Gail and Arias, Marta},
   booktitle = {Proceedings of the 2nd International Workshop on Random Testing: Co-Located with the 22nd IEEE/ACM International Conference on Automated Software Engineering (ASE 2007)},
   title     = {Parameterizing Random Test Data According to Equivalence Classes},
-  doi       = {10.1145/1292414.1292425},
-  isbn      = {9781595938817},
-  location  = {Atlanta, Georgia},
   pages     = {38–41},
   publisher = {Association for Computing Machinery},
-  series    = {RT '07},
-  url       = {https://doi.org/10.1145/1292414.1292425},
-  abstract  = {We are concerned with the problem of detecting bugs in machine learning applications.
-In the absence of sufficient real-world data, creating suitably large data sets for
-testing can be a difficult task. To address this problem, we have developed an approach
-to creating data sets called "parameterized random data generation". Our data generation
-framework allows us to isolate or combine different equivalence classes as desired,
-and then randomly generate large data sets using the properties of those equivalence
-classes as parameters. This allows us to take advantage of randomness but still have
-control over test case selection at the system testing level. We present our findings
-from using the approach to test two different machine learning ranking applications.},
   address   = {New York, NY, USA},
   comment   = {TODO viele nützliche Referenzen für das Testen},
   file      = {:papers/1292414.1292425.pdf:PDF},
-  keywords  = {random test data generation, software testing},
-  numpages  = {4},
-  year      = {2007},
+  year      = {2007}
 }
 
-@Article{Ball2015,
+@article{Ball2015,
   author    = {Ball, Thomas and Jakub, Daniel},
   title     = {Deconstructing Dynamic Symbolic Execution},
-  doi       = {10.3233/978-1-61499-495-4-26},
-  issn      = {1874-6268},
   pages     = {26-41},
   volume    = {40},
   file      = {:papers/dse.pdf:PDF},
   journal   = {NATO Science for Peace and Security Series, D: Information and Communication Security},
   publisher = {IOS Press},
-  year      = {2015},
+  year      = {2015}
 }
 
-@Article{King1976,
-  author     = {King, James C.},
-  title      = {Symbolic Execution and Program Testing},
-  doi        = {10.1145/360248.360252},
-  issn       = {0001-0782},
-  number     = {7},
-  pages      = {385–394},
-  url        = {https://doi.org/10.1145/360248.360252},
-  volume     = {19},
-  abstract   = {This paper describes the symbolic execution of programs. Instead of supplying the
-normal inputs to a program (e.g. numbers) one supplies symbols representing arbitrary
-values. The execution proceeds as in a normal execution except that values may be
-symbolic formulas over the input symbols. The difficult, yet interesting issues arise
-during the symbolic execution of conditional branch type statements. A particular
-system called EFFIGY which provides symbolic execution for program testing and debugging
-is also described. It interpretively executes programs written in a simple PL/I style
-programming language. It includes many standard debugging features, the ability to
-manage and to prove things about symbolic expressions, a simple program testing manager,
-and a program verifier. A brief discussion of the relationship between symbolic execution
-and program proving is also included.},
-  address    = {New York, NY, USA},
-  issue_date = {July 1976},
-  journal    = {Commun. ACM},
-  keywords   = {symbolic execution, program verification, symbolic interpretation, program proving, program testing, program debugging},
-  month      = jul,
-  numpages   = {10},
-  publisher  = {Association for Computing Machinery},
-  year       = {1976},
+@article{King1976,
+  author    = {King, James C.},
+  title     = {Symbolic Execution and Program Testing},
+  number    = {7},
+  pages     = {385–394},
+  volume    = {19},
+  address   = {New York, NY, USA},
+  journal   = {Commun. ACM},
+  publisher = {Association for Computing Machinery},
+  year      = {1976}
 }
 
-@InProceedings{Cadar2005,
+@inproceedings{Cadar2005,
   author    = {Cadar, Cristian and Engler, Dawson},
   booktitle = {Model Checking Software},
   title     = {Execution Generated Test Cases: How to Make Systems Code Crash Itself},
-  editor    = {Godefroid, Patrice},
-  isbn      = {978-3-540-31899-6},
   pages     = {2--23},
   publisher = {Springer Berlin Heidelberg},
-  abstract  = {This paper presents a technique that uses code to automatically generate its own test cases at run time by using a combination of symbolic and concrete (i.e regular) execution The input values to a program (or software component) provide the standard interface of any testing framework with the program it is testing and generating input values that will explore all the ``interesting'' behavior in the tested program remains an important open problem in software testing research. Our approach works by turning the problem on its head: we lazily generate from within the program itself the input values to the program (and values derived from input values) as needed. We applied the technique to real code and found numerous corner case errors ranging from simple memory overflows and infinite loops to subtle issues in the interpretation of language standards.},
   address   = {Berlin, Heidelberg},
   comment   = {Dynamic Symbolic Execution DSE},
-  year      = {2005},
+  year      = {2005}
 }
 
-@InProceedings{Gupta2000,
+@inproceedings{Gupta2000,
   author    = {Gupta, N. and Mathur, A.P. and Soffa, M.L.},
   booktitle = {Proceedings ASE 2000. Fifteenth IEEE International Conference on Automated Software Engineering},
   title     = {Generating test data for branch coverage},
-  doi       = {10.1109/ASE.2000.873666},
   pages     = {219-227},
   file      = {:papers/Generating_test_data_for_branch_coverage.pdf:PDF},
   year      = {2000},
+  publisher = {IEEE Computer Society}
 }
 
-@Article{Korel1992,
+@article{Korel1992,
   author    = {Bogdan Korel},
   title     = {Dynamic method for software test data generation},
-  doi       = {10.1002/stvr.4370020405},
   number    = {4},
-  pages     = {203--213},
+  pages     = {203-213},
   volume    = {2},
   journal   = {Software Testing, Verification and Reliability},
-  month     = {12},
   publisher = {Wiley},
-  year      = {1992},
+  year      = {1992}
 }
 
-@Article{Cadar2008,
-  author     = {Cadar, Cristian and Ganesh, Vijay and Pawlowski, Peter M. and Dill, David L. and Engler, Dawson R.},
-  title      = {EXE: Automatically Generating Inputs of Death},
-  doi        = {10.1145/1455518.1455522},
-  issn       = {1094-9224},
-  number     = {2},
-  url        = {https://doi.org/10.1145/1455518.1455522},
-  volume     = {12},
-  abstract   = {This article presents EXE, an effective bug-finding tool that automatically generates
-inputs that crash real code. Instead of running code on manually or randomly constructed
-input, EXE runs it on symbolic input initially allowed to be anything. As checked
-code runs, EXE tracks the constraints on each symbolic (i.e., input-derived) memory
-location. If a statement uses a symbolic value, EXE does not run it, but instead adds
-it as an input-constraint; all other statements run as usual. If code conditionally
-checks a symbolic expression, EXE forks execution, constraining the expression to
-be true on the true branch and false on the other. Because EXE reasons about all possible
-values on a path, it has much more power than a traditional runtime tool: (1) it can
-force execution down any feasible program path and (2) at dangerous operations (e.g.,
-a pointer dereference), it detects if the current path constraints allow any value
-that causes a bug. When a path terminates or hits a bug, EXE automatically generates
-a test case by solving the current path constraints to find concrete values using
-its own co-designed constraint solver, STP. Because EXE’s constraints have no approximations,
-feeding this concrete input to an uninstrumented version of the checked code will
-cause it to follow the same path and hit the same bug (assuming deterministic code).EXE
-works well on real code, finding bugs along with inputs that trigger them in: the
-BSD and Linux packet filter implementations, the dhcpd DHCP server, the pcre regular
-expression library, and three Linux file systems.},
-  address    = {New York, NY, USA},
-  articleno  = {10},
-  issue_date = {December 2008},
-  journal    = {ACM Trans. Inf. Syst. Secur.},
-  keywords   = {constraint solving, symbolic execution, bug finding, dynamic analysis, test case generation, attack generation},
-  month      = dec,
-  numpages   = {38},
-  publisher  = {Association for Computing Machinery},
-  year       = {2008},
+@article{Cadar2008,
+  author    = {Cadar, Cristian and Ganesh, Vijay and Pawlowski, Peter M. and Dill, David L. and Engler, Dawson R.},
+  title     = {EXE: Automatically Generating Inputs of Death},
+  number    = {2},
+  volume    = {12},
+  address   = {New York, NY, USA},
+  journal   = {ACM Trans. Inf. Syst. Secur.},
+  publisher = {Association for Computing Machinery},
+  year      = {2008}
 }
 
-@InProceedings{Fraser2013a,
+@inproceedings{Fraser2013a,
   author    = {Fraser, Gordon and Arcuri, Andrea},
   booktitle = {2013 IEEE Sixth International Conference on Software Testing, Verification and Validation},
   title     = {EvoSuite: On the Challenges of Test Case Generation in the Real World},
-  doi       = {10.1109/ICST.2013.51},
   pages     = {362-369},
   file      = {:papers/icst13_tool.pdf:PDF},
   year      = {2013},
+  publisher = {IEEE Computer Society}
 }
 
-@InProceedings{Gough2005,
+@inproceedings{Gough2005,
   author    = {Gough, J.},
   booktitle = {2005 Australian Software Engineering Conference},
   title     = {Virtual machines, managed code and component technology},
-  doi       = {10.1109/ASWEC.2005.49},
   pages     = {5-12},
   year      = {2005},
+  publisher = {IEEE Computer Society}
 }
 
-@InProceedings{Lin2021,
+@inproceedings{Lin2021,
   author    = {Lin, Yun and Ong, You Sheng and Sun, Jun and Fraser, Gordon and Dong, Jin Song},
   booktitle = {Proceedings of the 29th ACM Joint Meeting on European Software Engineering Conference and Symposium on the Foundations of Software Engineering},
   title     = {Graph-Based Seed Object Synthesis for Search-Based Unit Testing},
-  doi       = {10.1145/3468264.3468619},
-  isbn      = {9781450385626},
-  location  = {Athens, Greece},
   pages     = {1068–1080},
   publisher = {Association for Computing Machinery},
-  series    = {ESEC/FSE 2021},
-  url       = {https://doi.org/10.1145/3468264.3468619},
-  abstract  = {Search-based software testing (SBST) generates tests using search algorithms guided
-by measurements gauging how far a test case is away from exercising a coverage goal.
-The effectiveness of SBST largely depends on the continuity and monotonicity of the
-fitness landscape decided by these measurements and the search operators. Unfortunately,
-the fitness landscape is challenging when the function under test takes object inputs,
-as classical measurement hardly provide guidance for constructing legitimate object
-inputs. To overcome this problem, we propose test seeds, i.e., test code skeletons
-of legitimate objects which enable the use of classical measurements. Given a target
-branch in a function under test, we first statically analyze the function to build
-an object construction graph that captures the relation between the operands of the
-target method and the states of their relevant object inputs. Based on the graph,
-we synthesize test template code where each "slot" is a mutation point for the search
-algorithm. This approach can be seamlessly integrated with existing SBST algorithms,
-and we implemented EvoObj on top of EvoSuite. Our experiments show that EvoObj outperforms
-EvoSuite with statistical significance on 2750 methods over 103 open source Java projects
-using state-of-the-art SBST algorithms.},
   address   = {New York, NY, USA},
   file      = {:papers/fse21_objectseed.pdf:PDF},
-  keywords  = {object oriented, code synthesis, software testing, search-based},
-  numpages  = {13},
-  year      = {2021},
+  year      = {2021}
 }
 
-@InProceedings{Vogl2021,
-  author       = {Vogl, Sebastian and Schweikl, Sebastian and Fraser, Gordon and Arcuri, Andrea and Campos, Jose and Panichella, Annibale},
-  booktitle    = {2021 IEEE/ACM 14th International Workshop on Search-Based Software Testing (SBST)},
-  title        = {EVOSUITE at the SBST 2021 Tool Competition},
-  organization = {IEEE},
-  pages        = {28--29},
-  year         = {2021},
+@inproceedings{Vogl2021,
+  author    = {Vogl, Sebastian and Schweikl, Sebastian and Fraser, Gordon and Arcuri, Andrea and Campos, Jose and Panichella, Annibale},
+  booktitle = {2021 IEEE/ACM 14th International Workshop on Search-Based Software Testing (SBST)},
+  title     = {EVOSUITE at the SBST 2021 Tool Competition},
+  publisher = {IEEE Computer Society},
+  pages     = {28-29},
+  year      = {2021}
 }
 
-@InProceedings{Panichella2020,
+@inproceedings{Panichella2020,
   author    = {Panichella, Annibale and Campos, Jos{\'e} and Fraser, Gordon},
   booktitle = {Proceedings of the IEEE/ACM 42nd International Conference on Software Engineering Workshops},
   title     = {EvoSuite at the SBST 2020 Tool Competition},
-  pages     = {549--552},
+  pages     = {549-552},
   year      = {2020},
+  address   = {New York, NY, USA},
+  publisher = {Association for Computing Machinery}
 }
 
-@InProceedings{Campos2019,
-  author       = {Campos, Jos{\'e} and Panichella, Annibale and Fraser, Gordon},
-  booktitle    = {2019 IEEE/ACM 12th International Workshop on Search-Based Software Testing (SBST)},
-  title        = {EvoSuiTE at the SBST 2019 tool competition},
-  organization = {IEEE},
-  pages        = {29--32},
-  year         = {2019},
+@inproceedings{Campos2019,
+  author    = {Campos, Jos{\'e} and Panichella, Annibale and Fraser, Gordon},
+  booktitle = {2019 IEEE/ACM 12th International Workshop on Search-Based Software Testing (SBST)},
+  title     = {EvoSuiTE at the SBST 2019 tool competition},
+  publisher = {IEEE Computer Society},
+  pages     = {29-32},
+  year      = {2019}
 }
 
-@InProceedings{Fraser2018,
+@inproceedings{Fraser2018,
   author    = {Fraser, Gordon and Rojas, Jos\'{e} Miguel and Arcuri, Andrea},
   booktitle = {Proceedings of the 11th International Workshop on Search-Based Software Testing},
   title     = {EvoSuite at the SBST 2018 Tool Competition},
-  doi       = {10.1145/3194718.3194729},
-  isbn      = {9781450357418},
-  location  = {Gothenburg, Sweden},
   pages     = {34–37},
   publisher = {Association for Computing Machinery},
-  series    = {SBST '18},
-  url       = {https://doi.org/10.1145/3194718.3194729},
-  abstract  = {EvoSuite is a search-based tool that automatically generates executable unit tests
-for Java code (JUnit tests). This paper summarises the results and experiences of
-EvoSuite's participation at the sixth unit testing competition at SBST 2018, where
-EvoSuite achieved the highest overall score (687 points) for the fifth time in six
-editions of the competition.},
   address   = {New York, NY, USA},
-  numpages  = {4},
-  year      = {2018},
+  year      = {2018}
 }
 
-@InProceedings{Fraser2016,
+@inproceedings{Fraser2016,
   author    = {Gordon Fraser and Andrea Arcuri},
-  booktitle = {9th International Workshop on Search-Based Software Testing (SBST'16) at ICSE'16},
+  booktitle = {Proceedings of the 9th International Workshop on Search-Based Software Testing},
   title     = {EvoSuite at the SBST 2016 Tool Competition},
-  pages     = {33--36},
+  pages     = {33-36},
   year      = {2016},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA}
 }
 
-@InProceedings{Fraser2017,
+@inproceedings{Fraser2017,
   author    = {Gordon Fraser and Andrea Arcuri},
   booktitle = {10th International Workshop on Search-Based Software Testing (SBST'17) at ICSE'17},
   title     = {EvoSuite at the SBST 2017 Tool Competition},
-  pages     = {39--42},
-  year      = {2017},
+  pages     = {39-42},
+  year      = {2017}
 }
 
-@InProceedings{Braione2018,
+@inproceedings{Braione2018,
   author    = {Braione, Pietro and Denaro, Giovanni and Mattavelli, Andrea and Pezzè, Mauro},
   booktitle = {2018 IEEE/ACM 40th International Conference on Software Engineering: Companion (ICSE-Companion)},
   title     = {SUSHI: A Test Generator for Programs with Complex Structured Inputs},
   pages     = {21-24},
   file      = {:papers/SUSHI_A_Test_Generator_for_Programs_with_Complex_Structured_Inputs.pdf:PDF},
   year      = {2018},
+  publisher = {IEEE Computer Society}
 }
 
-@InProceedings{Campos2017a,
+@inproceedings{Campos2017a,
   author    = {Campos, Jos{\'e} and Ge, Yan and Fraser, Gordon and Eler, Marcelo and Arcuri, Andrea},
   booktitle = {Search Based Software Engineering},
   title     = {An Empirical Evaluation of Evolutionary Algorithms for Test Suite Generation},
-  editor    = {Menzies, Tim and Petke, Justyna},
-  isbn      = {978-3-319-66299-2},
-  pages     = {33--48},
+  pages     = {33-48},
   publisher = {Springer International Publishing},
-  abstract  = {Evolutionary algorithms have been shown to be effective at generating unit test suites optimised for code coverage. While many aspects of these algorithms have been evaluated in detail (e.g., test length and different kinds of techniques aimed at improving performance, like seeding), the influence of the specific algorithms has to date seen less attention in the literature. As it is theoretically impossible to design an algorithm that is best on all possible problems, a common approach in software engineering problems is to first try a Genetic Algorithm, and only afterwards try to refine it or compare it with other algorithms to see if any of them is more suited for the addressed problem. This is particularly important in test generation, since recent work suggests that random search may in practice be equally effective, whereas the reformulation as a many-objective problem seems to be more effective. To shed light on the influence of the search algorithms, we empirically evaluate six different algorithms on a selection of non-trivial open source classes. Our study shows that the use of a test archive makes evolutionary algorithms clearly better than random testing, and it confirms that the many-objective search is the most effective.},
   address   = {Cham},
   file      = {:papers/2-Article Text-3-1-10-20210404.pdf:PDF},
-  year      = {2017},
+  year      = {2017}
 }
 
-@Article{Fraser2014a,
+@article{Fraser2014a,
   author    = {Gordon Fraser and Andrea Arcuri},
   title     = {Achieving scalable mutation-based generation of whole test suites},
-  doi       = {10.1007/s10664-013-9299-z},
   number    = {3},
-  pages     = {783--812},
+  pages     = {783-812},
   volume    = {20},
   comment   = {TODO},
   file      = {:papers/Fraser-Arcuri2015_Article_AchievingScalableMutation-base.pdf:PDF},
   journal   = {Empirical Software Engineering},
-  month     = {feb},
   publisher = {Springer Science and Business Media {LLC}},
-  year      = {2014},
+  year      = {2014}
 }
 
-@InProceedings{Li2011,
+@inproceedings{Li2011,
   author    = {Li, Guodong and Ghosh, Indradeep and Rajan, Sreeranga P.},
   booktitle = {Computer Aided Verification},
   title     = {KLOVER: A Symbolic Execution and Automatic Test Generation Tool for C++ Programs},
-  editor    = {Gopalakrishnan, Ganesh and Qadeer, Shaz},
-  isbn      = {978-3-642-22110-1},
-  pages     = {609--615},
+  pages     = {609-615},
   publisher = {Springer Berlin Heidelberg},
-  abstract  = {We present the first symbolic execution and automatic test generation tool for C++ programs. First we describe our effort in extending an existing symbolic execution tool for C programs to handle C++ programs. We then show how we made this tool generic, efficient and usable to handle real-life industrial applications. Novel features include extended symbolic virtual machine, library optimization for C and C++, object-level execution and reasoning, interfacing with specific type of efficient solvers, and semi-automatic unit and component testing. This tool is being used to assist the validation and testing of industrial software as well as publicly available programs written using the C++ language.},
   address   = {Berlin, Heidelberg},
   file      = {:papers/2011_Book_ComputerAidedVerification.pdf:PDF},
-  year      = {2011},
+  year      = {2011}
 }
 
-@Article{Harman2001,
-  author   = {Mark Harman and Bryan F Jones},
-  title    = {Search-based software engineering},
-  doi      = {https://doi.org/10.1016/S0950-5849(01)00189-6},
-  issn     = {0950-5849},
-  number   = {14},
-  pages    = {833-839},
-  url      = {https://www.sciencedirect.com/science/article/pii/S0950584901001896},
-  volume   = {43},
-  abstract = {This paper claims that a new field of software engineering research and practice is emerging: search-based software engineering. The paper argues that software engineering is ideal for the application of metaheuristic search techniques, such as genetic algorithms, simulated annealing and tabu search. Such search-based techniques could provide solutions to the difficult problems of balancing competing (and some times inconsistent) constraints and may suggest ways of finding acceptable solutions in situations where perfect solutions are either theoretically impossible or practically infeasible. In order to develop the field of search-based software engineering, a reformulation of classic software engineering problems as search problems is required. The paper briefly sets out key ingredients for successful reformulation and evaluation criteria for search-based software engineering.},
-  journal  = {Information and Software Technology},
-  keywords = {Software engineering, Metaheuristic, Genetic algorithm},
-  year     = {2001},
+@article{Harman2001,
+  author  = {Mark Harman and Bryan F Jones},
+  title   = {Search-based software engineering},
+  number  = {14},
+  pages   = {833-839},
+  volume  = {43},
+  journal = {Information and Software Technology},
+  year    = {2001}
 }
 
-@InProceedings{Korel2005,
+@inproceedings{Korel2005,
   author    = {Korel, B. and Harman, M. and Chung, S. and Apirukvorapinit, P. and Gupta, R. and Zhang, Q.},
   booktitle = {16th IEEE International Symposium on Software Reliability Engineering (ISSRE'05)},
   title     = {Data dependence based testability transformation in automated test generation},
-  doi       = {10.1109/ISSRE.2005.16},
   pages     = {10 pp.-254},
   comment   = {TODO},
   file      = {:papers/Data_dependence_based_testability_transformation_in_automated_test_generation.pdf:PDF},
-  year      = {2005},
+  year      = {2005}
 }
 
-@InProceedings{DiFederico2018,
+@inproceedings{DiFederico2018,
   author    = {Di Federico, Alessandro and Fezzardi, Pietro and Agosta, Giovanni},
   booktitle = {2018 International Carnahan Conference on Security Technology (ICCST)},
   title     = {rev.ng: A Multi-Architecture Framework for Reverse Engineering and Vulnerability Discovery},
-  doi       = {10.1109/CCST.2018.8585654},
   pages     = {1-5},
   file      = {:papers/iccst-18-paper.pdf:PDF},
-  year      = {2018},
+  year      = {2018}
 }
 
-@Misc{Tolnay_syn,
-  author = {Tolnay, David},
-  title  = {Parser for Rust source code},
-  url    = {https://github.com/dtolnay/syn},
+@misc{Tolnay_syn,
+  author  = {Tolnay, David},
+  title   = {Parser for Rust source code},
+  url     = {https://github.com/dtolnay/syn},
+  urldate = {2021-12-23}
 }
 
-@Misc{Zalewski2014,
+@misc{Zalewski2014,
   author = {Zalewski, Michal},
   title  = {American fuzzy lop},
-  year   = {2014},
+  year   = {2014}
 }
 
-@InProceedings{Fioraldi2020,
+@inproceedings{Fioraldi2020,
   author    = {Andrea Fioraldi and Dominik Maier and Heiko Ei{\ss}feldt and Marc Heuse},
   booktitle = {14th {USENIX} Workshop on Offensive Technologies ({WOOT} 20)},
   title     = {AFL++ : Combining Incremental Steps of Fuzzing Research},
   publisher = {{USENIX} Association},
-  url       = {https://www.usenix.org/conference/woot20/presentation/fioraldi},
   file      = {:papers/aflpp-woot2020.pdf:PDF},
-  month     = aug,
-  year      = {2020},
+  year      = {2020}
 }
 
-@Misc{LLVMProject2017,
-  author = {{LLVM Project}},
-  title  = {libFuzzer – a library for coverage-guided fuzz testing},
-  year   = {2017},
+@misc{LLVMProject2017,
+  author  = {{LLVM Project}},
+  title   = {libFuzzer – a library for coverage-guided fuzz testing},
+  url     = {https://llvm.org/docs/LibFuzzer.html},
+  urldate = {2021-12-20}
 }
 
-@InProceedings{Rocha2020,
+@inproceedings{Rocha2020,
   author    = {Rocha, Herbert and Menezes, Rafael and Cordeiro, Lucas C. and Barreto, Raimundo},
   booktitle = {Tools and Algorithms for the Construction and Analysis of Systems},
   title     = {Map2Check: Using Symbolic Execution and Fuzzing},
-  editor    = {Biere, Armin and Parker, David},
-  isbn      = {978-3-030-45237-7},
-  pages     = {403--407},
+  pages     = {403-407},
   publisher = {Springer International Publishing},
-  abstract  = {Map2Check is a software verification tool that combines fuzzing, symbolic execution, and inductive invariants. It automatically checks safety properties in C programs by adopting source code instrumentation to monitor data (e.g., memory pointers) from the program's executions using LLVM compiler infrastructure. For SV-COMP 2020, we extended Map2Check to exploit an iterative deepening approach using LibFuzzer and Klee to check for safety properties. We also use Crab-LLVM to infer program invariants based on reachability analysis. Experimental results show that Map2Check can handle a wide variety of safety properties in several intricate verification tasks from SV-COMP 2020.},
   address   = {Cham},
   file      = {:papers/2020_Book_ToolsAndAlgorithmsForTheConstr.pdf:PDF},
-  year      = {2020},
+  year      = {2020}
 }
 
-@InProceedings{Le2019,
+@inproceedings{Le2019,
   author    = {Le, Hoang M.},
   booktitle = {Automated Technology for Verification and Analysis},
   title     = {KLUZZER: Whitebox Fuzzing on Top of LLVM},
-  editor    = {Chen, Yu-Fang and Cheng, Chih-Hong and Esparza, Javier},
-  isbn      = {978-3-030-31784-3},
-  pages     = {246--252},
+  pages     = {246-252},
   publisher = {Springer International Publishing},
-  abstract  = {Whitebox fuzzing (a.k.a. concolic testing) has been shown to be an effective bug finding technique on its own as well as in combination with coverage-guided greybox fuzzing. However, there is currently a lack of whitebox fuzzers operating above the binary code level. We present KLUZZER, a whitebox fuzzer targeting LLVM bitcode, and thus can be easily combined with the widely deployed LLVM's coverage-guided greybox fuzzer LibFuzzer. Experimental evaluation on a set of benchmarks shows encouraging results.},
   address   = {Cham},
   file      = {:papers/10.1007_978-3-030-31784-3_14-citation.bib:bib},
-  year      = {2019},
+  year      = {2019}
 }
 
-@Article{Cooper2001,
+@article{Cooper2001,
   author  = {Cooper, Keith D and Harvey, Timothy J and Kennedy, Ken},
   title   = {A simple, fast dominance algorithm},
   number  = {1-10},
-  pages   = {1--8},
+  pages   = {1-8},
   volume  = {4},
   comment = {Dominance algorithm},
   journal = {Software Practice \& Experience},
-  year    = {2001},
+  year    = {2001}
 }
 
-@Article{Ferrante1987,
-  author     = {Ferrante, Jeanne and Ottenstein, Karl J. and Warren, Joe D.},
-  title      = {The Program Dependence Graph and Its Use in Optimization},
-  doi        = {10.1145/24039.24041},
-  issn       = {0164-0925},
-  number     = {3},
-  pages      = {319–349},
-  url        = {https://doi.org/10.1145/24039.24041},
-  volume     = {9},
-  abstract   = {In this paper we present an intermediate program representation, called the program
-dependence graph (PDG), that makes explicit both the data and control dependences
-for each operation in a program. Data dependences have been used to represent only
-the relevant data flow relationships of a program. Control dependences are introduced
-to analogously represent only the essential control flow relationships of a program.
-Control dependences are derived from the usual control flow graph. Many traditional
-optimizations operate more efficiently on the PDG. Since dependences in the PDG connect
-computationally related parts of the program, a single walk of these dependences is
-sufficient to perform many optimizations. The PDG allows transformations such as vectorization,
-that previously required special treatment of control dependence, to be performed
-in a manner that is uniform for both control and data dependences. Program transformations
-that require interaction of the two dependence types can also be easily handled with
-our representation. As an example, an incremental approach to modifying data dependences
-resulting from branch deletion or loop unrolling is introduced. The PDG supports incremental
-optimization, permitting transformations to be triggered by one another and applied
-only to affected dependences.},
-  address    = {New York, NY, USA},
-  comment    = {Control dependence graph},
-  issue_date = {July 1987},
-  journal    = {ACM Trans. Program. Lang. Syst.},
-  month      = jul,
-  numpages   = {31},
-  publisher  = {Association for Computing Machinery},
-  year       = {1987},
+@article{Ferrante1987,
+  author    = {Ferrante, Jeanne and Ottenstein, Karl J. and Warren, Joe D.},
+  title     = {The Program Dependence Graph and Its Use in Optimization},
+  number    = {3},
+  pages     = {319–349},
+  volume    = {9},
+  address   = {New York, NY, USA},
+  comment   = {Control dependence graph},
+  journal   = {ACM Trans. Program. Lang. Syst.},
+  publisher = {Association for Computing Machinery},
+  year      = {1987}
 }
 
-@InProceedings{Prosser1959,
+@inproceedings{Prosser1959,
   author    = {Prosser, Reese T},
   booktitle = {Papers presented at the December 1-3, 1959, eastern joint IRE-AIEE-ACM computer conference},
   title     = {Applications of boolean matrices to the analysis of flow diagrams},
-  pages     = {133--138},
-  year      = {1959},
+  pages     = {133-138},
+  year      = {1959}
 }
 
-@InProceedings{Romano2011,
+@inproceedings{Romano2011,
   author    = {Romano, Daniele and Di Penta, Massimiliano and Antoniol, Giuliano},
   booktitle = {2011 Fourth IEEE International Conference on Software Testing, Verification and Validation},
   title     = {An Approach for Search Based Testing of Null Pointer Exceptions},
-  doi       = {10.1109/ICST.2011.49},
   pages     = {160-169},
-  year      = {2011},
+  year      = {2011}
 }
 
-@InProceedings{Bhattacharya2011,
+@inproceedings{Bhattacharya2011,
   author    = {Bhattacharya, Neelesh and Sakti, Abdelilah and Antoniol, Giuliano and Gu{\'e}h{\'e}neuc, Yann-Ga{\"e}l and Pesant, Gilles},
   booktitle = {Search Based Software Engineering},
   title     = {Divide-by-Zero Exception Raising via Branch Coverage},
@@ -1761,171 +1337,141 @@ only to affected dependences.},
   publisher = {Springer Berlin Heidelberg},
   abstract  = {In this paper, we discuss how a search-based branch coverage approach can be used to design an effective test data generation approach, specifically targeting divide-by-zero exceptions. We first propose a novel testability transformation combining approach level and branch distance. We then use different search strategies, i.e. hill climbing, simulated annealing, and genetic algorithm, to evaluate the performance of the novel testability transformation on a small synthetic example as well as on methods known to throw divide-by-zero exceptions, extracted from real world systems, namely Eclipse and Android. Finally, we also describe how the test data generation for divide-by-zero exceptions can be formulated as a constraint programming problem and compare the resolution of this problem with a genetic algorithm in terms of execution time. We thus report evidence that genetic algorithm using our novel testability transformation out-performs hill climbing and simulated annealing and a previous approach (in terms of numbers of fitness evaluation) but is out-performed by constraint programming (in terms of execution time).},
   address   = {Berlin, Heidelberg},
-  year      = {2011},
+  year      = {2011}
 }
 
-@InProceedings{Korel1996,
+@inproceedings{Korel1996,
   author    = {Korel, B. and Al-Yami, A.M.},
   booktitle = {Proceedings of IEEE 18th International Conference on Software Engineering},
   title     = {Assertion-oriented automated test data generation},
-  doi       = {10.1109/ICSE.1996.493403},
+  publisher = {IEEE Computer Society},
   pages     = {71-80},
-  year      = {1996},
+  year      = {1996}
 }
 
-@InProceedings{Tillmann2008,
+@inproceedings{Tillmann2008,
   author    = {Tillmann, Nikolai and de Halleux, Jonathan},
   booktitle = {Tests and Proofs},
   title     = {Pex--White Box Test Generation for .NET},
-  editor    = {Beckert, Bernhard and H{\"a}hnle, Reiner},
-  isbn      = {978-3-540-79124-9},
-  pages     = {134--153},
+  pages     = {134-153},
   publisher = {Springer Berlin Heidelberg},
-  abstract  = {Pex automatically produces a small test suite with high code coverage for a .NET program. To this end, Pex performs a systematic program analysis (using dynamic symbolic execution, similar to path-bounded model-checking) to determine test inputs for Parameterized Unit Tests. Pex learns the program behavior by monitoring execution traces. Pex uses a constraint solver to produce new test inputs which exercise different program behavior. The result is an automatically generated small test suite which often achieves high code coverage. In one case study, we applied Pex to a core component of the .NET runtime which had already been extensively tested over several years. Pex found errors, including a serious issue.},
   address   = {Berlin, Heidelberg},
-  year      = {2008},
+  year      = {2008}
 }
 
-@Article{Barr2013,
-  author     = {Barr, Earl T. and Vo, Thanh and Le, Vu and Su, Zhendong},
-  title      = {Automatic Detection of Floating-Point Exceptions},
-  doi        = {10.1145/2480359.2429133},
-  issn       = {0362-1340},
-  number     = {1},
-  pages      = {549–560},
-  url        = {https://doi.org/10.1145/2480359.2429133},
-  volume     = {48},
-  abstract   = {It is well-known that floating-point exceptions can be disastrous and writing exception-free numerical programs is very difficult. Thus, it is important to automatically detect such errors. In this paper, we present Ariadne, a practical symbolic execution system specifically designed and implemented for detecting floating-point exceptions. Ariadne systematically transforms a numerical program to explicitly check each exception triggering condition. Ariadne symbolically executes the transformed program using real arithmetic to find candidate real-valued inputs that can reach and trigger an exception. Ariadne converts each candidate input into a floating-point number, then tests it against the original program. In general, approximating floating-point arithmetic with real arithmetic can change paths from feasible to infeasible and vice versa. The key insight of this work is that, for the problem of detecting floating-point exceptions, this approximation works well in practice because, if one input reaches an exception, many are likely to, and at least one of them will do so over both floating-point and real arithmetic. To realize Ariadne, we also devised a novel, practical linearization technique to solve nonlinear constraints. We extensively evaluated Ariadne over 467 scalar functions in the widely used GNU Scientific Library (GSL). Our results show that Ariadne is practical and identifies a large number of real runtime exceptions in GSL. The GSL developers confirmed our preliminary findings and look forward to Ariadne's public release, which we plan to do in the near future.},
-  address    = {New York, NY, USA},
-  issue_date = {January 2013},
-  journal    = {SIGPLAN Not.},
-  keywords   = {symbolic execution, floating-point exceptions},
-  month      = {1},
-  numpages   = {12},
-  publisher  = {Association for Computing Machinery},
-  year       = {2013},
+@article{Barr2013,
+  author    = {Barr, Earl T. and Vo, Thanh and Le, Vu and Su, Zhendong},
+  title     = {Automatic Detection of Floating-Point Exceptions},
+  number    = {1},
+  pages     = {549–560},
+  volume    = {48},
+  address   = {New York, NY, USA},
+  journal   = {SIGPLAN Not.},
+  publisher = {Association for Computing Machinery},
+  year      = {2013}
 }
 
-@InProceedings{Fraser2014b,
+@inproceedings{Fraser2014b,
   author    = {Fraser, Gordon and Arcuri, Andrea},
   booktitle = {Software Quality. Model-Based Approaches for Advanced Software and Systems Engineering},
   title     = {Automated Test Generation for Java Generics},
-  editor    = {Winkler, Dietmar and Biffl, Stefan and Bergsmann, Johannes},
-  isbn      = {978-3-319-03602-1},
-  pages     = {185--198},
+  pages     = {185-198},
   publisher = {Springer International Publishing},
-  abstract  = {Software testing research has resulted in effective white-box test generation techniques that can produce unit test suites achieving high code coverage. However, research prototypes usually only cover subsets of the basic programming language features, thus inhibiting practical use and evaluation. One feature commonly omitted are Java's generics, which have been present in the language since 2004. In Java, a generic class has type parameters and can be instantiated for different types; for example, a collection can be parameterized with the type of values it contains. To enable test generation tools to cover generics, two simple changes are required to existing approaches: First, the test generator needs to use Java's extended reflection API to retrieve the little information that remains after type erasure. Second, a simple static analysis can identify candidate classes for type parameters of generic classes. The presented techniques are implemented in the EvoSuite test data generation tool and their feasibility is demonstrated with an example.},
   address   = {Cham},
-  year      = {2014},
+  year      = {2014}
 }
 
-@Article{Ardito2020,
+@article{Ardito2020,
   author   = {Luca Ardito and Luca Barbato and Marco Castelluccio and Riccardo Coppola and Calixte Denizet and Sylvestre Ledru and Michele Valsesia},
   title    = {rust-code-analysis: A Rust library to analyze and extract maintainability information from source codes},
-  doi      = {https://doi.org/10.1016/j.softx.2020.100635},
-  issn     = {2352-7110},
   pages    = {100635},
-  url      = {https://www.sciencedirect.com/science/article/pii/S2352711020303484},
   volume   = {12},
-  abstract = {The literature proposes many software metrics for evaluating the source code non-functional properties, such as its complexity and maintainability. The literature also proposes several tools to compute those properties on source codes developed with many different software languages. However, the Rust language emergence has not been paired by the community’s effort in developing parsers and tools able to compute metrics for the Rust source code. Also, metrics tools often fall short in providing immediate means of comparing maintainability metrics between different algorithms or coding languages. We hence introduce rust-code-analysis, a Rust library that allows the extraction of a set of eleven maintainability metrics for ten different languages, including Rust. rust-code-analysis, through the Abstract Syntax Tree (AST) of a source file, allows the inspection of the code structure, analyzing source code metrics at different levels of granularity, and finding code syntax errors before compiling time. The tool also offers a command-line interface that allows exporting the results in different formats. The possibility of analyzing source codes written in different programming languages enables simple and systematic comparisons between the metrics produced from different empirical and large-scale analysis sources.},
   journal  = {SoftwareX},
   keywords = {Algorithm, Software metrics, Software maintainability, Software quality},
-  year     = {2020},
+  year     = {2020}
 }
 
-@InProceedings{Lukasczyk2020,
+@inproceedings{Lukasczyk2020,
   author    = {Lukasczyk, Stephan and Kroi{\ss}, Florian and Fraser, Gordon},
   booktitle = {Search-Based Software Engineering},
-  title     = {Automated Unit Test Generation for Python},
-  editor    = {Aleti, Aldeida and Panichella, Annibale},
-  isbn      = {978-3-030-59762-7},
-  pages     = {9--24},
+  title     = {Automated Unit Test Generation for Python},
+  pages     = {9-24},
   publisher = {Springer International Publishing},
-  abstract  = {Automated unit test generation is an established research field, and mature test generation tools exist for statically typed programming languages such as Java. It is, however, substantially more difficult to automatically generate supportive tests for dynamically typed programming languages such as Python, due to the lack of type information and the dynamic nature of the language. In this paper, we describe a foray into the problem of unit test generation for dynamically typed languages. We introduce Pynguin, an automated unit test generation framework for Python. Using Pynguin, we aim to empirically shed light on two central questions: (1) Do well-established search-based test generation methods, previously evaluated only on statically typed languages, generalise to dynamically typed languages? (2) What is the influence of incomplete type information and dynamic typing on the problem of automated test generation? Our experiments confirm that evolutionary algorithms can outperform random test generation also in the context of Python, and can even alleviate the problem of absent type information to some degree. However, our results demonstrate that dynamic typing nevertheless poses a fundamental issue for test generation, suggesting future work on integrating type inference.},
   address   = {Cham},
-  year      = {2020},
+  year      = {2020}
 }
 
-@InProceedings{Arcuri2011,
+@inproceedings{Arcuri2011,
   author    = {Arcuri, Andrea and Briand, Lionel},
   booktitle = {2011 33rd International Conference on Software Engineering (ICSE)},
   title     = {A practical guide for using statistical tests to assess randomized algorithms in software engineering},
-  doi       = {10.1145/1985793.1985795},
   pages     = {1-10},
-  year      = {2011},
+  publisher = {IEEE Computer Society},
+  year      = {2011}
 }
 
-@Article{Ali2010,
+
+@article{Ali2010,
   author  = {Ali, Shaukat and Briand, Lionel C. and Hemmati, Hadi and Panesar-Walawege, Rajwinder Kaur},
   title   = {A Systematic Review of the Application and Empirical Investigation of Search-Based Test Case Generation},
-  doi     = {10.1109/TSE.2009.52},
   number  = {6},
   pages   = {742-762},
   volume  = {36},
   journal = {IEEE Transactions on Software Engineering},
-  year    = {2010},
+  year    = {2010}
 }
 
-@Article{Leech2002,
+@article{Leech2002,
   author    = {Leech, Nancy L and Onwuegbuzie, Anthony J},
   title     = {A Call for Greater Use of Nonparametric Statistics.},
   publisher = {ERIC},
-  year      = {2002},
+  year      = {2002}
 }
 
-@Article{Poulding2010,
+@article{Poulding2010,
   author  = {Poulding, Simon and Clark, John A.},
   title   = {Efficient Software Verification: Statistical Testing Using Automated Search},
-  doi     = {10.1109/TSE.2010.24},
   number  = {6},
   pages   = {763-777},
   volume  = {36},
   journal = {IEEE Transactions on Software Engineering},
-  year    = {2010},
+  year    = {2010}
 }
 
-@InProceedings{Arcuri2017,
+@inproceedings{Arcuri2017,
   author    = {A. Arcuri and G. Fraser and R. Just},
-  booktitle = {ICST'11: Proceedings of the 10th International Conference on Software Testing, Verification and Validation},
+  booktitle = {2017 IEEE International Conference on Software Testing, Verification and Validation (ICST)},
   title     = {Private API Access and Functional Mocking in Automated Unit Test Generation},
-  note      = {To appear},
-  year      = {2017},
+  year      = {2017}
 }
 
-@Article{Li2015,
+@inproceedings{7927969,
+  author    = {Arcuri, Andrea and Fraser, Gordon and Just, René},
+  title     = {Private API Access and Functional Mocking in Automated Unit Test Generation},
+  year      = {2017},
+  pages     = {126-137},
+  publisher = {IEEE Computer Society}
+}
+
+@article{Li2015,
   author     = {Li, Bingdong and Li, Jinlong and Tang, Ke and Yao, Xin},
   title      = {Many-Objective Evolutionary Algorithms: A Survey},
-  doi        = {10.1145/2792984},
-  issn       = {0360-0300},
   number     = {1},
-  url        = {https://doi.org/10.1145/2792984},
   volume     = {48},
-  abstract   = {Multiobjective evolutionary algorithms (MOEAs) have been widely used in real-world applications. However, most MOEAs based on Pareto-dominance handle many-objective problems (MaOPs) poorly due to a high proportion of incomparable and thus mutually nondominated solutions. Recently, a number of many-objective evolutionary algorithms (MaOEAs) have been proposed to deal with this scalability issue. In this article, a survey of MaOEAs is reported. According to the key ideas used, MaOEAs are categorized into seven classes: relaxed dominance based, diversity-based, aggregation-based, indicator-based, reference set based, preference-based, and dimensionality reduction approaches. Several future research directions in this field are also discussed.},
   address    = {New York, NY, USA},
-  articleno  = {13},
   issue_date = {September 2015},
   journal    = {ACM Comput. Surv.},
-  keywords   = {evolutionary algorithm, scalability, Many-objective optimization},
-  month      = {sep},
-  numpages   = {35},
   publisher  = {Association for Computing Machinery},
-  year       = {2015},
+  year       = {2015}
 }
 
-@Article{Luecken2014,
-  author       = {Christian von Lücken and Benjam{\'{\i}}n Bar{\'{a}}n and Carlos Brizuela},
-  date         = {2014-02},
-  journaltitle = {Computational Optimization and Applications},
-  title        = {A survey on multi-objective evolutionary algorithms for many-objective problems},
-  doi          = {10.1007/s10589-014-9644-1},
-  publisher    = {Springer Science and Business Media {LLC}},
-}
-
-@Comment{jabref-meta: databaseType:biblatex;}
-
-@Comment{jabref-meta: grouping:
-0 AllEntriesGroup:;
-1 StaticGroup:Markings\;2\;1\;\;\;\;;
-2 StaticGroup:a72186:1\;2\;1\;\;\;\;;
-1 StaticGroup:State of the Art Tools\;0\;1\;0x0000ffff\;\;\;;
+@article{Luecken2014,
+  author    = {Christian von Lücken and Benjam{\'{\i}}n Bar{\'{a}}n and Carlos Brizuela},
+  year      = {2014},
+  journal   = {Computational Optimization and Applications},
+  title     = {A survey on multi-objective evolutionary algorithms for many-objective problems},
+  publisher = {Springer Science and Business Media {LLC}},
+  pages     = {707-756},
+  volume    = {58},
+  number    = {3}
 }
