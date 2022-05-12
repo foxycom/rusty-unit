@@ -12,3 +12,6 @@ jobs:
           root_file: document.tex
           working_directory: latex
           latexmk_use_lualatex: true
+          extra_fonts: |
+            fonts/*.ttf
+            fonts/*.otf
