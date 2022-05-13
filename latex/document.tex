@@ -135,6 +135,7 @@ colframe=white,colback=codegray}
 \newcommand{\mir}{\ac{MIR}\xspace}
 \newcommand{\cfg}{\ac{CFG}\xspace}
 \newcommand{\cdg}{\ac{CDG}\xspace}
+\newcommand{\cdgs}{\acp{CDG}\xspace}
 \newcommand{\budget}{1000\xspace}
 \newcommand{\sut}{\ac{SUT}\xspace}
 
@@ -1531,14 +1532,13 @@ We apply similar ideas to \tech. However, some of the problems that other progra
 \clearpage
 \chapter{Implementation}
 \label{chap:implementation}
-In this chapter we present essential parts of the implementation of \tech. To generate tests for a crate, \tech has to complete several intermediate steps that \Cref{overview/overview-enhanced} illustrates. First and foremost, the tool requires the information about which data types the \emph{Crate} has and which functions the data types provide in order to be able to model meaningful tests at all. Therefore, it performs a \hir analysis, which yields a collection of \emph{Generators}. \textbf{TODO Generators inkludiert irgendwie eher nur Funktionen und weniger Datentypen an sich}. These provide an overview of which data types can be instantiated in a test case, and which methods can be invoked on those instances. \tech also derives the ownership rules at this point, e.g., whether and how multiple statements may use a certain variable in a valid way, as described in~\Cref{sec:problem-representation}. 
+In this chapter we present essential parts of the implementation of \tech. To generate tests for a crate, \tech has to complete several intermediate steps that \Cref{fig:rustyunit-overview} illustrates. First and foremost, the tool requires the information about which data types the \emph{Crate} has and which functions the data types provide in order to be able to model meaningful tests in the first place. Therefore, it performs a \hir analysis, which yields a collection of \emph{Generators}. \textbf{TODO Generators inkludiert irgendwie eher nur Funktionen und weniger Datentypen an sich}. These provide an overview of which data types can be instantiated in a test case, and which methods can be invoked on those instances. \tech also derives the ownership rules at this point, e.g., whether and how multiple statements may use a certain variable in a valid way, as described in~\Cref{sec:problem-representation}. 
 
 To evaluate the \emph{Generated Tests} in terms of their coverage, \tech instruments the \mir and compiles the crate yielding an \emph{Instrumented Binary}. During instrumentation, the tool injects instructions into the \mir to trace the execution of individual basic blocks and branches. If a generated test executes a code location in the crate, the event (and the corresponding branch distance to another branch in case it has been a branch) is stored in the \emph{Execution Traces}. 
 
-The execution traces only contain a raw part of the fitness values. 
+The execution traces only contain a raw part of the fitness values. To calculate the overall fitness value with respect to each coverage target, \tech must additionally determine the approach level from the corresponding \emph{Control Dependence Graphs}, as described in~\Cref{sec:fitness-function}. It computes the graphs of execution units contained in the crate by analyzing its \mir. This implies building a post-dominator tree from the \cfg, which a \mir effectively is, and then computing the control dependencies. With the \cdgs and execution traces in place, \tech computes how good a certain test with respect to the coverage targets, select the fittest ones and stores them into the \emph{Archive}. Now \tech can either generate a new population and evolve it in the next iteration, as already shown in~\Cref{fig:ga-overview}, or, when the search budget is exhausted, return the archive, i.e., the best test cases found up to that point in the form of Rust source code. 
 
-
-needs access to the source code of the \sut since, unlike some other tools, our analysis and instrumentation do not take place on the compiled binary, but during the compilation process itself. \tech does so in several steps.  The Rust compiler provides a convenient interface for controlling the compilation process. We register the analysis of the target program and instrument it using this interface. The results of the analysis are needed for the generation and synthesis of the tests, while the instrumentation is needed to evaluate the generated tests for fitness when they are executed. At the end of the search, \tech yields a final test suite in the form of Rust source code.
+In the next sections we explain how \tech performs the outlined steps by hooking into the compiler in detail.
 
 % Die Übesicht des ganzen Prozesses
 \begin{figure}[h!]
@@ -1555,15 +1555,15 @@ To have access to the compiler internals, multiple things are required. Firstly,
 
 With compiler internals available, we can implement some of the callbacks that the compiler will call at appropriate point of time. The \texttt{rustc\string_driver::Callbacks} trait defines four callbacks, which are called in the following order:
 \begin{enumerate}
-    \item \texttt{config(&mut self, _c: &mut Config)}
-    \item \texttt{after\string_parsing(&mut self, _c: &Compiler, _q: &'tcx Queries<'tcx>)}
-    \item \texttt{after\string_expansion(&mut self, _c: &Compiler, _q: &'tcx Queries<'tcx>)}
-    \item \texttt{after\string_analysis(&mut self, _c: &Compiler, _q: &'tcx Queries<'tcx>)}
+    \item \texttt{config}
+    \item \texttt{after\string_parsing}
+    \item \texttt{after\string_expansion}
+    \item \texttt{after\string_Analysis}
 \end{enumerate}
 
-The \texttt{config} method will be called before creating the compiler instance and allows to change the default compiler configuration. Each of the other three functions will be called after the end of the corresponding compilation phase. The interface provides the \texttt{after\string_*} hooks with an instance of the compiler and, more important, with a \texttt{Queries} object which allows to query the global context of the crate under compilation. It is very convenient because this way we can extract all the items defined in a crate, including functions and methods along with their parameters and return types. We need this data to know what statements can be placed in a generated test. Another important point is that at this stage we can obtain full type paths, which the compiler has resolved until then, e.g., \texttt{std::fs::File} instead of just \texttt{File}. 
+The \texttt{config} method will be called before creating the compiler instance and allows to change the default compiler configuration. Each of the other three functions will be called after the end of the corresponding compilation phase. The interface provides the \texttt{after\string_*} hooks with an instance of the compiler and, more important, with a \texttt{Queries} object which allows to query the global context of the crate under compilation. It is very convenient because this way we can extract all the items defined in a crate, including functions and methods along with their parameters and return types. %We need this data to know what statements can be placed in a generated test.
 
-The sequence of the callbacks is called for each crate and its dependencies since each crate is compiled separately, with the \sut coming last after its dependencies have been processed. This theoretically also provides us the ability to analyze the code structure of the dependencies in case some of the \sut's functions required a parameter of an external type. However, this does not work for the standard library of the language since it already comes precompiled usually. Thus, \tech is not able to extract this data automatically and therefore, would not know how to initialize and manipulate a vector (\texttt{std::vec::Vec}), for example. However, since the data is essential for generating tests for most of the crates, \tech includes prepared types from the standard library and their functions relevant to the case study subjects. 
+The sequence of the callbacks is called for each crate and its dependencies since each crate is compiled separately, with the \sut coming last after its dependencies have been processed. This theoretically also provides us the ability to analyze the code structure of the dependencies in case some of the \sut's functions required a parameter of an external type. However, this does not work for the standard library of the language as it usually already comes precompiled. Thus, \tech is not able to extract this data automatically and therefore, would not know how to initialize and manipulate a vector (\texttt{std::vec::Vec}), for example. However, since the data is essential for generating tests for most of the crates, \tech includes prepared types from the standard library and their functions relevant to the case study subjects. 
 
 \begin{lstlisting}[style=boxed, caption={We can register a listener function to analyze the code structure of the compiled crate}, escapechar=§, label=lst:optimized-mir]
 fn after_analysis(&mut self, _c: &Compiler, 
@@ -1581,7 +1581,7 @@ fn analyze(tcx: &TyCtxt<'_>) {
 }
 \end{lstlisting}
 
-Within the callbacks, with a compiler and a \texttt{Queries} object given, we can access the \acp{IR} of the crate under compilation, e.g., we can query the \mir of a function body by its \texttt{DefId}, as shown in~\Cref{lst:optimized-mir}. To this end, we retrieve the \texttt{TyCtxt} instance in~Line~\ref{line:enter-tyctxt}, which the central data structure of the compiler and provides methods to query different regions of the compiled code, e.g., \texttt{optimized_mir} in~Line~\ref{line:optimized-mir-call} to obtain the \mir of a function. We cannot modify it and pass the modified version back to the compiler, though, which is critical for \mir instrumentation. This is not a concern for the \hir and \mir analysis, as we only want to read the structure of the crate. For this purpose, we can override the default implementation of the \texttt{optimized_mir} method with a custom one. The \texttt{config} callback provides a mutable \texttt{Config} object which allows to replace many of the query functions. 
+Within the callbacks, with a compiler and a \texttt{Queries} object given, we can access the \acp{IR} of the crate under compilation, e.g., we can query the \mir of a function body by its \texttt{DefId}, as shown in~\Cref{lst:optimized-mir}. To this end, we retrieve the \texttt{TyCtxt} instance in~Line~\ref{line:enter-tyctxt}, which is the central data structure of the compiler and provides methods to query different regions of the compiled code, e.g., \texttt{optimized\string_mir} in~Line~\ref{line:optimized-mir-call} to obtain the \mir of a function. We cannot modify it and pass the modified version back to the compiler, though, which is critical for \mir instrumentation. This is not a concern for the \hir and \mir analysis, as we only want to read the structure of the crate. For this purpose, we can override the default implementation of the \texttt{optimized\string_mir} method with a custom one. The \texttt{config} callback provides a mutable \texttt{Config} object which allows to replace many of the query functions. 
 
 \begin{lstlisting}[style=boxed, caption={The Rust compiler interface accepts an object which implements its callback trait, allowing us to execute code at different compilation phases}, label=lst:compiler-callbacks, escapechar=§]
 struct CompilerCallbacks;
@@ -1599,11 +1599,10 @@ impl rustc_driver::Callbacks for CompilerCallbacks {
             .borrow().optimized_mir; §\label{line:obtain-default-mir-provider-end}§
         // Query original MIR instance
         let mut body = opt_mir(tcx, def_id).clone(); §\label{line:query-mir}§
-        let crate_name = tcx.crate_name(def.krate);
         let hir_id = tcx.hir()
           .local_def_id_to_hir_id(def.expect_local());
 
-        if is_monitor(hir_id, &tcx) { §\line{line:is-monitor-check}§
+        if is_monitor(hir_id, &tcx) { §\label{line:is-monitor-check}§
           // Do not instrument our own monitor
           return tcx.arena.alloc(body);
         }
@@ -1623,7 +1622,7 @@ impl rustc_driver::Callbacks for CompilerCallbacks {
 
 As shown in~\Cref{lst:compiler-callbacks}, a provider for an optimized \mir is a function pointer. Our custom provider implementation (Lines~\ref{line:mir-provider-start}-\ref{line:mir-provider-end}) is a basic wrapper, which 
 \begin{enumerate}
-  \item first obtains the original \mir instance in~Line~\ref{line:query-mir} using the default implementation in~Lines~\ref{line:obtain-default-mirprovider-start}-\ref{line:obtain-default-mirprovider-end},
+  \item first obtains the original \mir instance in~Line~\ref{line:query-mir} using the default implementation in~Lines~\ref{line:obtain-default-mirprovider-start}-\ref{line:obtain-default-mir-provider-end},
   \item verifies that the current \mir instance is not part of our own monitor in~Line~\ref{line:is-monitor-check}, otherwise skips the instrumentation,
   \item applies the \texttt{MirVisitor}, which mutates the \mir in-place, in~Line~\ref{line:visit-mir},
   \item returns the mutated version to the compiler in~Line~\ref{line:return-instrumented-mir}.
@@ -1631,42 +1630,40 @@ As shown in~\Cref{lst:compiler-callbacks}, a provider for an optimized \mir is a
 
 The compiler invokes the \texttt{optimized\string_mir()} provider in further steps, and thus, propagates the mutated \mir instance.
 
-\begin{lstlisting}[style=boxed, caption={Running the Rust compiler like a library}, label=lst:running-compiler]
+\Cref{lst:running-compiler} shows how the Rust compiler can subsequently be started programmatically. The program accepts command line arguments intended for the compiler in~Line~\ref{line:rustc-args}, instantiates the struct implementing the aforementioned callbacks in~Line~\ref{line:instantiate-compiler-callbacks} and a compiler instance in~Line~\ref{line:init-the-compiler-start}, and runs the compiler in~Line~\ref{line:run-the-compiler}.
+
+\begin{lstlisting}[style=boxed, caption={Running the Rust compiler like a library}, label=lst:running-compiler, escapechar=§]
 fn run_rustc() -> Result<(), i32> {
-  let std_env_args: Vec<String> = std::env::args()
+  let rustc_args: Vec<String> = std::env::args() §\label{line:rustc-args}§
     .collect();
-  let rustc_args = get_compiler_args(&std_env_args);
-  pass_to_rustc(&rustc_args);
-  return Ok(());
-}
 
-pub fn pass_to_rustc(rustc_args: &[String]) {
-  let mut callbacks = MirCallbacks {};
+  let mut callbacks = CompilerCallbacks {}; §\label{line:instantiate-compiler-callbacks}§
+  // Register the callbacks for analysis 
+  // and instrumentation and run the compiler
+  let err = rustc_driver::RunCompiler::new( §\label{line:init-the-compiler-start}§
+    &rustc_args, &mut callbacks §\label{line:init-the-compiler-end}§
+  ).run(); §\label{line:run-the-compiler}§
 
-  let err = rustc_driver::RunCompiler::new(
-    &rustc_args, &mut callbacks
-  ).run();
   if err.is_err() {
-    eprintln!("Error while compiling dependency");
-    std::process::exit(-1);
+    return Err(1);
   }
+
+  Ok(())
 }
 
 fn main() {
-  exit(
-    run_rustc()
+  exit(run_rustc()
       .err()
-      .unwrap_or(0),
+      .unwrap_or(0)
   )
-
 }
 \end{lstlisting}
 
-\Cref{lst:running-compiler} shows how the Rust compiler can subsequently be started programmatically. Now this program can be used in general for instrumenting Rust programs. However, calling it directly is very cumbersome, since the compiler needs to know many arguments, especially for large crates, in order to link dependencies correctly. Normally one uses a build system for this, for example Cargo, which takes over this work and provides appropriate compiler arguments when building a crate. Fortunately, Cargo provides a way to define our own \texttt{rustc} wrapper, which is then supplied with correct command line arguments by Cargo. The task of such a wrapper is to eventually call the compiler on itself with the passed arguments~\footnote{\url{http://web.archive.org/web/20220506220810/https://doc.rust-lang.org/cargo/reference/environment-variables.html}}. To use the wrapper, one has to set the environment variable \texttt{RUSTC\string_WRAPPER} to the path to the wrapper binary. Finally, a target Rust program can be built and instrumented by running:
+Now this program can be used in general for instrumenting Rust programs. However, calling it directly is very cumbersome, since the compiler needs to know many arguments, especially for large crates, in order to link dependencies correctly. Usually one uses a build system for this purpose, e.g., Cargo, which takes over this task and provides appropriate compiler arguments when building a crate. Fortunately, Cargo provides a way to define a custom \texttt{rustc} wrapper, which is then supplied with the arguments by Cargo. The task of such a wrapper is to eventually call the real compiler on itself and forward those argument in order to fullfil the expected behavior during compilation~\footnote{\url{http://web.archive.org/web/20220506220810/https://doc.rust-lang.org/cargo/reference/environment-variables.html}}. To use the wrapper, one has to set the environment variable \texttt{RUSTC\string_WRAPPER} to the path to the wrapper binary. Finally, a target Rust program can be built and instrumented by running:
 
 \texttt{RUSTC\string_WRAPPER=./instrumentation cargo \string+nightly build}
 
-Since our wrapper uses \texttt{rustc\string_private} features, we have to tell Cargo to enable the nightly channel. The next step is to define how to instrument the \mir so that we can observe the execution paths triggered by an execution of generated tests.
+Since the wrapper uses \texttt{rustc\string_private} features, we have to tell Cargo to enable the nightly channel. The next step is to define how to instrument the \mir so that we can observe the execution paths triggered by an execution of generated tests.
 
 %The whole process starts, when we run the compiler for the first time on a target crate that we want to test. During this process we can already extract the available items like structs and their methods by traversing the \hir.
 
@@ -2493,7 +2490,7 @@ In theory, a t-test would be possible, too; however, it requires a normal distri
 Both algorithms only achieve moderately high coverage up to 59\%. The main reason is that the analysis of the possible function invocations and types is still limited. For instance, we cannot execute most of generic traits or derived trait implementations (e.g., \texttt{\#[derive(Debug)]}) since the derived traits either require some advanced generics analysis, too, or parameters that we cannot instantiate. Derived traits are generated  In case of \texttt{Debug}, which is one of the most often derived traits, its only method \texttt{fmt} requires an argument of type \texttt{std::fmt::Formatter} that we cannot create. Usually it is created automatically by macros when we print its implementing type, e.g., %\texttt{print!("\string{\string}", some_var)}.
 With this limitations, it is not possible to achieve a 100\% coverage for non-trivial traits. 
 
-However, since the limitations apply to both algorithms the same, the results are still comparable. Even though \tech achieves for some crates significantly better results, in practice, it does not outperform random search by much. Moreover, random search yielded better results for three of the experiment subjects. The issue is that even when used real crates, the search problem is still easy enough, especially since our implementation cannot extract complex parts of a \sut. \ac{DynaMOSA}, the \ac{GA} which \tech exploit, is especially tailored to highly nested control dependency structures of object-oriented programs that can be explored iteratively using the approach level guidance. However, Rust is not a typical object-oriented language, and the case study subjects feature \acp{CDG} with an average depth of about $1.1$ (TODO CDG Eigenschaften in einer Tabelle aufführen). That is, \tech cannot develop its full potential and employ guided search as it is mainly dependent on branch distance, which, as explained in~\Cref{sec:fitness-function}, can only be $0$ or $1$ for non-numerical data. Thus, \tech degenerates to random search, too. In fact, for some cases it is even worse than that. Whereas random search continues to generate new test cases independently and hits more uncovered targets faster, the genetic algorithm tries to surgically improve test cases that often cannot be improved anyway due to shallow control dependecies within the functions invoked in those tests. 
+However, since the limitations apply to both algorithms the same, the results are still comparable. Even though \tech achieves for some crates significantly better results, in practice, it does not outperform random search by much. Moreover, random search yielded better results for three of the experiment subjects. The issue is that even when used real crates, the search problem is still easy enough, especially since our implementation cannot extract complex parts of a \sut. \ac{DynaMOSA}, the \ac{GA} which \tech exploit, is especially tailored to highly nested control dependency structures of object-oriented programs that can be explored iteratively using the approach level guidance. However, Rust is not a typical object-oriented language, and the case study subjects feature \cdgs with an average depth of about $1.1$ (TODO CDG Eigenschaften in einer Tabelle aufführen). That is, \tech cannot develop its full potential and employ guided search as it is mainly dependent on branch distance, which, as explained in~\Cref{sec:fitness-function}, can only be $0$ or $1$ for non-numerical data. Thus, \tech degenerates to random search, too. In fact, for some cases it is even worse than that. Whereas random search continues to generate new test cases independently and hits more uncovered targets faster, the genetic algorithm tries to surgically improve test cases that often cannot be improved anyway due to shallow control dependecies within the functions invoked in those tests. 
 
 
 
