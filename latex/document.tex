@@ -4,9 +4,7 @@
   abstract=true,%
   toc=bibliography,%
   chapterprefix=true,%
-%  toc=listof,%
   toc=bibliographynumbered,%
-%  toc=listofnumbered,%
   open=right,%
   english,%
   pagesize=pdftex]{scrreprt}
@@ -24,19 +22,9 @@
 \usepackage{listings,listings-rust,multicol}
 \lstset{
   numbers=left,
-  %xleftmargin=2.5em,
-  %framexleftmargin=2.5em,
-  %frame=tb,
-  %stepnumber=1,
-  %firstnumber=1,
   numberfirstline=true,
   language=Rust,
   frameround=fttt,
-  %identifierstyle=,
-  %stringstyle=\ttfamily,
-  %keywordstyle=\color{OliveGreen},
-  %keywordstyle=,
-  %showstringspaces=false
 }
 
 \usepackage{pgfplots}
@@ -98,14 +86,6 @@ colframe=white,colback=codegray}
     return s
   end
 \end{luacode}
-%% Define 2 LaTeX macros to switch operation of Lua function on and off
-%\newcommand{\ColortextttOn}{\directlua{
-%   luatexbase.add_to_callback ( "process_input_buffer" , 
-%   color_texttt, "color_texttt" )}}
-%\newcommand{\ColortextttOff}{\directlua{
-%   luatexbase.remove_from_callback ( "process_input_buffer" , 
-%   "color_texttt" )}}
-%\AtBeginDocument{\ColortextttOn} % Default: activate the Lua function 
 
 
 \newcommand{\Desc}[2]{\State \makebox[2em][l]{#1}#2}
@@ -679,6 +659,8 @@ fn middle(p1: Point, p2: Point) -> Point {
 }
 \end{lstlisting}
 
+Structs do not have explit constructors as other languages do for classes. However, it is a convention to provide a static method called \texttt{new} that instantiates a struct.
+
 \subsection{Associated Functions and Methods}
 Functions can be associated with types in Rust, e.g., with enums or structs. Rust separates the definition of behavior from the definition of data. To implement behavior for an enum or a struct, we can add an \texttt{impl} block, as shown in \Cref{lst:example-associated-function}. An example of a common associated function is \texttt{new} which returns a value of the type it is associated with.
 
@@ -806,7 +788,7 @@ fn main() {
 TODO The compiler can now extract the relevant types and generate the following code
 
 It is also possible to put constraints, called trait bounds in Rust, on the generic type parameters. For instance, we could define a textual representation of a pair. The \texttt{Display} trait of the standard library provides the \texttt{fmt} method, which uses the \texttt{\string{\string}} print marker. As shown in \Cref{lst:example-trait-bounds}, for a type to implement the \texttt{Display} trait, its attributes must implement the trait, too, since their \texttt{fmt} method will be called recursively. Hence, we tell that the left and right hand side type parameters used with the \texttt{Pair} struct must implement the \texttt{Display} trait. The effect of bounding is that generic instances are allowed to access the methods of traits specified in the bounds. Under the hood, the \texttt{println!} macro call the \texttt{fmt} method of the \texttt{Pair} instance:
-\begin{lstlisting}[style=boxed, caption={}, label=lst:example-trait-bounds]
+\begin{lstlisting}[style=boxed, caption={}, label=lst:example-trait-bounds, escapechar=§]
 struct Pair<L: Display, R: Display> {
     left: L,
     right: R
@@ -827,12 +809,14 @@ impl<L: Display, R: Display> Display for Pair<L, R> {
 
 fn main() {
   let pair: Pair<String, u32> = Pair::of(
-    "Hello world".to_string(), 42u32
+    "Hello world".to_string(), 42u32 §\label{line:example-trait-bounds:str-type-conversion}§ 
   );
   println!("{}", pair);
   // Output: (Hello world, 42)
 }
 \end{lstlisting}
+
+We need to convert \texttt{"Hello world"} TODO
 
 There is no inheritance in Rust, as known from object-oriented languages. Common behavior can be defined via traits, which can have super-traits, as shown in \Cref{lst:trying-supertraits} for the \texttt{TrieAtom} trait. \texttt{TrieAtom} is a blanket trait, which means that types that implement its super trait automatically implement it, too, from the compiler's point of view.
 \begin{lstlisting}[style=boxed, caption={An example trait from the \emph{trying} crate which we evaluate the approach on}, label=lst:trying-supertraits]
@@ -1140,7 +1124,7 @@ In the following, we assume that a chromosome is a test case, a sequence of stat
 
 \begin{itemize}
     \item \textbf{Primitive statements} represent numeric variables, e.g., \texttt{let v = 42}. The primitive variable defines the value and type of the statement.
-    \item \textbf{Constructor statements} generate new instances of a given struct, e.g., \texttt{let b = Book::new()}. The object constructed in the call defines the value and statement's type. A constructor can have parameters whose values are assigned out of the set ~$\{v(s_k)~|~0 \leq k < i\}$. However, constructors are not part of the Rust language. Using a static method called \texttt{new}, which returns an instance of the appropriate struct, is not mandatory but a convention. Thus, if a struct does not provide the new method, it still can be instantiated the C-like way, i.e., \texttt{let b = Book \string{ name: "A" \string}}.
+    \item \textbf{Struct initializations} generate new instances of a given struct, e.g., \texttt{let b = Book { name: "The Hobbit" }}. The object constructed in the statement defines the value and statement's type. A struct instantiation can have parameters whose values are assigned out of the set ~$\{v(s_k)~|~0 \leq k < i\}$.
     \item \textbf{Field statements} access member variables of objects, e.g., \texttt{let b = a.x}. The member variable defines the value and the field's statement type. The source of the member variable, i.e.,~\texttt{a}, must be part of the set~$\{v(s_k)~|~0 \leq k < i\}$. Since unit tests are usually contained in the same module as the unit under test, tests can also legally access private fields.
     \item \textbf{Method statements} invoke associative methods on objects or static methods, e.g., \texttt{let b = a.len()}. The owner of the method (if non-static) and all of the parameters must be values in~${\{v(s_k)~|~0 \leq k < i\}}$. The return value determines the statement's value and type.
     \item \textbf{Function statements} invoke free-standing functions, e.g., \texttt{let a = foo()}. The parameters of the function must be values in~$\{v(s_k)~|~0 \leq k < i\}$. The return value determines the statement's value and type.
