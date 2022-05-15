@@ -665,18 +665,6 @@ impl<'tcx> MirVisitor<'tcx> {
                         };
                     }
                     Rvalue::Use(operand) => match operand {
-                        // Operand::Constant(constant) => match &constant.literal {
-                        //     ConstantKind::Ty(c) => {
-                        //         //return Some(ValueDef::Const(c.ty, c.val));
-                        //         // Don't return the direct const value, e.g., 2u8, but the
-                        //         // variable which stores the value. The value might change later
-                        //         // during the execution
-                        //         return Some(ValueDef::Var(*var));
-                        //     }
-                        //     ConstantKind::Val(const_value, ty) => {
-                        //         return Some(ValueDef::Const(*ty, ConstKind::Value(*const_value)));
-                        //     }
-                        // },
                         Operand::Constant(constant) => return Some(ValueDef::Var(*var)),
                         Operand::Move(place) | Operand::Copy(place) => {
                             //let place = self.get_place(operand).unwrap();
@@ -981,6 +969,7 @@ impl<'tcx> MirVisitor<'tcx> {
 
         (first_block, tracing_chain)
     }
+
 }
 
 impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
@@ -1155,39 +1144,7 @@ fn get_binary_op_def_id(tcx: &TyCtxt<'_>) -> DefId {
         .unwrap()
 }
 
-fn get_output_file() -> File {
-    std::fs::OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open("/Users/tim/Documents/master-thesis/testify/results/instrumentation.log")
-        .unwrap()
-}
 
-fn get_post_dominators_file() -> File {
-    std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .open("/Users/tim/Documents/master-thesis/testify/instrumentation/post-dominators.dot")
-        .unwrap()
-}
-
-fn get_cfg_file() -> File {
-    std::fs::OpenOptions::new()
-        .truncate(true)
-        .write(true)
-        .create(true)
-        .open("/Users/tim/Documents/master-thesis/testify/instrumentation/cfg.dot")
-        .unwrap()
-}
-
-fn get_cdg_file() -> File {
-    std::fs::OpenOptions::new()
-        .truncate(true)
-        .write(true)
-        .create(true)
-        .open("/Users/tim/Documents/master-thesis/testify/instrumentation/cdg.dot")
-        .unwrap()
-}
 
 fn to_binary_op(op: &BinOp) -> BinaryOp {
     match op {

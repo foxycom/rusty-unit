@@ -9,6 +9,7 @@ import de.unipassau.rustyunit.test_case.callable.Callable;
 import de.unipassau.rustyunit.test_case.callable.EnumInit;
 import de.unipassau.rustyunit.type.AbstractEnum.EnumVariant;
 import de.unipassau.rustyunit.type.Enum;
+import de.unipassau.rustyunit.type.Ref;
 import de.unipassau.rustyunit.type.Type;
 import de.unipassau.rustyunit.util.Rnd;
 import java.util.ArrayList;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class EnumStmt implements Statement {
@@ -136,26 +138,25 @@ public class EnumStmt implements Statement {
 
   @Override
   public boolean consumes(VarReference var) {
-    var typeBinding = returnValue.getBinding();
-
-    var pos = IntStream.range(0, args.size()).filter(i -> args.get(i).equals(var)).findFirst();
-    if (pos.isPresent()) {
-      return !getVariant().getParams().get(pos.getAsInt()).bindGenerics(typeBinding)
-          .isByReference();
+    if (var.type().isRef()) {
+      var referencedVar = var.definedBy().asRefStmt().arg();
+      return args.contains(referencedVar);
     } else {
-      return false;
+      return args.contains(var);
     }
   }
 
   @Override
   public boolean borrows(VarReference var) {
-    var typeBinding = returnValue.getBinding();
-
-    var pos = IntStream.range(0, args.size()).filter(i -> args.get(i).equals(var)).findFirst();
-    if (pos.isPresent()) {
-      return getVariant().getParams().get(pos.getAsInt()).bindGenerics(typeBinding).isByReference();
+    if (var.type().isRef()) {
+      return args.contains(var);
     } else {
-      return false;
+      var referencedVars = args.stream().filter(a -> a.type().isRef())
+          .map(v -> {
+            var s = v.definedBy();
+            return s.asRefStmt().arg();
+          }).toList();
+      return referencedVars.contains(var);
     }
   }
 

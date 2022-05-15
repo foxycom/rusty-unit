@@ -72,7 +72,7 @@ public class VarReference {
 
   public Statement definedBy() {
     return testCase.getStatements().stream().filter(stmt ->
-        stmt.returnValue().isPresent() && stmt.returnValue().get() == this).findFirst().get();
+        stmt.returnValue().isPresent() && stmt.returnValue().get().equals(this)).findFirst().get();
   }
 
   public boolean isConsumableAt(int pos) {

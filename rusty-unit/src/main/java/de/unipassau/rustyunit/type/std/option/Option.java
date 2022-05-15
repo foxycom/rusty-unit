@@ -43,7 +43,7 @@ public class Option extends AbstractEnum {
       IntoIterator.getInstance()
   );
   private final List<Callable> methods = List.of(
-      new Method("unwrap", Collections.emptyList(), List.of(new Param(this, false, null)), T, this)
+      new Method("unwrap", Collections.emptyList(), List.of(new Param(this, false, null)), generics().get(0), this)
   );
 
   public Option(Type of) {

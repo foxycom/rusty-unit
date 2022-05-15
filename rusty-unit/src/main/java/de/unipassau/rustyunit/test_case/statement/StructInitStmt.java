@@ -116,16 +116,32 @@ public class StructInitStmt implements Statement {
 
   @Override
   public boolean consumes(VarReference var) {
-    return Streams.zip(params().stream(), args.stream(), Pair::with)
-        .filter(pair -> pair.getValue1().equals(var))
-        .anyMatch(pair -> !pair.getValue0().isByReference());
+//    return Streams.zip(params().stream(), args.stream(), Pair::with)
+//        .filter(pair -> pair.getValue1().equals(var))
+//        .anyMatch(pair -> !pair.getValue0().isByReference());
+    if (var.type().isRef()) {
+      var referencedVar = var.definedBy().asRefStmt().arg();
+      return args.contains(referencedVar);
+    } else {
+      return args.contains(var);
+    }
   }
 
   @Override
   public boolean borrows(VarReference var) {
-    return Streams.zip(params().stream(), args.stream(), Pair::with)
-        .filter(pair -> pair.getValue1().equals(var))
-        .anyMatch(pair -> pair.getValue0().isByReference());
+//    return Streams.zip(params().stream(), args.stream(), Pair::with)
+//        .filter(pair -> pair.getValue1().equals(var))
+//        .anyMatch(pair -> pair.getValue0().isByReference());
+    if (var.type().isRef()) {
+      return args.contains(var);
+    } else {
+      var referencedVars = args.stream().filter(a -> a.type().isRef())
+          .map(v -> {
+            var s = v.definedBy();
+            return s.asRefStmt().arg();
+          }).toList();
+      return referencedVars.contains(var);
+    }
   }
 
   @Override

@@ -3,6 +3,8 @@ package de.unipassau.rustyunit.hir;
 import static java.util.stream.Collectors.toCollection;
 
 import de.unipassau.rustyunit.test_case.Param;
+import de.unipassau.rustyunit.test_case.callable.std.option.OptionCallable.OptionNoneInit;
+import de.unipassau.rustyunit.test_case.callable.std.option.OptionCallable.OptionSomeInit;
 import de.unipassau.rustyunit.type.std.hash.Hasher;
 import de.unipassau.rustyunit.test_case.var.VarReference;
 import de.unipassau.rustyunit.test_case.callable.Callable;
@@ -45,9 +47,8 @@ public class TyCtxt {
     var baseCallables = new ArrayList<Callable>();
 
     // Option
-//    baseCallables.add(new OptionNoneInit());
-//    baseCallables.add(new OptionSomeInit());
-//    baseCallables.add(new OptionUnwrap());
+    baseCallables.add(new OptionNoneInit());
+    baseCallables.add(new OptionSomeInit());
 
     // TODO: 21.03.22 result
 

@@ -996,7 +996,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
     logger.debug("({}) Selected generator: {} (Total: {})", id, generator, generators.size());
 
-
     TypeBinding typeBinding = TypeUtil.getNecessaryBindings(generator.getReturnType(), type);
     generator.getParams().stream()
         .map(Param::getType)
@@ -1005,7 +1004,9 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         .forEach(typeBinding::addGenerics);
 
     if (generator.isMethod()) {
-      var generics = generator.getParent().generics().stream().map(Type::asGeneric)
+      var generics = generator.getParent().generics().stream()
+          .filter(Type::isGeneric)
+          .map(Type::asGeneric)
           .collect(Collectors.toSet());
       generics.removeAll(typeBinding.getGenerics());
       typeBinding.addGenerics(generics);
