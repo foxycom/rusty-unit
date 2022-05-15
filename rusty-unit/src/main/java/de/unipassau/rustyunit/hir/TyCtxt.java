@@ -139,10 +139,13 @@ public class TyCtxt {
 
   public List<Pair<VarReference, Method>> methodsOf(List<VarReference> variables) {
 
+    var allmethods = variables.stream().map(v -> v.type().methods()).collect(Collectors.toSet());
+
     var methodsOfVariables = variables.stream().map(v -> v.type().methods()).flatMap(
         Collection::stream);
-    var callables = this.callables.stream().filter(Callable::isMethod);
+    var callables = this.callables.stream();
     return Stream.concat(methodsOfVariables, callables)
+        .filter(Callable::isMethod)
         .map(callable -> (Method) callable)
         .map(method -> variables.stream()
             .filter(v -> method.getParent().canBeSameAs(v.type()))

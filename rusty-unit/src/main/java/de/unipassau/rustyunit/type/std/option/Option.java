@@ -6,6 +6,7 @@ import de.unipassau.rustyunit.test_case.callable.Callable;
 import de.unipassau.rustyunit.test_case.callable.Method;
 import de.unipassau.rustyunit.type.AbstractEnum;
 import de.unipassau.rustyunit.type.Generic;
+import de.unipassau.rustyunit.type.Ref;
 import de.unipassau.rustyunit.type.Type;
 import de.unipassau.rustyunit.type.traits.Trait;
 import de.unipassau.rustyunit.type.traits.std.clone.Clone;
@@ -44,6 +45,14 @@ public class Option extends AbstractEnum {
   private final List<Callable> methods = List.of(
       new Method("unwrap", Collections.emptyList(), List.of(new Param(this, false, null)), T, this)
   );
+
+  public Option(Type of) {
+    super("std::option::Option",
+        List.of(of),
+        List.of(new TupleEnumVariant("Some", List.of(new Param(of, false, null))), NONE),
+        false,
+        IMPLEMENTED_TRAITS);
+  }
 
   public Option() {
     super(

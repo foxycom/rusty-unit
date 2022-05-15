@@ -665,24 +665,25 @@ impl<'tcx> MirVisitor<'tcx> {
                         };
                     }
                     Rvalue::Use(operand) => match operand {
-                        Operand::Constant(constant) => match &constant.literal {
-                            ConstantKind::Ty(c) => {
-                                //return Some(ValueDef::Const(c.ty, c.val));
-                                // Don't return the direct const value, e.g., 2u8, but the
-                                // variable which stores the value. The value might change later
-                                // during the execution
-                                return Some(ValueDef::Var(*var));
-                            }
-                            ConstantKind::Val(const_value, ty) => {
-                                return Some(ValueDef::Const(*ty, ConstKind::Value(*const_value)));
-                            }
-                        },
+                        // Operand::Constant(constant) => match &constant.literal {
+                        //     ConstantKind::Ty(c) => {
+                        //         //return Some(ValueDef::Const(c.ty, c.val));
+                        //         // Don't return the direct const value, e.g., 2u8, but the
+                        //         // variable which stores the value. The value might change later
+                        //         // during the execution
+                        //         return Some(ValueDef::Var(*var));
+                        //     }
+                        //     ConstantKind::Val(const_value, ty) => {
+                        //         return Some(ValueDef::Const(*ty, ConstKind::Value(*const_value)));
+                        //     }
+                        // },
+                        Operand::Constant(constant) => return Some(ValueDef::Var(*var)),
                         Operand::Move(place) | Operand::Copy(place) => {
                             //let place = self.get_place(operand).unwrap();
                             //return Some(ValueDef::Var(place.clone()));
                             return Some(self.get_place_definition(place));
                         }
-                    },
+                    }
                     Rvalue::Discriminant(place) => {
                         return Some(ValueDef::Discriminant(*place));
                     }
@@ -874,6 +875,7 @@ impl<'tcx> MirVisitor<'tcx> {
         terminator: &mut Terminator<'tcx>,
         source_block: BasicBlock,
     ) {
+        info!("MIR: Instrument switch int");
         let mut instrumentation = match &mut terminator.kind {
             TerminatorKind::SwitchInt {
                 discr,
@@ -888,6 +890,7 @@ impl<'tcx> MirVisitor<'tcx> {
                 if switch_operand_def.is_const() {
                     let (ty, val) = switch_operand_def.expect_const();
                     if ty.is_bool() {
+                        info!("MIR: Switch int exiting");
                         // No need to instrument it since this will always be the same branch
                         return;
                     }

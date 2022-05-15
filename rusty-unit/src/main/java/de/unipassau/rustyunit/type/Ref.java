@@ -1,6 +1,7 @@
 package de.unipassau.rustyunit.type;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import de.unipassau.rustyunit.test_case.callable.Callable;
 import de.unipassau.rustyunit.type.traits.Trait;
 import java.util.List;
 import java.util.Objects;
@@ -160,5 +161,10 @@ public class Ref implements Type {
     } else {
       return String.format("&%s", innerType);
     }
+  }
+
+  @Override
+  public List<Callable> methods() {
+    return innerType.methods();
   }
 }

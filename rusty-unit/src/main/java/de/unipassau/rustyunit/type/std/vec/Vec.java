@@ -7,7 +7,9 @@ import de.unipassau.rustyunit.test_case.callable.Method;
 import de.unipassau.rustyunit.test_case.callable.StaticMethod;
 import de.unipassau.rustyunit.type.Generic;
 import de.unipassau.rustyunit.type.AbstractStruct;
+import de.unipassau.rustyunit.type.Ref;
 import de.unipassau.rustyunit.type.Type;
+import de.unipassau.rustyunit.type.std.option.Option;
 import de.unipassau.rustyunit.type.traits.Trait;
 import de.unipassau.rustyunit.type.traits.std.cmp.Eq;
 import de.unipassau.rustyunit.type.traits.std.cmp.Ord;
@@ -34,7 +36,8 @@ class Vec extends AbstractStruct {
 
   private final List<Callable> methods = List.of(
       new Method("push", Collections.emptyList(),
-          List.of(new Param(this, true, null), new Param(T, false, null)), null, this),
+          List.of(new Param(new Ref(this, true), true, null), new Param(T, false, null)), null, this),
+      new Method("pop", Collections.emptyList(), List.of(new Param(new Ref(this, true), true, null)), new Option(T), this),
       new StaticMethod("new", Collections.emptyList(), this, this, null)
   );
 
