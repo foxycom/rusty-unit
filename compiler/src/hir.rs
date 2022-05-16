@@ -321,6 +321,55 @@ fn analyze_struct(
     }
 }
 
+fn analyze_impl_items(im: &Impl, associated_types: &mut HashMap<String, T>, self_ty: &T,  impl_generics: &Vec<T>, tcx: &TyCtxt<'_>) {
+    let items = im.items;
+    for item in items {
+        let impl_item = tcx.hir().impl_item(item.id);
+        match &impl_item.kind {
+            ImplItemKind::TyAlias(ty) => {
+                let t = ty_to_t(ty, Some(&self_ty), None, &impl_generics, tcx);
+                if let Some(t) = t {
+                    let associated_type_name = tcx.hir().name(tcx.hir().local_def_id_to_hir_id(ty.hir_id.owner)).to_string();
+                    associated_types.insert(associated_type_name, t);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let trait_def = im.of_trait.as_ref().unwrap().trait_def_id().unwrap();
+}
+
+// Get associated types defined in the super traits
+fn analyze_super_traits(trait_: DefId, self_ty: &T, associated_types: &mut HashMap<String, T>, impl_generics: &Vec<T>, tcx: &TyCtxt<'_>) {
+    for t in tcx.super_predicates_of(trait_).predicates {
+        let pred = t.0.to_opt_poly_trait_pred();
+        if let Some(pred) = pred {
+            info!("Super trait: {:?}", pred.def_id());
+            let super_trait: DefId = pred.def_id();
+            let impls = tcx.hir().trait_impls(super_trait);
+            for i in impls {
+                let item = tcx.hir().expect_item(*i);
+                info!("Item: {:?}", item);
+                match &item.kind {
+                    ItemKind::Impl(im) => {
+                        let self_ty_opt = ty_to_t(im.self_ty, None, None, &impl_generics, tcx);
+                        if self_ty_opt.is_none() {
+                            return;
+                        }
+                        let ty = self_ty_opt.unwrap();
+                        if &ty == self_ty {
+                            analyze_impl_items(im, associated_types, self_ty, impl_generics, tcx);
+                        }
+
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
 fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tcx: &TyCtxt<'_>) {
     let parent_def_id_opt = impl_to_def_id(im, tcx);
     if let Some(parent_def_id) = parent_def_id_opt {
@@ -348,18 +397,10 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
 
     let items = im.items;
     let mut associated_types = HashMap::new();
-    for item in items {
-        let impl_item = tcx.hir().impl_item(item.id);
-        match &impl_item.kind {
-            ImplItemKind::TyAlias(ty) => {
-                let t = ty_to_t(ty, Some(&self_ty), None, &impl_generics, tcx);
-                if let Some(t) = t {
-                    let associated_type_name = tcx.hir().name(tcx.hir().local_def_id_to_hir_id(ty.hir_id.owner)).to_string();
-                    associated_types.insert(associated_type_name, t);
-                }
-            }
-            _ => {}
-        }
+    analyze_impl_items(im, &mut associated_types, &self_ty, &impl_generics, tcx);
+
+    if let Some(trait_) = im.of_trait.as_ref() {
+        analyze_super_traits(trait_.trait_def_id().unwrap(), &self_ty, &mut associated_types, &impl_generics, tcx);
     }
 
     info!("Created mapping: {:?}", associated_types);

@@ -87,8 +87,15 @@ public class TupleStmt implements Statement {
 //        .filter(pair -> pair.getValue1().equals(var))
 //        .anyMatch(pair -> !pair.getValue0().isByReference());
     if (var.type().isRef()) {
-      var referencedVar = var.definedBy().asRefStmt().arg();
-      return args.contains(referencedVar);
+      var stmt = var.definedBy();
+      if (stmt.isRefStmt()) {
+        var referencedVar = var.definedBy().asRefStmt().arg();
+        return args.contains(referencedVar);
+      } else if (stmt.isTupleStmt() || stmt.isArrayStmt()) {
+        throw new RuntimeException("Not implemented");
+      } else {
+        return false;
+      }
     } else {
       return args.contains(var);
     }

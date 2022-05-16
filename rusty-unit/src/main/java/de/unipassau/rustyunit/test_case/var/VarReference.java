@@ -6,6 +6,7 @@ import de.unipassau.rustyunit.test_case.TestCase;
 import de.unipassau.rustyunit.test_case.statement.Statement;
 import de.unipassau.rustyunit.type.Type;
 import de.unipassau.rustyunit.type.TypeBinding;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -128,6 +129,10 @@ public class VarReference {
 
   public boolean isBorrowableAt(int pos) {
     var consumedPos = consumedAt();
+    var borrowedPos = borrowedAt().stream().mapToInt(v -> v).min();
+    if (consumedPos.isPresent() || borrowedPos.isPresent()) {
+      return false;
+    }
     return consumedPos.map(integer -> pos < integer).orElseGet(() -> position() < pos);
   }
 

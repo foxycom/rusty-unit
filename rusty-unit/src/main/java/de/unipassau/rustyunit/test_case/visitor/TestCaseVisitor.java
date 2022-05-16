@@ -45,8 +45,13 @@ public class TestCaseVisitor implements Visitor {
       return varNames.get(returnValue);
     }
 
-    var referredVarName = getVariableName(referredValue);
-    var returnVarName = String.format("%s_ref", referredVarName);
+    int refCounter = 0;
+    String returnVarName = null;
+    do {
+      var referredVarName = getVariableName(referredValue);
+      returnVarName = String.format("%s_ref_%d", referredVarName, refCounter);
+      refCounter++;
+    } while(varNames.containsValue(returnVarName));
     varNames.put(returnValue, returnVarName);
     return returnVarName;
   }
@@ -57,9 +62,6 @@ public class TestCaseVisitor implements Visitor {
 
   @Override
   public String visitTestCase(TestCase testCase) {
-    if (testCase.getId() == 508) {
-      System.out.println();
-    }
     var sb = new StringBuilder("#[no_coverage]\n");
     sb.append("#[test]\n");
     sb.append("#[should_panic]\n");

@@ -717,12 +717,12 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   }
 
   private Optional<VarReference> generateReference(Ref ref, Set<Type> typesToGenerate) {
-    RefItem refItem;
-    if (ref.isMutable()) {
-      refItem = RefItem.MUTABLE;
-    } else {
-      refItem = RefItem.IMMUTABLE;
-    }
+    RefItem refItem = RefItem.MUTABLE;
+//    if (ref.isMutable()) {
+//      refItem = RefItem.MUTABLE;
+//    } else {
+//      refItem = RefItem.IMMUTABLE;
+//    }
 
     var generics = TypeUtil.getDeepGenerics(ref);
     var typeBinding = new TypeBinding((LinkedHashSet<Generic>) generics);
