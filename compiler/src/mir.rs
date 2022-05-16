@@ -17,6 +17,7 @@ use rustc_middle::ty::{Const, ConstKind, ConstS, List, Region, RegionKind, Scala
 use rustc_span::Span;
 use rustc_target::abi::{Align, VariantIdx};
 use std::borrow::Borrow;
+use std::collections::HashMap;
 use std::fs::File;
 use std::ops::Add;
 use std::path::Path;
@@ -536,7 +537,8 @@ impl<'tcx> MirVisitor<'tcx> {
         &mut self,
         target_block: u64,
         value_def: &ValueDef<'tcx>,
-        switch_value: Option<Const>,
+        switch_value: Option<Const<'tcx>>,
+        branch_value: Option<Const<'tcx>>,
         is_hit: bool,
     ) -> (Vec<Statement<'tcx>>, Vec<Operand<'tcx>>) {
         match value_def {
@@ -566,6 +568,7 @@ impl<'tcx> MirVisitor<'tcx> {
                     target_block,
                     inner_value_def,
                     switch_value,
+                    branch_value,
                     !is_hit,
                 ),
                 UnaryOp::Neg => todo!("Neg unary op"),
@@ -599,12 +602,22 @@ impl<'tcx> MirVisitor<'tcx> {
                 // constant value, i.e., switch_value, so what we need to construct is
                 // a trace to a binary EQ operation
 
+                let switch_value_operand = if let Some(v) = branch_value {
+                    self.mk_const_operand(v.ty(), v.val())
+                } else {
+                    self.mk_const_int_operand(0)
+                };
+
                 let stmts = vec![];
                 let trace_call_args = vec![
                     // Global id
                     self.mk_const_str_operand(&self.global_id),
                     // Block id
                     self.mk_const_int_operand(target_block as u64),
+                    // Switch value
+                    switch_value_operand,
+                    // Var value
+                    self.mk_move_operand(place.local),
                     self.mk_const_bool_operand(is_hit),
                 ];
                 (stmts, trace_call_args)
@@ -898,6 +911,10 @@ impl<'tcx> MirVisitor<'tcx> {
                     .collect::<Vec<_>>();
                 all_targets.push((None, *targets.all_targets().last().unwrap()));
 
+                let values_const = all_targets.iter()
+                    .map(|(value, target)| (target, value.unwrap_or_else(|| 0)))
+                    .map(|(target, value)| (target.as_u32() as u64, self.switch_value_to_const(*switch_ty, value)))
+                    .collect::<HashMap<_, _>>();
                 // Switch value is like false (0), or some numeric value, e.g., when comparing x == 2
                 for (idx, (switch_value, target_block)) in all_targets.iter().enumerate() {
                     let switch_value_const =
@@ -907,6 +924,7 @@ impl<'tcx> MirVisitor<'tcx> {
                             &switch_operand_def,
                             &branch_ids,
                             switch_value_const,
+                            &values_const,
                             *target_block,
                         );
                     instrumentation.push((first_tracing_block, tracing_chain));
@@ -928,10 +946,12 @@ impl<'tcx> MirVisitor<'tcx> {
         &mut self,
         switch_operand_def: &ValueDef<'tcx>,
         branch_to_trace_ids: &Vec<u64>,
-        switch_value: Option<Const>,
+        switch_value: Option<Const<'tcx>>,
+        values: &HashMap<u64, Const<'tcx>>,
         target_block: BasicBlock,
     ) -> (BasicBlock, Vec<BasicBlockData<'tcx>>) {
         let mut tracing_chain = Vec::with_capacity(branch_to_trace_ids.len());
+        info!("MIR: switch operand is: {:?}", switch_operand_def);
         let trace_fn = find_trace_fn_for(&self.tcx, &switch_operand_def);
         let first_block = BasicBlock::from_usize(self.basic_blocks_num);
 
@@ -940,6 +960,7 @@ impl<'tcx> MirVisitor<'tcx> {
             let is_branch_hit = branch_to_trace_id == target_block.as_u32() as u64;
             self.basic_blocks_num += 1;
 
+            let branch_value = values.get(&branch_to_trace_id).map(|v| v.clone());
             let next_block = if branches.peek().is_some() {
                 BasicBlock::from_usize(self.basic_blocks_num)
             } else {
@@ -959,6 +980,7 @@ impl<'tcx> MirVisitor<'tcx> {
                     branch_to_trace_id,
                     switch_operand_def,
                     switch_value,
+                    branch_value,
                     is_branch_hit,
                 );
                 let terminator = self.mk_call_terminator(args, next_block, trace_fn);
@@ -1094,8 +1116,8 @@ fn find_trace_entry_fn(tcx: &TyCtxt<'_>) -> DefId {
     find_monitor_fn_by_name(tcx, "trace_entry")
 }
 
-fn find_trace_enum_fn(tcx: &TyCtxt<'_>) -> DefId {
-    find_monitor_fn_by_name(tcx, "trace_branch_enum")
+fn find_trace_0_or_1_fn(tcx: &TyCtxt<'_>) -> DefId {
+    find_monitor_fn_by_name(tcx, "trace_0_or_1")
 }
 
 fn find_trace_const(tcx: &TyCtxt<'_>) -> DefId {
@@ -1109,16 +1131,20 @@ fn find_trace_block(tcx: &TyCtxt<'_>) -> DefId {
 fn find_trace_fn_for(tcx: &TyCtxt<'_>, value_def: &ValueDef<'_>) -> DefId {
     match value_def {
         ValueDef::BinaryOp(_, _, _) => find_trace_bool_fn(tcx),
-        ValueDef::Discriminant(_) => find_trace_enum_fn(tcx),
+        ValueDef::Discriminant(_) => find_trace_0_or_1_fn(tcx),
         ValueDef::UnaryOp(_, inner_value_def) => find_trace_fn_for(tcx, inner_value_def.as_ref()),
-        ValueDef::Field(_, _) => find_trace_enum_fn(tcx),
-        ValueDef::Call => find_trace_enum_fn(tcx),
-        ValueDef::Var(_) => find_trace_enum_fn(tcx),
+        ValueDef::Field(_, _) => find_trace_0_or_1_fn(tcx),
+        ValueDef::Call => find_trace_0_or_1_fn(tcx),
+        ValueDef::Var(_) => find_trace_switch_value_with_var(tcx),
         ValueDef::Const(_, _) => find_trace_const(tcx),
         _ => {
             todo!("Value def is {:?}", value_def)
         }
     }
+}
+
+fn find_trace_switch_value_with_var(tcx: &TyCtxt<'_>) -> DefId {
+    find_monitor_fn_by_name(tcx, "trace_switch_value_with_var")
 }
 
 fn find_trace_branch_hit_fn(tcx: &TyCtxt<'_>) -> DefId {
