@@ -12,6 +12,7 @@ import de.unipassau.rustyunit.type.AbstractStruct;
 import de.unipassau.rustyunit.type.AbstractEnum;
 import de.unipassau.rustyunit.type.Generic;
 import de.unipassau.rustyunit.type.Ref;
+import de.unipassau.rustyunit.type.Slice;
 import de.unipassau.rustyunit.type.TraitObj;
 import de.unipassau.rustyunit.type.Tuple;
 import de.unipassau.rustyunit.type.Type;
@@ -57,8 +58,14 @@ public class TypeDeserializer extends StdDeserializer<Type> {
       case "Tuple" -> mapper.readValue(node.toString(), Tuple.class);
       case "Array" -> mapper.readValue(node.toString(), Array.class);
       case "TraitObj" -> mapper.readValue(node.toString(), TraitObj.class);
+      case "Slice" -> parseSlice(node);
       default -> throw new RuntimeException("Not implemented: "+ typeName);
     };
+  }
+
+  private Type parseSlice(JsonNode node) throws JsonProcessingException {
+    var mapper = new ObjectMapper();
+    return new Slice(mapper.readValue(node.toString(), Type.class));
   }
 
   private Type parseEnum(JsonNode node) throws JsonProcessingException {

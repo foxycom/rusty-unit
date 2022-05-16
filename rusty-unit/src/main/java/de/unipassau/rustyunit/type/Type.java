@@ -65,6 +65,10 @@ public interface Type {
     return false;
   }
 
+  default boolean isSlice() {
+    return false;
+  }
+
   default Struct asStruct() {
     throw new RuntimeException("Not with me");
   }
@@ -75,6 +79,10 @@ public interface Type {
 
   default Array asArray() {
     throw new RuntimeException("Not with me");
+  }
+
+  default Slice asSlice() {
+    throw new RuntimeException("Not implemented");
   }
 
   default Enum asEnum() {

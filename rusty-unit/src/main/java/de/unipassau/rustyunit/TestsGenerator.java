@@ -31,6 +31,7 @@ import de.unipassau.rustyunit.test_case.operators.DefaultMutation;
 import de.unipassau.rustyunit.test_case.operators.RankSelection;
 import de.unipassau.rustyunit.test_case.operators.SinglePointFixedCrossover;
 import de.unipassau.rustyunit.test_case.seed.SeedOptions;
+import de.unipassau.rustyunit.util.TypeUtil;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;

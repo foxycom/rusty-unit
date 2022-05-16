@@ -10,28 +10,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class DefaultArchive<C extends AbstractTestCaseChromosome<C>> implements Archive<C> {
 
-  private final Set<C> archive;
   private final Set<MinimizingFitnessFunction<C>> objectives;
-
-  private final Map<MinimizingFitnessFunction<C>, Boolean> coveredObjectives;
+  private final Map<MinimizingFitnessFunction<C>, C> coveredObjectives;
 
   public DefaultArchive(Set<MinimizingFitnessFunction<C>> objectives) {
-    this.archive = new HashSet<>();
     this.objectives = objectives;
     this.coveredObjectives = new HashMap<>();
   }
 
   @Override
   public void update(List<C> population) {
-    int nCovered = 0;
     for (var u : objectives) {
-      boolean covered = false;
       C bestTestCase;
       var bestLength = Integer.MAX_VALUE;
-      if ((bestTestCase = getCaseThatCovers(u)) != null) {
+      if ((bestTestCase = coveredObjectives.get(u)) != null) {
         bestLength = bestTestCase.size();
       }
 
@@ -39,48 +35,38 @@ public class DefaultArchive<C extends AbstractTestCaseChromosome<C>> implements 
         Objects.requireNonNull(testCase);
         var score = u.getFitness(testCase);
         var length = testCase.size();
-        if (score == 0 && length <= bestLength && !testCase.metadata().fails()) {
-          if (!covered) {
-            coveredObjectives.put(u, true);
-            nCovered++;
-            covered = true;
-          }
-          bestTestCase = testCase;
+        if (score == 0 && length <= bestLength) {
+          coveredObjectives.put(u, testCase);
           bestLength = length;
         }
       }
-
-      if (bestTestCase != null) {
-        archive.add(bestTestCase);
-      }
     }
 
-    long coverage = coveredObjectives.values().stream().filter(v -> v).count();
+    long coverage = coveredObjectives.keySet().size();
     double percent = ((double) coverage / objectives.size()) * 100;
     System.out.printf("\t>> Covered %d targets out of %d (%.2f%%)%n", coverage, objectives.size(), percent);
-    for (var objective : objectives) {
-      System.out.printf("%s is %s%n", objective, coveredObjectives.containsKey(objective));
-    }
-    System.out.printf("\t>> Archive contains %d tests%n", archive.size());
+    System.out.printf("\t>> Archive contains %d tests%n", new HashSet<>(coveredObjectives.values()).size());
   }
 
   @Override
   public C getCaseThatCovers(FitnessFunction<C> objective) {
-    var result = archive.stream().filter(t -> objective.getFitness(t) == 0.0).findFirst();
-    return result.orElse(null);
+//    var result = archive.stream().filter(t -> objective.getFitness(t) == 0.0).findFirst();
+//    return result.orElse(null);
+    throw new RuntimeException("Not implemented");
   }
 
   @Override
   public void replaceBy(C origin, C by) {
-    if (origin != null) {
-      archive.remove(origin);
-    }
-    archive.add(by);
+//    if (origin != null) {
+//      archive.remove(origin);
+//    }
+//    archive.add(by);
 
+    throw new RuntimeException("Not implemented");
   }
 
   @Override
   public List<C> get() {
-    return new ArrayList<>(archive);
+    return new ArrayList<>(new HashSet<>(coveredObjectives.values()));
   }
 }

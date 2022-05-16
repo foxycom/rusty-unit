@@ -14,6 +14,7 @@ import de.unipassau.rustyunit.test_case.callable.std.StringInit;
 import de.unipassau.rustyunit.type.Type;
 import de.unipassau.rustyunit.type.rand.rngs.mock.StepRng;
 import de.unipassau.rustyunit.type.traits.Trait;
+import de.unipassau.rustyunit.util.TypeUtil;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -41,6 +42,9 @@ public class TyCtxt {
   public TyCtxt(List<Callable> callables) throws IOException {
     this.callables.addAll(callables);
     analysis();
+
+    // Wow that's increadibly ugly
+    TypeUtil.tyCtxt = this;
   }
 
   private static List<Callable> loadBaseCallables() {
@@ -91,6 +95,8 @@ public class TyCtxt {
       types.add(type);
     } else if (type.isArray()) {
       addType(type.asArray().type());
+    } else if (type.isSlice()) {
+      addType(type.asSlice().type());
     } else {
       throw new RuntimeException("Not implemented");
     }

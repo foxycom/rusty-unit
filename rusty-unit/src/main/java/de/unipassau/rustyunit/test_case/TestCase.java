@@ -1,6 +1,7 @@
 package de.unipassau.rustyunit.test_case;
 
 import static de.unipassau.rustyunit.Constants.P_LOCAL_VARIABLES;
+import static de.unipassau.rustyunit.util.TypeUtil.getTypeFor;
 import static java.util.stream.Collectors.toCollection;
 
 import com.google.common.base.Preconditions;
@@ -28,6 +29,7 @@ import de.unipassau.rustyunit.test_case.statement.Statement;
 import de.unipassau.rustyunit.type.Array;
 import de.unipassau.rustyunit.type.Generic;
 import de.unipassau.rustyunit.type.Ref;
+import de.unipassau.rustyunit.type.Slice;
 import de.unipassau.rustyunit.type.Tuple;
 import de.unipassau.rustyunit.type.Type;
 import de.unipassau.rustyunit.type.TypeBinding;
@@ -430,10 +432,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         .collect(toCollection(ArrayList::new));
   }
 
-  public List<Quartet<VarReference, Callable, Integer, Integer>> availableCallables() {
-    throw new RuntimeException("Not implemented");
-  }
-
   public Optional<VarReference> insertRandomStmt() {
     var filePathBinding = getFilePathBinding();
     Callable callable;
@@ -492,19 +490,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     logger.info("({}) Inserting a method on existing variable {}", id, owner);
     var args = new ArrayList<VarReference>(method.getParams().size());
 
-    LinkedHashSet<Generic> generics = method.getParams().stream()
-        .map(Param::getType)
-        .map(TypeUtil::getDeepGenerics)
-        .collect(LinkedHashSet::new, LinkedHashSet::addAll, LinkedHashSet::addAll);
-
-    generics.addAll(
-        method.getParent().generics().stream().filter(Type::isGeneric).map(Type::asGeneric)
-            .collect(Collectors.toSet())
-    );
-
-    if (method.returnsValue()) {
-      generics.addAll(TypeUtil.getDeepGenerics(method.getReturnType()));
-    }
+    LinkedHashSet<Generic> generics = TypeUtil.generics(method);
     TypeBinding ownerTypeBinding = owner.getBinding();
 
     var genericsTypeBinding = new TypeBinding(generics);
@@ -603,7 +589,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       generics.addAll(TypeUtil.getDeepGenerics(callable.getReturnType()));
     }
 
-    logger.debug("({}) It's generics are: {}", id, generics);
+    logger.debug("({}) Its generics are: {}", id, generics);
 
     typeBinding.addGenerics(generics);
 
@@ -709,8 +695,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       logger.debug("({}) Found " + generators.size() + " generators", id);
       return generateArgFromGenerators(type, generators, typesToGenerate);
     } else if (type.isRef()) {
-      //var generators = tyCtxt.generatorsOf(type, getFilePathBinding().orElse(null));
-      //logger.debug("({}) Found " + generators.size() + " generators", id);
       var reference = type.asRef();
       return generateReference(reference, typesToGenerate);
 //      return generateArgFromGenerators(type, generators, typesToGenerate);
@@ -719,6 +703,10 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     } else if (type.isTuple()) {
       var tuple = type.asTuple();
       return generateTuple(tuple, typesToGenerate);
+    } else if (type.isSlice()) {
+      //var array = generateArray(type.asSlice().type(), typesToGenerate);
+      //return array.map(a -> referenceVariable(a, true));
+      return Optional.empty();
     } else {
       throw new RuntimeException("Not implemented: " + type);
     }
@@ -726,13 +714,8 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
   private Optional<VarReference> generateReference(Ref ref, Set<Type> typesToGenerate) {
     RefItem refItem = RefItem.MUTABLE;
-    var generics = TypeUtil.getDeepGenerics(ref);
-    var typeBinding = new TypeBinding((LinkedHashSet<Generic>) generics);
-    // Set for all generics some appropriate random type that complies with all constraints
-    // and type bounds
-    generics.stream().map(g -> Pair.with(g, getTypeFor(g)))
-        .filter(p -> p.getValue1().isPresent())
-        .forEach(p -> typeBinding.bindGeneric(p.getValue0(), p.getValue1().get()));
+
+    var typeBinding = TypeUtil.typeBinding(ref);
     if (typeBinding.hasUnboundedGeneric()) {
       logger.warn("({}) Could not bind all generics: {}", id,
           typeBinding.getUnboundGenerics());
@@ -762,13 +745,8 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   private Optional<VarReference> generateTuple(Tuple tuple, Set<Type> typesToGenerate) {
     var params = tuple.getTypes().stream().map(t -> new Param(t, false, null)).toList();
     var tupleInit = new TupleInit(params);
-    Set<Generic> generics = TypeUtil.getDeepGenerics(tuple);
-    var typeBinding = new TypeBinding((LinkedHashSet<Generic>) generics);
-    // Set for all generics some appropriate random type that complies with all constraints
-    // and type bounds
-    generics.stream().map(g -> Pair.with(g, getTypeFor(g)))
-        .filter(p -> p.getValue1().isPresent())
-        .forEach(p -> typeBinding.bindGeneric(p.getValue0(), p.getValue1().get()));
+
+    var typeBinding = TypeUtil.typeBinding(tuple);
     if (typeBinding.hasUnboundedGeneric()) {
       logger.warn("({}) Could not bind all generics: {}", id,
           typeBinding.getUnboundGenerics());
@@ -795,6 +773,10 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     }
   }
 
+  private Optional<VarReference> generateSlice(Slice slice, Set<Type> typesToGenerate) {
+    throw new RuntimeException("Not implemented");
+  }
+
   private Optional<VarReference> generateArray(Array array, Set<Type> typesToGenerate) {
     // TODO: 27.02.22 1) [T; N] where T: Default (and N <= 32)
     // TODO: 27.02.22  [T; N] where T: Copy
@@ -806,14 +788,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     } else {
       var arrayInit = new ArrayInit(array);
 
-      Set<Generic> generics = TypeUtil.getDeepGenerics(array);
-      var typeBinding = new TypeBinding((LinkedHashSet<Generic>) generics);
-
-      // Set for all generics some appropriate random type that complies with all constraints
-      // and type bounds
-      generics.stream().map(g -> Pair.with(g, getTypeFor(g)))
-          .filter(p -> p.getValue1().isPresent())
-          .forEach(p -> typeBinding.bindGeneric(p.getValue0(), p.getValue1().get()));
+      var typeBinding = TypeUtil.typeBinding(array);
       if (typeBinding.hasUnboundedGeneric()) {
         logger.warn("({}) Could not bind all generics: {}", id,
             typeBinding.getUnboundGenerics());
@@ -857,64 +832,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     }
   }
 
-  /**
-   * Recursively generate an actual type, e.g. if we generate std::vec::Vec&lt;T&gt;, then also
-   * generate an actual type for T.
-   *
-   * @param generic Generic type to substitute.
-   * @return Fully substituted real type.
-   */
-  private Optional<Type> getTypeFor(Generic generic) {
-    var primitive = getPrimitiveTypeFor(generic);
-    if (primitive.isPresent()) {
-      return primitive.map(p -> p);
-    } else {
-      return getComplexTypeFor(generic);
-    }
-  }
-
-  private Optional<Prim> getPrimitiveTypeFor(Generic generic) {
-    var bounds = generic.getBounds();
-
-    if (bounds.isEmpty()) {
-      return Optional.of(ISize.INSTANCE);
-    }
-
-    List<Prim> possiblePrimitives = null;
-    for (Trait bound : bounds) {
-      var implementors = Prim.implementorsOf(bound);
-      if (possiblePrimitives == null) {
-        possiblePrimitives = implementors;
-      } else {
-        possiblePrimitives.retainAll(implementors);
-      }
-    }
-
-    if (possiblePrimitives != null && !possiblePrimitives.isEmpty()) {
-      return Optional.of(Rnd.choice(possiblePrimitives));
-    } else {
-      return Optional.empty();
-    }
-  }
-
-  /**
-   * Generate a complex type for a generics recursively.
-   *
-   * @param generic Generic to substitute.
-   * @return An actual type that deeply substitutes a generic param.
-   */
-  private Optional<Type> getComplexTypeFor(Generic generic) {
-    var bounds = generic.getBounds();
-
-    var possibleTypes = tyCtxt.typesImplementing(bounds);
-    if (possibleTypes.isEmpty()) {
-      return Optional.empty();
-    }
-
-    var type = Rnd.choice(possibleTypes);
-    return Optional.of(type);
-  }
-
   private VarReference generatePrimitive(Prim prim, String globalId) {
     logger.debug("({}) Starting to generate a primitive", id);
     if (globalId != null && seedOptions.useConstantPool()
@@ -945,29 +862,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     var stmt = new PrimitiveStmt(this, var, val);
     statements.add(0, stmt);
     return var;
-  }
-
-  /**
-   * Unwraps till we get the required type.
-   *
-   * @param var The variable to unwrap
-   * @param requiredType The inner type we look for.
-   * @return Unwrapped variable
-   */
-  private Optional<VarReference> unwrapVariable(VarReference var, int at, Type requiredType) {
-    var method = var.type().unwrapMethod(at);
-    Optional<VarReference> unwrappedVar;
-    if (var.type().isTuple()) {
-      unwrappedVar = insertAccessOnExistingTupleVariable(var, at, method.asTupleAccess());
-    } else {
-      unwrappedVar = insertMethodOnExistingVariable(var, method.asMethod());
-    }
-
-    if (unwrappedVar.isPresent() && !unwrappedVar.get().type().equals(requiredType)) {
-      return unwrapVariable(unwrappedVar.get(), at, requiredType);
-    }
-
-    return unwrappedVar;
   }
 
   private Optional<VarReference> generateArgFromGenerators(Type type, List<Callable> generators,
@@ -1002,36 +896,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
     logger.debug("({}) Selected generator: {} (Total: {})", id, generator, generators.size());
 
-    TypeBinding typeBinding = TypeUtil.getNecessaryBindings(generator.getReturnType(), type);
-    generator.getParams().stream()
-        .map(Param::getType)
-        .map(TypeUtil::getDeepGenerics)
-        .peek(deepGenerics -> deepGenerics.removeAll(typeBinding.getGenerics()))
-        .forEach(typeBinding::addGenerics);
-
-    if (generator.isMethod()) {
-      var generics = generator.getParent().generics().stream()
-          .filter(Type::isGeneric)
-          .map(Type::asGeneric)
-          .collect(Collectors.toSet());
-      generics.removeAll(typeBinding.getGenerics());
-      typeBinding.addGenerics(generics);
-    }
-
-    if (generator.returnsValue()) {
-      var generics = TypeUtil.getDeepGenerics(generator.getReturnType());
-      generics.removeAll(typeBinding.getGenerics());
-      typeBinding.addGenerics(generics);
-    }
-
-    // Before bounding randomly other generics, look for generators that already can
-    // satisfy our partially bounded type
-
-    typeBinding.getUnboundGenerics()
-        .stream()
-        .map(g -> Pair.with(g, getTypeFor(g)))
-        .filter(p -> p.getValue1().isPresent())
-        .forEach(p -> typeBinding.bindGeneric(p.getValue0(), p.getValue1().get()));
+    var typeBinding = TypeUtil.typeBinding(type, generator);
 
     if (typeBinding.hasUnboundedGeneric()) {
       logger.warn("Could not bind all generics: {}", typeBinding.getUnboundGenerics());
@@ -1039,7 +904,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       generators.remove(generator);
       return generateArgFromGenerators(type, generators, typesToGenerate);
       // instead of giving up, try another generator
-      // return Optional.empty();
     }
 
     var globalId = generator.globalId();
@@ -1054,12 +918,9 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
         .map(Optional::get)
         .collect(toCollection(ArrayList::new));
     if (args.size() != generator.getParams().size()) {
-
       generators.remove(generator);
       return generateArgFromGenerators(type, generators, typesToGenerate);
-
       // instead of giving up, try another generator
-      //return Optional.empty();
     }
 
     VarReference returnValue = null;

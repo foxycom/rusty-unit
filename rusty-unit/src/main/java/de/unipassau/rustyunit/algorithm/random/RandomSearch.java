@@ -7,6 +7,7 @@ import de.unipassau.rustyunit.metaheuristics.chromosome.ChromosomeGenerator;
 import de.unipassau.rustyunit.source.ChromosomeContainer;
 import java.util.List;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 public class RandomSearch<C extends AbstractTestCaseChromosome<C>> implements GeneticAlgorithm<C> {
 
@@ -26,7 +27,7 @@ public class RandomSearch<C extends AbstractTestCaseChromosome<C>> implements Ge
 
     @Override
     public List<C> findSolution() {
-        var population = IntStream.of(samples).mapToObj(i -> chromosomeGenerator.get()).toList();
+        var population = Stream.generate(chromosomeGenerator).limit(samples).toList();
         container.addAll(population);
         container.execute();
         archive.update(population);
