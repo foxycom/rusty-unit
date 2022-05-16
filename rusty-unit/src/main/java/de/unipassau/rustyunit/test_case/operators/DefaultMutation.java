@@ -14,9 +14,9 @@ public class DefaultMutation implements Mutation<TestCase> {
 
   @Override
   public TestCase apply(TestCase testCase) {
-    logger.info("Starting mutation on testcase:\n{}\n{}", testCase,
-        testCase.getTypeBindingsString());
     var copy = testCase.copy();
+    logger.info("Starting mutation on testcase from {}:\n{}\n{}",  testCase.getId(), copy,
+        testCase.getTypeBindingsString());
 
     if (Rnd.get().nextDouble() <= Constants.P_TEST_DELETE) {
       // delete some statemsnts

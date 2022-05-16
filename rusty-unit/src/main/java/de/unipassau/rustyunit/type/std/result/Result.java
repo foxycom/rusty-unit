@@ -41,8 +41,10 @@ public class Result extends AbstractEnum {
 
   private final List<Callable> methods  = List.of(
       new Method("unwrap", Collections.emptyList(), List.of(new Param(this, false, null)), generics().get(0), this),
-      new EnumInit(this, OK, true),
-      new EnumInit(this, ERR, true)
+      new EnumInit(this, new TupleEnumVariant("Ok",
+          List.of(new Param(generics().get(0), false, null))), true),
+      new EnumInit(this, new TupleEnumVariant("Err",
+          List.of(new Param(generics().get(1), false, null))), true)
   );
   public static final EnumVariant OK = new TupleEnumVariant("Ok",
       List.of(new Param(T, false, null)));

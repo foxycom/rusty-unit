@@ -115,10 +115,10 @@ public abstract class CallableStmt implements Statement {
       return args.contains(var);
     } else {
       var referencedVars = args.stream().filter(a -> a.type().isRef())
-          .map(v -> {
-            var s = v.definedBy();
-            return s.asRefStmt().arg();
-          }).toList();
+          .map(VarReference::definedBy)
+          .filter(Statement::isRefStmt)
+          .map(s -> s.asRefStmt().arg())
+          .toList();
       return referencedVars.contains(var);
     }
   }

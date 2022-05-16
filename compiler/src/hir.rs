@@ -336,8 +336,6 @@ fn analyze_impl_items(im: &Impl, associated_types: &mut HashMap<String, T>, self
             _ => {}
         }
     }
-
-    let trait_def = im.of_trait.as_ref().unwrap().trait_def_id().unwrap();
 }
 
 // Get associated types defined in the super traits

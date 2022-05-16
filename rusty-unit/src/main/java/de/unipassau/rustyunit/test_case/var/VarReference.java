@@ -85,8 +85,9 @@ public class VarReference {
     if (borrowedAt.isEmpty()) {
       return pos > position();
     } else {
-      var lastBorrowedPos = borrowedAt.get(borrowedAt.size() - 1);
-      return lastBorrowedPos < pos;
+//      var lastBorrowedPos = borrowedAt.get(borrowedAt.size() - 1);
+//      return lastBorrowedPos < pos;
+      return false;
     }
   }
 
@@ -128,11 +129,11 @@ public class VarReference {
   }
 
   public boolean isBorrowableAt(int pos) {
-    var consumedPos = consumedAt();
-    var borrowedPos = borrowedAt().stream().mapToInt(v -> v).min();
-    if (consumedPos.isPresent() || borrowedPos.isPresent()) {
+    var borrowedPos = borrowedAt().stream().mapToInt(v -> v).findAny();
+    if (borrowedPos.isPresent()) {
       return false;
     }
+    var consumedPos = consumedAt();
     return consumedPos.map(integer -> pos < integer).orElseGet(() -> position() < pos);
   }
 

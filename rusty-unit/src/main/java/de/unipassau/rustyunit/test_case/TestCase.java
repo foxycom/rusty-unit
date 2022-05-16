@@ -374,7 +374,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   }
 
   public List<VarReference> borrowableVariablesOfType(Type type, int untilPos) {
-    return IntStream.range(0, untilPos)
+    return IntStream.rangeClosed(0, untilPos)
         .mapToObj(statements::get)
         .map(Statement::returnValue)
         .filter(Optional::isPresent)
@@ -384,7 +384,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   }
 
   public List<VarReference> consumableVariablesOfType(Type type, int untilPos) {
-    return IntStream.range(0, untilPos)
+    return IntStream.rangeClosed(0, untilPos)
         .mapToObj(statements::get)
         .map(Statement::returnValue)
         .filter(Optional::isPresent)
