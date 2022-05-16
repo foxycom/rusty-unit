@@ -108,7 +108,11 @@ public class TestCaseVisitor implements Visitor {
 
       if (callableStmt.parent().isPresent()) {
         var parentType = callableStmt.parent().get();
-        sb.append(parentType.fullName()).append("::");
+        if (callableStmt.ofTrait().isPresent()) {
+          sb.append(callableStmt.ofTrait().get()).append("::");
+        } else {
+          sb.append(parentType.fullName()).append("::");
+        }
       }
 
       var argsString = callableStmt.args()

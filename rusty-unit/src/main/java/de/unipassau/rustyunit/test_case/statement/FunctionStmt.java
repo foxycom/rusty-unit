@@ -23,6 +23,11 @@ public class FunctionStmt extends CallableStmt {
   }
 
   @Override
+  public Optional<String> ofTrait() {
+    return Optional.empty();
+  }
+
+  @Override
   public Optional<Type> returnType() {
     return Optional.ofNullable(function.getReturnType());
   }

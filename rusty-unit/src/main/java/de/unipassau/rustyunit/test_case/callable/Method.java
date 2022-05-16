@@ -172,7 +172,10 @@ public class Method implements Callable {
     } else {
       returnStr = "()";
     }
-    return String.format("%s::%s(%s) -> %s", parent.fullName(), name, paramsStr, returnStr);
+
+    var parentName = ofTrait != null ? ofTrait : parent.fullName();
+
+    return String.format("%s::%s(%s) -> %s", parentName, name, paramsStr, returnStr);
   }
 
   @Override

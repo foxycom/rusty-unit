@@ -203,7 +203,8 @@ public class TyCtxt {
       Class<S> subClass) {
     logger.debug("Looking for generators of " + type);
 
-    var typeMethodsStream = type.methods().stream();
+    var typeMethodsStream = type.methods().stream()
+        .filter(m -> m.getReturnType() != null && !m.getReturnType().isGeneric());
     var callablesStream = callables.stream().filter(subClass::isInstance);
 
     var stream = Stream.concat(typeMethodsStream, callablesStream)

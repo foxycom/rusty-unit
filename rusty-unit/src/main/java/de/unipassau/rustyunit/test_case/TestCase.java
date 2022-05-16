@@ -506,17 +506,25 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
       generics.addAll(TypeUtil.getDeepGenerics(method.getReturnType()));
     }
     TypeBinding ownerTypeBinding = owner.getBinding();
-//    TypeBinding ownerTypeBinding = TypeBinding.fromTypes(method.getSelfParam().getType(),
-//        owner.type());
 
     var genericsTypeBinding = new TypeBinding(generics);
     var typeBinding = ownerTypeBinding.leftOuterMerge(genericsTypeBinding);
+
+    var selfParam = method.getSelfParam();
+    if (selfParam.isByReference()) {
+      var innerSelfType = selfParam.getType().asRef().getInnerType();
+      if (innerSelfType.isGeneric()) {
+        typeBinding.bindGeneric(innerSelfType.asGeneric(), owner.type());
+      }
+    } else if (selfParam.isGeneric()) {
+      // Blanket trait implementations have a completely generic self type
+      typeBinding.bindGeneric(selfParam.getType().asGeneric(), owner.type());
+    }
 
     typeBinding.getUnboundGenerics().stream().map(g -> Pair.with(g, getTypeFor(g)))
         .filter(p -> p.getValue1().isPresent())
         .forEach(p -> typeBinding.bindGeneric(p.getValue0(), p.getValue1().get()));
 
-    var selfParam = method.getSelfParam();
     VarReference selfArgument = owner;
     if (selfParam.isByReference() && !owner.type().isRef()) {
       var type = selfParam.getType().bindGenerics(typeBinding);
@@ -632,7 +640,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
     var stmt = callable.toStmt(this, args, returnValue);
     logger.info("({}) Pushing " + stmt + " at the end of the test", id);
-    statements.add(stmt);
+    appendStmt(stmt);
     return Optional.ofNullable(returnValue);
   }
 
@@ -718,12 +726,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
   private Optional<VarReference> generateReference(Ref ref, Set<Type> typesToGenerate) {
     RefItem refItem = RefItem.MUTABLE;
-//    if (ref.isMutable()) {
-//      refItem = RefItem.MUTABLE;
-//    } else {
-//      refItem = RefItem.IMMUTABLE;
-//    }
-
     var generics = TypeUtil.getDeepGenerics(ref);
     var typeBinding = new TypeBinding((LinkedHashSet<Generic>) generics);
     // Set for all generics some appropriate random type that complies with all constraints
@@ -738,6 +740,10 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     }
 
     var refType = ref.getInnerType().bindGenerics(typeBinding);
+    if (typesToGenerate.contains(refType)) {
+      return Optional.empty();
+    }
+
     var extendedTypesToGenerate = new HashSet<>(typesToGenerate);
     extendedTypesToGenerate.add(ref);
     var arg = generateArg(refType, extendedTypesToGenerate, null);

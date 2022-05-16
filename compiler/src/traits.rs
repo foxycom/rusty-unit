@@ -20,7 +20,6 @@ pub fn analyze_trait(trait_id: DefId, tcx: &TyCtxt<'_>) {
         analyze_trait(super_trait, tcx);
       }
     }
-    error!("Trait {:?} -> {:?} ({:?}, {:?})", trait_id, i, t, t.kind());
 
   }
   // for crate_num in crates {

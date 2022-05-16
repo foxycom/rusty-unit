@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use log::{debug, info, warn};
 use petgraph::visit::Walker;
-use rustc_ast::CrateSugar;
+use rustc_ast::{CrateSugar, IsAuto};
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_hir::{AssocItemKind, BodyId, EnumDef, FnSig, Generics, HirId, Impl, ImplItemKind, Item, ItemKind, Variant, VariantData, Visibility, VisibilityKind};
 use rustc_middle::ty::{Ty, TyCtxt};
@@ -49,6 +49,7 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
                         item.def_id,
                         body_id,
                         &item.vis,
+                        generics,
                         file_path.unwrap(),
                         &mut callables,
                         &tcx,
@@ -89,6 +90,13 @@ pub fn hir_analysis(tcx: TyCtxt<'_>) {
                     );
                 }
             }
+            ItemKind::Trait(is_auto, _, _, _, _) => {
+                let auto = match is_auto {
+                    IsAuto::Yes => true,
+                    IsAuto::No => false,
+                };
+                info!("HIR: trait is auto: {}", auto);
+            }
             //ItemKind::Mod(e)
             _ => {}
         }
@@ -123,6 +131,7 @@ fn analyze_fn(
     local_def_id: LocalDefId,
     body_id: &BodyId,
     vis: &Visibility<'_>,
+    generics: &Generics,
     file_path: PathBuf,
     callables: &mut Vec<Callable>,
     tcx: &TyCtxt<'_>,
@@ -135,19 +144,18 @@ fn analyze_fn(
     let fn_name = node_to_name(&tcx.hir().get(hir_id), tcx).unwrap();
     //let fn_name = tcx.hir().get(hir_id).ident().unwrap().to_string();
 
-    let generics = vec![];
-
+    let fn_generics = generics_to_ts(generics, None, tcx);
     // self_hir_id must never be used, so just pass a dummy value
     let mut params = Vec::with_capacity(fn_decl.inputs.len());
     for input in fn_decl.inputs.iter() {
-        if let Some(param) = ty_to_param(None, input, None, None,&generics, tcx) {
+        if let Some(param) = ty_to_param(None, input, None, None, &fn_generics, tcx) {
             params.push(param);
         } else {
             return;
         }
     }
 
-    let return_type = fn_ret_ty_to_t(&fn_decl.output, None, None, &generics, tcx);
+    let return_type = fn_ret_ty_to_t(&fn_decl.output, None, None, &fn_generics, tcx);
 
     if let Some(return_type) = &return_type {
         debug!("HIR: Output type is {:?}", return_type);
@@ -348,7 +356,6 @@ fn analyze_super_traits(trait_: DefId, self_ty: &T, associated_types: &mut HashM
             let impls = tcx.hir().trait_impls(super_trait);
             for i in impls {
                 let item = tcx.hir().expect_item(*i);
-                info!("Item: {:?}", item);
                 match &item.kind {
                     ItemKind::Impl(im) => {
                         let self_ty_opt = ty_to_t(im.self_ty, None, None, &impl_generics, tcx);
@@ -372,13 +379,16 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
     let parent_def_id_opt = impl_to_def_id(im, tcx);
     if let Some(parent_def_id) = parent_def_id_opt {
         if parent_def_id.as_local().is_none() {
+            info!("-----------");
             return;
         }
     } else {
+        info!("<--------");
         return;
     }
 
     let trait_name = im.of_trait.as_ref().map(|trait_ref| path_to_name(&trait_ref.path, tcx));
+
 
     let parent_def_id = parent_def_id_opt.unwrap();
 
@@ -389,6 +399,7 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
     let impl_generics = generics_to_ts(&im.generics, None, tcx);
     let self_ty_opt = ty_to_t(im.self_ty, None, None, &impl_generics, tcx);
     if self_ty_opt.is_none() {
+        info!("---->>>");
         return;
     }
     let self_ty = self_ty_opt.unwrap();
@@ -478,6 +489,7 @@ fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<Callable>, tc
                         global_id,
                     );
                     let method_callable = Callable::Method(method_item);
+                    info!("HIR: Added method {}", fn_name);
                     callables.push(method_callable);
                 }
             }

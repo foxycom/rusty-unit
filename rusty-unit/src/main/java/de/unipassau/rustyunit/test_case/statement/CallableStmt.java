@@ -86,6 +86,9 @@ public abstract class CallableStmt implements Statement {
     return this;
   }
 
+  public Optional<String> ofTrait() {
+    throw new RuntimeException("Not implemented");
+  }
   @Override
   public boolean consumes(VarReference var) {
 //    return Streams.zip(params().stream(), args.stream(), Pair::with)
