@@ -478,7 +478,7 @@ impl<'tcx> MirVisitor<'tcx> {
                     left_local,
                 )
             }
-            ValueDef::Var(place) => {
+            ValueDef::Var(place, _) => {
                 let left_ty = self.get_local_ty(place.local);
                 let left_local = self.store_local_decl(left_ty);
                 (
@@ -499,7 +499,7 @@ impl<'tcx> MirVisitor<'tcx> {
                     right_local,
                 )
             }
-            ValueDef::Var(place) => {
+            ValueDef::Var(place, _) => {
                 let right_ty = self.get_local_ty(place.local);
                 let right_local = self.store_local_decl(right_ty);
                 (
@@ -597,7 +597,7 @@ impl<'tcx> MirVisitor<'tcx> {
 
                 (stmts, trace_call_args)
             }
-            ValueDef::Var(place) => {
+            ValueDef::Var(place, _) => {
                 // ValueDef::Var means that we are directly comparing a variable to some
                 // constant value, i.e., switch_value, so what we need to construct is
                 // a trace to a binary EQ operation
@@ -626,6 +626,10 @@ impl<'tcx> MirVisitor<'tcx> {
         }
     }
 
+    fn operand_ty<'a>(&self, operand: &'a Operand<'tcx>) -> Ty<'a> {
+        operand.ty(self.body.local_decls(), self.tcx.clone())
+    }
+
     fn get_place<'a>(&self, operand: &'a Operand<'tcx>) -> Option<&'a Place<'tcx>> {
         match operand {
             Operand::Copy(place) => Some(place),
@@ -649,10 +653,12 @@ impl<'tcx> MirVisitor<'tcx> {
                 match value {
                     Rvalue::BinaryOp(op, operands) => {
                         let (left, right) = operands.as_ref();
+                        let left_ty = self.operand_ty(left);
+                        let right_ty = self.operand_ty(right);
                         return Some(ValueDef::BinaryOp(
                             to_binary_op(op),
-                            Box::new(ValueDef::from_operand(left)),
-                            Box::new(ValueDef::from_operand(right)),
+                            Box::new(ValueDef::from_operand(left, left_ty)),
+                            Box::new(ValueDef::from_operand(right, right_ty)),
                         ));
                     }
                     Rvalue::UnaryOp(op, operand) => {
@@ -673,12 +679,12 @@ impl<'tcx> MirVisitor<'tcx> {
                             }
                             Operand::Constant(_) => Some(ValueDef::UnaryOp(
                                 to_unary_op(op),
-                                Box::new(ValueDef::from_operand(operand)),
+                                Box::new(ValueDef::from_operand(operand, self.operand_ty(operand))),
                             )),
                         };
                     }
                     Rvalue::Use(operand) => match operand {
-                        Operand::Constant(constant) => return Some(ValueDef::Var(*var)),
+                        Operand::Constant(constant) => return Some(ValueDef::Var(*var, self.operand_ty(operand))),
                         Operand::Move(place) | Operand::Copy(place) => {
                             //let place = self.get_place(operand).unwrap();
                             //return Some(ValueDef::Var(place.clone()));
@@ -772,7 +778,8 @@ impl<'tcx> MirVisitor<'tcx> {
 
         for arg in self.body.args_iter() {
             if place.local == arg {
-                return ValueDef::Var(<Place as From<rustc_middle::mir::Local>>::from(arg));
+                let ty = self.body.local_decls().get(arg).unwrap().ty;
+                return ValueDef::Var(<Place as From<rustc_middle::mir::Local>>::from(arg), ty);
             }
         }
 
@@ -1135,7 +1142,7 @@ fn find_trace_fn_for(tcx: &TyCtxt<'_>, value_def: &ValueDef<'_>) -> DefId {
         ValueDef::UnaryOp(_, inner_value_def) => find_trace_fn_for(tcx, inner_value_def.as_ref()),
         ValueDef::Field(_, _) => find_trace_0_or_1_fn(tcx),
         ValueDef::Call => find_trace_0_or_1_fn(tcx),
-        ValueDef::Var(_) => find_trace_switch_value_with_var(tcx),
+        ValueDef::Var(_, _) => find_trace_switch_value_with_var(tcx),
         ValueDef::Const(_, _) => find_trace_const(tcx),
         _ => {
             todo!("Value def is {:?}", value_def)
@@ -1223,7 +1230,7 @@ enum ValueDef<'a> {
     BinaryOp(BinaryOp, Box<ValueDef<'a>>, Box<ValueDef<'a>>),
     UnaryOp(UnaryOp, Box<ValueDef<'a>>),
     Const(Ty<'a>, ConstKind<'a>),
-    Var(Place<'a>),
+    Var(Place<'a>, Ty<'a>),
     Discriminant(Place<'a>),
     Call,
     // Deref?
@@ -1247,7 +1254,7 @@ impl<'a> ValueDef<'a> {
     }
 
     fn is_var(&self) -> bool {
-        if let ValueDef::Var(_) = self {
+        if let ValueDef::Var(_, _) = self {
             return true;
         }
 
@@ -1255,22 +1262,16 @@ impl<'a> ValueDef<'a> {
     }
 
     fn expect_var(&self) -> Place<'a> {
-        if let ValueDef::Var(place) = self {
+        if let ValueDef::Var(place, _) = self {
             return *place;
         }
 
         panic!("Is not var");
     }
 
-    fn from_operand(operand: &Operand<'a>) -> ValueDef<'a> {
-        <Self as From<&Operand>>::from(operand)
-    }
-}
-
-impl<'a> From<&Operand<'a>> for ValueDef<'a> {
-    fn from(operand: &Operand<'a>) -> Self {
+    fn from_operand(operand: &Operand<'a>, ty: Ty<'a>) -> ValueDef<'a> {
         match operand {
-            Operand::Copy(place) | Operand::Move(place) => ValueDef::Var(*place),
+            Operand::Copy(place) | Operand::Move(place) => ValueDef::Var(*place, ty),
             Operand::Constant(constant) => match &constant.literal {
                 ConstantKind::Ty(constant_ty) => {
                     let ty = constant_ty.ty();
@@ -1282,5 +1283,4 @@ impl<'a> From<&Operand<'a>> for ValueDef<'a> {
         }
     }
 }
-
 
