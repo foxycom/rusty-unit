@@ -6,23 +6,20 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::mir::interpret::{Allocation, ConstValue, Scalar};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, TyContext};
 use rustc_middle::mir::StatementKind::{Assign, SetDiscriminant};
-use rustc_middle::mir::{
-    BasicBlock, BasicBlockData, BinOp, Body, CastKind, Constant, ConstantKind, HasLocalDecls,
-    Local, LocalDecl, LocalDecls, Location, Operand, Place, PlaceElem, Rvalue, SourceInfo,
-    SourceScope, Statement, StatementKind, SwitchTargets, Terminator, TerminatorKind, UnOp,
-};
+use rustc_middle::mir::{AssertMessage, BasicBlock, BasicBlockData, BinOp, Body, CastKind, Constant, ConstantKind, Coverage, HasLocalDecls, Local, LocalDecl, LocalDecls, Location, Operand, Place, PlaceElem, RetagKind, Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, SwitchTargets, Terminator, TerminatorKind, UnOp, UserTypeProjection, VarDebugInfo};
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, MaybeResult};
-use rustc_middle::ty::{Const, ConstKind, ConstS, List, Region, RegionKind, ScalarInt, Ty, TyCtxt, TypeAndMut, UintTy};
+use rustc_middle::ty::{CanonicalUserTypeAnnotation, Const, ConstKind, ConstS, List, Region, RegionKind, ScalarInt, Ty, TyCtxt, TypeAndMut, UintTy, Variance};
 use rustc_span::Span;
 use rustc_target::abi::{Align, VariantIdx};
 use std::borrow::Borrow;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::ops::Add;
 use std::path::Path;
 use petgraph::dot::Dot;
 use rustc_ast::Mutability;
+use rustc_middle::ty::subst::SubstsRef;
 use crate::mir::ValueDef::Var;
 #[cfg(feature = "analysis")]
 use crate::data_structures::{cdg, log_graph_to, visualize_graph};
@@ -536,12 +533,12 @@ impl<'tcx> MirVisitor<'tcx> {
     fn mk_trace_statements_switch_int(
         &mut self,
         target_block: u64,
-        value_def: &ValueDef<'tcx>,
+        switch_operand_def: &ValueDef<'tcx>,
         switch_value: Option<Const<'tcx>>,
         branch_value: Option<Const<'tcx>>,
         is_hit: bool,
     ) -> (Vec<Statement<'tcx>>, Vec<Operand<'tcx>>) {
-        match value_def {
+        match switch_operand_def {
             ValueDef::BinaryOp(op, left, right) => {
                 let is_true_branch = switch_value.is_none();
                 self.mk_trace_statements_binary_op(target_block, op, left, right, is_true_branch)
@@ -622,7 +619,7 @@ impl<'tcx> MirVisitor<'tcx> {
                 ];
                 (stmts, trace_call_args)
             }
-            _ => todo!("Value def is {:?}", value_def),
+            _ => todo!("Value def is {:?}", switch_operand_def),
         }
     }
 
@@ -748,6 +745,31 @@ impl<'tcx> MirVisitor<'tcx> {
         }
 
         value_def
+    }
+
+    fn find_definitions(&self, block: BasicBlock, place: &Place<'tcx>) -> HashSet<(BasicBlock, ValueDef<'tcx>)> {
+        let mut defs = HashSet::new();
+        self.find_definitions_backwards(block, place, &mut defs);
+        defs
+    }
+
+    fn find_definitions_backwards(&self, block: BasicBlock, place: &Place<'tcx>, output: &mut HashSet<(BasicBlock, ValueDef<'tcx>)>) {
+        let predecessors = self.body.predecessors();
+        let p = predecessors.get(block);
+        if let Some(p) = p {
+            for bb in p {
+                let predecessor = self.body.basic_blocks().get(*bb).unwrap();
+                let value_def = predecessor
+                    .statements
+                    .iter()
+                    .find_map(|stmt| self.get_place_definition_from_stmt(place, stmt));
+                if let Some(value_def) = value_def {
+                    output.insert((*bb, value_def));
+                } else {
+                    self.find_definitions_backwards(*bb, place, output);
+                }
+            }
+        }
     }
 
     fn get_place_definition(&self, place: &Place<'tcx>) -> ValueDef<'tcx> {
@@ -895,14 +917,17 @@ impl<'tcx> MirVisitor<'tcx> {
                     .expect("Place has been defined in a previous block");
                 let switch_operand_def = self.get_place_definition(switch_operand_place);
 
-                if switch_operand_def.is_const() {
-                    let (ty, val) = switch_operand_def.expect_const();
-                    if ty.is_bool() {
-                        info!("MIR: Switch int exiting");
-                        // No need to instrument it since this will always be the same branch
-                        return;
-                    }
-                }
+                let defs = self.find_definitions(source_block, switch_operand_place);
+                info!("{:?}", defs);
+
+                // if switch_operand_def.is_const() {
+                //     let (ty, val) = switch_operand_def.expect_const();
+                //     if ty.is_bool() {
+                //         info!("MIR: Switch int exiting");
+                //         // No need to instrument it since this will always be the same branch
+                //         return;
+                //     }
+                // }
 
                 let branch_ids = targets
                     .all_targets()
@@ -998,7 +1023,6 @@ impl<'tcx> MirVisitor<'tcx> {
 
         (first_block, tracing_chain)
     }
-
 }
 
 impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
@@ -1237,7 +1261,7 @@ enum SwitchPath {
     Otherwise,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 enum ValueDef<'a> {
     BinaryOp(BinaryOp, Box<ValueDef<'a>>, Box<ValueDef<'a>>),
     UnaryOp(UnaryOp, Box<ValueDef<'a>>),

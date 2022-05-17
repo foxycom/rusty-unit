@@ -8,7 +8,7 @@ thread_local! {
     static MONITOR: Rc<RefCell<Monitor>> = Rc::new(RefCell::new(Monitor::new()));
 }
 
-#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
 pub enum BinaryOp {
     /// The `+` operator
     Add,
@@ -70,7 +70,7 @@ impl Into<u32> for BinaryOp {
     }
 }
 
-#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
 pub enum UnaryOp {
     Not,
     /// The `-` operator for negation
