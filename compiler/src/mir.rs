@@ -626,7 +626,7 @@ impl<'tcx> MirVisitor<'tcx> {
         }
     }
 
-    fn operand_ty<'a>(&self, operand: &'a Operand<'tcx>) -> Ty<'a> {
+    fn operand_ty(&self, operand: &Operand<'tcx>) -> Ty<'tcx> {
         operand.ty(self.body.local_decls(), self.tcx.clone())
     }
 
@@ -1142,7 +1142,15 @@ fn find_trace_fn_for(tcx: &TyCtxt<'_>, value_def: &ValueDef<'_>) -> DefId {
         ValueDef::UnaryOp(_, inner_value_def) => find_trace_fn_for(tcx, inner_value_def.as_ref()),
         ValueDef::Field(_, _) => find_trace_0_or_1_fn(tcx),
         ValueDef::Call => find_trace_0_or_1_fn(tcx),
-        ValueDef::Var(_, _) => find_trace_switch_value_with_var(tcx),
+        ValueDef::Var(_, ty) => {
+            if ty.is_bool() {
+                find_trace_switch_value_with_var_bool(tcx)
+            } else if ty.is_integral() {
+                find_trace_switch_value_with_var_int(tcx)
+            } else {
+                todo!("{:?}", ty)
+            }
+        },
         ValueDef::Const(_, _) => find_trace_const(tcx),
         _ => {
             todo!("Value def is {:?}", value_def)
@@ -1150,8 +1158,12 @@ fn find_trace_fn_for(tcx: &TyCtxt<'_>, value_def: &ValueDef<'_>) -> DefId {
     }
 }
 
-fn find_trace_switch_value_with_var(tcx: &TyCtxt<'_>) -> DefId {
-    find_monitor_fn_by_name(tcx, "trace_switch_value_with_var")
+fn find_trace_switch_value_with_var_bool(tcx: &TyCtxt<'_>) -> DefId {
+    find_monitor_fn_by_name(tcx, "trace_switch_value_with_var_bool")
+}
+
+fn find_trace_switch_value_with_var_int(tcx: &TyCtxt<'_>) -> DefId {
+    find_monitor_fn_by_name(tcx, "trace_switch_value_with_var_int")
 }
 
 fn find_trace_branch_hit_fn(tcx: &TyCtxt<'_>) -> DefId {
