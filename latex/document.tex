@@ -119,6 +119,7 @@ colframe=white,colback=codegray}
 \newcommand{\cdgs}{\acp{CDG}\xspace}
 \newcommand{\budget}{1000\xspace}
 \newcommand{\sut}{\ac{SUT}\xspace}
+\newcommand{\ga}{\ac{GA}\xspace}
 
 \begin{document}
 \automark[section]{chapter}
@@ -1373,7 +1374,7 @@ impl Calculator {
 }
 \end{lstlisting}
 
-An example test case for the program can look like in \Cref{lst:example-testcase}. Here, a rectangle of a given length and width is created and consumed by the \texttt{Calculator} to determine the area of the rectangle. Rust's type system does not allow the variable~\texttt{calculator\string_0} to be used again. If used twice, the compiler would produce an error indicating the incorrect usage of the variable. Thus, after the statement in~Line~\ref{line:variable-moved}, the attributes of the rectangle cannot be accessed, nor can the rectangle serve as an argument for further calls.
+An example test case for the program can look like in \Cref{lst:example-testcase}. Here, a rectangle of a given length and width is created and consumed by the \texttt{Calculator} to determine the area of the rectangle. Rust's type system does not allow the variable~\texttt{calculator\string_0} to be used again. If used twice, the compiler would produce an error indicating the incorrect usage of the variable. Thus, after the statement in~Line~\ref{line:variable-moved}, the attributes of the rectangle cannot be accessed, nor can the instance serve as an argument for further calls.
 
 \begin{lstlisting}[style=boxed, escapechar=§, caption={An example test case generated for the program in \Cref{lst:example-rust-program}}, label=lst:example-testcase]
 #[test]
@@ -1488,12 +1489,14 @@ void foo(int x) {
 }
 \end{lstlisting}
 
-We apply similar ideas to \tech. However, some of the problems that other programming languages have, do not affect (safe) Rust, e.g., there are no null pointers as in C or Java. Moreover, the Rust compiler already incorporates checks for common issues in the \mir that are addressed by testability transformations. That is, we do not have to transform the \mir to introduce new branches as in~\Cref{lst:evosuite-array-access-transformation}, but only trace these branches automatically inserted by the compiler. 
+With the new branches in place, artificial coverage objectives are created that a \ga can often compute meaningful distances for, which significantly improves the effectiveness of a \ga in this regard compared to random search. We apply similar ideas to \tech. However, some of the problems that other programming languages have, do not affect (safe) Rust, e.g., there are no null pointers as in C or Java, for which we can weave explicit if conditionals to check nullity. Moreover, the Rust compiler already incorporates checks for common issues in the \mir that are addressed by testability transformations. That is, we do not have to transform the \mir to introduce new branches as in~\Cref{lst:evosuite-array-access-transformation}, but only trace these branches automatically inserted by the compiler. 
 
 \section{Seeding Strategy}
 \label{sec:seeding-strategy}
 
-TODO
+According to Fraser's and Arcuri's definition~\cite{6200103}, seeding refers to techniques that make use of previous related knowledge to help solve the testing problem given. 
+
+A \ga usually starts with a random population of individuals. However, domain knowledge of the testing problem given can be exploited to construct the population, too. 
 
 %\subsection{Test Minimization}
 %Da sich diese Arbeit vor allem auf das Generieren vor Tests beschränkt, die möglichst hohe Coverage erreichen, jedoch generell keine Testorakel automatisch zur Verfügung stellt, sollen die Tests möglich kurz gehalten werden und das wesentliche tun, um einen bestimmten Branch zu erreichen. Das erhöht ihre Lesbarkeit und Verstänlichkeit. Fraser und Arcuri~\cite{Fraser2013a} schlagen als Verbesserung für ihr EvoSuite Tool folgendes Verfahren vor: Für jeden Coverage Goal wird ein Test aus der generierten Test Suite ausgewählt, der diesen Goal abdeckt. Dieser Test wird wrt to the coverage goal minimiert, so dass Statements, die nicht zur Ausführung des Goals beitragen, gelöscht werden. Wenn ein Goal bereits von einem minimierten Test abgedeckt ist, so wird kein weiterer Test für diesen Goal der finalen Test Suite hinzugefügt. Auf diese Weise werden Tests lesbarer für einen Menschen und können somit leichter manuell um Testorakel ergänzt werden.
@@ -2359,7 +2362,7 @@ We now define questions that guide our evaluation. To determine how well our sea
 %Symbolic execution often has problems constructing nice test suites with complex types, which is why this technique is rather applied to find bugs in a \sut, than generate tests with high coverage. Seach-based approach do the opposite, they are good at generating tests with high coverage, but are not as good at finding bugs as they do not make use of test oracles~\cite{Fraser2013}.
 
 \begin{enumerate}[start=1, label={\bfseries RQ\arabic*:}]
-    \item How does the \ac{GA} of \tech compare to a random search?
+    \item How does the \ga of \tech compare to a random search?
     \item What are the characteristics of generated tests? 
     %\item How many coverage goals does \tech cover?
     % Compare coverage and length of tests
@@ -2373,12 +2376,12 @@ We now define questions that guide our evaluation. To determine how well our sea
 
 \section{Case Study Subjects}
 \label{sec:case-study-subjects}
-For the evaluation, we randomly chose \benchnum open-source crates from the Cargo's crate registry. This results in a total of~\methodsnum methods.
+For the evaluation, we randomly chose \benchnum open-source crates from the Cargo's crate registry. This results in a total of~\methodsnum functions and \branches \mir-level branches.
 
 \begin{table}[]
 \begin{tabular*}{\textwidth}{l @{\extracolsep{\fill}} rrrr}
 \hline
-\textbf{Case Study} & \textbf{Version} & \textbf{LOC} & \textbf{Methods} & \textbf{Branches} \\
+\textbf{Case Study} & \textbf{Version} & \textbf{LOC} & \textbf{Functions} & \textbf{Branches} \\
 \hline
 gamie & 0.7.0 & 328 & 116 &  \\
 Pleco & 0.5.0 & 6126 & 1188 &  \\
@@ -2394,10 +2397,10 @@ PriorityQueue & 1.2.1 & 1173 & 361 &  \\
 $\sum$ &  & \loc & \methodsnum & \branches \\
 \hline
 \end{tabular*}
-\caption{\label{tab:properties-of-case-study-subjects}Number of methods, branches, and lines of code in the case study subjects}
+\caption{\label{tab:properties-of-case-study-subjects}Number of lines of code, functions, and \mir-level branches in the case study subjects}
 \end{table}
 % TODO reword
-The libraries were chosen with respect to their testability. For experiments, it is necessary that the units are testable without complex interactions with external resources (e.g., databases, networks and filesystem) and are not multi-threaded. In fact, each experiment should be run in an independent way, and there might be issues if automatically generated test cases do not properly de-allocate resources. Notice that this is a problem common to practically all automated testing techniques in the literature. We also ignored crates that used unsafe or native features such as FFIs. \Cref{tab:properties-of-case-study-subjects} summarizes the properties of these case study subjects in terms of the number of methods, branches, and lines of code. We calculated these metrics using Mozilla's \emph{rust-code-analysis} tool~\cite{Ardito2020}. By \emph{methods} is meant the total number of methods, functions, and closures. \emph{LOC} the number of logical lines, i.e. statements, in the respective crate as specified by the \emph{LLOC} metric in rust-code-analysis. The tool does not yet support the calculation of the number of branches for Rust, which is why we calculated this metric during the MIR analysis of Crates. The \emph{Branches} column shows the number of branching edges within the \mir of the respective crate. 
+The libraries were chosen with respect to their testability. For experiments, it is necessary that the units are testable without complex interactions with external resources (e.g., databases, networks and filesystem) and are not multi-threaded. In fact, each experiment should be run in an independent way, and there might be issues if automatically generated test cases do not properly de-allocate resources. Notice that this is a problem common to practically all automated testing techniques in the literature. We also ignored crates that used unsafe or native features such as FFIs. \Cref{tab:properties-of-case-study-subjects} summarizes the properties of these case study subjects in terms of the number of functions, branches, and lines of code. We calculated these metrics using Mozilla's \emph{rust-code-analysis} tool~\cite{Ardito2020}. By \emph{functions} is meant the total number of associative functions, loose functions, and closures. \emph{LOC} the number of logical lines, i.e. statements, in the respective crate as specified by the \emph{LLOC} metric in rust-code-analysis. The tool does not yet support the calculation of the number of branches for Rust, which is why we calculated this metric during the \mir analysis of the case study subjects. The \emph{Branches} column shows the number of branching edges within the \mir of the respective crate. 
 
 \section{Setup}
 \label{sec:environment-setup}
