@@ -1138,7 +1138,7 @@ Each statement that does not have the default return value~\texttt{()} defines a
 %Rust's affine type system makes the usage of already defined objects more complicated since we also need to track how a variable is used after its definition, i.e., which statements borrow or consume it. An already defined object may be used in any way by a newly inserted statement~$s'$ only if it is marked as free to use and is not used by any other statement~$s$ that comes after~$s'$. Otherwise,~$s'$ may use the object in a way that does not collide with~$s$. More precisely, the rules are defined as follows: let~$t$ be a test case and $pos(s)$ a function that returns the position of a statement~$s$ in the sequence of statements in~$t$. Let~$o$ be an object of a data type~$\tau(o)$ defined by statement~$gen$. A new statement~$s'$ is inserted, which uses~$o$. Then the following must hold:
 
 
-Fraser and Zeller~\cite{Fraser2012} describe in their work on the mutation-based generation of tests for Java classes an abstract construct that quickly illustrates the construction steps of a unit test. We adopt their concepts to Rust and implement them in \tech. Let~$parameters(M)$ be a function that returns a list of data types of the parameters of a function~$M$, including the caller in the case of a non-static associative function. Furthermore, let~$instances(t)$ be a function that returns the set of instances that have already been created in a test~$t$ and~$type(i)$ be a function that returns the datatype of an instance. A function is a generator of a datatype~$D$ if it returns a value of type~$D$ or a (partially) generic type that can be $D$ at runtime. For instance, \texttt{Option<i32>} can be derived from a function that is declared to return \texttt{Option<T>}. 
+Fraser and Zeller~\cite{Fraser2012} describe in their work on the mutation-based generation of tests for Java classes an abstract construct that quickly illustrates the construction steps of a unit test. We adopt their concepts to Rust and implement them in \tech. Let~$parameters(M)$ be a function that returns a list of data types of the parameters of a function~$M$, including the caller in the case of a non-static associative function. Furthermore, let~$instances(t)$ be a function that returns the set of instances that have already been created in a test~$t$ and~$type(i)$ be a function that returns the datatype of an instance. A function is a generator of a datatype~$D$ if it returns a value of type~$D$ or a (partially) generic type that can be $D$ at runtime. For instance, \texttt{Option<i32>} generally can be derived from a function that is declared to return \texttt{Option<T>}. 
 
 Furthermore, any struct/enum initializer of type~$D$ is also a generator of~$D$. Let~$generators(M,D)$ be a function that returns the set of generators for the datatype~$D$ from the set of functions and initializers~$M$.
 
@@ -1148,7 +1148,7 @@ Furthermore, any struct/enum initializer of type~$D$ is also a generator of~$D$.
 \Input
   \Desc{$M$}{Set of all functions and initializers}
   \Desc{$l$}{Desired max length of a test case}
-  \Desc{$p_{local}$}{Probability to use local instances as parameters}
+  \Desc{$p_{local}$}{Probability to use local available instances as parameters}
 \EndInput
 \Output
   \Desc{$t$}{Randomly generated test}
@@ -1166,8 +1166,8 @@ Furthermore, any struct/enum initializer of type~$D$ is also a generator of~$D$.
   \State{$M' \gets \{m~|~m \in M \wedge d \in parameters(m)\}$}
   \State{$s \gets$ randomly select function from $M'$}
   \For{$p \in parameters(s)$}
-    \State{$V \gets \{v~|~v \in instances(t) \wedge v is usable by s\}$}
-    \If{$\neg(p \in datatypes(t))$}
+    \State{$V \gets \{v~|~v \in instances(t) \wedge v$ is usable by $s\}$}
+    \If{$random >= p_{local} \vee V$ is empty}
       \State{$t \gets GenObject(p, \{\}, M, t)$}
     \EndIf
   \EndFor
