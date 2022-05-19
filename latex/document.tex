@@ -1120,36 +1120,35 @@ To evolve test suites that optimize the coverage criterion, we use the DynaMOSA 
 \label{sec:problem-representation}
 According to McMinn~\cite{McMinn_2004}, an encoding of the solution should be modeled in a way that similar solutions are also neighbors in the represented search space. This makes it easy to continue the search from one to a similar solution by applying simple representation modifications. A chromosome in a population typically represents an entire test suite in single-objective \acp{GA} for test generation~\cite{Fraser_2011a, Campos2017}. However, \acp{MOA} define an individual as a single test case~\cite{Panichella2018}. Chromosome representation directly impacts how the search operators work. For instance, recombining two test suites is trivial by recombining only the sequences of their test cases at specific cut points since individual test cases are independent of each other~\cite{Fraser_2013}. Recombining test cases is more complicated because it means recombining their sequences of statements, which are, however, very much interdependent. For example, a statement could instantiate an object by invoking an appropriate constructor, followed by a later method invocation on that object. 
 
-In the following, we assume that a chromosome is a test case, a sequence of statements or program calls that execute parts of the \sut to reach and cover a particular objective. We also also need to take into account thta Rust programs are not just procedures but have a certain class-like structure. Test cases only need to call functions with certain input data to achieve high coverage within a procedure-like environment. However, instances of structs can have states that direct accesses or method invocations can change. The control flow graph of a method may depend on the internal state of an object. A certain statement call sequence may be essential to achieve high code coverage. For the generation of test cases with a genetic algorithm, we implement already known ideas for representing genetic individuals~\cite{Fraser2012,Tonella2004,Arcuri2008}. Similar to Fraser's and Arcuri's~\cite{Fraser_2011a} definition, each statement~$s_i$ in a test case is a value~$v(s_i)$, which has a type~$\tau(v(s_i)) \in \mathcal{T}$, where~$\mathcal{T}$ is the finite set of types. There can be five different types of statements:
+\tech models a chromosome as a test case, a sequence of statements or program calls that execute parts of the \sut to reach and cover a particular objective. We also also need to take into account that Rust programs are not just procedures but have a certain class-like structure. Test cases only need to call functions with certain input data to achieve high coverage within a procedure-like environment. However, instances of structs can have states that direct accesses or method invocations can change. The control flow of a method may depend on the internal state of an object. A certain statement call sequence may be essential to achieve high code coverage. For the generation of test cases with a genetic algorithm, we implement already known ideas for representing genetic individuals~\cite{Fraser2012,Tonella2004,Arcuri2008}. Similar to Fraser's and Arcuri's~\cite{Fraser_2011a} definition, each statement~$s_i$ in a test case is a value~$v(s_i)$, which has a type~$\tau(v(s_i)) \in \mathcal{T}$, where~$\mathcal{T}$ is the finite set of types. There can be five different types of statements:
 
 \begin{itemize}
     \item \textbf{Primitive statements} represent numeric variables, e.g., \texttt{let v = 42}. The primitive variable defines the value and type of the statement.
-    \item \textbf{Struct initializations} generate new instances of a given struct, e.g., \texttt{let b = Book { name: "The Hobbit" }}. The object constructed in the statement defines the value and statement's type. A struct instantiation can have parameters whose values are assigned out of the set ~$\{v(s_k)~|~0 \leq k < i\}$.
+    \item \textbf{Struct initializations} generate instances of a given struct, e.g., \texttt{let b = Book { name: "The Hobbit" }}. The object constructed in the statement defines the value and statement's type. A struct instantiation can have parameters whose values are assigned out of the set~$\{v(s_k)~|~0 \leq k < i\}$.
+    \item \textbf{Enum initializations} generate instances of a given enum, e.g., \texttt{let opt: Option<i32> = None;}. The enum instance defines the value and statement's type. An enum instantiation can have parameters whose values are assigned out of the set~$\{v(s_k)~|~0 \leq k < i\}$.
     \item \textbf{Field statements} access member variables of objects, e.g., \texttt{let b = a.x}. The member variable defines the value and the field's statement type. The source of the member variable, i.e.,~\texttt{a}, must be part of the set~$\{v(s_k)~|~0 \leq k < i\}$. Since unit tests are usually contained in the same module as the unit under test, tests can also legally access private fields.
-    \item \textbf{Method statements} invoke associative methods on objects or static methods, e.g., \texttt{let b = a.len()}. The owner of the method (if non-static) and all of the parameters must be values in~${\{v(s_k)~|~0 \leq k < i\}}$. The return value determines the statement's value and type.
-    \item \textbf{Function statements} invoke free-standing functions, e.g., \texttt{let a = foo()}. The parameters of the function must be values in~$\{v(s_k)~|~0 \leq k < i\}$. The return value determines the statement's value and type.
+    \item \textbf{Associative function statements} invoke associative functions of datatypes, e.g., \texttt{let b = a.len()}. The owner of the function (if non-static) and all of the parameters must be values in~${\{v(s_k)~|~0 \leq k < i\}}$. The return value determines the statement's value and type. In the following, we refer to associative functions, too, when we talk about functions, unless otherwise stated.
+    \item \textbf{Function statements} invoke loose functions, i.e., functions that are not associated with any datatype, for instance, \texttt{let a = foo()}. The parameters of the function must be values in~$\{v(s_k)~|~0 \leq k < i\}$. The return value determines the statement's value and type.
 \end{itemize}
 
-The collection of available structs, their constructors, methods, fields, and free-standing functions are so-called test cluster~\cite{Fraser_2011a}. The size of a test suite and individual tests is dynamic and can change (almost) arbitrarily. Since there will be no test oracles available for most of the generated tests, the size value should have an upper limit so that test oracles can be inserted later manually. Of course, it also makes sense not to let a test become completely blank.
+The collection of available structs and enums, their fields, associative functions, and loose functions are so-called test cluster~\cite{Fraser_2011a}. The size of a test suite and individual tests is dynamic and can change (almost) arbitrarily. Since \tech does not produce test oracles for the generated tests, the size value should have an upper limit so that the tests keep comprehendably for a human. Of course, it also makes sense not to let a test become completely blank.
 
 Each statement that does not have the default return value~\texttt{()} defines a new variable. However, a generated test cannot be composed arbitrarily of the above building blocks. Each test is subject to the same constraints as regular Rust programs, which the compiler checks~\cite{Tonella2004}. Constructors, methods, functions, and fields in a test are not limited to just the parts of the module under the test since complex sequences of calls might be necessary to define some arguments~\cite{Fraser2012}.
 
-Rust's affine type system makes the usage of already defined objects more complicated since we also need to track how a variable is used after its definition, i.e., which statements borrow or consume it. An already defined object may be used in any way by a newly inserted statement~$s'$ only if it is marked as free to use and is not used by any other statement~$s$ that comes after~$s'$. Otherwise,~$s'$ may use the object in a way that does not collide with~$s$. More precisely, the rules are defined as follows: let~$t$ be a test case and $pos(s)$ a function that returns the position of a statement~$s$ in the sequence of statements in~$t$. Let~$o$ be an object of a data type~$\tau(o)$ defined by statement~$gen$. A new statement~$s'$ is inserted, which uses~$o$. Then the following must hold:
-\begin{enumerate}
-    \item $gen \in t \wedge pos(gen) < pos(s')$.
-    \item If~$o$ is not used by any statement~$s \in t$,~$o$ may be consumed or borrowed by~$s'$.
-    \item If~$o$ is borrowed by a statement~$s \in t$,~$o$ may also be borrowed by~$s'$ at position~$p_{borrow}$ with ~$pos(gen) < p_{borrow}$ or consumed at position~$p_{consume}$ with~$pos(s) < p_{consume} < \left|t\right|$.
-    \item If~$o$ is consumed by a statement~$s \in t$,~$o$ may be borrowed by~$s'$ at position~$p_{borrow}$ with~$pos(gen) < p_{borrow} < pos(s)$.
-\end{enumerate}
+%Rust's affine type system makes the usage of already defined objects more complicated since we also need to track how a variable is used after its definition, i.e., which statements borrow or consume it. An already defined object may be used in any way by a newly inserted statement~$s'$ only if it is marked as free to use and is not used by any other statement~$s$ that comes after~$s'$. Otherwise,~$s'$ may use the object in a way that does not collide with~$s$. More precisely, the rules are defined as follows: let~$t$ be a test case and $pos(s)$ a function that returns the position of a statement~$s$ in the sequence of statements in~$t$. Let~$o$ be an object of a data type~$\tau(o)$ defined by statement~$gen$. A new statement~$s'$ is inserted, which uses~$o$. Then the following must hold:
 
-Fraser and Zeller~\cite{Fraser2012} describe in their work on the mutation-based generation of tests for Java classes an abstract construct that quickly illustrates the modeling and construction of a unit test. Let~$parameters(M)$ be a function that returns a list of data types of the parameters of a method or function~$M$, including the caller in the case of a non-static method. Furthermore, let~$classes(t)$ be a function that returns the set of data types whose objects have already been instantiated in a test~$t$. A function or a method is a generator of a datatype~$C$ if they have a return value of type~$C$. Furthermore, any constructor of a struct of type~$C$ is also a generator of~$C$. Let~$generators(M,C)$ be a function that returns the set of generators for the data type~$C$ from the set of methods and functions~$M$.
+
+Fraser and Zeller~\cite{Fraser2012} describe in their work on the mutation-based generation of tests for Java classes an abstract construct that quickly illustrates the construction steps of a unit test. We adopt their concepts to Rust and implement them in \tech. Let~$parameters(M)$ be a function that returns a list of data types of the parameters of a function~$M$, including the caller in the case of a non-static associative function. Furthermore, let~$instances(t)$ be a function that returns the set of instances that have already been created in a test~$t$ and~$type(i)$ be a function that returns the datatype of an instance. A function is a generator of a datatype~$D$ if it returns a value of type~$D$ or a (partially) generic type that can be $D$ at runtime. For instance, \texttt{Option<i32>} can be derived from a function that is declared to return \texttt{Option<T>}. 
+
+Furthermore, any struct/enum initializer of type~$D$ is also a generator of~$D$. Let~$generators(M,D)$ be a function that returns the set of generators for the datatype~$D$ from the set of functions and initializers~$M$.
 
 \begin{algorithm}[t]
-\caption{$GenTest(M, l)$}\label{alg:gentest}
+\caption{$GenTest(M, l, p_{local})$}\label{alg:gentest}
 \begin{algorithmic}
 \Input
-  \Desc{$M$}{Set of all method, constructors and functions}
-  \Desc{$l$}{Desired length of a test case}
+  \Desc{$M$}{Set of all functions and initializers}
+  \Desc{$l$}{Desired max length of a test case}
+  \Desc{$p_{local}$}{Probability to use local instances as parameters}
 \EndInput
 \Output
   \Desc{$t$}{Randomly generated test}
@@ -1157,18 +1156,18 @@ Fraser and Zeller~\cite{Fraser2012} describe in their work on the mutation-based
 \State{$t \gets \langle\rangle$}
 \State{$s \gets$ randomly select an element from M}
 
-
 \For{$p \in parameters(s)$}
   \State{$t \gets GenObject(p,~\{\},~M,~t)$}
 \EndFor
 \State{$t \gets t.s$}
 
 \While{$\left|t\right| < l$}
-  \State{$c \gets$ randomly select datatype in $classes(t)$}
-  \State{$M' \gets \{m~|~m \in M \wedge c \in parameters(m)\}$}
-  \State{$s \gets$ randomly select method or function from $M'$}
+  \State{$d \gets$ randomly select datatype in $datatypes(t)$}
+  \State{$M' \gets \{m~|~m \in M \wedge d \in parameters(m)\}$}
+  \State{$s \gets$ randomly select function from $M'$}
   \For{$p \in parameters(s)$}
-    \If{$\neg(p \in classes(t))$}
+    \State{$V \gets \{v~|~v \in instances(t) \wedge v is usable by s\}$}
+    \If{$\neg(p \in datatypes(t))$}
       \State{$t \gets GenObject(p, \{\}, M, t)$}
     \EndIf
   \EndFor
@@ -1179,8 +1178,11 @@ Fraser and Zeller~\cite{Fraser2012} describe in their work on the mutation-based
 \end{algorithmic}
 \end{algorithm}
 
-The initial population is randomly generated as shown in~\Cref{alg:gentest}. Before the tests are generated, all available methods, constructors, functions, and attributes of structs are statically extracted from the \hir of the \sut. For a randomly generated test, a random call is inserted from this. The possibly necessary arguments (including the caller, i.e., the method owner, if applicable) are generated, too, in a recursive manner. To this end, corresponding calls that have return values of suitable data types are inserted recursively (\Cref{alg:genobject}) if instances of such a data type are not already defined in the test case and are usable according to the rules from \Cref{sec:problem-representation}. During the search, the data types that are already attempted to be instantiated are remembered to avoid infinite recursion. According to~\Cref{alg:gentest} and~\Cref{alg:genobject}, new objects are generated only if they do not already exist in the test. However, Fraser and Zeller~\cite{Fraser2012} suggest reusing existing objects only with a certain likelihood to increase diversity in generated test cases. Their experiments showed that a probability of 90\% percent was most effective. Rust's type system makes reusing of previously defined objects more complicated because it requires analysis of the extent to which a given variable is still usable in a given test. A statement~$s$ may only use an already defined variable if marked as freely usable. More precisely, the rules are as follows: let~$t$ be a test case, and $pos(s)$ be a function that returns the position of a statement~$s$ in the sequence of statements of~$t$. Let~$o$ be an object defined by a statement~$gen$. Let~$s$ be a statement that uses~$o$. Then $t$ is a valid test case only if the following rules are satisfied:
+\tech generates random test cases following~\Cref{alg:gentest}, for instance, to create an initial population. It inserts a randomly selected function~$s$ from~$M$ into an initially empty test case. If~$s$ has parameters, \tech instantiates appropriate arguments using $GenObject$~\Cref{alg:genobject} and inserts the generated statements before~$s$ in~$t$. In the subsequent phase, the test case is populated until size~$l$ by generating random statements from~$M$ that accept at least one datatype~$d$ from~$t$ as parameter. Thus, the variables already present in~$t$ are reused to build a cohesive test case. Arguments for the remaining parameters that cannot be satisfied with values from~$t$ are generated again using~$GenObject$. 
 
+\Cref{alg:genobject} describes how $GenObject$ generates an instance of type~$d$ from set of generators~$M$ for a test case~$t$. It randomly selects a generator~$s$ for~$d$ and recursively generates arguments for parameters of~$s$ that cannot be satisfied with variables from~$t$. Finally, \tech inserts~$s$ as a statement into~$t$ with the appropriate arguments. 
+
+To this end, corresponding calls that have return values of suitable data types are inserted recursively (\Cref{alg:genobject}) if instances of such a data type are not already defined in the test case and are usable according to the rules from \Cref{sec:problem-representation}. During the search, the data types that are already attempted to be instantiated are remembered to avoid infinite recursion. According to~\Cref{alg:gentest} and~\Cref{alg:genobject}, new objects are generated only if they do not already exist in the test. However, Fraser and Zeller~\cite{Fraser2012} suggest reusing existing objects only with a certain likelihood to increase diversity in generated test cases. Their experiments showed that a probability of 90\% percent was most effective. Rust's type system makes reusing of previously defined objects more complicated because it requires analysis of the extent to which a given variable is still usable in a given test. A statement~$s$ may only use an already defined variable if marked as freely usable. More precisely, the rules are as follows: let~$t$ be a test case, and $pos(s)$ be a function that returns the position of a statement~$s$ in the sequence of statements of~$t$. Let~$o$ be an object defined by a statement~$gen$. Let~$s$ be a statement that uses~$o$. Then $t$ is a valid test case only if the following rules are satisfied:
 \begin{enumerate}
     \item $pos(gen) < pos(s)$, AND
     \item if $o$ is not used by any statement $s' \in t$,~$o$ may be freely consumed and borrowed by~$s$, AND
@@ -1188,33 +1190,27 @@ The initial population is randomly generated as shown in~\Cref{alg:gentest}. Bef
     \item if $o$ is consumed by a statement $s' \in t$, $o$ may now be borrowed only from $s'$ at position~$p_{borrow}$ with $pos(gen) < p_{borrow} < pos(s)$.
 \end{enumerate}
 
-These rules must also be strictly followed when using search operators during the search so that the generated test cases represent valid Rust code. The rules also cover edge cases, such as multiple consumption of a variable from a statement, as shown in the following non-valid test case (when \texttt{A} does not implement \texttt{Copy}, which is a marker trait for instances that can be copied implicitly):
-\begin{lstlisting}[style=boxed, caption={}]
-let a = A::new();
-let pair: Pair<A, A> = Pair::of(a, a);
-\end{lstlisting}
-
-We adopt~\Cref{alg:gentest} and~\Cref{alg:genobject} from Fraser and Zeller and use it to generate dependencies of method and function invocations. Since the prototype of \tech does not provide the ability to construct all possible types, e.g., closures or trait objects, \texttt{GenObject} may fail to generate an instance of the appropriate type. In this case, we skip the particular method or function which we tried to generate the argument for. Obviously, this might lead to worse coverage results, but a complete analysis of all possible cases is not trivial and cannot be done within the scope of this work.
+These rules must also be strictly followed when using search operators during the search so that the generated test cases represent valid Rust code. Since the prototype of \tech does not provide the ability to construct all possible types, e.g., closures or trait objects, due to technical limitations, \texttt{GenObject} may fail to generate an instance of the appropriate type. In this case, \tech skips the particular function it tried to generate the argument for. Obviously, this might lead to worse coverage results, but a complete analysis of all possible cases is not trivial and cannot be done within the scope of this work. Since the limitations are only an engineering issue, \tech can be extended to support further language features in the future.
 
 \begin{algorithm}[t]
-\caption{$GenObject(c, G, M, t)$}
+\caption{$GenObject(d, G, M, t)$}
 \label{alg:genobject}
 \begin{algorithmic}
 \Input
-  \Desc{$c$}{Datatype of desired object}
+  \Desc{$d$}{Datatype of desired object}
   \Desc{$G$}{Set of datatypes already attempting to generate}
   \Desc{$M$}{Set of all method, constructors and functions}
   \Desc{$t$}{Test case}
 \EndInput
 \Output
-  \Desc{$t$}{Test case extended with an instance of $c$}
+  \Desc{$t$}{Test case extended with an instance of $d$}
 \EndOutput
-\State{$M' \gets generators(M, c)$}
+\State{$M' \gets generators(M, d)$}
 \State{$s \gets$ randomly select an element from M'}
 
-\For{$c \in parameters(s)$}
-  \If{$\neg(c \in classes(t))$}
-    \State{$t \gets GenObject(c, G, M, t)$}
+\For{$p \in parameters(s)$}
+  \If{$\neg(p \in datatypes(t))$}
+    \State{$t \gets GenObject(p, G, M, t)$}
   \EndIf
 \EndFor
 \State{$s \gets$ set parameters of $s$ to values from $t$}
@@ -1517,7 +1513,7 @@ In the next sections we explain how \tech performs the outlined steps by hooking
 
 % Die Übesicht des ganzen Prozesses
 \begin{figure}[h!]
-\caption{High-level overview of the steps to generate tests from a crate}
+\caption{The architecture of \tech}
 \centering
 \includegraphics[width=\textwidth]{overview/overview-enhanced}
 \label{fig:rustyunit-overview}
