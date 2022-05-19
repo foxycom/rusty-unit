@@ -4,6 +4,7 @@ import lombok.Builder;
 
 @Builder
 public class SeedOptions {
+
   private final boolean useConstantPool;
   private final boolean initialRandomPopulation;
   private final boolean useAllMethods;
@@ -18,5 +19,9 @@ public class SeedOptions {
 
   public boolean useAllMethods() {
     return useAllMethods;
+  }
+
+  public boolean any() {
+    return useAllMethods || initialRandomPopulation || useConstantPool;
   }
 }

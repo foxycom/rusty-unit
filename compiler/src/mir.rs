@@ -28,8 +28,8 @@ use crate::writer::{MirObjectBuilder, MirObject, MirWriter};
 use crate::{DOT_DIR, INSTRUMENTED_MIR_LOG_NAME, LOG_DIR, RuConfig};
 use crate::data_structures::{original_cfg, truncated_cfg};
 use crate::monitor::{BinaryOp, UnaryOp};
-use crate::types::{ConstVal, PrimT, T};
-use crate::util::ty_to_name;
+use crate::types::{ConstVal, PrimT, T, ty_name};
+use crate::util::{ty_to_name, ty_to_t, tys_to_t};
 
 pub const CUSTOM_OPT_MIR: for<'tcx> fn(_: TyCtxt<'tcx>, _: DefId) -> &'tcx Body<'tcx> =
     |tcx, def| {
@@ -1111,6 +1111,26 @@ impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
                         self.constant_pool.push(ConstVal::new(string.to_string(), T::Prim(PrimT::Str)));
                     }
                     ConstValue::ByRef { .. } => todo!("{:?}", value)
+                }
+            }
+            _ => {}
+        }
+    }
+
+    #[cfg(feature = "analysis")]
+    fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
+        match &terminator.kind {
+            TerminatorKind::SwitchInt {switch_ty, targets, .. } => {
+                if switch_ty.is_integral() {
+
+                    let ty_name = ty_name(*switch_ty);
+                    let t = <T as From<String>>::from(format!("{}", ty_name));
+                    for (val, _) in targets.iter() {
+                        let value = val.to_string();
+                        self.constant_pool.push(ConstVal::new(value.clone(), t.clone()));
+                        debug!("Constant number {:?} of type {}", value, t);
+
+                    }
                 }
             }
             _ => {}

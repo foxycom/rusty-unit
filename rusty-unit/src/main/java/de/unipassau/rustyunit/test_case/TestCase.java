@@ -834,9 +834,9 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
   private VarReference generatePrimitive(Prim prim, String globalId) {
     logger.debug("({}) Starting to generate a primitive", id);
-    if (globalId != null && seedOptions.useConstantPool()
+    if (seedOptions.useConstantPool()
         && Rnd.get().nextDouble() < Constants.P_CONSTANT_POOL) {
-      var constants = MirAnalysis.constantPool(globalId)
+      var constants = MirAnalysis.constantPool()
           .stream().filter(val -> val.type().equals(prim)).collect(Collectors.toSet());
       if (!constants.isEmpty()) {
         var val = Rnd.choice(constants);

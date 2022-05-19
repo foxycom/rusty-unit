@@ -70,7 +70,7 @@ public class TestsGenerator {
     var selection = new RankSelection<>(objectives, svd, preferenceSorter);
 
     ChromosomeGenerator<TestCase> chromosomeGenerator;
-    if (seedOptions.useAllMethods()) {
+    if (seedOptions.any()) {
       chromosomeGenerator = new SeededTestCaseGenerator(hir, mir, mutation, crossover,
           seedOptions);
     } else {
@@ -125,7 +125,14 @@ public class TestsGenerator {
     var selection = new RankSelection<>(objectives, svd, preferenceSorter);
 //    ChromosomeGenerator<TestCase> chromosomeGenerator = new SeededTestCaseGenerator(hir, mir,
 //        mutation, crossover, seedOptions);
-    var chromosomeGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover);
+    //var chromosomeGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover);
+    ChromosomeGenerator<TestCase> chromosomeGenerator;
+    if (seedOptions.any()) {
+      chromosomeGenerator = new SeededTestCaseGenerator(hir, mir, mutation, crossover,
+          seedOptions);
+    } else {
+      chromosomeGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover);
+    }
     var populationGenerator = new FixedSizePopulationGenerator<>(
         chromosomeGenerator, POPULATION_SIZE);
 

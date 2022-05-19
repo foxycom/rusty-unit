@@ -563,6 +563,46 @@ impl Debug for T {
     }
 }
 
+impl From<TyKind> for T {
+    fn from(kind: TyKind) -> Self {
+        match kind {
+            TyKind::Bool => PrimT::Bool,
+            TyKind::Char => PrimT::Char,
+            TyKind::Int(int) => <T as From<IntTy>>::from(int),
+            TyKind::Uint(_) => {}
+            TyKind::Float(_) => {}
+            TyKind::Adt(_, _) => {}
+            TyKind::Foreign(_) => {}
+            TyKind::Str => {}
+            TyKind::Array(_, _) => {}
+            TyKind::Slice(_) => {}
+            TyKind::RawPtr(_) => {}
+            TyKind::Ref(_, _, _) => {}
+            TyKind::FnDef(_, _) => {}
+            TyKind::FnPtr(_) => {}
+            TyKind::Dynamic(_, _) => {}
+            TyKind::Closure(_, _) => {}
+            TyKind::Generator(_, _, _) => {}
+            TyKind::GeneratorWitness(_) => {}
+            TyKind::Never => {}
+            TyKind::Tuple(_) => {}
+            TyKind::Projection(_) => {}
+            TyKind::Opaque(_, _) => {}
+            TyKind::Param(_) => {}
+            TyKind::Bound(_, _) => {}
+            TyKind::Placeholder(_) => {}
+            TyKind::Infer(_) => {}
+            TyKind::Error(_) => {}
+        }
+    }
+}
+
+impl From<IntTy> for T {
+    fn from(_: IntTy) -> Self {
+        todo!()
+    }
+}
+
 impl From<PrimTy> for T {
     fn from(ty: PrimTy) -> Self {
         let ty = match ty {
