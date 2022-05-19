@@ -20,3 +20,8 @@ jobs:
           extra_fonts: |
             fonts/*.ttf
             fonts/*.otf
+      - name: Pull PDF
+        uses: actions/upload-artifact@v2
+        with:
+          name: PDF
+          path: document.pdf
