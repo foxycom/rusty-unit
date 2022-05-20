@@ -1141,7 +1141,7 @@ Each statement that does not have the default return value~\texttt{()} defines a
 
 Fraser and Zeller~\cite{Fraser2012} describe in their work on the mutation-based generation of tests for Java classes an abstract construct that quickly illustrates the construction steps of a unit test. We adopt their concepts to Rust and implement them in \tech. Let~$parameters(M)$ be a function that returns a list of data types of the parameters of a function~$M$, including the caller in the case of a non-static associative function. Furthermore, let~$instances(t)$ be a function that returns the set of instances that have already been created in a test~$t$ and~$type(i)$ be a function that returns the datatype of an instance. A function is a generator of a datatype~$D$ if it returns a value of type~$D$ or a (partially) generic type that can be $D$ at runtime. For instance, \texttt{Option<i32>} generally can be derived from a function that is declared to return \texttt{Option<T>}. 
 
-Furthermore, any struct/enum initializer of type~$D$ is also a generator of~$D$. Let~$generators(M,D)$ be a function that returns the set of generators for the datatype~$D$ from the set of functions and initializers~$M$.
+Furthermore, any struct/enum initializer of type~$D$ is also a generator of~$D$. Let~$generators(M,D)$ be a function that returns the set of generators for the datatype~$D$ from the set of functions and initializers~$M$. \tech generates random test cases following~\Cref{alg:gentest}, for instance, to create an initial population. It inserts a randomly selected function~$s$ from~$M$ into an initially empty test case. If~$s$ has parameters, \tech instantiates appropriate arguments using $GenObject$~\Cref{alg:genobject} and inserts the generated statements before~$s$ in~$t$. In the subsequent phase, the test case is populated until size~$l$ by generating random statements from~$M$ that accept at least one datatype~$d$ from~$t$ as parameter. Thus, the variables already present in~$t$ are reused to build a cohesive test case. Arguments for the remaining parameters that cannot be satisfied with values from~$t$ are generated again using~$GenObject$. 
 
 \begin{algorithm}[t]
 \caption{$GenTest(M, l, p_{local})$}\label{alg:gentest}
@@ -1149,7 +1149,7 @@ Furthermore, any struct/enum initializer of type~$D$ is also a generator of~$D$.
 \Input
   \Desc{$M$}{Set of all functions and initializers}
   \Desc{$l$}{Desired max length of a test case}
-  \Desc{$p_{local}$}{Probability to use local available instances as parameters}
+  \Desc{$p_{local~}$}{Probability to use local available instances as parameters}
 \EndInput
 \Output
   \Desc{$t$}{Randomly generated test}
@@ -1168,7 +1168,7 @@ Furthermore, any struct/enum initializer of type~$D$ is also a generator of~$D$.
   \State{$s \gets$ randomly select function from $M'$}
   \For{$p \in parameters(s)$}
     \State{$V \gets \{v~|~v \in instances(t) \wedge v$ is usable by $s\}$}
-    \If{$random >= p_{local} \vee V$ is empty}
+    \If{$random \geq p_{local} \vee V$ is empty}
       \State{$t \gets GenObject(p, \{\}, M, t)$}
     \EndIf
   \EndFor
@@ -1179,11 +1179,9 @@ Furthermore, any struct/enum initializer of type~$D$ is also a generator of~$D$.
 \end{algorithmic}
 \end{algorithm}
 
-\tech generates random test cases following~\Cref{alg:gentest}, for instance, to create an initial population. It inserts a randomly selected function~$s$ from~$M$ into an initially empty test case. If~$s$ has parameters, \tech instantiates appropriate arguments using $GenObject$~\Cref{alg:genobject} and inserts the generated statements before~$s$ in~$t$. In the subsequent phase, the test case is populated until size~$l$ by generating random statements from~$M$ that accept at least one datatype~$d$ from~$t$ as parameter. Thus, the variables already present in~$t$ are reused to build a cohesive test case. Arguments for the remaining parameters that cannot be satisfied with values from~$t$ are generated again using~$GenObject$. 
+\Cref{alg:genobject} describes how $GenObject$ generates an instance of type~$d$ from set of generators~$M$ for a test case~$t$. It randomly selects a generator~$s$ for~$d$ that does not require any parameter which~$G$ already contains and recursively generates arguments for parameters of~$s$ that cannot be satisfied with variables from~$t$. Finally, \tech inserts~$s$ as a statement into~$t$ with the appropriate arguments from~$t$.
 
-\Cref{alg:genobject} describes how $GenObject$ generates an instance of type~$d$ from set of generators~$M$ for a test case~$t$. It randomly selects a generator~$s$ for~$d$ and recursively generates arguments for parameters of~$s$ that cannot be satisfied with variables from~$t$. Finally, \tech inserts~$s$ as a statement into~$t$ with the appropriate arguments. 
-
-To this end, corresponding calls that have return values of suitable data types are inserted recursively (\Cref{alg:genobject}) if instances of such a data type are not already defined in the test case and are usable according to the rules from \Cref{sec:problem-representation}. During the search, the data types that are already attempted to be instantiated are remembered to avoid infinite recursion. According to~\Cref{alg:gentest} and~\Cref{alg:genobject}, new objects are generated only if they do not already exist in the test. However, Fraser and Zeller~\cite{Fraser2012} suggest reusing existing objects only with a certain likelihood to increase diversity in generated test cases. Their experiments showed that a probability of 90\% percent was most effective. Rust's type system makes reusing of previously defined objects more complicated because it requires analysis of the extent to which a given variable is still usable in a given test. A statement~$s$ may only use an already defined variable if marked as freely usable. More precisely, the rules are as follows: let~$t$ be a test case, and $pos(s)$ be a function that returns the position of a statement~$s$ in the sequence of statements of~$t$. Let~$o$ be an object defined by a statement~$gen$. Let~$s$ be a statement that uses~$o$. Then $t$ is a valid test case only if the following rules are satisfied:
+To this end, corresponding calls that have return values of suitable data types are inserted recursively (\Cref{alg:genobject}) if instances of such a data type are not already defined in the test case, or none of them are usable according to the ownership model of Rust. However, Fraser and Zeller~\cite{Fraser2012} suggest reusing existing objects only with a certain likelihood to increase diversity in generated test cases. Their experiments showed that a probability of 90\% percent was most effective. However, Rust's type system makes reusing of previously defined objects more complicated because it requires analysis of the extent to which a given variable is still usable in a given test case. A statement~$s$ may only use an already defined variable if this complies to ownership rules. More precisely, \tech handles instances in a test as follows: let~$t$ be a test case, and $pos(s)$ be a function that returns the position of a statement~$s$ in the sequence of statements of~$t$. Let~$o$ be an object defined by a statement~$gen$. Let~$s$ be a statement that uses~$o$. Then $t$ is a valid test case only if the following rules are satisfied:
 \begin{enumerate}
     \item $pos(gen) < pos(s)$, AND
     \item if $o$ is not used by any statement $s' \in t$,~$o$ may be freely consumed and borrowed by~$s$, AND
@@ -1191,7 +1189,7 @@ To this end, corresponding calls that have return values of suitable data types 
     \item if $o$ is consumed by a statement $s' \in t$, $o$ may now be borrowed only from $s'$ at position~$p_{borrow}$ with $pos(gen) < p_{borrow} < pos(s)$.
 \end{enumerate}
 
-These rules must also be strictly followed when using search operators during the search so that the generated test cases represent valid Rust code. Since the prototype of \tech does not provide the ability to construct all possible types, e.g., closures or trait objects, due to technical limitations, \texttt{GenObject} may fail to generate an instance of the appropriate type. In this case, \tech skips the particular function it tried to generate the argument for. Obviously, this might lead to worse coverage results, but a complete analysis of all possible cases is not trivial and cannot be done within the scope of this work. Since the limitations are only an engineering issue, \tech can be extended to support further language features in the future.
+These rules must also be strictly followed when applying genetic operators during the search so that evolved test cases still represent valid Rust code. Since the prototype of \tech does not provide the ability to construct all possible types, e.g., closures or trait objects, due to technical limitations, \texttt{GenObject} may fail to generate an instance of the appropriate type. In this case, \tech skips the particular function it tried to generate the argument for. Obviously, this might lead to worse coverage results, but a complete analysis of all possible cases is not trivial and cannot be done within the scope of this work. Since the limitations are only an engineering issue, \tech can be extended to support further language features in the future.
 
 \begin{algorithm}[t]
 \caption{$GenObject(d, G, M, t)$}
@@ -1210,8 +1208,10 @@ These rules must also be strictly followed when using search operators during th
 \State{$s \gets$ randomly select an element from M'}
 
 \For{$p \in parameters(s)$}
-  \If{$\neg(p \in datatypes(t))$}
-    \State{$t \gets GenObject(p, G, M, t)$}
+  \State{$V \gets \{v~|~v \in instances(t) \wedge v$ is usable by $s\}$}
+  \If{$random \geq p_{local} \vee V$ is empty}
+    \State{$G' \gets G \cup \{d\}$}
+    \State{$t \gets GenObject(p, G', M, t)$}
   \EndIf
 \EndFor
 \State{$s \gets$ set parameters of $s$ to values from $t$}
@@ -1222,9 +1222,8 @@ These rules must also be strictly followed when using search operators during th
 
 \section{Search Operators}
 \label{sec:search-operators}
-The evolution of a population is performed by repeated selection of test cases and applying crossover and mutation operators according to a certain probability~\cite{Fraser2012}.
-
-There are different selection strategies, e.g., fitness-proportional selection, linear ranking, or tournament selection~\cite{McMinn_2004}. The key is to guide the search toward solutions with better fitness values. Once the set of parents has been selected, recombination (or crossover) can take place to form the next generation. Crossover is applied to individuals with a certain probability. The most basic recombination is a single point crossover, which cuts two test cases at a random position and generates two new ones by swapping the subsequences of their statements~\cite{Fraser2012}. At this point, the offspring might require postprocessing. The dependencies of their statements need to be considered, i.e., possibly missing arguments must be generated to repair the tests. \Cref{fig:ga-overview} illustrates the steps.
+% There are different selection strategies, e.g., fitness-proportional selection, linear ranking, or tournament selection~\cite{McMinn_2004}.
+\tech evolves a population by repeatd selection of test cases and applying crossover and mutation operators according to the set probabilities. The key is to guide the search toward solutions with better fitness values. To this end, the tool applies rank selection, Once the set of parents has been selected, recombination (or crossover) can take place to form the next generation. Crossover is applied to individuals with a certain probability. The most basic recombination is a single point crossover, which cuts two test cases at a random position and generates two new ones by swapping the subsequences of their statements~\cite{Fraser2012}. At this point, the offspring might require postprocessing. The dependencies of their statements need to be considered, i.e., possibly missing arguments must be generated to repair the tests. \Cref{fig:ga-overview} illustrates the steps \tech applies to evolve a test suite.
 
 \begin{figure}[h]
 \caption{\label{fig:ga-overview}Abstract overview of the steps \tech applies to evolve a population}
@@ -1232,17 +1231,17 @@ There are different selection strategies, e.g., fitness-proportional selection, 
 \includegraphics[width=0.5\textwidth]{ga/ga-overview}
 \end{figure}
 
-After selection and crossover have been applied, the offspring can mutate. There are different ways of mutating a sequence-based test case, e.g., delete, insert, or modify a statement~\cite{Fraser2012}. Modifying a statement includes changing the callee of a method, parameters, or replacing the method itself with another one. The rules defined in \Cref{sec:problem-representation} determine when the offspring is valid with respect to Rust compiler, e.g., replacing a method call\texttt{fn foo(\string&self)} by \texttt{fn bar(self)} is not allowed if the callee of the method, i.e., the variable, is also used by another statement in some way later in the sequence because the \texttt{bar} method consumes the callee. 
+After selection and crossover have been applied, the offspring can mutate. There are different ways of mutating a sequence-based test case, e.g., delete, insert, or modify a statement~\cite{Fraser2012}. Modifying a statement includes changing the parameters of a function or replacing the function invocation itself with another one. The rules defined in \Cref{sec:problem-representation} determine when the offspring is valid with respect to the Rust compiler, e.g., replacing the function call\texttt{fn foo(\string&self)} by \texttt{fn bar(self)} is not allowed if the callee of the function is also used by another statement in some way later in the sequence because the \texttt{bar} moves the its argument. 
 
 \subsection{Crossover}
-The simplest type of crossover is the one-point crossover, as described in~\Cref{sec:background-crossover}. \tech represents chromosomes in the natural way, as a sequence of statements, which means that when splitting and swapping heads of a pair of chromosomes, attention must be paid to the dependencies between individual statements. For example, there is a dependency between a method call and its arguments, which we always initialize in a separate statement in a test, i.e., we use the \ac{SSA} form for our tests. If the intersection of a recombination hits such a dependency between statements, the newly created recombined test cases will not be accepted by the compiler in most cases and need postprocessing. Tonella~\cite{Tonella2004} has proposed two solutions to this problem:
+\tech applies the simplest type of crossover, the single-point crossover, as described in~\Cref{sec:background-crossover}. Sice the tool models chromosomes in the natural way, i.e., as a sequence of statements, when recombining a pair of chromosomes, attention must be paid to the dependencies between individual statements. For instance, there is a data dependency between a function call and its arguments, which we always declare and initialie in separate statements, i.e., we use the \ac{SSA} form for the generated tests. If the intersection of a recombination hits such a dependency between statements, the offspring will not be accepted by the compiler in most cases and needs postprocessing. Tonella~\cite{Tonella2004} has proposed two solutions to this problem:
 
 \begin{itemize}
     \item Missing dependencies of statements can be added by generating, as with the mutation operator. If certain definitions become redundant because their later use has been pushed into another choromosome by recombination, they can be deleted.
     \item Dependencies from a part of a chromosome shifted by recombination are also shifted to another chromosome regardless of the crossover point, provided they are no longer needed in the original chromosome, otherwise they could be copied.
 \end{itemize}
 
-For recombination, \tech exploits the first option: in the case when arguments of a recombined test case are missing, we regenerate them afterwards using the \texttt{GenObject} algorithm, so that the test case becomes compilable again. In \Cref{fig:crossover-example} such a case is illustrated. A random intersection in the two test cases blue and green is determined. By recombining the statements, two new test cases are created, both of which, however, cannot be compiled in the form, since both the left (\texttt{hashmap\string_0}) and the right test case (\texttt{f64\string_0}) use instances that are not defined in the respective tests at all. For this reason, we need to perform a repair step and generate missing dependency (in red).
+For recombination, \tech exploits the first option: in case a recombined test case misses some data dependencies, the tool regenerates them afterwards using the \texttt{GenObject} algorithm, so that the test case becomes compilable again. \Cref{fig:crossover-example} illustrates an example for such scenario. A random intersection in the two test cases blue and green is determined. By recombining the statements, two new test cases are created, both of which, however, cannot be compiled as is since both the left (\texttt{hashmap\string_0}) and the right test case (\texttt{f64\string_0}) utilize objects that are not defined in the respective tests after all. To recover, \tech rerforms a postprocessing step to repair the broken tests (marked red).
 
 \begin{figure}[h]
 \caption{Crossover between two test cases with postprocessing}
@@ -1251,14 +1250,16 @@ For recombination, \tech exploits the first option: in the case when arguments o
 \label{fig:crossover-example}
 \end{figure}
 
-However, recombination can also make some variables redundant, such as \texttt{hashmap\string_0} in the right recombined test case. It is no longer necessary for the test, makes it more confusing and does not increase coverage. Such cases can theoretically be filtered out using techniques such as delta debugging, however we leave them for now as they do no harm.
+The way \tech applies recombination can make some variables redundant, such as the \texttt{hashmap\string_0} instance in the right recombined test case. Such statements add no value to a test case and make it unnecessary longer and less comprehensible. We cannot not know in general which statements are useful, i.e., increase coverage, and which are not, unless we remove them one by one from a test case and re-run it. However, we apply a simple heuristic: we remove statements whose value is not used by any other statement in a test case in case a statement is primitive or declared outside of the \sut.
 
 \subsection{Mutation}
-Da Chromosome werden in ihrer ''natürlichen'' Weise repräsentiert werden, und ein Test Case somit aus einer Sequenz von Statements besteht, muss der Mutationsoperator entsprechend definiert werden. Wir adoptieren die Definition der Mutation für Sequenz-basierte Repräsentation der Test Cases von Fraser und Arcuri~\cite{Fraser2012}. Demnach kann eine Mutation folgende Ausprägungen haben:
+\tech models a test case as sequence of statements. Accordingly, we need to specify possible atomic operations for a mutation. To this end, we adopt Fraser's and Arcuri's~\cite{Fraser2012} definition of the mutation for Rust. Accordingly, \tech can performs the following operations when mutating a test:
 \begin{description}
-  \item[Insert a statement] A given test case $t$ is extended with a probability $\sigma$ by a new statement, which is inserted at a random position in $t$. A new statement can only be inserted if $l(t) < L$, i.e. if the test length does not exceed a defined maximum. For each insertion, with probability $1/3$ a random call out of the pool of callables is inserted, with probability $1/3$ a method call on a value in the set $\{v(s_k) \left|~0 \leq k < i \right\}$ is used as a parameter in a random call. Any parameters of the selected call are either reused out of the set $\{v(s_k) \left|~0 \leq k < i \right\}$ or randomly generated. Each parameter~$p$ selected from $\{v(s_k) \left|~0 \leq k < i \right\}$ must be usable by the call according to the rules in \Cref{sec:problem-representation}. The random position of the new statement must be at least greater than $max(\{pos_t(a) : a \text{ is an argument of } c\})$ or greater than or equal to $0$ if~$c$ has no parameters. Multiple statements can also be inserted repeatedly, where this happens with probability~$p(n) = 0.5^n$, where~$n$ is the number of calls inserted so far. That is, after each insertion, a random decision is made whether to repeat the mutation~\cite{Tonella2004}. An example in \Cref{lst:mutation-invocation-insertion} demonstrates how two additional method calls \texttt{push} and \texttt{len} on an existing vector instance have been inserted. 
+  \item[Insert a statement] A given test case $t$ is extended with a probability $\sigma$ by a new statement, which is inserted at a random position~$i$ in $t$. A new statement can only be inserted if $l(t) < L$, i.e., if the test length does not exceed a defined maximum. For each insertion, with probability $1/3$ a random call out of the pool of callables is inserted, with probability $1/3$ a method call on a value in the set $\{v(s_k) \left|~0 \leq k < i \right\}$ is used as a parameter in a random call. Any parameters of the selected invocation are either reused out of the set $\{v(s_k) \left|~0 \leq k < i \right\}$ or randomly generated. Each parameter~$p$ selected from $\{v(s_k) \left|~0 \leq k < i \right\}$ must be usable by the invocation according to the rules in \Cref{sec:problem-representation}. Multiple statements can also be inserted repeatedly; this can happen with probability~$p(n) = 0.5^n$ with~$n$ being the number of calls inserted so far. That is, after each insertion, a random decision is made whether to repeat the mutation~\cite{Tonella2004}. 
+  
+  An example in \Cref{lst:mutation-invocation-insertion} demonstrates how two additional function calls \texttt{push} and \texttt{len} on an existing vector instance have been inserted in Lines~\ref{line:insert-mutation:push-on-vec} and~\ref{line:insert-mutation:len-of-vec}, respectively. Since \texttt{push} requires one argument, a 32-bit integer in this case, it has also been generated. 
 
-  \begin{lstlisting}[style=boxed, caption=, label=lst:mutation-invocation-insertion, caption={Two methods, \emph{push} (Line~\ref{line:insert-mutation:push-on-vec}) and \emph{len} (Line~\ref{line:insert-mutation:len-of-vec}) have been selected randomly to be inserted on \emph{vec\string_0}. An appropriate argument has been generated for the second \emph{push}, too}, escapechar=§]
+  \begin{lstlisting}[style=boxed, label=lst:mutation-invocation-insertion, caption={The functions \texttt{push} and \texttt{len} have been selected randomly to be invoked on \emph{vec\string_0}. An appropriate argument has been generated for the second \emph{push}, too}, escapechar=§]
   #[test]
   fn test() {
     let usize_0 = 32;
