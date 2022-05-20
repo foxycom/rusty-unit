@@ -1743,12 +1743,12 @@ In this section, we describe the analysis steps \tech performs on the \mir of a 
 
 % Building CDG from MIR
 \subsection*{Control Dependence Graphs}
-To improve the effectivity of generated tests, both \acp{DynaMOSA} and the fitness function (approach level) that \tech uses as described in~\Cref{sec:fitness-function}, exploit information from the \cdgs~\cite{Ferrante1987} of the \sut. A \ac{CDG} can be constructed from a \cfg and its post-dominator tree. As \mir itself is a \cfg, we can easily build the post-dominator-tree and the \ac{CDG} of each method and function we want to test. \tech does not use the complete \cfg of a \texttt{Body}, but rather a subset of it. The Rust compiler creates many unwinding edges in the \mir that point to basic blocks whose task is to cleanup the heap in case the program panics at some point of its execution. However, we only want to analyse regular program execution, not the cleanup logic of the compiler. Furthermore, considering unwind nodes results in \cfg having multiple exit nodes, which complicate the computation of a post-dominator tree. We filter out most of the unwind edges from a \cfg except for those described in~\Cref{sec:mir-testability-transformations}. To simplify further tree computations, we add a dummy exit node that we point all original exit nodes to, in case if there are at least two dedicated exit nodes.
+To improve the effectivity of generated tests, both \acp{DynaMOSA} and the fitness function (approach level) that \tech uses as described in~\Cref{sec:fitness-function}, exploit information from the \cdgs~\cite{Ferrante1987} of the \sut. A \ac{CDG} can be constructed from a \cfg and its post-dominator tree. As \mir itself is a \cfg, we can easily build the post-dominator-tree and the \ac{CDG} of each method and function we want to test. \tech does not use the complete \cfg of a \texttt{Body}, but rather a subset of it. The Rust compiler creates many unwind edges in the \mir that point to basic blocks whose task is to cleanup the heap in case the program panics at some point of its execution. However, we are not interested in the cleanup logic of the compiler. Moreover, considering unwind nodes results in \cfg having multiple exit nodes, which complicate the computation of a post-dominator tree. We filter out most of the unwind edges from a \cfg except for those described in~\Cref{sec:mir-testability-transformations}. To simplify further tree computations, we add a dummy exit node that we point all original exit nodes to, in case if there are at least two dedicated exit nodes.
 
-The standard algorithm to compute a dominator tree from a \cfg can also yield a post-dominator tree when applied to reversed \cfg, given that the original \cfg has a single exit point, i.e., a single entry point with reversed edges.
+The standard algorithm to compute a dominator tree from a \cfg yields a post-dominator tree when applied to reversed \cfg, given that the original \cfg has a single exit point, i.e., a single entry point with reversed edges.
 
 Prosser~\cite{Prosser1959} introduced the notion of dominance in a 1959 paper on the analysis of flow diagrams, defining it as follows:
-Box~\emph{i} dominates box~\emph{j} if every path (leading from input to output through the diagram) which passes through box\emph{j} must also pass through box~\emph{i}. Thus box~\emph{i} dominates box~\emph{j} if box~\emph{j} is subordinate to box~\emph{i} in the program. He did not specify the algorithm to compute dominance, though. Since then, several algorithms for calculating dominance have been presented. Post-dominance can be computed the same way on a \cfg with reversed edges, given that the \cfg has a single exit point. In this work, we use the \texttt{petgraph} graph library for Rust, which provides an implementation of the simple, fast dominance algorithm~\cite{Cooper2001} by Cooper et al. Finally, we compute a \ac{CDG} for each method body based on the algorithm~\cite{Ferrante1987} described by Ferrante et al.
+Box~\emph{i} dominates box~\emph{j} if every path (leading from input to output through the diagram) which passes through box\emph{j} must also pass through box~\emph{i}. Thus box~\emph{i} dominates box~\emph{j} if box~\emph{j} is subordinate to box~\emph{i} in the program. He did not specify the algorithm to compute dominance, though. Since then, several algorithms for calculating dominance have been presented. Post-dominance can be computed the same way on a \cfg with reversed edges, given that the \cfg has a single exit point. \tech exploits the \texttt{petgraph} graph library for Rust, which provides an implementation of the simple fast dominance algorithm~\cite{Cooper2001} by Cooper et al. Finally, we compute a \ac{CDG} for each method body based on the algorithm described by Ferrante et al~\cite{Ferrante1987}. At the end of this step, \tech yields a set of \cdgs, one for each function in the \sut.
 
 % Extracting constants from the MIR
 \subsection*{Constant Pool Analysis}
@@ -1757,8 +1757,10 @@ As part of the seeding strategy for enhanced search described in~\Cref{sec:seedi
 struct Date;
 
 impl Date {
-  fn from(day: u8, month: &str, year: u16) -> Result<Date, Error> {
-    if month.to_lowercase().contains("feb") && day == 29 {
+  fn from(day: u8, month: &str, year: u16)
+      -> Result<Date, Error> {
+    if month.to_lowercase().contains("feb")
+        && day == 29 {
       // do leap year things ...
     }
 
@@ -1771,12 +1773,14 @@ The associated function \texttt{from} checks at the beginning whether a leap yea
 
 However, by analzing the relevant snippet of the \mir, we can learn what constant values the given function uses.
 \begin{lstlisting}[language={MIR}, style=boxed, caption={}, label={lst:mir-constant-analysis}, escapechar=§]
-fn Date::from(_1: u8, _2: &str, _3: u16) -> Result<Date, Error> {
+fn Date::from(_1: u8, _2: &str, _3: u16)
+    -> Result<Date, Error> {
   // Locals definition
 
   @bb0@: {
     _6 = _2;
-    _5 = core::str::<impl str>::contains::<&str>(move _6, const "feb") -> @bb4@; §\label{line:mir-constant-analysis:string}§
+    _5 = <impl str>::contains::<&str>(move _6, const "feb") §\label{line:mir-constant-analysis:string}§
+        -> @bb4@;
   }
 
   @bb1@: {
