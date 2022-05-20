@@ -175,7 +175,7 @@ With our work, we provide the following contributions:
 \begin{itemize}
   \item We adopt and redefine the problem of automatically generating test cases for Rust programs using a \ac{GA}. It can evolve an initial set of randomly generated test cases based on execution feedback and produce a final test suite with high code coverage. The generated tests consider the peculiarities of Rust's type and generic system. Even though the test cases are randomly generated and modified during the process, the output is still a valid Rust code.
   \item We implement our approach as a wrapper around the original Rust compiler and hook into different compiler phases to execute our logic like extracting points of interest or instrumenting the \sut. Rust's in-house build system Cargo allows us to provide a custom Rust compiler wrapper when building a \sut. The implementation artifacts and the usage guide are available in a GitHub~\footnote{\url{https://github.com/foxycom/master-thesis}} repository.
-  \item We evaluate our \ac{GA}-based approach and compare it to a traditional baseline algorithm for test generation, i.e., random search, to obtain certainty about the correctness of the implementation and any performance gain of our approach over the minimum. We also compare our approach with KLEE, a representative of the common alternative to search-based algorithms, namely \ac{DSE}. The evaluation is conducted using a case study built on \benchnum open-source Rust libraries.
+  \item We evaluate our \ac{GA}-based approach and compare it to a traditional baseline algorithm for test generation, i.e., random search, to obtain certainty about the correctness of the implementation and any performance gain of our approach over the minimum. The evaluation is conducted using a case study built on \benchnum real-world Rust libraries.
 \end{itemize}
 All data, as well as the case study, can be found on our GitHub repository.
 
@@ -299,10 +299,10 @@ Holland's original selection algorithm~\cite{Holland1992} relied on \emph{fitnes
 
 Once the parents have been selected, recombination is applied to breed the next generation. Crossover is applied to the selected individuals with probability $p_c$. $p_c$ is also referred to as crossover rate or crossover probability. The new offspring will be added to the new population if the crossover is used. Otherwise, the selected parents are copied unchanged into the latest population. After this step, the mutation phase is initiated, which is responsible for reintroducing new genetic material that shall increase the diversity of the search.
 
-A different method is the \emph{linear ranking} of individuals that can overcome the selection pressure issue. This technique sorts individuals according to their fitness, with the best individuals being selected according to their rank~\cite{whitley1989genitor}. In addition, there is also \emph{tournament selection}, a noisy but fast method to determine offspring. The respective population does not have to be sorted by fitness. Two individuals are randomly selected out of the population. Then, a random real number $0 < r < 1$ is drawn. If $r$ is less than $p$ (where $p$ is the probability that the fitter individual is selected), the individual with better fitness wins and is chosen to be the parent for the next generation; otherwise, the other individual is. Finally, the two individuals are placed back into the population and can be selected again in the next round. The procedure is repeated $N$ times until the required number of parents is selected for the next generation. \textbf{TODO rank selection}
+A different method is the \emph{linear ranking} of individuals that can overcome the selection pressure issue. This technique sorts individuals according to their fitness, with the best individuals being selected according to their rank~\cite{whitley1989genitor}. In addition, there is also \emph{tournament selection}, a noisy but fast method to determine offspring. The respective population does not have to be sorted by fitness. Two individuals are randomly selected out of the population. Then, a random real number $0 < r < 1$ is drawn. If $r$ is less than $p$ (where $p$ is the probability that the fitter individual is selected), the individual with better fitness wins and is chosen to be the parent for the next generation; otherwise, the other individual is. Finally, the two individuals are placed back into the population and can be selected again in the next round. The procedure is repeated $N$ times until the required number of parents is selected for the next generation. \todo{rank selection.}
 
 \subsection{Mutation}
-Mutation involves random modification of offspring to introduce diversity into the search. Traditionally, on a binary representation, this consists of flipping bits of each individual at a probability of $p_m$, where $p_m$ is typically $\frac{1}{n}$, where $n$, in turn, is the length of the chromosomal bitstring~\cite{Harman2010a}. {TODO elaborate}
+Mutation involves random modification of offspring to introduce diversity into the search. Traditionally, on a binary representation, this consists of flipping bits of each individual at a probability of $p_m$, where $p_m$ is typically $\frac{1}{n}$, where $n$, in turn, is the length of the chromosomal bitstring~\cite{Harman2010a}. \todo{elaborate.}
 
 \subsection{Advanced Individual Encoding}
 Simple algorithms typically encode individuals in binary format, which is easy to mutate and recombine. However, this simplicity has its price, too. Especially the binary form often violates the rule that a neighbor solution should be reachable with a simple mutation, which is not always the case. For instance, the binary encoding of integers $7$ and $8$ is $0111$ and $1000$, respectively. To reach the neighboring solution of $7$, i.e., $8$, the search operator in place would have to change all four bits. Random mutation of binary sequences can also lead to many invalid solutions depending on the search problem. Even though the binary representation of solutions makes the corresponding sequences consist of the minor components (bits) that lead to the most effective results of recombination and mutation, Davis~\cite{Davis1991} showed in their experiments with genetic algorithms that true solution representations perform better than binary ones. However, the use of true solution representations raises the question of how to implement the recombination and mutation operators. Recombination only needs the representation of the sequence of components of a solution and can be applied similarly as to a binary representation.
@@ -387,7 +387,7 @@ Therefore, Panichella et al.~\cite{Panichella2018} introduced the \ac{DynaMOSA},
 
 
 \begin{algorithm}[t]
-\caption{DynaMOSA Algorithm~\cite{Panichella2018}}\label{alg:dynamosa}
+\caption{DynaMOSA~\cite{Panichella2018}}\label{alg:dynamosa}
 \begin{algorithmic}
 \Input
   \Desc{$U$}{The set of coverage targets of a program}
@@ -516,7 +516,7 @@ Traditionally, \ac{SBST} is applied to generate test suites that maximize some c
 
 Hiring a second team of developers for this task is too time-consuming and expensive for most software. And so, there have been attempts to automate this process. Korel and Al-Yami~\cite{Korel1996} described an approach that uses search techniques to find violations of assertions in code. An assertion is simply a conditional whose \texttt{false} branch is assumed not to be executed. However, genetic or symbolic search can exploit the branch to look for a program state that violates the assertion explicitly. A violation leads in most programming languages to a program crash, which is the most basic variant of an automated oracle since an unexpected crash is a bad sign in most cases.
 
-Romano et al.~\cite{Romano2011} proposed statically selecting possible paths that cause memory access violations and searching for inputs that direct execution into those paths. It is also possible to represent arithmetic errors such as division by zero as paths, so traditional \ac{SBST} metrics like branch distance can optimize the search for those errors~\cite{Bhattacharya2011}. Such techniques are called \emph{testability transformations} and were first (TODO \textbf{sicher?}) proposed by Harman et al.~\cite{Harman2004}. Those are often source-to-source transformations intended to improve the performance of various test generation algorithms. McMinn~\cite{McMinn2009} picked up the idea and proposed automatically generating pseudo-oracles for a given program. He applied testability transformations to modify the original program and develop a second version that is expected to have the same outputs as it's original but may have discrepancies. To this end, he provided two examples, floating-point arithmetic, and multithreading in Java. In the former, for instance, additions between primitive floating-point types, which are somewhat imprecise in the trailing decimal digits according to the IEEE standard~\cite{10.1145/103162.103163}, are swapped by Java's BigDecimal during a transformation, e.g., the calculation $0.1 + 0.1 + 0.1$ in Java yields ~$0.300000000000004$ instead of~$0.3$ (see~\Cref{lst:java-transformations}).
+Romano et al.~\cite{Romano2011} proposed statically selecting possible paths that cause memory access violations and searching for inputs that direct execution into those paths. It is also possible to represent arithmetic errors such as division by zero as paths, so traditional \ac{SBST} metrics like branch distance can optimize the search for those errors~\cite{Bhattacharya2011}. Such techniques are called \emph{testability transformations} and were first (\todo{stimmt das überhaupt?}) proposed by Harman et al.~\cite{Harman2004}. Those are often source-to-source transformations intended to improve the performance of various test generation algorithms. McMinn~\cite{McMinn2009} picked up the idea and proposed automatically generating pseudo-oracles for a given program. He applied testability transformations to modify the original program and develop a second version that is expected to have the same outputs as it's original but may have discrepancies. To this end, he provided two examples, floating-point arithmetic, and multithreading in Java. In the former, for instance, additions between primitive floating-point types, which are somewhat imprecise in the trailing decimal digits according to the IEEE standard~\cite{10.1145/103162.103163}, are swapped by Java's BigDecimal during a transformation, e.g., the calculation $0.1 + 0.1 + 0.1$ in Java yields ~$0.300000000000004$ instead of~$0.3$ (see~\Cref{lst:java-transformations}).
 
 \begin{lstlisting}[language=Java, style=boxed, caption={Comparing floating-point arithmetic in Java using double compared to \texttt{BigDecimal}~\cite{McMinn2009}}, label=lst:java-transformations]
 System.out.println(0.1 + 0.1 + 0.1);
@@ -575,6 +575,7 @@ fn example_fuzz_target_1(data: &[u8]) {
 \textsc{RULF} is a fuzz target generator that, given the \ac{API} specification of a Rust library, can generate a set of fuzz targets and seamlessly integrate them with \textsc{AFL++} for fuzzing~\cite{Jiang2021}. The approach leverages a sophisticated traversal algorithm to achieve high \ac{API} coverage with only a tiny set of shallow fuzz targets. To construct fuzz targets, the tool builds an \ac{API} dependence graph and analyses which \ac{API} calls return values of the type used as a parameter for other \ac{API} calls of the same \sut. Using their approach, the authors discovered several bugs in popular Rust libraries. An essential limitation of the tool is its inability to analyze and fuzz generic components.
 
 \section{DSE-based Test Generators}
+\todo{KLEE wird auch später schon beschrieben}
 Many tools rely on \ac{DSE} for the automatic generation of tests, for example \textsc{CUTE}, \textsc{jCUTE}~\cite{Sen2006}, and \textsc{KLEE}~\cite{cadar2008klee}. \textsc{KLEE} has two goals: (1) the tool tries to execute every executable line in a program, i.e., to achieve high statement coverage, and (2) for every dangerous operation (e.g., dereference, assertion), it tries to check whether there are values that could lead to an error. The latter is achieved by symbolic execution. Since, even in simple programs, the number of execution states/paths can explode, \textsc{KLEE} applies several heuristics and optimization techniques to increase its performance. For example, whole trees are not cloned at branches (states are trees, after all), but the write-on-copy approach is applied at the object level. Several different states can reference unchanged subtrees. Also, requests to the \ac{SMT} solver to convert symbolic values to concrete ones are simplified as possible since the processing time of the requests, which generally are NP-complete~\cite{Lewis1983}, dominates everything else. In this way, the authors were able to speed up the execution time of the tool on the GNU coreutils by a factor of $15$.
 
 \textbf{DART}~\cite{Godefroid_2005} was the first concolic testing tool that combined dynamic test generation with random testing and model checking techniques to systematically execute as many as possible feasible paths of a program while checking each execution for various types of errors.
@@ -788,7 +789,7 @@ fn main() {
   );
 }
 \end{lstlisting}
-TODO The compiler can now extract the relevant types and generate the following code
+% TODO The compiler can now extract the relevant types and generate the following code
 
 It is also possible to put constraints, called trait bounds in Rust, on the generic type parameters. For instance, we could define a textual representation of a pair. The \texttt{Display} trait of the standard library provides the \texttt{fmt} method, which uses the \texttt{\string{\string}} print marker. As shown in \Cref{lst:example-trait-bounds}, for a type to implement the \texttt{Display} trait, its attributes must implement the trait, too, since their \texttt{fmt} method will be called recursively. Hence, we tell that the left and right hand side type parameters used with the \texttt{Pair} struct must implement the \texttt{Display} trait. The effect of bounding is that generic instances are allowed to access the methods of traits specified in the bounds. Under the hood, the \texttt{println!} macro call the \texttt{fmt} method of the \texttt{Pair} instance:
 \begin{lstlisting}[style=boxed, caption={}, label=lst:example-trait-bounds, escapechar=§]
@@ -819,14 +820,15 @@ fn main() {
 }
 \end{lstlisting}
 
-We need to convert \texttt{"Hello world"} TODO
+% TODO We need to convert \texttt{"Hello world"}
 
 There is no inheritance in Rust, as known from object-oriented languages. Common behavior can be defined via traits, which can have super-traits, as shown in \Cref{lst:trying-supertraits} for the \texttt{TrieAtom} trait. \texttt{TrieAtom} is a blanket trait, which means that types that implement its super trait automatically implement it, too, from the compiler's point of view.
 \begin{lstlisting}[style=boxed, caption={An example trait from the \emph{trying} crate which we evaluate the approach on}, label=lst:trying-supertraits]
 pub trait TrieAtom: Copy + Default + PartialEq + Ord {}
 \end{lstlisting}
 
-Besides structs, it is also possible to parametrize methods and functions using generics. A generic method or function has a type parameter that is inferred from the values passed as parameters. TODO An example for
+Besides structs, it is also possible to parametrize methods and functions using generics. A generic method or function has a type parameter that is inferred from the values passed as parameters. 
+% TODO An example for
 \begin{lstlisting}[style=boxed, caption={Variants of defining a generic function}, label=lst:function-monomorphization]
 fn make_pair<L: Display, R: Display>(left: L, right: R)
     -> Pair<L, R> {
@@ -1020,11 +1022,11 @@ At this level, each executable piece of code, e.g., a function or a method, is r
 
 Locals are memory allocations on the stack (conceptually, at least), such as function arguments, local variables, and temporaries. These are identified by an index, written with a leading underscore, like \texttt{\string_1}. A special local (\texttt{\string_0}) is allocated to store the return value.
 
-Basic blocks consist of statements, which are, in terms of \mir, actions with one successor. The statements of a basic block are mostly definitions of locals, e.g., atomic computations, which the corresponding terminator uses later. A terminator is an action with potentially multiple successors and is always placed at the end of a basic block. A terminator can be, for instance, a \emph{Call} (function call), a \emph{Return} (returns the \texttt{\string_0} local), a \emph{Goto} jump (jump to a given block number), a \emph{SwitchInt}, or an \emph{Assert}. \tech makes use mainly of \emph{SwitchInt} and \emph{Assert} terminators.
+Basic blocks consist of statements, which are, in terms of \mir, actions with one successor. The statements of a basic block are mostly definitions of locals, e.g., atomic computations, which the corresponding terminator uses later. A terminator is an action with potentially multiple successors and is always placed at the end of a basic block. A terminator can be, for instance, a \emph{Call} (function call), a \texttt{Return} (returns the \texttt{\string_0} local), a \texttt{Goto} jump (jump to a given block number), a \texttt{SwitchInt}, or an \texttt{Assert}. \tech makes use mainly of \texttt{SwitchInt} and \texttt{Assert} terminators.
 
-\emph{SwitchInt} results from lowering \texttt{if} and \texttt{loop} conditions and \texttt{match} expressions. The value of its operand always evaluates to an integer; the execution jumps depending on its value to one of the targets. There is also a dedicated \emph{otherwise} value for all other cases. Each possible value (e.g., $0$ and $1$ for \emph{false} and \emph{true}, respectively, in if conditions) has a corresponding basic block which the execution jumps to. Assume that there are two functions, \texttt{cheeky\string_itoa(x: i32)} and \texttt{bold\string_itoa(x: i32)}, which both return a string (more precisely, a reference to a static string value) based on the input number, as shown in~\Cref{lst:mir-lowering}.
+\texttt{SwitchInt} results from lowering \texttt{if} and \texttt{loop} conditions and \texttt{match} expressions. The value of its operand always evaluates to an integer; the execution jumps depending on its value to one of the targets. There is also a dedicated \emph{otherwise} value for all other cases. Each possible value (e.g., $0$ and $1$ for \emph{false} and \emph{true}, respectively, in if conditions) has a corresponding basic block which the execution jumps to. Assume that there are two functions, \texttt{cheeky\string_itoa(x: i32)} and \texttt{bold\string_itoa(x: i32)}, which both return a string (more precisely, a reference to a static string value) based on the input number, as shown in~\Cref{lst:mir-lowering}.
 
-\begin{lstlisting}[style=boxed, caption={HIR of the code in \Cref{lst:hir-lowering}}, label=lst:mir-lowering]
+\begin{lstlisting}[style=boxed, caption={\hir of the code in \Cref{lst:hir-lowering}}, label=lst:mir-lowering]
 fn cheeky_itoa(x: i32) -> &'static str {
   match x {
     0 => "There is nothing here,
@@ -1043,10 +1045,10 @@ fn bold_itoa(x: i32) -> &'static str {
 }
 \end{lstlisting}
 
-As mentioned earlier, conditions like those in loops, \texttt{match} and \texttt{if} expressions are converted to \texttt{switchInt} terminators. In \Cref{lst:mir-lowered-first}, the \mir for the function \texttt{cheeky\string_itoa} is shown in its debug form. It has been cleaned up for simplicity and usually still includes many debugging comments on the individual statements and terminators. Only two locals are given, the return value \texttt{\string_0} of type \texttt{\string&str}
+As mentioned earlier, conditions like those in loops, \texttt{match} and \texttt{if} expressions are converted to \texttt{SwitchInt} terminators. In \Cref{lst:mir-lowered-first}, the \mir for the function \texttt{cheeky\string_itoa} is shown in its debug form. It has been cleaned up for simplicity and usually still includes many debugging comments on the individual statements and terminators. Only two locals are given, the return value \texttt{\string_0} of type \texttt{\string&str}
 and the function parameter \texttt{\string_1} of type \texttt{i32}.
 
-We can see that the entry block, which is always \texttt{bb0}, consists only of the \texttt{switchInt} terminator, which, based on the value of the function parameter \texttt{\string_1}, directs execution to either block number $2$ (if \texttt{\string_1} is $0$) or $3$ (if \texttt{\string_1} is $42$). If neither case matches, the execution jumps to block $1$. For the decision, the values, which are always integers, are directly compared. Each of the following three blocks defines the return local and points to the last block (\texttt{\string_4}), which returns \texttt{\string_0} to the caller.
+We can see that the entry block, which is always \texttt{bb0}, consists only of the \texttt{SwitchInt} terminator, which, based on the value of the function parameter \texttt{\string_1}, directs execution to either block number $2$ (if \texttt{\string_1} is $0$) or $3$ (if \texttt{\string_1} is $42$). If neither case matches, the execution jumps to block $1$. For the decision, the values, which are always integers, are directly compared. Each of the following three blocks defines the return local and points to the last block (\texttt{\string_4}), which returns \texttt{\string_0} to the caller.
 
 \begin{lstlisting}[language={MIR}, style=boxed, caption={\mir of the \texttt{cheeky\string_itoa} function}, label=lst:mir-lowered-first]
 fn cheeky_itoa(_1: i32) -> &str {
@@ -1082,7 +1084,7 @@ fn cheeky_itoa(_1: i32) -> &str {
 }
 \end{lstlisting}
 
-The \mir of the \texttt{bold\string_itoa} function is structured similarly (\Cref{lst:mir-lowered-second}). The entry block compares the parameter value with the constant $42$ in~Line~\ref{line:compareWithConstant} and stores the boolean result, which technically is an integer ($0$ or $1$ for false and true, respectively), into the local \texttt{\string_2}. The \texttt{switchInt} decides again, based on the value of its operand, which block the execution must jump to.
+The \mir of the \texttt{bold\string_itoa} function is structured similarly (\Cref{lst:mir-lowered-second}). The entry block compares the parameter value with the constant $42$ in~Line~\ref{line:compareWithConstant} and stores the boolean result, which technically is an integer ($0$ or $1$ for false and true, respectively), into the local \texttt{\string_2}. The \texttt{SwitchInt} decides again, based on the value of its operand, which block the execution must jump to.
 
 \begin{lstlisting}[language={MIR}, style=boxed, escapechar=§, caption={\mir of the \texttt{bold\string_itoa} function}, label=lst:mir-lowered-second]
 fn bold_itoa(_1: i32) -> &str {
@@ -1117,7 +1119,7 @@ As can be seen, the terminators described are essentially responsible for determ
 \clearpage
 \chapter{Search-based Unit Test Generation in Rust}
 \label{chap:sbst-in-rust}
-To evolve test suites that optimize the coverage criterion, we use the DynaMOSA genetic algorithm. In this chapter, we describe the adoptation of the \ac{GA} to the problem of test generation for Rust programs regarding the representation of chromosomes in~\Cref{sec:problem-representation}, genetic operations in~\Cref{sec:search-operators}, the type system peculiarities in~\Cref{sec:dependencies}, the fitness function in~\Cref{sec:fitness-function}, the applied testability transformations in~\Cref{sec:testability-transformations}, and seeding of initial population in~\Cref{sec:seeding-strategy}.
+To evolve test suites that optimize the coverage criterion, we use the DynaMOSA genetic algorithm. In this chapter, we describe the adoptation of the \ac{GA} to the problem of test generation for Rust programs regarding the representation of chromosomes in~\Cref{sec:problem-representation}, genetic operations in~\Cref{sec:search-operators}, the type system peculiarities in~\Cref{sec:dependencies}, the fitness function in~\Cref{sec:fitness-function}, the applied testability transformations in~\Cref{sec:testability-transformations}, and seeding of initial population in~\Cref{sec:seeding-strategies}.
 
 \section{Problem representation}
 \label{sec:problem-representation}
@@ -1264,9 +1266,9 @@ The way \tech applies recombination can make some variables redundant, such as t
   \begin{lstlisting}[style=boxed, label=lst:mutation-invocation-insertion, caption={The functions \texttt{push} and \texttt{len} have been selected randomly to be invoked on \emph{vec\string_0}. An appropriate argument has been generated for the second \emph{push}, too}, escapechar=§]
   #[test]
   fn test() {
-    let usize_0 = 32;
+    let usize_0 = 32usize;
     let mut vec_0 = Vec::with_capacity(usize_0);
-    let i32_0 = 45;
+    let i32_0 = 45i32;
     vec_0.push(i32_0);
   }
 
@@ -1274,11 +1276,11 @@ The way \tech applies recombination can make some variables redundant, such as t
 
   #[test]
   fn test() {
-    let usize_0 = 32;
+    let usize_0 = 32usize;
     let mut vec_0 = Vec::with_capacity(usize_0);
-    let i32_0 = 45;
+    let i32_0 = 45i32;
     vec_0.push(i32_0);
-    let i32_1 = 106;
+    let i32_1 = 106i32;
     vec_0.push(i32_1); §\label{line:insert-mutation:push-on-vec}§
     let usize_1 = vec_0.len(); §\label{line:insert-mutation:len-of-vec}§
   }
@@ -1445,7 +1447,7 @@ Assume that a test invokes \texttt{foo}. In \Cref{tab:example-fitness-calculatio
 \end{table}
 
 % TODO reword
-As usual in the \ac{SBST} literature, the branch distance should not dominate the approach level; thus, the former is normalized in the range $[0, 1]$, for instance, using the following normalization function proposed by Arcuri~\cite{Arcuri_2011}:
+As usual in the \ac{SBST} literature, the branch distance should not dominate the approach level; thus, the former is normalized in the range~$[0, 1]$, for instance, using the following normalization function proposed by Arcuri~\cite{Arcuri_2011}:
 
 \[\alpha(x) = \frac{x}{x + 1}\]
 
