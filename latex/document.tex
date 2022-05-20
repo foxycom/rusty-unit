@@ -2609,11 +2609,13 @@ In this section, we analyse the impact of the selected algorithm on the length o
 
 \section{Threats to Validity}
 \label{sec:threats-to-validity}
+In this section, we provide an overview over the threats to validity of our evaluation.
+
 %\subsection*{Internal Validity}
 
 \subsection*{External Validity}
 % TODO reword
-We used \benchnum open-source crates for our evaluation. They are small and, above all, have as few dependencies as possible, i.e., they stay self-contained. The crates do not interact with the environment, e.g., by means of I/O, nor do they use some sort of parallelism. Furthermore, the number of subjects and their intention is not diverse enough, so the results may not generalize to all Rust programs.
+For our study, we used only \benchnum open-source crates for our evaluation. They are compact and, above all, have as few dependencies as possible, i.e., they stay self-contained. The crates do not interact with the environment, e.g., by means of I/O, nor do they use some sort of parallelism. Furthermore, the number of subjects and their intention is not diverse enough, so the results may not generalize to all Rust programs.
 
 \subsection*{Construct Validity}
 % TODO reword
