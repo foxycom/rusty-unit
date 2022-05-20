@@ -119,7 +119,7 @@ colframe=white,colback=codegray}
 \newcommand{\budget}{1000\xspace}
 \newcommand{\sut}{\ac{SUT}\xspace}
 \newcommand{\ga}{\ac{GA}\xspace}
-\newcommand{\todo}[1]{\textbf{#1}}
+\newcommand{\todo}[1]{\textbf{TODO: #1}}
 
 \begin{document}
 \automark[section]{chapter}
@@ -144,7 +144,11 @@ colframe=white,colback=codegray}
 \maketitle
 
 \begin{abstract}
-  \blindtext
+  Rust is a robust programming language that promises security and performance at the same time. Despite its young age, it has already convinced many and has been one of the most popular programming languages among developers since its first release. However, mistakes are a fact of life, and like any other software, Rust programs need to be tested extensively.
+
+  We propose the first search-based tool called \tech for automatic generation of unit tests for Rust programs. It incorporates a compiler wrapper, which statically analyzes and instruments a given program to generate tests targeting high code coverage. To achieve it, the tool employs a genetic algorithms which iteratively evolves a test suite by recombing and mutating test cases.
+
+  Furthermore, we provide an empirical study on the performance of our approach using \benchnum real-world open-source Rust libraries and compare the results to a baseline random search algorithm
 \end{abstract}
 \cleardoublepage
 \tableofcontents
@@ -1505,7 +1509,7 @@ A \ga usually starts with a random population with constants being chosen random
 \clearpage
 \chapter{Implementation}
 \label{chap:implementation}
-In this chapter we present essential parts of the implementation of \tech. To generate tests for a crate, \tech has to complete several intermediate steps that \Cref{fig:rustyunit-overview} illustrates. First and foremost, the tool requires the information about which data types the \emph{Crate} has and which functions the data types provide in order to be able to model meaningful tests in the first place. Therefore, it performs a \hir analysis, which yields a collection of \emph{Generators}. \textbf{TODO Generators inkludiert irgendwie eher nur Funktionen und weniger Datentypen an sich}. These provide an overview of which data types can be instantiated in a test case, and which methods can be invoked on those instances. \tech also derives the ownership rules at this point, e.g., whether and how multiple statements may use a certain variable in a valid way, as described in~\Cref{sec:problem-representation}.
+In this chapter we present essential parts of the implementation of \tech. To generate tests for a crate, \tech has to complete several intermediate steps that \Cref{fig:rustyunit-overview} illustrates. First and foremost, the tool requires the information about which data types the \emph{Crate} has and which functions the data types provide in order to be able to model meaningful tests in the first place. Therefore, it performs a \hir analysis, which yields a collection of \emph{Generators}. \todo{Generators inkludiert irgendwie eher nur Funktionen und weniger Datentypen an sich}. These provide an overview of which data types can be instantiated in a test case, and which methods can be invoked on those instances. \tech also derives the ownership rules at this point, e.g., whether and how multiple statements may use a certain variable in a valid way, as described in~\Cref{sec:problem-representation}.
 
 To evaluate the \emph{Generated Tests} in terms of their coverage, \tech instruments the \mir and compiles the crate yielding an \emph{Instrumented Binary}. During instrumentation, the tool injects instructions into the \mir to trace the execution of individual basic blocks and branches. If a generated test executes a code location in the crate, the event (and the corresponding branch distance to another branch in case it has been a branch) is stored in the \emph{Execution Traces}.
 
@@ -1912,6 +1916,7 @@ Visited root branch (2, 3)
 \subsection{Branch Instrumentation}
 To trace the execution of a branch, we need to insert calls to the monitor after a branch has been taken and just before it starts to execute. Doing so, we first update a terminator where branching begins, e.g., \texttt{switchInt}, to point to our artificial tracing blocks. Here, the number of tracing blocks per branch is equal to the number of branches. This is due to the fact that after a particular branch is taken, we want to trace the distance for all branches. This means that for each possible branch a call to the monitor is needed, i.e. a basic block. At this point, we know pretty much on what basis a particular branch is taken and can thus incorporate appropriate logic. Exact values are then inserted and traced at runtime. In the end, we put a chain of tracing blocks with length $l >= 2$ in each branch. Then, the last block of each tracing chain must point to the original target block of the branching terminator. \Cref{lst:mir-instrument-branch} provides an instrumented version of the \mir shown in \Cref{lst:mir-of-example-function-to-instrument}.
 
+\todo{How do we find the exact values to trace in the MIR in the first place?}
 
 \begin{lstlisting}[language={MIR}, style=boxed, caption={Instrumented branches in the \mir of the \texttt{foo} function}, label=lst:mir-instrument-branch]
 fn foo(_1: i32, _2: i32) -> () {
@@ -2562,7 +2567,7 @@ In this section, we analyse the impact of the selected algorithm on the length o
 \includegraphics[width=\textwidth]{length}
 \end{figure}
 
-\textbf{TODO continue.}
+\textbf{continue.}
 %\csvautotabular{experiments/coverage.csv}
 
 \begin{table}[]
@@ -2599,7 +2604,7 @@ In this section, we analyse the impact of the selected algorithm on the length o
 
 \subsection{Manually Written Tests}
 \begin{tcolorbox}
-\textbf{Summary (RQ2):} TODO
+\textbf{Summary (RQ2):} \todo{To be done yet.}
 \end{tcolorbox}
 
 \section{Threats to Validity}
