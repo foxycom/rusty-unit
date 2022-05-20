@@ -1693,7 +1693,18 @@ fn hir_analysis(
 }
 \end{lstlisting}
 
-With the \hir analysis set up, \tech can already generate random tests, since we know which functions can be called. \Cref{lst:hir-analysis-example} shows an example program to test. After the analysis, the following holds in terms of \Cref{alg:genobject}: $M = \{\texttt{Address::new}, \texttt{Person::new}, \texttt{Person::address}, \texttt{say\string_hello\string_to}, \texttt{address\string_to\string_string}\}$. If we wanted to execute the \texttt{address\string_to\string_string} function in an empty test $t = \{\}$, we would have to generate an argument of type \texttt{Address}. Thanks to the information about the return type of a method, we can use $GenObject(Address, \{\}, M, t)$ to create either an \texttt{Address} object using \texttt{Address::new} or \texttt{Person::address}. The latter one is a method, i.e., it expects a \texttt{self} object argument which would require us to recursively search for a way to create an object of type \texttt{Person}, e.g., by calling the constructor \texttt{Person::new}.
+With the \hir analysis set up, \tech can already generate random tests, since we know which functions can be called. \Cref{lst:hir-analysis-example} shows an example program to test. After the analysis, the following holds in terms of \Cref{alg:genobject}: 
+\[M = \left\{
+  \begin{array}{l}
+    \texttt{Address::new -> Address} \\
+    \texttt{Person::new -> Person} \\
+    \texttt{Person::address -> \&Address} \\
+    \texttt{say\string_hello\string_to -> ()} \\
+    \texttt{address\string_to\string_string -> String}
+  \end{array}
+\right\}\] 
+
+If we want to execute the \texttt{address\string_to\string_string} function in an empty test $t = \{\}$, we have to generate an argument of type \texttt{Address}. Thanks to the information about the return type of a method, we can use $GenObject(Address, \{\}, M, t)$ to create either an \texttt{Address} object using \texttt{Address::new} or \texttt{Person::address}. The latter one expects a \texttt{self} argument which would require us to recursively search for a way to create an object of type \texttt{Person}, e.g., by calling the constructor \texttt{Person::new}.
 
 \begin{lstlisting}[style=boxed, caption={After HIR analysis, we know how a \texttt{Person} object can be generated to be used in \texttt{say\string_hello\string_to}.}, label=lst:hir-analysis-example]
 struct Address {
@@ -1783,8 +1794,9 @@ fn Date::from(_1: u8, _2: &str, _3: u16)
 
   @bb0@: {
     _6 = _2;
-    _5 = <impl str>::contains::<&str>(move _6, const "feb") §\label{line:mir-constant-analysis:string}§
-        -> @bb4@;
+    _5 = <impl str>::contains::<&str>(move _6, §\label{line:mir-constant-analysis:string}§
+        const "feb") 
+      -> @bb4@;
   }
 
   @bb1@: {
@@ -1806,6 +1818,8 @@ fn Date::from(_1: u8, _2: &str, _3: u16)
   @bb4@: {
     switchInt(move _5) -> [false: @bb1@, otherwise: @bb2@];
   }
+
+  // Other blocks
 }
 \end{lstlisting}
 
@@ -2009,7 +2023,7 @@ fn foo(_1: i32, _2: i32) -> () {
 
 In tracing chains (\texttt{bb4}, \texttt{bb5}) and (\texttt{bb6}, \texttt{bb7}) we want to invoke appropriate monitor functions and store all the information we need to identify and compute the branch distance. \Cref{fig:comparison-instrumented-branch-cfg} demonstrates the \cfg of the function before and after instrumentation of its branches. As with \texttt{monitor::trace\string_root} in \Cref{lst:mir-instrument-root}, for each tracing call, we specify the IDs of the module and function, as well as the ID of the branch which the tracing runs within. The branch identificator is usually the number of the block the branching terminator originally pointed to, e.g., in this case we have to branch IDs: $1$ and $2$. We also store the the operands of the binary operation in the \texttt{if} conditional, as well as the binary operation itself. In the end, the polarization of the branches remains, i.e., \texttt{true} or \texttt{false}. With this information we can distinguish in the monitor whether the given branch was hit or not and determine the distance using the values and the binary operation reported. For example, assume that we invoke \texttt{foo(10, 20)} again; then, we get the following trace output:
 
-\begin{lstlisting}[language={}, style=boxed, caption={}, label=lst:mir-instrument-branch-trace-output]
+\begin{lstlisting}[language={Rust}, style=boxed, caption={}, label=lst:mir-instrument-branch-trace-output]
 // bb6 gets executed
 Distance to branch (2, 3, 2) is 10.0
 
@@ -2021,7 +2035,7 @@ Since $10 < 20$, the execution takes the \texttt{true} branch, i.e., the trace c
 
 For reference, \Cref{lst:basic-block-in-regular-rust} shows how the basic block~\texttt{bb4} would look like if it was written in regular Rust.
 
-\begin{lstlisting}[language={}, style=boxed, caption={How would \texttt{bb4} look like in regular Rust code}, label=lst:basic-block-in-regular-rust]
+\begin{lstlisting}[language={Rust}, style=boxed, caption={How would \texttt{bb4} look like in regular Rust code}, label=lst:basic-block-in-regular-rust]
 monitor::trace_branch_bool(
   2u64, // module id
   3u64, // function id within the module
@@ -2090,6 +2104,7 @@ Then, the the \mir of the function becomes a bit different:
 \begin{lstlisting}[language={MIR}, style=boxed, caption={}, label=lst:mir-boundary-check-with-unwinding]
 fn get(_1: usize, _2: &[i32; 3]) -> i32 {
   // Locals  definition
+
   @bb0@: {
     _3 = <String as From<&str>>::from(
       const "I'm using heap"
@@ -2446,7 +2461,7 @@ We now define questions that guide our evaluation. To determine how well our sea
 \label{sec:case-study-subjects}
 For the evaluation, we randomly chose \benchnum open-source crates from the Cargo's crate registry. This results in a total of~\methodsnum functions and \branches \mir-level branches.
 
-\todo{Anzahl der \mir-Level Branches berechnen}
+\todo{Anzahl der \mir-Level Branches berechnen.}
 \begin{table}[]
 \begin{tabular*}{\textwidth}{l @{\extracolsep{\fill}} rrrr}
 \hline
@@ -2481,7 +2496,11 @@ The representations of our genetic algorithm and random search are constructed s
 
 To measure the performance of the algorithms, the so-called \emph{instrument-coverage} of the Rust compiler is used when evaluating the generated test cases. Rust actually supports two types of coverage. For one, the \emph{gcov}, which uses the debug information to map from LLVM \ac{IR} to source code. In this case, the LLVM \ac{IR} is instrumented to count the executed instructions. However, since LLVM does not know anything about Rust's code structure, a lot of details are lost, and the measured coverage is only an approximation of the actual coverage, which is only moderately good. On the other hand, the newer versions of the Rust compiler support source code-based coverage, also called \emph{instrument-coverage}. Here, the \mir of a \sut is instrumented directly before being converted to the LLVM \ac{IR}. Since the \mir is a mapping between source code and the \cfg of a program, even places like short-circuited conditionals, closures, and match guards can be accurately mapped.
 
-In order to use the instrument-coverage~\footnote{\url{http://web.archive.org/web/20220506220542/https://doc.rust-lang.org/rustc/instrument-coverage.html}} the crate tested must be compiled with the corresponding flag \texttt{-C instrument-coverage}. This requires a \emph{profiler runtime}, which is already included in the \emph{nightly} compiler. Thus, a corresponding \sut can be built with \raggedright\texttt{RUSTFLAGS="-C instrument-coverage" cargo +nightly build}. When the built program or test is executed, LLVM generates corresponding coverage (\emph{profraw}) files, which after post-processing contain the line as well as branch coverage per source file of the \sut. For each of the two algorithms, we compare the line and branch coverage, as well as the length and number of generated tests. Since both tools, random search and \tech, generate tests in source code form, they can be compiled along with the \sut and their source code-based coverage can be directly compared.
+In order to use the instrument-coverage,~\footnote{\url{http://web.archive.org/web/20220506220542/https://doc.rust-lang.org/rustc/instrument-coverage.html}} the crate tested must be compiled with the corresponding flag \texttt{-C instrument-coverage}. This requires a \emph{profiler runtime}, which is already included in the \emph{nightly} compiler. Thus, a corresponding \sut can be built with 
+
+\texttt{RUSTFLAGS="-C instrument-coverage" cargo +nightly build}. 
+
+When the built program or test is executed, LLVM generates corresponding coverage (\emph{profraw}) files, which after post-processing contain the line as well as branch coverage per source file of the \sut. For each of the two algorithms, we compare the line and branch coverage, as well as the length and number of generated tests. Since both tools, random search and \tech, generate tests in source code form, they can be compiled along with the \sut and their source code-based coverage can be directly compared.
 
 From the perspective of the instrument-coverage, unit tests are usual code whose coverage is also measured, i.e., which statements and branches (if any) of a test were executed. However, based on this behavior, the overall coverage in our experiments would be heavily affected by the number and length of the generated tests. For instance, assume a crate with two functions \emph{a} and \emph{b} that do not contain any branches and execute entirely upon an invocation, with $\left|a\right| = 5$ and $\left|b\right| = 5$. Then, a test that only consists of a single invocation of function~\emph{a}, executes 6 statements out of 11 available, i.e., has a coverage of about 55\%. Another test that invokes function~\emph{b} 50 times without a loop, i.e., consists of 50 statements, executes 55 statements out of 60 available and thus, has a coverage of nearly 92\%. Even though both tests effectively touch exactly a half of the crate's code, their computed coverage is higher and even differs based on their length. To mitigate this issue, we exploit the \emph{no\_coverage}~\footnote{\url{https://web.archive.org/web/20220520122617/https://doc.rust-lang.org/nightly/unstable-book/language-features/no-coverage.html}} attribute and annotate the generated test cases with it. The attribute selectively disables coverage instrumentation in the annotated function. Thus, we only compute the coverage of the productive code.
 
