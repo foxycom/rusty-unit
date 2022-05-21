@@ -48,5 +48,6 @@ rustc_hir = {path = "/Users/tim/rust/compiler/rustc_hir"}
 rustc_target = {path = "/Users/tim/rust/compiler/rustc_target"}
 rustc_index = {path = "/Users/tim/rust/compiler/rustc_index"}
 rustc_ast = {path = "/Users/tim/rust/compiler/rustc_ast"}
+rustc_apfloat = {path = "/Users/tim/rust/compiler/rustc_apfloat"}
 
 

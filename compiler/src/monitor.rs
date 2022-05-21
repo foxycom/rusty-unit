@@ -152,7 +152,19 @@ pub(crate) fn trace_0_or_1(global_id: &str, block: u64, is_hit: bool) {
     MONITOR.with(|m| m.borrow_mut().trace_branch(global_id, block, dist));
 }
 
-pub(crate) fn trace_switch_value_with_var(global_id: &str, block: u64, switch_value: u64, var_value: u64, is_hit: bool) {
+pub(crate) fn trace_switch_value_with_var_bool(global_id: &str, block: u64, switch_value: u64, var_value: u64, is_hit: bool) {
+    let dist = if is_hit {
+        0
+    } else {
+        1
+    };
+
+    MONITOR.with(|m| {
+        m.borrow_mut().trace_branch(global_id, block, dist as f64);
+    });
+}
+
+pub(crate) fn trace_switch_value_with_var_int(global_id: &str, block: u64, switch_value: u64, var_value: u64, is_hit: bool) {
     let dist = if is_hit {
         0
     } else {
@@ -162,7 +174,14 @@ pub(crate) fn trace_switch_value_with_var(global_id: &str, block: u64, switch_va
             var_value - switch_value
         }
     };
-    MONITOR.with(|m| m.borrow_mut().trace_branch(global_id, block, dist as f64));
+
+    MONITOR.with(|m| {
+        m.borrow_mut().trace_branch(global_id, block, dist as f64);
+    });
+}
+
+pub(crate) fn trace_op(global_id: &str, block: u64, op: BinaryOp, left: f64, right: f64, local: u64) {
+
 }
 
 pub(crate) fn trace_branch_hit(global_id: &str, block: u64) {

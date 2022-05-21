@@ -1,8 +1,8 @@
 use std::collections::hash_set::Union;
-use rustc_ast::{FloatTy, IntTy, UintTy};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BodyId, FnSig, HirId, PrimTy};
-use rustc_middle::ty::{AdtDef, AdtKind, Binder, GenericParamDefKind, PredicateKind, Ty, TyCtxt, TyKind, TypeFoldable};
+use rustc_ast::{IntTy, FloatTy, UintTy};
+use rustc_middle::ty::{AdtDef, AdtKind, Binder, GenericParamDefKind, PredicateKind, Ty, TyCtxt, TyKind, TypeFoldable, IntTy as MirInt, FloatTy as MirFloat};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -429,9 +429,10 @@ pub fn def_id_name(def_id: DefId, tcx: &TyCtxt<'_>) -> String {
     tcx.def_path_str(def_id)
 }
 
-pub fn ty_name<'tcx>(ty: rustc_middle::ty::Ty<'tcx>) -> &'tcx str {
+pub fn ty_name(ty: Ty) -> &str {
     match ty.kind() {
         TyKind::Param(param) => param.name.as_str(),
+        TyKind::Int(int) => int.name_str(),
         _ => todo!("{:?}", ty.kind())
     }
 }
@@ -563,42 +564,19 @@ impl Debug for T {
     }
 }
 
-impl From<TyKind> for T {
+impl From<TyKind<'_>> for T {
     fn from(kind: TyKind) -> Self {
         match kind {
-            TyKind::Bool => PrimT::Bool,
-            TyKind::Char => PrimT::Char,
-            TyKind::Int(int) => <T as From<IntTy>>::from(int),
-            TyKind::Uint(_) => {}
-            TyKind::Float(_) => {}
-            TyKind::Adt(_, _) => {}
-            TyKind::Foreign(_) => {}
-            TyKind::Str => {}
-            TyKind::Array(_, _) => {}
-            TyKind::Slice(_) => {}
-            TyKind::RawPtr(_) => {}
-            TyKind::Ref(_, _, _) => {}
-            TyKind::FnDef(_, _) => {}
-            TyKind::FnPtr(_) => {}
-            TyKind::Dynamic(_, _) => {}
-            TyKind::Closure(_, _) => {}
-            TyKind::Generator(_, _, _) => {}
-            TyKind::GeneratorWitness(_) => {}
-            TyKind::Never => {}
-            TyKind::Tuple(_) => {}
-            TyKind::Projection(_) => {}
-            TyKind::Opaque(_, _) => {}
-            TyKind::Param(_) => {}
-            TyKind::Bound(_, _) => {}
-            TyKind::Placeholder(_) => {}
-            TyKind::Infer(_) => {}
-            TyKind::Error(_) => {}
+            TyKind::Bool => T::Prim(PrimT::Bool),
+            TyKind::Char => T::Prim(PrimT::Char),
+            TyKind::Int(int) => <T as From<MirInt>>::from(int),
+            _ => todo!("{:?}", kind)
         }
     }
 }
 
-impl From<IntTy> for T {
-    fn from(_: IntTy) -> Self {
+impl From<MirInt> for T {
+    fn from(_: MirInt) -> Self {
         todo!()
     }
 }

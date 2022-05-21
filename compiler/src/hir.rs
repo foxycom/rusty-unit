@@ -19,7 +19,6 @@ use crate::writer::{HirObject, HirWriter, HirObjectBuilder};
 #[cfg(feature = "analysis")]
 pub fn hir_analysis(tcx: TyCtxt<'_>) {
     let current_crate_name = tcx.crate_name(LOCAL_CRATE);
-    println!("Looking at {}", current_crate_name.to_ident_string());
     // if current_crate_name.as_str() != RuConfig::env_crate_name() {
     //   return;
     // }
