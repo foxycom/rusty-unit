@@ -6,6 +6,7 @@ import de.unipassau.rustyunit.Constants;
 import de.unipassau.rustyunit.mir.MirAnalysis;
 import de.unipassau.rustyunit.test_case.primitive.FloatValue;
 import de.unipassau.rustyunit.test_case.primitive.PrimitiveValue;
+import de.unipassau.rustyunit.test_case.seed.SeedOptions;
 import de.unipassau.rustyunit.type.traits.Trait;
 import de.unipassau.rustyunit.type.traits.std.clone.Clone;
 import de.unipassau.rustyunit.type.traits.std.cmp.Eq;
@@ -54,7 +55,7 @@ public interface Float extends Prim {
 
   @Override
   default PrimitiveValue<?> random() {
-    if (Rnd.get().nextDouble() < Constants.P_CONSTANT_POOL) {
+    if (SeedOptions.useConstantPool() && Rnd.get().nextDouble() < Constants.P_CONSTANT_POOL) {
       var possibleConstants = MirAnalysis.constantPool().stream().filter(c -> c.type().equals(this))
           .map(c -> (PrimitiveValue<BigDecimal>) c).collect(Collectors.toSet());
       if (possibleConstants.size() >= 2) {

@@ -773,12 +773,10 @@ impl<'tcx> MirVisitor<'tcx> {
                         };
                     }
                     Rvalue::Use(operand) => match operand {
-                        Operand::Constant(constant) => {
+                        Operand::Constant(_) => {
                             return Some(ValueDef::Var(*var, self.operand_ty(operand)))
                         }
                         Operand::Move(place) | Operand::Copy(place) => {
-                            //let place = self.get_place(operand).unwrap();
-                            //return Some(ValueDef::Var(place.clone()));
                             return Some(self.get_place_definition(place));
                         }
                     },
@@ -1295,7 +1293,6 @@ impl<'tcx> MutVisitor<'tcx> for MirVisitor<'tcx> {
     fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
         self.super_basic_block_data(block, data);
 
-        self.compute_distance_in_place(data);
 
         if let Some(terminator) = &mut data.terminator {
             match &mut terminator.kind {

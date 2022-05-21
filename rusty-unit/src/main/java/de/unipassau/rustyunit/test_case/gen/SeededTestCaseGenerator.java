@@ -24,39 +24,35 @@ public class SeededTestCaseGenerator implements ChromosomeGenerator<TestCase> {
 
   private final Crossover<TestCase> crossover;
 
-  private final SeedOptions seedOptions;
-
   public SeededTestCaseGenerator(TyCtxt hir, MirAnalysis<TestCase> mir,
-      Mutation<TestCase> mutation, Crossover<TestCase> crossover,
-      SeedOptions seedOptions) {
+      Mutation<TestCase> mutation, Crossover<TestCase> crossover) {
     this.mir = mir;
     this.hir = hir;
     this.mutation = mutation;
     this.crossover = crossover;
-    this.seedOptions = seedOptions;
 
     Preconditions.checkState(!hir.getCallables().isEmpty());
   }
 
   @Override
   public TestCase get() {
-    var testCase = new TestCase(TestIdGenerator.get(), hir, mutation, crossover, mir,
-        seedOptions);
-    var callable = Rnd.choice(hir.getCallables());
+    var testCase = new TestCase(TestIdGenerator.get(), hir, mutation, crossover, mir);
+    var callable = Rnd.choice(hir.getCallables(true));
     testCase.insertCallable(callable);
 
     while (testCase.size() < Constants.CHROMOSOME_LENGTH) {
       var variables = testCase.variables();
       var interestingVariables = variables.stream().filter(filterInterestingVars()).toList();
       if (interestingVariables.isEmpty()) {
-        throw new RuntimeException("Not implemented");
+        testCase.insertRandomStmt();
+        continue;
       }
 
       var selectedVariable = Rnd.choice(interestingVariables);
       var interestingCallables = hir.callablesWithParam(selectedVariable.type(),
-          testCase.getFilePathBinding().orElse(null), selectedVariable.isConsumed());
+          testCase.getFilePathBinding().orElse(null), selectedVariable.isConsumed(), true);
       if (interestingCallables.isEmpty()) {
-        testCase.insertCallable(Rnd.choice(hir.getCallables()));
+        testCase.insertCallable(Rnd.choice(hir.getCallables(true)));
       } else {
         var interestingCallable = Rnd.choice(interestingCallables);
         testCase.insertCallable(interestingCallable);

@@ -6,6 +6,7 @@ import de.unipassau.rustyunit.Constants;
 import de.unipassau.rustyunit.mir.MirAnalysis;
 import de.unipassau.rustyunit.test_case.primitive.PrimitiveValue;
 import de.unipassau.rustyunit.test_case.primitive.StringValue;
+import de.unipassau.rustyunit.test_case.seed.SeedOptions;
 import de.unipassau.rustyunit.type.traits.Trait;
 import de.unipassau.rustyunit.type.traits.std.clone.Clone;
 import de.unipassau.rustyunit.type.traits.std.cmp.Eq;
@@ -71,7 +72,7 @@ public enum Str implements Prim {
 
   @Override
   public PrimitiveValue<String> random() {
-    if (Rnd.get().nextDouble() < Constants.P_CONSTANT_POOL) {
+    if (SeedOptions.useConstantPool() && Rnd.get().nextDouble() < Constants.P_CONSTANT_POOL) {
       var possibleConstants = MirAnalysis.constantPool().stream().filter(c -> c.type().equals(this))
           .map(c -> (PrimitiveValue<String>) c).collect(Collectors.toSet());
       if (possibleConstants.size() > 3) {

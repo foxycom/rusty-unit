@@ -20,19 +20,16 @@ public class RandomTestCaseGenerator implements ChromosomeGenerator<TestCase> {
   private final Mutation<TestCase> mutation;
   private final Crossover<TestCase> crossover;
 
-  private final SeedOptions seedOptions;
-
   public RandomTestCaseGenerator(TyCtxt hir, MirAnalysis<TestCase> mir, Mutation<TestCase> mutation, Crossover<TestCase> crossover) {
     this.hir = hir;
     this.mir = mir;
     this.mutation = mutation;
     this.crossover = crossover;
-    this.seedOptions = SeedOptions.builder().build();
   }
 
   @Override
   public TestCase get() {
-    var testCase = new TestCase(TestIdGenerator.get(), hir, mutation, crossover, mir, seedOptions);
+    var testCase = new TestCase(TestIdGenerator.get(), hir, mutation, crossover, mir);
     while (testCase.size() < Constants.INITIAL_CHROMOSOME_LENGTH) {
       testCase.insertRandomStmt();
     }

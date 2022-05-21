@@ -20,23 +20,23 @@ public class AllMethodTestCaseGenerator implements ChromosomeGenerator<TestCase>
 
   private final Crossover<TestCase> crossover;
 
-  private final SeedOptions seedOptions;
-
   private int current;
 
-  public AllMethodTestCaseGenerator(TyCtxt hir, MirAnalysis<TestCase> mir, Mutation<TestCase> mutation, Crossover<TestCase> crossover, SeedOptions seedOptions) {
+  public AllMethodTestCaseGenerator(TyCtxt hir, MirAnalysis<TestCase> mir, Mutation<TestCase> mutation, Crossover<TestCase> crossover) {
     this.mir = mir;
     this.hir = hir;
     this.mutation = mutation;
     this.crossover = crossover;
-    this.seedOptions = seedOptions;
     this.current = 0;
   }
 
   @Override
   public TestCase get() {
-    var testCase = new TestCase(TestIdGenerator.get(), hir, mutation, crossover, mir, seedOptions);
-    var callable = hir.getCallables().get(current);
+    var testCase = new TestCase(TestIdGenerator.get(), hir, mutation, crossover, mir);
+    var callables = hir.getCallables(true);
+    var callable = callables.get(current);
+
+    current = (current + 1) % callables.size();
 
     while (testCase.size() <= Constants.CHROMOSOME_LENGTH) {
       testCase.insertCallable(callable);

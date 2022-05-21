@@ -55,11 +55,7 @@ public class TestsGenerator {
 
     Set<MinimizingFitnessFunction<TestCase>> objectives = mir.targets();
 
-    var seedOptions = SeedOptions.builder()
-        .useConstantPool(cli.seedConstantPool())
-        .initialRandomPopulation(cli.seedRandomPopulation())
-        .useAllMethods(cli.seedMethods())
-        .build();
+
     var svd = new SVDImpl<>(objectives);
     var pareto = new Pareto<TestCase>();
     var fnds = new FNDSImpl<>(pareto);
@@ -70,9 +66,8 @@ public class TestsGenerator {
     var selection = new RankSelection<>(objectives, svd, preferenceSorter);
 
     ChromosomeGenerator<TestCase> chromosomeGenerator;
-    if (seedOptions.any()) {
-      chromosomeGenerator = new SeededTestCaseGenerator(hir, mir, mutation, crossover,
-          seedOptions);
+    if (SeedOptions.any()) {
+      chromosomeGenerator = new SeededTestCaseGenerator(hir, mir, mutation, crossover);
     } else {
       chromosomeGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover);
     }
@@ -110,11 +105,6 @@ public class TestsGenerator {
 
     Set<MinimizingFitnessFunction<TestCase>> objectives = mir.targets();
 
-    var seedOptions = SeedOptions.builder()
-        .useConstantPool(cli.seedConstantPool())
-        .initialRandomPopulation(cli.seedRandomPopulation())
-        .useAllMethods(cli.seedMethods())
-        .build();
     var svd = new SVDImpl<>(objectives);
     var pareto = new Pareto<TestCase>();
     var fnds = new FNDSImpl<>(pareto);
@@ -127,9 +117,8 @@ public class TestsGenerator {
 //        mutation, crossover, seedOptions);
     //var chromosomeGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover);
     ChromosomeGenerator<TestCase> chromosomeGenerator;
-    if (seedOptions.any()) {
-      chromosomeGenerator = new SeededTestCaseGenerator(hir, mir, mutation, crossover,
-          seedOptions);
+    if (SeedOptions.any()) {
+      chromosomeGenerator = new SeededTestCaseGenerator(hir, mir, mutation, crossover);
     } else {
       chromosomeGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover);
     }
@@ -145,7 +134,7 @@ public class TestsGenerator {
     var timer = new Timer();
     timer.start();
     List<TestCase> initialPopulation = populationGenerator.get();
-    if (seedOptions.initialRandomPopulation()) {
+    if (SeedOptions.initialRandomPopulation()) {
       initialPopulation = new ArrayList<>();
       int randomGenerations = Math.max((int) (GENERATIONS * 0.2), 2);
       var randomTestCaseGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover);
@@ -153,15 +142,16 @@ public class TestsGenerator {
           .forEach(initialPopulation::add);
     }
 
-    if (seedOptions.useAllMethods()) {
-      var methodsGenerator = new AllMethodTestCaseGenerator(hir, mir, mutation, crossover, seedOptions);
-      var additionalPopulation = Stream.generate(methodsGenerator).limit(hir.getCallables().size()).collect(Collectors.toList());
+    if (SeedOptions.useAllMethods()) {
+      var methodsGenerator = new AllMethodTestCaseGenerator(hir, mir, mutation, crossover);
+      var additionalPopulation = Stream.generate(methodsGenerator).limit(hir.getCallables().size())
+          .toList();
       initialPopulation.addAll(additionalPopulation);
     }
 
     System.out.printf("-- Initial population has been generated. Took %ds%n", TimeUnit.MILLISECONDS.toSeconds(timer.end()));
 
-    var mosa = DynaMOSA.<TestCase>builder().maxGenerations(GENERATIONS)
+    var dynamosa = DynaMOSA.<TestCase>builder().maxGenerations(GENERATIONS)
         .populationSize(POPULATION_SIZE)
         .populationGenerator(populationGenerator)
         .offspringGenerator(offspringGenerator)
@@ -173,8 +163,7 @@ public class TestsGenerator {
         .initialPopulation(initialPopulation)
         .output(output).build();
 
-    var solutions = mosa.findSolution();
-
+    var solutions = dynamosa.findSolution();
     crate.addAll(solutions);
   }
 

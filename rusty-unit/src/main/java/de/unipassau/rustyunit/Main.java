@@ -3,6 +3,7 @@ package de.unipassau.rustyunit;
 import com.lexicalscope.jewel.cli.CliFactory;
 import com.lexicalscope.jewel.cli.Option;
 import de.unipassau.rustyunit.algorithm.Algorithm;
+import de.unipassau.rustyunit.test_case.seed.SeedOptions;
 import java.io.IOException;
 import java.util.List;
 import org.slf4j.Logger;
@@ -53,6 +54,10 @@ public class Main {
 
   public static void main(String[] args) throws IOException, InterruptedException {
     var cli = CliFactory.parseArguments(CLI.class, args);
+    SeedOptions.setInitialRandomPopulation(cli.seedRandomPopulation());
+    SeedOptions.setUseAllMethods(cli.seedMethods());
+    SeedOptions.setUseConstantPool(cli.seedConstantPool());
+
     switch (Algorithm.from(cli.getAlgorithm())) {
       case MOSA -> TestsGenerator.runMOSA(cli);
       case DYNA_MOSA -> TestsGenerator.runDynaMOSA(cli);

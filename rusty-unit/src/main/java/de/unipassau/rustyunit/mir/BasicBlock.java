@@ -85,4 +85,6 @@ public class BasicBlock implements MinimizingFitnessFunction<TestCase> {
   public int hashCode() {
     return Objects.hash(globalId, blockId);
   }
+
+
 }

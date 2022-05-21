@@ -33,9 +33,7 @@ import de.unipassau.rustyunit.type.Slice;
 import de.unipassau.rustyunit.type.Tuple;
 import de.unipassau.rustyunit.type.Type;
 import de.unipassau.rustyunit.type.TypeBinding;
-import de.unipassau.rustyunit.type.prim.Int.ISize;
 import de.unipassau.rustyunit.type.prim.Prim;
-import de.unipassau.rustyunit.type.traits.Trait;
 import de.unipassau.rustyunit.type.traits.std.default_.Default;
 import de.unipassau.rustyunit.type.traits.std.marker.Copy;
 import de.unipassau.rustyunit.test_case.var.Index;
@@ -59,7 +57,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.javatuples.Pair;
-import org.javatuples.Quartet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,11 +70,8 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
   private final MirAnalysis<TestCase> mir;
   private final TestCaseMetadata metadata;
 
-  private final SeedOptions seedOptions;
-
   public TestCase(int id, TyCtxt tyCtxt, Mutation<TestCase> mutation,
-      Crossover<TestCase> crossover, MirAnalysis<TestCase> mir,
-      SeedOptions seedOptions) {
+      Crossover<TestCase> crossover, MirAnalysis<TestCase> mir) {
     super(mutation, crossover);
 
     this.id = id;
@@ -86,7 +80,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     this.coverage = new HashMap<>();
     this.mir = mir;
     this.metadata = new TestCaseMetadata(id);
-    this.seedOptions = seedOptions;
   }
 
   public TestCase(TestCase other) {
@@ -98,7 +91,6 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
     this.coverage = new HashMap<>();
     this.mir = other.mir;
     this.metadata = new TestCaseMetadata(id);
-    this.seedOptions = other.seedOptions;
   }
 
   public Set<String> getUsedTraitNames() {
@@ -834,7 +826,7 @@ public class TestCase extends AbstractTestCaseChromosome<TestCase> {
 
   private VarReference generatePrimitive(Prim prim, String globalId) {
     logger.debug("({}) Starting to generate a primitive", id);
-    if (seedOptions.useConstantPool()
+    if (SeedOptions.useConstantPool()
         && Rnd.get().nextDouble() < Constants.P_CONSTANT_POOL) {
       var constants = MirAnalysis.constantPool()
           .stream().filter(val -> val.type().equals(prim)).collect(Collectors.toSet());

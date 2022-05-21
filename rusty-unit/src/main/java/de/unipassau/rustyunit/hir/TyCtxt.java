@@ -129,6 +129,10 @@ public class TyCtxt {
     return callables;
   }
 
+  public List<Callable> getCallables(boolean localOnly) {
+    return getCallables(null, true);
+  }
+
   public List<Callable> getCallables(String filePath, boolean localOnly) {
     var stream = callables.stream();
     if (filePath != null) {
@@ -175,7 +179,7 @@ public class TyCtxt {
     return generatorsOf(type, filePath, Callable.class);
   }
 
-  public List<Callable> callablesWithParam(Type type, String filePath, boolean onlyBorrowing) {
+  public List<Callable> callablesWithParam(Type type, String filePath, boolean onlyBorrowing, boolean onlyLocal) {
     var stream = callables.stream()
         .filter(c -> {
           var param = c.getParams().stream().filter(p -> p.getType().canBeSameAs(type)).findFirst();
@@ -189,6 +193,10 @@ public class TyCtxt {
             return true;
           }
         });
+
+    if (onlyLocal) {
+      stream = stream.filter(c -> c.getSrcFilePath() != null);
+    }
 
     if (filePath != null) {
       stream = stream.filter(c -> c.isPublic() || c.getSrcFilePath().equals(filePath));
