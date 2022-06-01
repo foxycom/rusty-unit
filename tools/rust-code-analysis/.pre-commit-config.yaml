@@ -1,0 +1,46 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.4.0
+    hooks:
+    -   id: check-executables-have-shebangs
+    -   id: check-merge-conflict
+    -   id: check-symlinks
+    -   id: check-yaml
+    -   id: check-json
+        exclude: enums/templates/json.json
+-   repo: https://github.com/marco-c/taskcluster_yml_validator
+    rev: v0.0.7
+    hooks:
+      - id: taskcluster_yml
+-   repo: local
+    hooks:
+      - id: fmt
+        name: fmt
+        language: system
+        files: '\.rs$'
+        exclude: '.*/templates/.*\.rs$'
+        entry: cargo fmt -- --check --verbose
+
+      - id: clippy
+        name: clippy
+        language: system
+        files: '\.rs$'
+        entry: cargo clippy --all-targets --all -- -D warnings
+        pass_filenames: false
+
+      - id: udeps
+        name: udeps
+        language: system
+        files: '\.rs$'
+        entry: cargo +nightly udeps --all-targets
+        pass_filenames: false
+
+      - id: test
+        name: test
+        language: system
+        files: '\.rs$'
+        entry: cargo test
+        pass_filenames: false
+
+default_language_version:
+    python: python3

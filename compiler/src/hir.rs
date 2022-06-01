@@ -1,0 +1,627 @@
+use crate::analysis::Analysis;
+use crate::mir::def_id_to_str;
+use crate::types::{
+    def_id_name, FieldAccessItem, RuCallable, RuEnum, RuEnumInit, RuEnumVariant, RuFunction,
+    RuMethod, RuParam, RuStaticMethod, RuStruct, RuStructInit, RuTrait, RuTy,
+};
+use crate::util::{
+    def_id_to_enum, def_id_to_t, fn_ret_ty_to_t, generics_to_ts, impl_to_def_id, is_local,
+    item_to_name, node_to_name, path_to_name, res_to_name, span_to_path, ty_to_name, ty_to_param,
+    ty_to_t,
+};
+#[cfg(feature = "analysis")]
+use crate::writer::{HirObject, HirObjectBuilder, HirWriter};
+use crate::{RuConfig, HIR_LOG_PATH, LOG_DIR};
+use log::{debug, info, warn};
+use petgraph::visit::Walker;
+use rustc_ast::{CrateSugar, IsAuto};
+use rustc_data_structures::undo_log::UndoLogs;
+use rustc_hir::{AssocItemKind, BodyId, EnumDef, FnSig, Generics, HirId, Impl, ImplItemKind, Item, ItemKind, Node, Unsafety, Variant, VariantData, Visibility, VisibilityKind};
+use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_span::def_id::{DefId, LocalDefId, LOCAL_CRATE};
+use rustc_span::Span;
+use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
+
+#[cfg(feature = "analysis")]
+pub fn hir_analysis(tcx: TyCtxt<'_>) {
+    let current_crate_name = tcx.crate_name(LOCAL_CRATE);
+    // if current_crate_name.as_str() != RuConfig::env_crate_name() {
+    //   return;
+    // }
+
+    let mut callables = vec![];
+    for item in tcx.hir().items() {
+        let def_id = item.def_id.to_def_id();
+        if def_id_to_str(def_id, &tcx).contains("serde") {
+            continue;
+        }
+
+
+        let span: &Span = &item.span;
+        let file_path = span_to_path(span, &tcx);
+        if file_path.is_none() {
+            continue;
+        }
+
+        //info!("HIR: Scanning file {:?}", file_path.as_ref());
+        if let Some(path) = file_path.as_ref() {
+            if path.ends_with("rusty_monitor.rs") {
+                continue;
+            }
+
+            if let Some(path) = path.to_str() {
+                if path.contains(".cargo") {
+                    continue;
+                }
+            }
+        }
+
+        match &item.kind {
+            ItemKind::Fn(sig, generics, body_id) => {
+                if &item.ident.name.to_string() != "main" && allowed_item(item, &tcx) {
+                    info!("HIR: Analyzing function {}", item_to_name(item, &tcx));
+                    analyze_fn(
+                        sig,
+                        item.def_id,
+                        body_id,
+                        &item.vis,
+                        generics,
+                        file_path.unwrap(),
+                        &mut callables,
+                        &tcx,
+                    )
+                }
+            }
+            ItemKind::Impl(im) => {
+                if allowed_item(item, &tcx) {
+                    info!("HIR: Analyzing impl {}", item_to_name(item, &tcx));
+                    analyze_impl(im, file_path.unwrap(), &mut callables, &tcx)
+                }
+            }
+            ItemKind::Struct(s, g) => {
+                if allowed_item(item, &tcx) {
+                    info!("HIR: Analyzing struct {}", item_to_name(item, &tcx));
+                    analyze_struct(
+                        item.def_id,
+                        s,
+                        g,
+                        &item.vis,
+                        file_path.unwrap(),
+                        &mut callables,
+                        &tcx,
+                    );
+                }
+            }
+            ItemKind::Enum(enum_def, g) => {
+                if allowed_item(item, &tcx) {
+                    info!("HIR: Analyzing enum {}", item_to_name(item, &tcx));
+                    analyze_enum(
+                        item.def_id,
+                        enum_def,
+                        g,
+                        &item.vis,
+                        file_path.unwrap(),
+                        &mut callables,
+                        &tcx,
+                    );
+                }
+            }
+            ItemKind::Trait(is_auto, _, _, _, _) => {
+                let auto = match is_auto {
+                    IsAuto::Yes => true,
+                    IsAuto::No => false,
+                };
+                info!("HIR: trait is auto: {}", auto);
+            }
+            //ItemKind::Mod(e)
+            _ => {}
+        }
+    }
+
+    // let hir_output_path = Path::new(LOG_DIR).join(HIR_LOG_PATH);
+    // let content = serde_json::to_string(&callables).unwrap();
+    //
+    // #[cfg(file_writer)]
+    // FileWriter::new(hir_output_path).write(&content).unwrap();
+    //
+    // #[cfg(redis_writer)]
+    // todo!()
+
+    let hir_object: HirObject = HirObjectBuilder::default()
+        .name(current_crate_name.to_ident_string())
+        .callables(callables)
+        .impls(HashMap::new())
+        .build()
+        .unwrap();
+    HirWriter::write(&hir_object);
+}
+
+fn allowed_item(item: &Item<'_>, tcx: &TyCtxt<'_>) -> bool {
+    //let item_name = item_to_name(item, &tcx).to_lowercase();
+    //item_name.contains("serde") && !item_name.contains("test") && !item_name.contains("snafu")
+    true
+}
+
+fn analyze_fn(
+    sig: &FnSig,
+    local_def_id: LocalDefId,
+    body_id: &BodyId,
+    vis: &Visibility<'_>,
+    generics: &Generics,
+    file_path: PathBuf,
+    callables: &mut Vec<RuCallable>,
+    tcx: &TyCtxt<'_>,
+) {
+    if let Unsafety::Unsafe = sig.header.unsafety {
+        // Skip unsafe functions
+        return;
+    }
+
+    let parent_node = tcx.hir().find_parent_node(tcx.hir().local_def_id_to_hir_id(local_def_id));
+    if let Some(parent) = parent_node {
+        if let Some(parent_node) = tcx.hir().find(parent) {
+            if let Node::Item(item) = &parent_node {
+                if let ItemKind::Fn(_, _, _) = &item.kind {
+                    // Ignore functions that are defined within another functions
+                    return;
+                }
+            }
+        }
+    }
+
+    let hir_id = tcx.hir().local_def_id_to_hir_id(local_def_id);
+    let global_id = def_id_to_str(local_def_id.to_def_id(), &tcx).replace("::", "__");
+    let is_public = is_public(vis);
+    let fn_decl = &sig.decl;
+
+    let fn_name = node_to_name(&tcx.hir().get(hir_id), tcx).unwrap();
+    //let fn_name = tcx.hir().get(hir_id).ident().unwrap().to_string();
+
+    let fn_generics = generics_to_ts(generics, None, None, tcx);
+    if let Some(fn_generics) = fn_generics {
+        // self_hir_id must never be used, so just pass a dummy value
+        let mut params = Vec::with_capacity(fn_decl.inputs.len());
+        for input in fn_decl.inputs.iter() {
+            if let Some(param) = ty_to_param(None, input, None, None, &fn_generics, tcx) {
+                params.push(param);
+            } else {
+                return;
+            }
+        }
+
+        let return_type = fn_ret_ty_to_t(&fn_decl.output, None, None, &fn_generics, tcx);
+
+        if let Some(return_type) = &return_type {
+            debug!("HIR: Output type is {:?}", return_type);
+        }
+
+        let function_item = RuFunction::new(
+            is_public,
+            &fn_name,
+            vec![],
+            params,
+            return_type,
+            file_path.to_str().unwrap(),
+            global_id,
+        );
+        let fn_callable = RuCallable::Function(function_item);
+        callables.push(fn_callable);
+    }
+}
+
+fn analyze_enum(
+    enum_local_def_id: LocalDefId,
+    enum_def: &EnumDef,
+    g: &Generics,
+    visibility: &Visibility,
+    file_path: PathBuf,
+    callables: &mut Vec<RuCallable>,
+    tcx: &TyCtxt<'_>,
+) {
+    let is_public = is_public(visibility);
+    let enum_hir_id = tcx.hir().local_def_id_to_hir_id(enum_local_def_id);
+    let enum_def_id = tcx.hir().local_def_id(enum_hir_id).to_def_id();
+    let self_name = node_to_name(&tcx.hir().get(enum_hir_id), tcx).unwrap();
+
+    let self_ty = RuTy::Struct(RuStruct::new(&self_name, vec![], is_local(enum_def_id)));
+
+    let generics = generics_to_ts(g, Some(&self_ty), None, tcx);
+    if let Some(generics) = generics {
+
+
+        //let self_ty = def_id_to_enum(enum_def_id, tcx).unwrap();
+        let self_ty = RuTy::Enum(RuEnum::new(
+            &self_name,
+            generics.clone(),
+            vec![],
+            is_local(enum_def_id),
+        ));
+        if self_name.contains("serde") {
+            // Skip too hard stuff
+            return;
+        }
+
+        for variant in enum_def.variants {
+            let variant_name = variant.ident.name.to_ident_string();
+
+            let variant = extract_enum_variant(variant, enum_hir_id, &generics, tcx);
+            if let Some(variant) = variant {
+                debug!(
+                    "HIR: Extracted enum variant {}::{}",
+                    &self_name, &variant_name
+                );
+                let enum_init = RuCallable::EnumInit(RuEnumInit::new(
+                    file_path.to_str().unwrap(),
+                    variant,
+                    self_ty.clone(),
+                    is_public,
+                ));
+                callables.push(enum_init);
+            } else {
+                warn!(
+                    "HIR: Could not extract enum variant {}::{}",
+                    &self_name, &variant_name
+                );
+            }
+        }
+    }
+}
+
+fn extract_enum_variant(
+    variant: &Variant,
+    hir_id: HirId,
+    generics: &Vec<RuTy>,
+    tcx: &TyCtxt<'_>,
+) -> Option<RuEnumVariant> {
+    match &variant.data {
+        VariantData::Struct(fields, _) => {
+            let def_id = tcx.hir().local_def_id(variant.id).to_def_id();
+            let struct_name = node_to_name(&tcx.hir().get(variant.id), tcx).unwrap();
+            let params = fields
+                .iter()
+                .filter_map(|f| ty_to_param(Some(f.ident.as_str()), f.ty, None, None, &vec![], tcx))
+                .collect::<Vec<_>>();
+
+            if params.len() != fields.len() {
+                warn!("Could not extract enum variant: {}", struct_name);
+                return None;
+            }
+
+            let v = RuEnumVariant::Struct(variant.ident.name.to_ident_string(), params);
+            Some(v)
+        }
+        VariantData::Tuple(fields, variant_hir_id) => {
+            debug!("--> ENUM variant extracting {:?}", variant_hir_id);
+            let params = fields
+                .iter()
+                .filter_map(|f| ty_to_t(&f.ty, None, None, generics, tcx))
+                .map(|ty| RuParam::new(None, ty, false))
+                .collect::<Vec<_>>();
+            if params.len() < fields.len() {
+                return None;
+            }
+
+            let v = RuEnumVariant::Tuple(variant.ident.name.to_ident_string(), params);
+            Some(v)
+        }
+        VariantData::Unit(_) => Some(RuEnumVariant::Unit(variant.ident.name.to_ident_string())),
+    }
+}
+
+fn analyze_struct(
+    struct_local_def_id: LocalDefId,
+    vd: &VariantData,
+    g: &Generics,
+    vis: &Visibility<'_>,
+    file_path: PathBuf,
+    callables: &mut Vec<RuCallable>,
+    tcx: &TyCtxt<'_>,
+) {
+    let mut struct_is_public = is_public(vis);
+
+    let struct_generics = generics_to_ts(g, None, None, tcx);
+    if let Some(struct_generics) = struct_generics {
+        let struct_hir_id = tcx.hir().local_def_id_to_hir_id(struct_local_def_id);
+        match vd {
+            VariantData::Struct(fields, _) => {
+                let def_id = tcx.hir().local_def_id(struct_hir_id).to_def_id();
+                //let self_ty = def_id_to_t(def_id, tcx).unwrap();
+                let self_name = node_to_name(&tcx.hir().get(struct_hir_id), tcx).unwrap();
+                info!("HIR: {} is public: {}", self_name, struct_is_public);
+                let generics = generics_to_ts(g, None, None, tcx);
+                if let Some(generics) = generics {
+                    let self_ty = RuTy::Struct(RuStruct::new(&self_name, generics, is_local(def_id)));
+                    if self_name.contains("serde") {
+                        // Skip too hard stuff
+                        return;
+                    }
+
+                    for field in fields.iter() {
+                        let ty = ty_to_t(field.ty, Some(&self_ty), None, &struct_generics, tcx);
+                        if let Some(ty) = ty {
+                            let def_id = tcx.hir().local_def_id(struct_hir_id).to_def_id();
+
+                            let field_name = tcx.hir().get(field.hir_id).ident().unwrap().to_string();
+                            debug!("HIR: Extracted field {}::{}", &self_name, &field_name);
+
+                            /*let parent = def_id_to_t(def_id, tcx).unwrap();
+                            let field_item = FieldAccessItem::new(
+                              &field_name,
+                              file_path.to_str().unwrap(),
+                              ty,
+                              parent,
+                              is_public,
+                            );*/
+                        }
+
+                        let field_is_public = is_public(&field.vis);
+                        if !field_is_public {
+                            struct_is_public = false;
+                        }
+                    }
+
+                    let mut params = Vec::with_capacity(fields.len());
+                    for field in fields.iter() {
+                        let name = field.ident.name.to_ident_string();
+                        let param = ty_to_param(
+                            Some(&name),
+                            field.ty,
+                            Some(&self_ty),
+                            None,
+                            &struct_generics,
+                            tcx,
+                        );
+                        if let Some(param) = param {
+                            params.push(param);
+                        } else {
+                            // An unknown type, ignore function
+                            return;
+                        }
+                    }
+
+                    debug!("HIR: Extracted struct init {}: {:?}", self_ty, params);
+                    callables.push(RuCallable::StructInit(RuStructInit::new(
+                        struct_is_public,
+                        file_path.to_str().unwrap(),
+                        params,
+                        self_ty,
+                    )));
+                }
+            }
+            _ => {}
+        }
+    }
+
+}
+
+fn analyze_impl_items(
+    im: &Impl,
+    associated_types: &mut HashMap<String, RuTy>,
+    self_ty: &RuTy,
+    impl_generics: &Vec<RuTy>,
+    tcx: &TyCtxt<'_>,
+) {
+    let items = im.items;
+    for item in items {
+        let impl_item = tcx.hir().impl_item(item.id);
+        match &impl_item.kind {
+            ImplItemKind::TyAlias(ty) => {
+                let t = ty_to_t(ty, Some(&self_ty), None, &impl_generics, tcx);
+                if let Some(t) = t {
+                    let associated_type_name = tcx
+                        .hir()
+                        .name(tcx.hir().local_def_id_to_hir_id(ty.hir_id.owner))
+                        .to_string();
+                    associated_types.insert(associated_type_name, t);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+// Get associated types defined in the super traits
+fn analyze_super_traits(
+    trait_: DefId,
+    self_ty: &RuTy,
+    associated_types: &mut HashMap<String, RuTy>,
+    impl_generics: &Vec<RuTy>,
+    tcx: &TyCtxt<'_>,
+) {
+    for t in tcx.super_predicates_of(trait_).predicates {
+        let pred = t.0.to_opt_poly_trait_pred();
+        if let Some(pred) = pred {
+            info!("Super trait: {:?}", pred.def_id());
+
+            let super_trait: DefId = pred.def_id();
+            let impls = tcx.hir().trait_impls(super_trait);
+            for i in impls {
+                let item = tcx.hir().expect_item(*i);
+                match &item.kind {
+                    ItemKind::Impl(im) => {
+                        let self_ty_opt = ty_to_t(im.self_ty, None, None, &impl_generics, tcx);
+                        if self_ty_opt.is_none() {
+                            return;
+                        }
+                        let ty = self_ty_opt.unwrap();
+                        if &ty == self_ty {
+                            analyze_impl_items(im, associated_types, self_ty, impl_generics, tcx);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+fn analyze_impl(im: &Impl, file_path: PathBuf, callables: &mut Vec<RuCallable>, tcx: &TyCtxt<'_>) {
+    let parent_def_id_opt = impl_to_def_id(im, tcx);
+    if let Unsafety::Unsafe = im.unsafety {
+        // Skip unsafe functions
+        return;
+    }
+    if let Some(parent_def_id) = parent_def_id_opt {
+        if parent_def_id.as_local().is_none() {
+            return;
+        }
+    } else {
+        return;
+    }
+
+    let trait_name = im
+        .of_trait
+        .as_ref()
+        .map(|trait_ref| path_to_name(&trait_ref.path, tcx));
+
+    let parent_def_id = parent_def_id_opt.unwrap();
+
+    let parent_hir_id = tcx
+        .hir()
+        .local_def_id_to_hir_id(parent_def_id.expect_local());
+
+    let impl_generics = generics_to_ts(&im.generics, None, None, tcx);
+    if let Some(impl_generics) = impl_generics {
+        let self_ty_opt = ty_to_t(im.self_ty, None, None, &impl_generics, tcx);
+        if self_ty_opt.is_none() {
+            info!("---->>>");
+            return;
+        }
+        let self_ty = self_ty_opt.unwrap();
+
+        let items = im.items;
+        let mut associated_types = HashMap::new();
+        analyze_impl_items(im, &mut associated_types, &self_ty, &impl_generics, tcx);
+
+        if let Some(trait_) = im.of_trait.as_ref() {
+            analyze_super_traits(
+                trait_.trait_def_id().unwrap(),
+                &self_ty,
+                &mut associated_types,
+                &impl_generics,
+                tcx,
+            );
+        }
+
+        info!("Created mapping: {:?}", associated_types);
+
+        for item in items {
+
+            let item_def_id = item.id.def_id;
+            let global_id = def_id_to_str(item_def_id.to_def_id(), tcx).replace("::", "__");
+
+            let hir_id = tcx.hir().local_def_id_to_hir_id(item_def_id);
+            let impl_item = tcx.hir().impl_item(item.id);
+            match &impl_item.kind {
+                ImplItemKind::Fn(sig, body_id) => {
+                    if let Unsafety::Unsafe = sig.header.unsafety {
+                        continue;
+                    }
+                    debug!(
+                        "HIR: Found method {}, parent: {}",
+                        &impl_item.ident, parent_hir_id
+                    );
+                    let fn_name = tcx.hir().get(item.id.hir_id()).ident().unwrap().to_string();
+                    let fn_generics =
+                        generics_to_ts(&impl_item.generics, Some(&self_ty), Some(&associated_types), tcx);
+                    if let Some(fn_generics) = fn_generics {
+                        let mut overall_generics = impl_generics.clone();
+                        overall_generics.append(&mut fn_generics.clone());
+
+                        info!("Returns: {:?}", &sig.decl.output);
+                        let return_type = fn_ret_ty_to_t(
+                            &sig.decl.output,
+                            Some(&self_ty),
+                            Some(&associated_types),
+                            &overall_generics,
+                            tcx,
+                        );
+                        if let Some(return_type) = return_type.as_ref() {
+                            debug!("HIR: Return type is {:?}", &return_type);
+                        }
+
+                        let is_public = is_public(&impl_item.vis);
+                        let parent_name = node_to_name(&tcx.hir().get(parent_hir_id), tcx).unwrap();
+                        if parent_name.contains("serde") {
+                            // Skip too hard stuff
+                            warn!("HIR: Skipping serde method");
+                            continue;
+                        }
+
+                        let mut params = Vec::with_capacity(sig.decl.inputs.len());
+                        for input in sig.decl.inputs.iter() {
+                            let param = ty_to_param(
+                                None,
+                                input,
+                                Some(&self_ty),
+                                Some(&associated_types),
+                                &overall_generics,
+                                tcx,
+                            );
+                            if let Some(param) = param {
+                                debug!("HIR: Extracting parameter {:?}", param);
+                                params.push(param);
+                            } else {
+                                // An unknown type, ignore function
+                                warn!("HIR: Unknown parameter, skipping method.");
+                                return;
+                            }
+                        }
+
+                        if !sig.decl.implicit_self.has_implicit_self() {
+                            // Static method
+                            debug!("HIR: Method is static");
+                            let static_method_item = RuStaticMethod::new(
+                                &fn_name,
+                                file_path.to_str().unwrap(),
+                                params,
+                                return_type,
+                                self_ty.clone(),
+                                fn_generics,
+                                is_public,
+                                trait_name.clone(),
+                                global_id,
+                            );
+                            let static_method_callable =
+                                RuCallable::StaticFunction(static_method_item);
+                            callables.push(static_method_callable);
+                        } else {
+                            // Dynamic method
+                            debug!("HIR: Method is associative");
+                            let method_item = RuMethod::new(
+                                &fn_name,
+                                file_path.to_str().unwrap(),
+                                params,
+                                return_type,
+                                self_ty.clone(),
+                                fn_generics,
+                                is_public,
+                                trait_name.clone(),
+                                global_id,
+                            );
+                            let method_callable = RuCallable::Method(method_item);
+                            info!("HIR: Added method {}", fn_name);
+                            callables.push(method_callable);
+                        }
+                    }
+                }
+                ImplItemKind::TyAlias(ty) => {
+                    info!("Impl ty alias: {:?}", ty);
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+fn is_public(vis: &Visibility<'_>) -> bool {
+    match &vis.node {
+        VisibilityKind::Public => true,
+        VisibilityKind::Crate(sugar) => match sugar {
+            CrateSugar::PubCrate => true,
+            _ => false,
+        },
+        _ => false,
+    }
+}
