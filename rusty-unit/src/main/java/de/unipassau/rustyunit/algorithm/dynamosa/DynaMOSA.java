@@ -92,11 +92,11 @@ public class DynaMOSA<C extends AbstractTestCaseChromosome<C>> implements Geneti
         }
 
         CallableSelector.setCurrentPopulation(archive.get());
-        targets = mir.updateTargets(targets, population);
 
         var combined = new ArrayList<C>(population.size() + offspring.size());
         combined.addAll(population);
         combined.addAll(offspring);
+        targets = mir.updateTargets(targets, combined);
 
         var fronts = preferenceSorter.sort(combined, targets);
         population.clear();

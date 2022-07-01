@@ -134,7 +134,6 @@ public class TestsGenerator {
     var offspringGenerator = new OffspringGeneratorImpl(selection, uncoveredObjectives);
 
     var archive = new DefaultArchive<>(objectives);
-    var output = new Output<TestCase>(cli.getCrateName(), cli.getOutputDir());
 
     var timer = new Timer();
     timer.start();
@@ -196,13 +195,40 @@ public class TestsGenerator {
     var chromosomeGenerator = new RandomSearchTestCaseGenerator(mir, hir, mutation, crossover);
 
     Set<MinimizingFitnessFunction<TestCase>> objectives = mir.targets();
+    List<TestCase> initialPopulation = Stream.generate(chromosomeGenerator)
+        .limit(Constants.POPULATION_SIZE).toList();
+    if (SeedOptions.initialRandomPopulation()) {
+      logger.info("-- Applying the InitialRandomPopulation seed strategy");
+      initialPopulation = Collections.synchronizedList(new ArrayList<>());
+      int randomGenerations = Math.max(GENERATIONS, 2);
+      var randomTestCaseGenerator = new RandomTestCaseGenerator(hir, mir, mutation, crossover);
+      var randomPopulation = IntStream.range(0, randomGenerations).parallel()
+          .mapToObj(i -> randomTestCaseGenerator.get()).toList();
+      initialPopulation.addAll(randomPopulation);
+    }
 
+    if (SeedOptions.useAllMethods()) {
+      logger.info("-- Applying the AllMethods seed strategy");
+      var methodsGenerator = new AllMethodTestCaseGenerator(hir, mir, mutation, crossover);
+      var additionalPopulation = Stream.generate(methodsGenerator).parallel()
+          .limit(hir.getCallables().size())
+          .toList();
+      initialPopulation.addAll(additionalPopulation);
+    }
+
+    String algorithm = SeedOptions.any() ? "seeded_random" : "random";
     List<Listener<TestCase>> listeners = List.of(
-        new DB(cli.getCrateName(), "random", cli.getRun())
+        new DB(cli.getCrateName(), algorithm, cli.getRun())
     );
     var archive = new DefaultArchive<>(objectives);
-    var rs = new RandomSearch<>(GENERATIONS * POPULATION_SIZE, chromosomeGenerator, archive, crate,
-        listeners, GENERATIONS);
+    var rs = RandomSearch.<TestCase>builder().samples(GENERATIONS * POPULATION_SIZE)
+        .chromosomeGenerator(chromosomeGenerator)
+        .archive(archive)
+        .container(crate)
+        .listeners(listeners)
+        .maxGenerations(GENERATIONS)
+        .initialPopulation(initialPopulation)
+        .build();
     var solutions = rs.findSolution();
     crate.addAll(solutions);
   }

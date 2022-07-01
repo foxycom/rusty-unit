@@ -126,7 +126,7 @@ public class TestCaseVisitor implements Visitor {
         var typeBinding = callableStmt.returnValue().get().getBinding();
         var genericsString = callableStmt.generics().stream().map(g -> g.bindGenerics(typeBinding)).map(Type::encode).collect(
             Collectors.joining(", "));
-        sb.append(genericsString);
+        sb.append("<").append(genericsString).append(">");
       }
 
       var argsString = callableStmt.args()
