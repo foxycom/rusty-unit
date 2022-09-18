@@ -9,6 +9,9 @@ First of all, you need to build RustyUnit's binaries. Run in root:
 ```
 make build
 ```
+
+**Note:** We tested the code with the Rust compiler version `1.61.0-nightly`. We need a nightly compiler due to features RustyUnit exploits. Since nightly versions often include breaking changes, RustyUnit might not work with other versions. Also you need to use Java 17+.
+
 The command produces a `bin` folder with three binaries: `analysis`, `instrumentation`, and `rusty-unit.jar`.
 
 ## Analysis
