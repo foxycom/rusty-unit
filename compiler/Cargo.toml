@@ -23,11 +23,11 @@ redis_writer = ["analysis"]
 [dependencies]
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
-petgraph = {version = "0.6.0", features = ["serde-1"] }
+petgraph = { version = "0.6.0", features = ["serde-1"] }
 uuid = { version = "0.8", features = ["v4", "serde"] }
 env_logger = "0.9.0"
 log = "0.4.14"
-clap = {version = "3.1.0", features = ["derive", "clap_derive"]}
+clap = { version = "3.1.0", features = ["derive", "clap_derive"] }
 toml = "0.5.8"
 which = "4.2.4"
 dircpy-stable = "0.3.5"
@@ -38,16 +38,14 @@ version = "*"
 
 
 [target.'cfg(NOT_A_PLATFORM)'.dependencies]
-rustc_driver = {path = "/Users/tim/rust/compiler/rustc_driver"}
-rustc_interface = {path = "/Users/tim/rust/compiler/rustc_interface"}
-rustc_middle = {path = "/Users/tim/rust/compiler/rustc_middle"}
-rustc_session = {path = "/Users/tim/rust/compiler/rustc_session"}
-rustc_data_structures = {path = "/Users/tim/rust/compiler/rustc_data_structures"}
-rustc_span = {path = "/Users/tim/rust/compiler/rustc_span"}
-rustc_hir = {path = "/Users/tim/rust/compiler/rustc_hir"}
-rustc_target = {path = "/Users/tim/rust/compiler/rustc_target"}
-rustc_index = {path = "/Users/tim/rust/compiler/rustc_index"}
-rustc_ast = {path = "/Users/tim/rust/compiler/rustc_ast"}
-rustc_apfloat = {path = "/Users/tim/rust/compiler/rustc_apfloat"}
-
-
+rustc_driver = { path = "rust/compiler/rustc_driver" }
+rustc_interface = { path = "rust/compiler/rustc_interface" }
+rustc_middle = { path = "rust/compiler/rustc_middle" }
+rustc_session = { path = "rust/compiler/rustc_session" }
+rustc_data_structures = { path = "rust/compiler/rustc_data_structures" }
+rustc_span = { path = "rust/compiler/rustc_span" }
+rustc_hir = { path = "rust/compiler/rustc_hir" }
+rustc_target = { path = "rust/compiler/rustc_target" }
+rustc_index = { path = "rust/compiler/rustc_index" }
+rustc_ast = { path = "rust/compiler/rustc_ast" }
+rustc_apfloat = { path = "rust/compiler/rustc_apfloat" }

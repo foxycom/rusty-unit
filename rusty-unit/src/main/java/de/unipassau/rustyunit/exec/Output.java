@@ -21,7 +21,7 @@ public class Output<C extends AbstractTestCaseChromosome<C>> implements Listener
     directory = path.toFile();
     var result = directory.mkdirs();
     if (!result) {
-      throw new RuntimeException("Could create output directory " + path);
+      throw new RuntimeException("Could not create output directory " + path);
     }
   }
 

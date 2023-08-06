@@ -16,14 +16,4 @@ class OptionTest {
   void setUp() {
 
   }
-
-  @Test
-  public void testGenericOptionCanBeOptionOfSomeType() {
-    var genericOption = Option.getInstance();
-    var actualOption = new AbstractEnum("std::option::Option",
-        List.of(new Generic("T", Collections.emptyList())),
-        Collections.emptyList(),
-        false, Collections.emptySet());
-    assertTrue(genericOption.canBeSameAs(actualOption));
-  }
 }

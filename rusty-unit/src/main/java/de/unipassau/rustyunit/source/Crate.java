@@ -11,6 +11,7 @@ import de.unipassau.rustyunit.exec.TestCaseRunner;
 import de.unipassau.rustyunit.source.SourceFile.FileType;
 import de.unipassau.rustyunit.test_case.TestCase;
 import de.unipassau.rustyunit.util.Rnd;
+
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
@@ -22,13 +23,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Crate implements ChromosomeContainer<TestCase> {
 
     private static final Logger logger = LoggerFactory.getLogger(ChromosomeContainer.class);
+
+    private static final FileFilter fileFilter = FileFilterUtils.notFileFilter(FileFilterUtils.prefixFileFilter("rusty-unit").or(FileFilterUtils.nameFileFilter("analysis")).or(FileFilterUtils.nameFileFilter("target")).or(FileFilterUtils.nameFileFilter("dynamosa")).or(FileFilterUtils.nameFileFilter("random")));
 
     private final Path originalRoot;
     private final Path executionRoot;
@@ -38,31 +43,31 @@ public class Crate implements ChromosomeContainer<TestCase> {
     private List<TestCase> testCases;
 
     public static Crate load(CLI cli)
-          throws IOException, InterruptedException {
+            throws IOException, InterruptedException {
         var root = Paths.get(cli.getCrateRoot());
         var srcRoot = Paths.get(root.toString(), "src");
         var executionRoot = Paths.get(cli.getOutputDir());
 
         var sourceFiles = Files.walk(srcRoot)
-              .filter(p -> !Files.isDirectory(p))
-              .filter(p -> p.toString().toLowerCase(Locale.ROOT).endsWith(".rs"))
-              .map(p -> {
-                  var relativePath = root.relativize(p);
-                  var executionPath = executionRoot.resolve(relativePath);
-                  if (cli.getMainFiles().stream().anyMatch(p::endsWith)) {
-                      return new SourceFile(p, executionPath, FileType.MAIN);
-                  } else {
-                      return new SourceFile(p, executionPath, FileType.SOURCE_CODE);
-                  }
-              }).toList();
+                .filter(p -> !Files.isDirectory(p))
+                .filter(p -> p.toString().toLowerCase(Locale.ROOT).endsWith(".rs"))
+                .map(p -> {
+                    var relativePath = root.relativize(p);
+                    var executionPath = executionRoot.resolve(relativePath);
+                    if (cli.getMainFiles().stream().anyMatch(p::endsWith)) {
+                        return new SourceFile(p, executionPath, FileType.MAIN);
+                    } else {
+                        return new SourceFile(p, executionPath, FileType.SOURCE_CODE);
+                    }
+                }).toList();
 
         return new Crate(cli.getCrateName(), root, executionRoot, sourceFiles,
-              new TestCaseRunner(cli, executionRoot.toString()));
+                new TestCaseRunner(cli, executionRoot.toString()));
     }
 
     private Crate(String crateName, Path originalRoot, Path executionRoot,
-          List<SourceFile> sourceFiles, ChromosomeExecutor<TestCase> executor)
-          throws IOException {
+                  List<SourceFile> sourceFiles, ChromosomeExecutor<TestCase> executor)
+            throws IOException {
         this.originalRoot = originalRoot;
         this.executionRoot = executionRoot;
         this.sourceFiles = sourceFiles;
@@ -74,7 +79,7 @@ public class Crate implements ChromosomeContainer<TestCase> {
 
     public SourceFile getFileByPath(String path) {
         var maybeFile = sourceFiles.stream().filter(s -> s.getOriginalPath().endsWith(path))
-              .findFirst();
+                .findFirst();
         if (maybeFile.isPresent()) {
             return maybeFile.get();
         } else {
@@ -97,12 +102,7 @@ public class Crate implements ChromosomeContainer<TestCase> {
 
     private void copyToExecutionDir() throws IOException {
         FileUtils.deleteDirectory(executionRoot.toFile());
-        FileUtils.copyDirectory(originalRoot.toFile(), executionRoot.toFile(), pathname ->
-            !pathname.getAbsolutePath().contains("rusty-unit")
-            && !pathname.getAbsolutePath().contains("analysis")
-            && !pathname.getAbsolutePath().contains("target")
-        && !pathname.getAbsolutePath().contains("random-search")
-        && !pathname.getAbsolutePath().contains("dynamosa"));
+        FileUtils.copyDirectory(originalRoot.toFile(), executionRoot.toFile(), fileFilter);
         for (SourceFile sourceFile : sourceFiles) {
             sourceFile.onCopied();
         }
@@ -130,14 +130,14 @@ public class Crate implements ChromosomeContainer<TestCase> {
         Map<String, List<TestCase>> sorted = new HashMap<>();
 
         var allowedFiles = sourceFiles.stream()
-              .filter(f -> !f.getExecutionPath().toString().endsWith("lib.rs")
-                    && !f.getExecutionPath().toString().endsWith("monitor.rs")).toList();
+                .filter(f -> !f.getExecutionPath().toString().endsWith("lib.rs")
+                        && !f.getExecutionPath().toString().endsWith("monitor.rs")).toList();
 
         testCases.forEach(testCase -> {
             var filePathBinding = testCase.getFilePathBinding()
-                  .orElseGet(
-                        () -> executionRoot.relativize(Rnd.choice(allowedFiles).getExecutionPath())
-                              .toString());
+                    .orElseGet(
+                            () -> executionRoot.relativize(Rnd.choice(allowedFiles).getExecutionPath())
+                                    .toString());
             sorted.putIfAbsent(filePathBinding, new ArrayList<>());
             sorted.get(filePathBinding).add(testCase);
             testCase.metadata().setFilePath(filePathBinding);

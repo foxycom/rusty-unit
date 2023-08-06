@@ -138,7 +138,7 @@ class SinglePointFixedCrossoverTest {
     var visitor = new TestCaseVisitor();
     var debugVisitor = new CrossoverDebugVisitor(2);
 
-    var parentA = new TestCase(1, hir, mutation, crossover, mir, callableSelector);
+    var parentA = new TestCase(1, hir, mutation, crossover, mir);
     parentA.setStatements(getStatementsA(parentA));
 
     System.out.println(parentA.visit(debugVisitor));
@@ -152,7 +152,7 @@ class SinglePointFixedCrossoverTest {
 
     when(hir.generatorsOf(vecType, "")).thenReturn(Lists.newArrayList(vecConstructor));
 
-    var parentB = new TestCase(2, hir, mutation, crossover, mir, callableSelector);
+    var parentB = new TestCase(2, hir, mutation, crossover, mir);
     parentB.setStatements(getStatementsB(parentB));
 
     System.out.println(parentB.visit(debugVisitor));

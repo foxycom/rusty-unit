@@ -26,7 +26,6 @@ public class Constants {
   public static final int MAX_INT = getInt("max-int");
   public static final int MAX_STRING_LENGTH = getInt("max-string-length");
   public static final String TEST_MOD_NAME = properties.getProperty("test-mod-name");
-  public static final String RUST_TOOLCHAIN = properties.getProperty("rust-toolchain");
   public static final String TEST_PREFIX = properties.getProperty("test-prefix");
   public static final int TEST_TIMEOUT = getInt("test-timeout");
 
@@ -38,9 +37,7 @@ public class Constants {
   private static Properties loadProperties() {
     var properties = new Properties();
     try {
-      properties.load(new FileInputStream(
-          "/Users/tim/Documents/master-thesis/rusty-unit/src/main/resources/config.properties"));
-
+      properties.load(Thread.currentThread().getContextClassLoader().getResourceAsStream("config.properties"));
     } catch (IOException e) {
       e.printStackTrace();
       System.exit(1);

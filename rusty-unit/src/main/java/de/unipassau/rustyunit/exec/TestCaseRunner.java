@@ -7,6 +7,7 @@ import de.unipassau.rustyunit.exception.TestCaseDoesNotCompileException;
 import de.unipassau.rustyunit.server.RedisStorage;
 import de.unipassau.rustyunit.source.ChromosomeContainer;
 import de.unipassau.rustyunit.test_case.TestCase;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.commons.io.IOUtils;
 import org.javatuples.Pair;
 import org.slf4j.Logger;
@@ -56,7 +58,7 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
   }
 
   private int collectCoverageFiles(File directory) throws IOException, InterruptedException {
-    var processBuilder = new ProcessBuilder("cargo", Constants.RUST_TOOLCHAIN, "test",
+    var processBuilder = new ProcessBuilder("cargo", "test",
         Constants.TEST_MOD_NAME, "--features", features).directory(directory).redirectOutput(logPath.toFile())
         .redirectError(errorPath.toFile());
     var env = processBuilder.environment();
@@ -73,7 +75,6 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
     var profRawFiles = Paths.get(coverageDir.toFile().getCanonicalPath(), "rusty-test*.profraw");
     var command = String.format(
         "cargo %s profdata -- merge -sparse %s -o %s",
-        Constants.RUST_TOOLCHAIN,
         profRawFiles,
         Paths.get(coverageDir.toFile().getCanonicalPath(), "rusty-tests.profdata"));
 
@@ -159,7 +160,7 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
       throws IOException, InterruptedException, TestCaseDoesNotCompileException {
     var timer = new Timer();
     timer.start();
-    var processBuilder = new ProcessBuilder("cargo", Constants.RUST_TOOLCHAIN, "test",
+    var processBuilder = new ProcessBuilder("cargo", "test",
         Constants.TEST_MOD_NAME, "--features", features)
         .directory(directory)
         .redirectError(errorPath.toFile());
@@ -177,7 +178,7 @@ public class TestCaseRunner implements ChromosomeExecutor<TestCase> {
 
     var path = Paths.get(directory.getAbsolutePath(), "build", System.currentTimeMillis() + ".log");
     path.getParent().toFile().mkdirs();
-    try(var writer = Files.newBufferedWriter(path)) {
+    try (var writer = Files.newBufferedWriter(path)) {
       writer.write(output);
       writer.flush();
     }

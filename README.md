@@ -2,7 +2,7 @@
 
 # How To
 ## Prerequisites
-To use RustyUnit, you need PostgreSQL and Redis being installed on your machine. RustyUnit assumes default Redis configuration (port 6379 on localhost). The PostgreSQL properties can be set in `rusty-unit/src/main/resources/config.properties`. RustyUnit creates and initializes on itself the tables that it needs. In the properties file, you can also set other parameters before building. Java 17 needed.
+To use RustyUnit, you need PostgreSQL and Redis being installed on your machine. RustyUnit assumes default Redis configuration (port 6379 on localhost). The PostgreSQL properties can be set in `rusty-unit/src/main/resources/config.properties`. RustyUnit creates and initializes on itself the tables that it needs. In the properties file, you can also set other parameters before building. Java 17+ and Gradle needed.
 
 ## Build RustyUnit
 First of all, you need to build RustyUnit's binaries. Run in root:
@@ -10,7 +10,7 @@ First of all, you need to build RustyUnit's binaries. Run in root:
 make build
 ```
 
-**Note:** We tested the code with the Rust compiler version `1.61.0-nightly`. We need a nightly compiler due to features RustyUnit exploits. Since nightly versions often include breaking changes, RustyUnit might not work with other versions. Also you need to use Java 17+.
+**Note:** We tested the code with the Rust compiler version `1.61.0-nightly`. We need a nightly compiler due to features RustyUnit exploits. Since nightly versions often include breaking changes, RustyUnit might not work with other versions. Also you need to use Java 17+ and Gradle. If you intend to run the Java code from an IDE, make sure to install the [Lombok plugin](https://projectlombok.org).
 
 The command produces a `bin` folder with three binaries: `analysis`, `instrumentation`, and `rusty-unit.jar`.
 
