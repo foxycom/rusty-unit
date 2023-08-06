@@ -18,6 +18,7 @@ Start the PostgreSQL and Redis servers before proceeding. RustyUnit will create 
 The build process expects the presence of the source code of the Rust compiler, which is included as submodule in the repository. To clone the repository together with the submodule use:
 ```
 git clone https://github.com/foxycom/rusty-unit.git
+cd rusty-unit
 git submodule update --init --depth 1
 ```
 This will clone the Rust compiler shallowly and omit all the recursive submodules of it like the LLVM project, which we do not need.
