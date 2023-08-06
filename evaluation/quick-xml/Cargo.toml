@@ -1,0 +1,55 @@
+[package]
+name = "quick-xml"
+version = "0.23.0"
+description = "High performance xml reader and writer"
+edition = "2018"
+
+documentation = "https://docs.rs/quick-xml"
+repository = "https://github.com/tafia/quick-xml"
+
+keywords = ["xml", "serde", "parser", "writer", "html"]
+categories = ["encoding", "parsing", "parser-implementations"]
+license = "MIT"
+
+[dependencies]
+document-features = { version = "0.2", optional = true }
+encoding_rs = { version = "0.8", optional = true }
+serde = { version = "1.0", optional = true }
+memchr = "2.5"
+rand = { version = "0.8", default-features = false, optional = true }
+
+[dev-dependencies]
+criterion = "0.3"
+pretty_assertions = "1.2"
+regex = "1"
+serde = { version = "1.0", features = ["derive"] }
+serde-value = "0.7"
+
+[features]
+default = []
+## Enables support of non-UTF-8 encoded documents. Encoding will be inferred from
+## the XML declaration if it will be found, otherwise UTF-8 is assumed.
+##
+## Currently, only ASCII-compatible encodings are supported, so, for example,
+## UTF-16 will not work (therefore, `quick-xml` is not [standard compliant]).
+##
+## List of supported encodings includes all encodings supported by [`encoding_rs`]
+## crate, that satisfied the restriction above.
+##
+## [standard compliant]: https://www.w3.org/TR/xml11/#charencoding
+encoding = ["encoding_rs"]
+
+## Enables support for [`serde`] serialization and deserialization
+serialize = ["serde"]
+
+## Enables support for recognizing all [HTML 5 entities](https://dev.w3.org/html5/html-author/charref)
+escape-html = []
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies.redis]
+version = "*"
+
+[dependencies.ntest]
+version = "*"

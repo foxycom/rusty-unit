@@ -1,0 +1,75 @@
+[workspace]
+members = ["time-macros"]
+resolver = "2"
+
+[package]
+name = "time"
+version = "0.3.7"
+authors = ["Jacob Pratt <open-source@jhpratt.dev>", "Time contributors"]
+edition = "2018"
+repository = "https://github.com/time-rs/time"
+homepage = "https://time-rs.github.io"
+keywords = ["date", "time", "calendar", "duration"]
+categories = ["date-and-time", "no-std", "parser-implementations", "value-formatting"]
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+description = "Date and time library. Fully interoperable with the standard library. Mostly compatible with #![no_std]."
+include = ["src/**/*", "LICENSE-*", "README.md", "!src/tests.rs"]
+
+[lib]
+bench = false
+
+[package.metadata.docs.rs]
+all-features = true
+targets = ["x86_64-unknown-linux-gnu"]
+rustdoc-args = ["--cfg", "__time_03_docs"]
+
+[features]
+default = ["std"]
+alloc = []
+formatting = ["itoa", "std"]
+large-dates = ["time-macros/large-dates"] # use case for weak feature dependencies (rust-lang/cargo#8832)
+local-offset = ["std"]
+macros = ["time-macros"]
+parsing = []
+quickcheck = ["quickcheck-dep", "alloc"]
+serde-human-readable = ["serde", "formatting", "parsing"]
+serde-well-known = ["serde/alloc", "formatting", "parsing"] # use case for weak feature dependencies (`alloc` could just require `serde?.alloc`)
+std = ["alloc"]
+
+[dependencies]
+itoa = { version = "1.0.1", optional = true }
+quickcheck-dep = { package = "quickcheck", version = "1.0.3", default-features = false, optional = true }
+rand = { version = "0.8.4", optional = true, default-features = false }
+serde = { version = "1.0.126", optional = true, default-features = false }
+time-macros = { version = "=0.2.3", path = "time-macros", optional = true }
+ntest = "0.7.5"
+
+[target.'cfg(target_family = "unix")'.dependencies]
+libc = "0.2.98"
+num_threads = "0.1.2"
+
+[dev-dependencies]
+rand = { version = "0.8.4", default-features = false }
+serde = { version = "1.0.126", default-features = false, features = ["derive"] }
+serde_test = "1.0.126"
+
+[target.'cfg(__ui_tests)'.dev-dependencies]
+trybuild = "=1.0.34"
+
+[target.'cfg(bench)'.dev-dependencies]
+criterion = "0.3.5"
+criterion-cycles-per-byte = "0.1.2"
+
+# Significant contributions to the benchmarks provided by Emil Lundberg.
+[[bench]]
+name = "benchmarks"
+harness = false
+path = "benchmarks/main.rs"
+
+[profile.dev]
+debug = 0
+
+[dependencies.redis]
+version = "*"
+

@@ -292,7 +292,6 @@ tmp/**
 
 
 
-evaluation/*
 */build/*
 testify/tests_debug/*
 jTestify/.gradle/*

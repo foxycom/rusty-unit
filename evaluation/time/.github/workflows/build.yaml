@@ -1,0 +1,395 @@
+name: Build
+
+concurrency:
+  group: build-${{ github.head_ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_INCREMENTAL: 0
+
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["**"]
+    paths-ignore:
+      - "**.md"
+      - LICENSE-Apache
+      - LICENSE-MIT
+  pull_request:
+    paths-ignore:
+      - "**.md"
+      - "**/LICENSE-Apache"
+      - "**/LICENSE-MIT"
+      - .github/FUNDING.yml
+      - .editorconfig
+      - .gitignore
+      - logo.svg
+
+jobs:
+  check-other-targets:
+    name: Type checking (${{ matrix.target.name }}, ${{ matrix.rust }})
+    runs-on: ubuntu-20.04
+    if: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) || github.event_name == 'push' }}
+    strategy:
+      matrix:
+        rust: ["1.53", stable]
+        target:
+          - name: NetBSD
+            triple: x86_64-unknown-netbsd
+            has_std: true
+            has_local_offset: false
+          - name: Illumos
+            triple: x86_64-unknown-illumos
+            has_std: true
+            has_local_offset: false
+          - name: wasi
+            triple: wasm32-wasi
+            has_std: true
+            has_local_offset: false
+          - name: embedded
+            triple: thumbv7em-none-eabihf
+            has_std: false
+            has_local_offset: false
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          target: ${{ matrix.target.triple }}
+          override: true
+
+      - name: Install cargo-hack
+        shell: bash
+        run: |
+          curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
+
+      - name: Cache cargo output
+        uses: Swatinem/rust-cache@v1
+        with:
+          key: ${{ matrix.target.triple }}
+
+      - name: Check feature powerset
+        uses: actions-rs/cargo@v1
+        with:
+          command: hack
+          args: |
+            check
+            --no-dev-deps
+            --feature-powerset
+            --optional-deps
+            --group-features serde,rand
+            --exclude-features default,std,formatting,serde-human-readable,serde-well-known,local-offset,quickcheck,quickcheck-dep,time-macros,itoa
+            --features macros
+            --exclude-all-features
+            --target ${{ matrix.target.triple }}
+        if: matrix.target.has_std == false
+
+      # Unconditionally enable the local-offset flag when the target doesn't provide any useful
+      # information.
+      # This currently _does not_ include NetBSD or Solaris due to a soundness bug.
+      - name: Check feature powerset
+        uses: actions-rs/cargo@v1
+        with:
+          command: hack
+          args: |
+            check
+            --no-dev-deps
+            --feature-powerset
+            --optional-deps
+            --group-features serde,rand
+            --group-features formatting,parsing
+            --group-features serde-human-readable,serde-well-known
+            --exclude-features default,quickcheck-dep,time-macros,itoa
+            --features macros,local-offset
+            --target ${{ matrix.target.triple }}
+        if: matrix.target.has_std == true && matrix.target.has_local_offset == false
+
+      - name: Check feature powerset
+        uses: actions-rs/cargo@v1
+        with:
+          command: hack
+          args: |
+            check
+            --no-dev-deps
+            --feature-powerset
+            --optional-deps
+            --group-features serde,rand
+            --group-features formatting,parsing
+            --group-features serde-human-readable,serde-well-known
+            --exclude-features default,quickcheck-dep,time-macros,itoa
+            --features macros
+            --target ${{ matrix.target.triple }}
+        if: matrix.target.has_std == true && matrix.target.has_local_offset == true
+
+  check-benchmarks:
+    name: Type-check benchmarks
+    runs-on: ubuntu-20.04
+    if: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) || github.event_name == 'push' }}
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Cache cargo output
+        uses: Swatinem/rust-cache@v1
+
+      - name: Type-check benchmarks
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --benches --all-features
+        env:
+          RUSTFLAGS: "--cfg bench"
+
+  test:
+    name: Test (${{ matrix.os.name }}, ${{ matrix.rust }})
+    runs-on: ${{ matrix.os.value }}
+    if: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) || github.event_name == 'push' }}
+    strategy:
+      matrix:
+        rust: ["1.53", stable]
+        os:
+          - { name: Ubuntu, value: ubuntu-20.04 }
+          - { name: Windows, value: windows-latest }
+          - { name: MacOS, value: macOS-latest }
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+
+      - name: Install cargo-hack
+        shell: bash
+        run: |
+          host=$(rustc -Vv | grep host | sed 's/host: //')
+          if [[ $host =~ windows ]]; then
+              curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-${host}.zip -o cargo-hack.zip
+              7z x cargo-hack.zip -o$HOME/.cargo/bin
+          elif [[ $host =~ darwin|linux ]]; then
+              curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-${host}.tar.gz | tar xzf - -C ~/.cargo/bin
+          else
+              echo "unsupported operating system"
+              exit 1
+          fi
+
+      - name: Cache cargo output
+        uses: Swatinem/rust-cache@v1
+
+      - name: Check feature powerset
+        uses: actions-rs/cargo@v1
+        with:
+          command: hack
+          args: |
+            check
+            --feature-powerset
+            --optional-deps
+            --group-features serde,rand
+            --group-features formatting,parsing
+            --group-features serde-human-readable,serde-well-known
+            --exclude-features default,quickcheck-dep,time-macros,itoa
+            --features macros
+        if: matrix.os.has_local_offset == true
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all-features
+
+  cross-build:
+    name: Cross-build
+    runs-on: ubuntu-20.04
+    if: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) || github.event_name == 'push' }}
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          target: x86_64-pc-windows-gnu
+
+      - name: Cache cargo output
+        uses: Swatinem/rust-cache@v1
+
+      - name: Install dependencies
+        run: sudo apt install gcc-mingw-w64
+
+      - name: Cross-build tests
+        uses: actions-rs/cargo@v1
+        with:
+          # We're testing the linking, so running `cargo check` is insufficient.
+          command: build
+          args: --tests --all-features --target x86_64-pc-windows-gnu
+
+  fmt:
+    name: Formatting
+    runs-on: ubuntu-20.04
+    if: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) || github.event_name == 'push' }}
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+          components: rustfmt
+
+      - name: Check formatting
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+        env:
+          RUSTFLAGS: "--cfg bench"
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-20.04
+    if: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) || github.event_name == 'push' }}
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Cache cargo output
+        uses: Swatinem/rust-cache@v1
+
+      - name: Run clippy
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features --benches --tests
+        env:
+          RUSTFLAGS: "--cfg bench"
+
+  documentation:
+    name: Documentation
+    runs-on: ubuntu-20.04
+    if: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) || github.event_name == 'push' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          persist-credentials: false
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+
+      - name: Cache cargo output
+        uses: Swatinem/rust-cache@v1
+
+      - name: Document public API
+        uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --all-features --no-deps -Zrustdoc-map
+        env:
+          RUSTDOCFLAGS: --cfg __time_03_docs
+
+      - name: Create top-level redirect
+        run: |
+          echo "<meta http-equiv='refresh' content='0; url=https://time-rs.github.io/api/time'>" > ./target/doc/index.html
+
+      - name: Publish public docs
+        uses: JamesIves/github-pages-deploy-action@releases/v4
+        with:
+          token: ${{ secrets.ACCESS_TOKEN }}
+          branch: main
+          folder: target/doc
+          target-folder: api
+          repository-name: time-rs/time-rs.github.io
+        if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.master_branch)
+
+      - name: Document internal API
+        uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --all-features --no-deps -Zrustdoc-map --document-private-items
+        env:
+          RUSTDOCFLAGS: --cfg __time_03_docs --document-hidden-items
+
+      - name: Create top-level redirect
+        run: |
+          echo "<meta http-equiv='refresh' content='0; url=https://time-rs.github.io/internal-api/time'>" > ./target/doc/index.html
+
+      - name: Publish internal docs
+        uses: JamesIves/github-pages-deploy-action@releases/v4
+        with:
+          token: ${{ secrets.ACCESS_TOKEN }}
+          branch: main
+          folder: target/doc
+          target-folder: internal-api
+          repository-name: time-rs/time-rs.github.io
+        if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.master_branch)
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-20.04
+    if: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) || github.event_name == 'push' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          persist-credentials: false
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+          components: llvm-tools-preview
+
+      - name: Install cargo-llvm-cov
+        run: |
+          curl -LsSf https://github.com/taiki-e/cargo-llvm-cov/releases/latest/download/cargo-llvm-cov-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
+
+      - name: Generate coverage report
+        run: cargo llvm-cov --all-features --workspace --lcov -- --test-threads=1 > lcov.txt
+        env:
+          # Don't run these anywhere else as the results can depend on the exact compiler used.
+          RUSTFLAGS: "--cfg __ui_tests"
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v1
+        with:
+          files: ./lcov.txt
