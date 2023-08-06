@@ -1,14 +1,21 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6604714.svg)](https://doi.org/10.5281/zenodo.6604714)
 
+
+  
 # How To
+
 ## Prerequisites
 To use RustyUnit, you need a few things to be installed on your machine:
 - PostgreSQL 14+ (change DB properties in `rusty-unit/src/main/resources/config.properties`)
 - Redis (RustyUnit assumes default configuration, i.e., port `6379` on `localhost`)
+- Rust / Cargo
 - Java 17+
 - Gradle 8
 
-Start the PostgreSQL and Redis servers before proceeding. RustyUnit will create and initialize on itself Redis data and PostgreSQL tables that it needs. In the properties file, you can also set other parameters before building.
+Start the PostgreSQL and Redis servers before proceeding. RustyUnit will create and initialize on itself Redis data and PostgreSQL tables that it needs. In the properties file, you can also set other parameters before building. If you intend to run the Java code from an IDE, make sure to install the [Lombok plugin](https://projectlombok.org).
+
+## Clone
+
 
 ## Build RustyUnit
 First of all, you need to build RustyUnit's binaries. Run in root:
@@ -16,9 +23,10 @@ First of all, you need to build RustyUnit's binaries. Run in root:
 make build
 ```
 
-**Note:** We tested the code with the Rust compiler version `1.61.0-nightly`. We need a nightly compiler due to features RustyUnit exploits. Since nightly versions often include breaking changes, RustyUnit might not work with other versions. Also you need to use Java 17+ and Gradle. If you intend to run the Java code from an IDE, make sure to install the [Lombok plugin](https://projectlombok.org).
+The command automatically installs the needed Rust compiler toolchain and produces a `bin` folder with three binaries: `analysis`, `instrumentation`, and `rusty-unit.jar`. 
 
-The command produces a `bin` folder with three binaries: `analysis`, `instrumentation`, and `rusty-unit.jar`.
+**Note:** We tested the code with the Rust compiler version `1.61.0-nightly`, which is also included as a Git submodule in `compiler/rust` and linked into the final binary of RustyUnit. We need a nightly compiler due to features RustyUnit exploits. Since nightly versions often include breaking changes, RustyUnit might not work with other versions. 
+
 
 ## Analysis
 To use them with the case study subjects, set the required environment variables (use absolute paths):
