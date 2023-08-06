@@ -15,7 +15,9 @@ To use RustyUnit, you need a few things to be installed on your machine:
 Start the PostgreSQL and Redis servers before proceeding. RustyUnit will create and initialize on itself Redis data and PostgreSQL tables that it needs. In the properties file, you can also set other parameters before building. If you intend to run the Java code from an IDE, make sure to install the [Lombok plugin](https://projectlombok.org).
 
 ## Clone
+The build process expects the presence of the source code of the Rust compiler, which is included as submodule in the repository. To clone the repository together with the submodule use:
 
+`git clone --recurse-submodules https://github.com/foxycom/rusty-unit.git`
 
 ## Build RustyUnit
 First of all, you need to build RustyUnit's binaries. Run in root:
