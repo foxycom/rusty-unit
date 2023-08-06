@@ -2,7 +2,13 @@
 
 # How To
 ## Prerequisites
-To use RustyUnit, you need PostgreSQL and Redis being installed on your machine. RustyUnit assumes default Redis configuration (port 6379 on localhost). The PostgreSQL properties can be set in `rusty-unit/src/main/resources/config.properties`. RustyUnit creates and initializes on itself the tables that it needs. In the properties file, you can also set other parameters before building. Java 17+ and Gradle needed.
+To use RustyUnit, you need a few things to be installed on your machine:
+- PostgreSQL 14+ (change DB properties in `rusty-unit/src/main/resources/config.properties`)
+- Redis (RustyUnit assumes default configuration, i.e., port `6379` on `localhost`)
+- Java 17+
+- Gradle 8
+
+Start the PostgreSQL and Redis servers before proceeding. RustyUnit will create and initialize on itself Redis data and PostgreSQL tables that it needs. In the properties file, you can also set other parameters before building.
 
 ## Build RustyUnit
 First of all, you need to build RustyUnit's binaries. Run in root:
