@@ -12,7 +12,15 @@ repository = "https://github.com/EAimTY/gamie"
 
 [features]
 default = ["std"]
-all = ["std", "serde", "connect_four", "gomoku", "minesweeper", "reversi", "tictactoe"]
+all = [
+    "std",
+    "serde",
+    "connect_four",
+    "gomoku",
+    "minesweeper",
+    "reversi",
+    "tictactoe",
+]
 std = ["snafu/std"]
 connect_four = []
 gomoku = []
@@ -34,8 +42,7 @@ rand = "0.8"
 all-features = true
 
 [dependencies.redis]
-version = "*"
+version = "0.23.1"
 
 [dependencies.ntest]
-version = "*"
-
+version = "0.7.5"

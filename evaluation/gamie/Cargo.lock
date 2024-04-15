@@ -25,6 +25,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "doc-comment"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "923dea538cea0aa3025e8685b20d6ee21ef99c4f77e954a30febbaac5ec73a97"
+
+[[package]]
+name = "gamie"
+version = "0.7.0"
+dependencies = [
+ "gamie",
+ "ntest",
+ "rand",
+ "redis",
+ "serde",
+ "snafu",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -33,6 +51,15 @@ dependencies = [
  "cfg-if",
  "libc",
  "wasi",
+]
+
+[[package]]
+name = "heck"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d621efb26863f0e9924c6ac577e8275e5e6b77455db64ffa6c65c904e9e132c"
+dependencies = [
+ "unicode-segmentation",
 ]
 
 [[package]]
@@ -94,8 +121,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99a81eb400abc87063f829560bc5c5c835177703b83d1cd991960db0b2a00abe"
 dependencies = [
  "proc-macro2",
- "quote",
- "syn",
+ "quote 1.0.0",
+ "syn 1.0.45",
 ]
 
 [[package]]
@@ -107,8 +134,8 @@ dependencies = [
  "ntest_proc_macro_helper",
  "proc-macro-crate",
  "proc-macro2",
- "quote",
- "syn",
+ "quote 1.0.0",
+ "syn 1.0.45",
 ]
 
 [[package]]
@@ -139,8 +166,14 @@ version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51ef7cd2518ead700af67bf9d1a658d90b6037d77110fd9c0445429d0ba1c6c9"
 dependencies = [
- "unicode-xid",
+ "unicode-xid 0.2.0",
 ]
+
+[[package]]
+name = "quote"
+version = "0.3.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f0fc799e40f2a2c2be239825b30b686f1bd1d2e0e3d5e943b14c1380db49acf"
 
 [[package]]
 name = "quote"
@@ -153,13 +186,14 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.8.5"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
+checksum = "a76330fb486679b4ace3670f117bbc9e16204005c4bde9c4bd372f45bed34f12"
 dependencies = [
  "libc",
  "rand_chacha",
  "rand_core",
+ "rand_hc",
 ]
 
 [[package]]
@@ -179,6 +213,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34cf66eb183df1c5876e2dcf6b13d57340741e8dc255b48e40a26de954d06ae7"
 dependencies = [
  "getrandom",
+]
+
+[[package]]
+name = "rand_hc"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3190ef7066a446f2e7f42e239d161e905420ccab01eb967c9eb27d21b2322a73"
+dependencies = [
+ "rand_core",
 ]
 
 [[package]]
@@ -207,12 +250,58 @@ name = "serde"
 version = "1.0.97"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d46b3dfedb19360a74316866cef04687cd4d6a70df8e6a506c63512790769b72"
+dependencies = [
+ "serde_derive",
+]
+
+[[package]]
+name = "serde_derive"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a61ecb8511aaff381424f98b49a059017420ec60e15e8d63b645701af7fa9b8"
+dependencies = [
+ "quote 0.3.8",
+ "serde_derive_internals",
+ "syn 0.11.10",
+]
+
+[[package]]
+name = "serde_derive_internals"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "021c338d22c7e30f957a6ab7e388cb6098499dda9fd4ba1661ee074ca7a180d1"
+dependencies = [
+ "syn 0.11.10",
+ "synom",
+]
 
 [[package]]
 name = "sha1_smol"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae1a47186c03a32177042e55dbc5fd5aee900b8e0069a8d70fba96a9375cd012"
+
+[[package]]
+name = "snafu"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2eba135d2c579aa65364522eb78590cdf703176ef71ad4c32b00f58f7afb2df5"
+dependencies = [
+ "doc-comment",
+ "snafu-derive",
+]
+
+[[package]]
+name = "snafu-derive"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a7fe9b0669ef117c5cabc5549638528f36771f058ff977d7689deb517833a75"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote 1.0.0",
+ "syn 1.0.45",
+]
 
 [[package]]
 name = "socket2"
@@ -226,13 +315,33 @@ dependencies = [
 
 [[package]]
 name = "syn"
+version = "0.11.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "171b739972d9a1bfb169e8077238b51f9ebeaae4ff6e08072f7ba386a8802da2"
+dependencies = [
+ "quote 0.3.8",
+ "synom",
+ "unicode-xid 0.0.4",
+]
+
+[[package]]
+name = "syn"
 version = "1.0.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea9c5432ff16d6152371f808fb5a871cd67368171b09bb21b43df8e4a47a3556"
 dependencies = [
  "proc-macro2",
- "quote",
- "unicode-xid",
+ "quote 1.0.0",
+ "unicode-xid 0.2.0",
+]
+
+[[package]]
+name = "synom"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8fece1853fb872b0acdc3ff88f37c474018e125ef81cd4cb8c0ca515746b62ed"
+dependencies = [
+ "unicode-xid 0.0.4",
 ]
 
 [[package]]
@@ -251,8 +360,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7765189610d8241a44529806d6fd1f2e0a08734313a35d5b3a556f92b381f3c0"
 dependencies = [
  "proc-macro2",
- "quote",
- "syn",
+ "quote 1.0.0",
+ "syn 1.0.45",
 ]
 
 [[package]]
@@ -262,15 +371,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a54ae44b0b2c443e7ef6dd3be16a776bae4daa40684f81e15126bc04e7747308"
 dependencies = [
  "serde",
-]
-
-[[package]]
-name = "toycrate"
-version = "0.1.0"
-dependencies = [
- "ntest",
- "rand",
- "redis",
 ]
 
 [[package]]
@@ -287,6 +387,18 @@ name = "unicode-normalization"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51ccda9ef9efa3f7ef5d91e8f9b83bbe6955f9bf86aec89d5cce2c874625920f"
+
+[[package]]
+name = "unicode-segmentation"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8083c594e02b8ae1654ae26f0ade5158b119bd88ad0e8227a5d8fcd72407946"
+
+[[package]]
+name = "unicode-xid"
+version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c1f860d7d29cf02cb2f3f359fd35991af3d30bac52c57d265a3c461074cb4dc"
 
 [[package]]
 name = "unicode-xid"

@@ -24,7 +24,7 @@ chrono = "0.4"
 rand = "0.6"
 
 [dependencies.redis]
-version = "*"
+version = "0.23.1"
 
 [dependencies.ntest]
-version = "*"
+version = "0.7.5"

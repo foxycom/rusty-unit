@@ -7,6 +7,9 @@ edition = "2021"
 
 [dependencies]
 rand = "0.8.5"
-ntest = "0.7.5"
+
 [dependencies.redis]
-version = "*"
+version = "0.23.1"
+
+[dependencies.ntest]
+version = "0.7.5"

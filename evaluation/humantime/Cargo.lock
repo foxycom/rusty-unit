@@ -3,16 +3,35 @@
 version = 3
 
 [[package]]
+name = "bitflags"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f5cde24d1b2e2216a726368b2363a273739c91f4e3eb4e0dd12d672d396ad989"
+
+[[package]]
 name = "bytes"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad1f8e949d755f9d79112b5bb46938e0ef9d3804a0b16dfab13aafcaa5f0fa72"
 
 [[package]]
-name = "cfg-if"
-version = "0.1.2"
+name = "chrono"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4c819a1287eb618df47cc647173c5c4c66ba19d888a6e50d605672aed3140de"
+checksum = "7c20ebe0b2b08b0aeddba49c609fe7957ba2e33449882cb186a180bc60682fa9"
+dependencies = [
+ "num",
+ "time",
+]
+
+[[package]]
+name = "cloudabi"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
+dependencies = [
+ "bitflags",
+]
 
 [[package]]
 name = "combine"
@@ -25,14 +44,30 @@ dependencies = [
 ]
 
 [[package]]
-name = "getrandom"
-version = "0.2.0"
+name = "fuchsia-zircon"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee8025cf36f917e6a52cce185b7c7177689b838b7ec138364e50cc2277a56cf4"
+checksum = "bd510087c325af53ba24f3be8f1c081b0982319adcb8b03cad764512923ccc19"
 dependencies = [
- "cfg-if",
- "libc",
- "wasi",
+ "bitflags",
+ "fuchsia-zircon-sys",
+]
+
+[[package]]
+name = "fuchsia-zircon-sys"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08b3a6f13ad6b96572b53ce7af74543132f1a7055ccceb6d073dd36c54481859"
+
+[[package]]
+name = "humantime"
+version = "2.1.0"
+dependencies = [
+ "chrono",
+ "ntest",
+ "rand",
+ "redis",
+ "time",
 ]
 
 [[package]]
@@ -51,6 +86,16 @@ name = "itoa"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2f3e61cf687687b30c9e6ddf0fc36cf15f035e66d491e6da968fa49ffa9a378"
+
+[[package]]
+name = "kernel32-sys"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad1ca084b49bfd975182288e1a5f1d27ea34ff2d6ae084ae5e66e1652427eada"
+dependencies = [
+ "winapi 0.2.4",
+ "winapi-build",
+]
 
 [[package]]
 name = "libc"
@@ -112,16 +157,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "num"
+version = "0.1.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4251ea00b7fa74610f0685b55495fcc86e4971b1951cb732b91d817f71bcae7c"
+
+[[package]]
 name = "percent-encoding"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
-
-[[package]]
-name = "ppv-lite86"
-version = "0.2.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "237a5ed80e274dbc66f86bd59c1e25edc039660be53194b5fe0a482e0f2612ea"
 
 [[package]]
 name = "proc-macro-crate"
@@ -153,32 +198,80 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.8.5"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
+checksum = "de3f08319b5395bd19b70e73c4c465329495db02dafeb8ca711a20f1c2bd058c"
 dependencies = [
+ "cloudabi",
+ "fuchsia-zircon",
  "libc",
  "rand_chacha",
- "rand_core",
+ "rand_core 0.3.0",
+ "rand_hc",
+ "rand_isaac",
+ "rand_pcg",
+ "rand_xorshift",
+ "rustc_version",
+ "winapi 0.3.9",
 ]
 
 [[package]]
 name = "rand_chacha"
-version = "0.3.0"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e12735cf05c9e10bf21534da50a147b924d555dc7a547c42e6bb2d5b6017ae0d"
+checksum = "771b009e3a508cb67e8823dda454aaa5368c7bc1c16829fb77d3e980440dd34a"
 dependencies = [
- "ppv-lite86",
- "rand_core",
+ "rand_core 0.2.0",
+ "rustc_version",
 ]
 
 [[package]]
 name = "rand_core"
-version = "0.6.2"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34cf66eb183df1c5876e2dcf6b13d57340741e8dc255b48e40a26de954d06ae7"
+checksum = "1b7a5f27547c49e5ccf8a586db3f3782fd93cf849780b21853b9d981db203302"
+
+[[package]]
+name = "rand_core"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0905b6b7079ec73b314d4c748701f6931eb79fd97c668caa3f1899b22b32c6db"
+
+[[package]]
+name = "rand_hc"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b40677c7be09ae76218dc623efbf7b18e34bced3f38883af07bb75630a21bc4"
 dependencies = [
- "getrandom",
+ "rand_core 0.2.0",
+]
+
+[[package]]
+name = "rand_isaac"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d6ecfe9ebf36acd47a49d150990b047a5f7db0a7236ee2414b7ff5cc1097c7b"
+dependencies = [
+ "rand_core 0.2.0",
+]
+
+[[package]]
+name = "rand_pcg"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63dc0563dbebec393ad95dd50d842bcec1c1157bb5ab9f29e2b5bae098817e8d"
+dependencies = [
+ "rand_core 0.3.0",
+ "rustc_version",
+]
+
+[[package]]
+name = "rand_xorshift"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "effa3fcaa47e18db002bdde6060944b6d2f9cfd8db471c30e873448ad9187be3"
+dependencies = [
+ "rand_core 0.2.0",
 ]
 
 [[package]]
@@ -197,10 +290,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_syscall"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "35a48131ab10dbeb17202bd1dcb9c9798963a58a50c9ec31640f237358832094"
+
+[[package]]
+name = "rustc_version"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e114e275f7c9b5d50bb52b28f9aac1921209f02aa6077c8b255e21eefaf8ffa"
+dependencies = [
+ "semver",
+]
+
+[[package]]
 name = "ryu"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c92464b447c0ee8c4fb3824ecc8383b81717b9f1e74ba2e72540aef7b9f82997"
+
+[[package]]
+name = "semver"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a3186ec9e65071a2095434b1f5bb24838d4e8e130f584c790f6033c79943537"
+dependencies = [
+ "semver-parser",
+]
+
+[[package]]
+name = "semver-parser"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "serde"
@@ -221,7 +344,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e3dfc207c526015c632472a77be09cf1b6e46866581aecae5cc38fb4235dea2"
 dependencies = [
  "libc",
- "winapi",
+ "winapi 0.3.9",
 ]
 
 [[package]]
@@ -256,21 +379,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "time"
+version = "0.1.36"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "211b63c112206356ef1ff9b19355f43740fc3f85960c598a93d3a3d3ba7beade"
+dependencies = [
+ "kernel32-sys",
+ "libc",
+ "redox_syscall",
+ "winapi 0.2.4",
+]
+
+[[package]]
 name = "toml"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a54ae44b0b2c443e7ef6dd3be16a776bae4daa40684f81e15126bc04e7747308"
 dependencies = [
  "serde",
-]
-
-[[package]]
-name = "toycrate"
-version = "0.1.0"
-dependencies = [
- "ntest",
- "rand",
- "redis",
 ]
 
 [[package]]
@@ -306,10 +432,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasi"
-version = "0.9.0+wasi-snapshot-preview1"
+name = "winapi"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cccddf32554fecc6acb585f82a32a72e28b48f8c4c1883ddfeeeaa96f7d8e519"
+checksum = "5350e40d908c7e8b9e5c9edb541ca47cc617c6229d3575a46da6f550f36c96fd"
 
 [[package]]
 name = "winapi"
@@ -320,6 +446,12 @@ dependencies = [
  "winapi-i686-pc-windows-gnu",
  "winapi-x86_64-pc-windows-gnu",
 ]
+
+[[package]]
+name = "winapi-build"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d315eee3b34aca4797b2da6b13ed88266e6d612562a0c46390af8299fc699bc"
 
 [[package]]
 name = "winapi-i686-pc-windows-gnu"

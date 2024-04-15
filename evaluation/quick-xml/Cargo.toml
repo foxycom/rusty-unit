@@ -49,7 +49,7 @@ escape-html = []
 all-features = true
 
 [dependencies.redis]
-version = "*"
+version = "0.23.1"
 
 [dependencies.ntest]
-version = "*"
+version = "0.7.5"

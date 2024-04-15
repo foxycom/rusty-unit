@@ -10,7 +10,12 @@ edition = "2018"
 repository = "https://github.com/time-rs/time"
 homepage = "https://time-rs.github.io"
 keywords = ["date", "time", "calendar", "duration"]
-categories = ["date-and-time", "no-std", "parser-implementations", "value-formatting"]
+categories = [
+    "date-and-time",
+    "no-std",
+    "parser-implementations",
+    "value-formatting",
+]
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 description = "Date and time library. Fully interoperable with the standard library. Mostly compatible with #![no_std]."
@@ -28,13 +33,19 @@ rustdoc-args = ["--cfg", "__time_03_docs"]
 default = ["std"]
 alloc = []
 formatting = ["itoa", "std"]
-large-dates = ["time-macros/large-dates"] # use case for weak feature dependencies (rust-lang/cargo#8832)
+large-dates = [
+    "time-macros/large-dates",
+] # use case for weak feature dependencies (rust-lang/cargo#8832)
 local-offset = ["std"]
 macros = ["time-macros"]
 parsing = []
 quickcheck = ["quickcheck-dep", "alloc"]
 serde-human-readable = ["serde", "formatting", "parsing"]
-serde-well-known = ["serde/alloc", "formatting", "parsing"] # use case for weak feature dependencies (`alloc` could just require `serde?.alloc`)
+serde-well-known = [
+    "serde/alloc",
+    "formatting",
+    "parsing",
+] # use case for weak feature dependencies (`alloc` could just require `serde?.alloc`)
 std = ["alloc"]
 
 [dependencies]
@@ -43,7 +54,6 @@ quickcheck-dep = { package = "quickcheck", version = "1.0.3", default-features =
 rand = { version = "0.8.4", optional = true, default-features = false }
 serde = { version = "1.0.126", optional = true, default-features = false }
 time-macros = { version = "=0.2.3", path = "time-macros", optional = true }
-ntest = "0.7.5"
 
 [target.'cfg(target_family = "unix")'.dependencies]
 libc = "0.2.98"
@@ -71,5 +81,7 @@ path = "benchmarks/main.rs"
 debug = 0
 
 [dependencies.redis]
-version = "*"
+version = "0.23.1"
 
+[dependencies.ntest]
+version = "0.7.5"

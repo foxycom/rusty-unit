@@ -7,3 +7,4 @@ target/
 # test files
 tight.json
 .tight/
+analysis/**
