@@ -31,7 +31,6 @@ public class PreferenceSorterImpl<C extends AbstractTestCaseChromosome<C>> imple
     table = new TreeMap<>();
   }
 
-
   @Override
   public Map<Integer, List<C>> sort(List<C> pPopulation) {
     return sort(pPopulation, objectives);
@@ -86,7 +85,7 @@ public class PreferenceSorterImpl<C extends AbstractTestCaseChromosome<C>> imple
   }
 
   private void log(Map<String, Double> table) {
-    var name = String.format("/Users/tim/master-thesis/test-tmp/%d.txt", System.currentTimeMillis());
+    var name = String.format("ru_log/%d.txt", System.currentTimeMillis());
     try (var out = new BufferedWriter(new FileWriter(name))) {
       for (Entry<String, Double> entry : table.entrySet()) {
         out.write(String.format("%s -> %f\n", entry.getKey(), entry.getValue()));

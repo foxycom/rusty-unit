@@ -1,27 +1,23 @@
-use std::collections::hash_set::Union;
+use crate::util::is_local;
+use log::{error, info};
+use rustc_ast::{FloatTy, IntTy, UintTy};
+use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BodyId, FnSig, HirId, PrimTy};
-use rustc_ast::{IntTy, FloatTy, UintTy};
-use rustc_middle::ty::{AdtDef, AdtKind, Binder, GenericParamDefKind, PredicateKind, Ty, TyCtxt, TyKind, TypeFoldable, IntTy as MirInt, FloatTy as MirFloat};
+use rustc_middle::ty::{
+    AdtDef, AdtKind, Binder, FloatTy as MirFloat, GenericParamDefKind, IntTy as MirInt,
+    PredicateKind, Ty, TyCtxt, TyKind, TypeFoldable,
+};
+use rustc_target::abi::VariantIdx;
 use serde::{Deserialize, Serialize};
+use std::collections::hash_set::Union;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::{Debug, Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use log::{error, info};
-use rustc_hir::def::CtorKind;
-use rustc_target::abi::VariantIdx;
 use uuid::Uuid;
-use crate::util::is_local;
-
-static TYPE_PROVIDERS_DIR: &'static str =
-    "/Users/tim/Documents/master-thesis/testify/providers/types";
-static IMPLEMENTATIONS_DIR: &'static str =
-    "/Users/tim/Documents/master-thesis/testify/providers/implementations";
-static CALLABLES_DIR: &'static str =
-    "/Users/tim/Documents/master-thesis/testify/providers/callables";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RuCallable {
@@ -134,7 +130,12 @@ pub struct RuStructInit {
 }
 
 impl RuStructInit {
-    pub fn new(is_public: bool, src_file_path: &str, fields: Vec<RuParam>, return_type: RuTy) -> Self {
+    pub fn new(
+        is_public: bool,
+        src_file_path: &str,
+        fields: Vec<RuParam>,
+        return_type: RuTy,
+    ) -> Self {
         RuStructInit {
             is_public,
             params: fields,
@@ -308,13 +309,7 @@ pub struct FieldAccessItem {
 }
 
 impl FieldAccessItem {
-    pub fn new(
-        name: &str,
-        src_file_path: &str,
-        ty: RuTy,
-        parent: RuTy,
-        is_public: bool,
-    ) -> Self {
+    pub fn new(name: &str, src_file_path: &str, ty: RuTy, parent: RuTy, is_public: bool) -> Self {
         FieldAccessItem {
             name: name.to_string(),
             src_file_path: src_file_path.to_string(),
@@ -324,7 +319,6 @@ impl FieldAccessItem {
         }
     }
 }
-
 
 #[derive(Clone, Hash, Eq, Serialize, Deserialize)]
 pub enum RuTy {
@@ -341,7 +335,7 @@ pub enum RuTy {
     Slice(Box<RuTy>),
     AsTrait(Box<RuTy>, RuTrait),
     Relative(Box<RuTy>, String),
-    Fn
+    Fn,
 }
 
 impl PartialEq for RuTy {
@@ -373,36 +367,40 @@ impl PartialEq for RuTy {
             },
             RuTy::Tuple(types) => match other {
                 RuTy::Tuple(other_types) => types == other_types,
-                _ => false
+                _ => false,
             },
             RuTy::TraitObj(trait_obj) => match other {
                 RuTy::TraitObj(other_trait_obj) => trait_obj == other_trait_obj,
-                _ => false
+                _ => false,
             },
             RuTy::RawPointer(pointer, mutability) => match other {
-                RuTy::RawPointer(other_pointer, other_mutability) => pointer == other_pointer && mutability == other_mutability,
-                _ => false
+                RuTy::RawPointer(other_pointer, other_mutability) => {
+                    pointer == other_pointer && mutability == other_mutability
+                }
+                _ => false,
             },
             RuTy::Union(union_t) => match other {
                 RuTy::Union(other_union) => union_t == other_union,
-                _ => false
+                _ => false,
             },
             RuTy::Slice(slice) => match other {
                 RuTy::Slice(other_slice) => slice == other_slice,
-                _ => false
+                _ => false,
             },
             RuTy::AsTrait(orig_ty, as_ty) => match other {
                 RuTy::AsTrait(o_orig_ty, o_as_ty) => orig_ty == o_orig_ty && as_ty == o_as_ty,
-                _ => false
+                _ => false,
             },
             RuTy::Relative(rel, segment) => match other {
-                RuTy::Relative(other_rel, other_segment) => rel == other_rel && segment == other_segment,
-                _ => false
+                RuTy::Relative(other_rel, other_segment) => {
+                    rel == other_rel && segment == other_segment
+                }
+                _ => false,
             },
             RuTy::Fn => match other {
                 RuTy::Fn => true,
-                _ => false
-            }
+                _ => false,
+            },
         }
     }
 }
@@ -419,14 +417,10 @@ fn trait_def_to_trait(def_id: DefId, tcx: &TyCtxt<'_>) -> RuTrait {
 
 pub fn mir_ty_to_t(ty: rustc_middle::ty::Ty<'_>, tcx: &TyCtxt<'_>) -> RuTy {
     match ty.kind() {
-        TyKind::Adt(adt_def, subst_ref) => {
-            adt_def_to_t(adt_def, tcx)
-        }
-        TyKind::Param(param) => {
-            RuTy::Generic(RuGeneric::new(param.name.as_str(), vec![]))
-        }
+        TyKind::Adt(adt_def, subst_ref) => adt_def_to_t(adt_def, tcx),
+        TyKind::Param(param) => RuTy::Generic(RuGeneric::new(param.name.as_str(), vec![])),
 
-        _ => todo!("{:?}", ty.kind())
+        _ => todo!("{:?}", ty.kind()),
     }
 }
 
@@ -440,7 +434,7 @@ pub fn ty_name(ty: Ty) -> &str {
         TyKind::Int(int) => int.name_str(),
         TyKind::Uint(uint) => uint.name_str(),
         TyKind::Float(float) => float.name_str(),
-        _ => todo!("{:?}", ty.kind())
+        _ => todo!("{:?}", ty.kind()),
     }
 }
 
@@ -464,23 +458,32 @@ fn adt_def_to_t(adt_def: &AdtDef, tcx: &TyCtxt<'_>) -> RuTy {
             for variant in adt_def.variants() {
                 let variant_name = variant.name.to_string();
 
-                let params = variant.fields.iter().map(|f| {
-                    let field_name = f.name.to_string();
-                    let field_t = mir_ty_to_t(tcx.type_of(f.did), tcx);
-                    RuParam::new(Some(&field_name), field_t, false)
-                }).collect::<Vec<_>>();
+                let params = variant
+                    .fields
+                    .iter()
+                    .map(|f| {
+                        let field_name = f.name.to_string();
+                        let field_t = mir_ty_to_t(tcx.type_of(f.did), tcx);
+                        RuParam::new(Some(&field_name), field_t, false)
+                    })
+                    .collect::<Vec<_>>();
 
                 match variant.ctor_kind {
                     CtorKind::Fn => {
                         variants.push(RuEnumVariant::Tuple(variant_name, params));
                     }
-                    _ => todo!("{:?}", variant.ctor_kind)
+                    _ => todo!("{:?}", variant.ctor_kind),
                 }
             }
 
             let generics = generics_of_item(adt_def.did(), tcx);
 
-            let t = RuTy::Enum(RuEnum::new(&enum_name, generics, variants, is_local(adt_def.did())));
+            let t = RuTy::Enum(RuEnum::new(
+                &enum_name,
+                generics,
+                variants,
+                is_local(adt_def.did()),
+            ));
             info!("Extracted enum: {:?}", t);
             t
         }
@@ -492,33 +495,36 @@ pub fn generics_of_item(def_id: DefId, tcx: &TyCtxt<'_>) -> Vec<RuTy> {
     let adt_predicates = tcx.predicates_defined_on(def_id);
 
     let mut generics: Vec<RuGeneric> = Vec::new();
-    adt_predicates.predicates.iter().filter_map(|(predicate, _)| {
-        let binder = predicate.kind();
+    adt_predicates
+        .predicates
+        .iter()
+        .filter_map(|(predicate, _)| {
+            let binder = predicate.kind();
 
-        match binder.skip_binder() {
-            PredicateKind::Trait(trait_predicate) => {
-                let self_ty = trait_predicate.self_ty();
-                let name = ty_name(self_ty);
-                let trait_ = trait_def_to_trait(trait_predicate.def_id(), tcx);
-                let g = RuGeneric::new(name, vec![trait_]);
+            match binder.skip_binder() {
+                PredicateKind::Trait(trait_predicate) => {
+                    let self_ty = trait_predicate.self_ty();
+                    let name = ty_name(self_ty);
+                    let trait_ = trait_def_to_trait(trait_predicate.def_id(), tcx);
+                    let g = RuGeneric::new(name, vec![trait_]);
 
-                Some(g)
+                    Some(g)
+                }
+                PredicateKind::RegionOutlives(_) => None,
+                PredicateKind::TypeOutlives(_) => None,
+                _ => todo!("{:?}", binder.skip_binder()),
             }
-            PredicateKind::RegionOutlives(_) => None,
-            PredicateKind::TypeOutlives(_) => None,
-            _ => todo!("{:?}", binder.skip_binder())
-        }
-    }).for_each(|mut g| {
-        // The compiler splits things like T: Copy + Debug into
-        // two separate predicates with same name, i.e., T, so we merge them back again
-        let existing_generic = generics.iter_mut().find(|e| e.name == g.name);
-        if let Some(generics) = existing_generic {
-            generics.bounds.append(&mut g.bounds);
-        } else {
-            generics.push(g);
-        }
-    });
-
+        })
+        .for_each(|mut g| {
+            // The compiler splits things like T: Copy + Debug into
+            // two separate predicates with same name, i.e., T, so we merge them back again
+            let existing_generic = generics.iter_mut().find(|e| e.name == g.name);
+            if let Some(generics) = existing_generic {
+                generics.bounds.append(&mut g.bounds);
+            } else {
+                generics.push(g);
+            }
+        });
 
     generics.iter().map(|g| RuTy::Generic(g.clone())).collect()
 }
@@ -555,7 +561,7 @@ impl Debug for RuTy {
                 write!(f, "[")?;
                 Debug::fmt(slice, f)?;
                 write!(f, "]")
-            },
+            }
             RuTy::AsTrait(orig_ty, as_ty) => {
                 write!(f, "<")?;
                 Debug::fmt(orig_ty, f)?;
@@ -580,7 +586,7 @@ impl From<TyKind<'_>> for RuTy {
             TyKind::Bool => RuTy::Prim(RuPrim::Bool),
             TyKind::Char => RuTy::Prim(RuPrim::Char),
             TyKind::Int(int) => <RuTy as From<MirInt>>::from(int),
-            _ => todo!("{:?}", kind)
+            _ => todo!("{:?}", kind),
         }
     }
 }
@@ -649,7 +655,7 @@ impl From<String> for RuTy {
             "f32" => RuPrim::Float(RuFloat::F32),
             "f64" => RuPrim::Float(RuFloat::F64),
             "bool" => RuPrim::Bool,
-            _ => todo!("{}", s)
+            _ => todo!("{}", s),
         };
 
         RuTy::Prim(ty)
@@ -672,7 +678,7 @@ impl RuTy {
             RuTy::Slice(slice) => String::from("slice"),
             RuTy::AsTrait(orig_ty, as_ty) => "as".to_string(),
             RuTy::Relative(_, _) => "relative".to_string(),
-            RuTy::Fn => "fn".to_string()
+            RuTy::Fn => "fn".to_string(),
         }
     }
 
@@ -695,14 +701,14 @@ impl RuTy {
     pub fn is_enum(&self) -> bool {
         match self {
             RuTy::Enum(_) => true,
-            _ => false
+            _ => false,
         }
     }
 
     pub fn is_struct(&self) -> bool {
         match self {
             RuTy::Struct(_) => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -718,35 +724,35 @@ impl RuTy {
         match self {
             RuTy::Generic(generic) => generic,
             RuTy::Ref(r, _) => r.expect_generic_mut(),
-            _ => panic!("Is not a generic: {:?}", self)
+            _ => panic!("Is not a generic: {:?}", self),
         }
     }
 
     pub fn expect_enum(&self) -> &RuEnum {
         match self {
             RuTy::Enum(enum_t) => enum_t,
-            _ => panic!("Is not an enum")
+            _ => panic!("Is not an enum"),
         }
     }
 
     pub fn expect_enum_mut(&mut self) -> &mut RuEnum {
         match self {
             RuTy::Enum(enum_t) => enum_t,
-            _ => panic!("Is not an enum")
+            _ => panic!("Is not an enum"),
         }
     }
 
     pub fn expect_struct(&self) -> &RuStruct {
         match self {
             RuTy::Struct(struct_t) => struct_t,
-            _ => panic!("Is not a struct")
+            _ => panic!("Is not a struct"),
         }
     }
 
     pub fn expect_struct_mut(&mut self) -> &mut RuStruct {
         match self {
             RuTy::Struct(struct_t) => struct_t,
-            _ => panic!("Is not a struct")
+            _ => panic!("Is not a struct"),
         }
     }
 
@@ -755,7 +761,7 @@ impl RuTy {
             RuTy::Ref(r, _) => r.as_mut().overwrite_generics(generics),
             RuTy::Struct(s) => s.overwrite_generics(generics),
             RuTy::Enum(e) => e.overwrite_generics(generics),
-            _ => todo!()
+            _ => todo!(),
         }
     }
 }
@@ -773,7 +779,11 @@ impl Display for RuTy {
             RuTy::Enum(enum_ty) => Display::fmt(enum_ty, f),
             RuTy::Array(array) => Display::fmt(array, f),
             RuTy::Tuple(types) => {
-                let results = types.types.iter().map(|t| Display::fmt(t.as_ref(), f)).collect::<Vec<_>>();
+                let results = types
+                    .types
+                    .iter()
+                    .map(|t| Display::fmt(t.as_ref(), f))
+                    .collect::<Vec<_>>();
                 if let Some(result) = results.last() {
                     *result
                 } else {
@@ -793,7 +803,7 @@ impl Display for RuTy {
                 write!(f, "[")?;
                 Display::fmt(slice, f)?;
                 write!(f, "]")
-            },
+            }
             RuTy::AsTrait(orig_ty, trait_) => {
                 write!(f, "<")?;
                 Display::fmt(orig_ty, f)?;
@@ -855,7 +865,11 @@ impl Debug for RuTuple {
 
 impl Display for RuTuple {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let types = self.types.iter().map(|ty| format!("{}", ty)).collect::<Vec<_>>();
+        let types = self
+            .types
+            .iter()
+            .map(|ty| format!("{}", ty))
+            .collect::<Vec<_>>();
         write!(f, "({})", types.join(", "))
     }
 }
@@ -868,9 +882,7 @@ impl PartialEq for RuTuple {
 
 impl RuTuple {
     pub fn new(types: Vec<Box<RuTy>>) -> Self {
-        Self {
-            types
-        }
+        Self { types }
     }
 }
 
@@ -900,7 +912,10 @@ impl PartialEq for RuTraitObj {
 
 impl RuTraitObj {
     pub fn new(name: &str, is_local: bool) -> Self {
-        RuTraitObj { name: name.to_string(), is_local }
+        RuTraitObj {
+            name: name.to_string(),
+            is_local,
+        }
     }
 
     pub fn name(&self) -> &str {
@@ -1098,7 +1113,7 @@ impl RuEnumVariant {
         match self {
             RuEnumVariant::Struct(name, _) => name,
             RuEnumVariant::Tuple(name, _) => name,
-            RuEnumVariant::Unit(name) => name
+            RuEnumVariant::Unit(name) => name,
         }
     }
 
@@ -1106,7 +1121,7 @@ impl RuEnumVariant {
         match self {
             RuEnumVariant::Struct(_, p) => p.clone(),
             RuEnumVariant::Tuple(_, p) => p.clone(),
-            RuEnumVariant::Unit(_) => vec![]
+            RuEnumVariant::Unit(_) => vec![],
         }
     }
 }
@@ -1129,7 +1144,6 @@ impl PartialEq for RuEnumVariant {
         }
     }
 }
-
 
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RuGeneric {
@@ -1171,7 +1185,12 @@ impl Display for RuGeneric {
         write!(f, "{}", &self.name)?;
         if !self.bounds.is_empty() {
             write!(f, ": ")?;
-            let bounds = self.bounds.iter().map(|b| format!("{}", b)).collect::<Vec<_>>().join(" + ");
+            let bounds = self
+                .bounds
+                .iter()
+                .map(|b| format!("{}", b))
+                .collect::<Vec<_>>()
+                .join(" + ");
             write!(f, "{}", bounds)?;
         }
         Ok(())
